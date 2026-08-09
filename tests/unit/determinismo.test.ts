@@ -21,6 +21,7 @@ import {
   ConstructorColumnar,
   type TablaColumnar,
 } from "../../src/engine/columnar";
+import { evaluarRiesgo } from "../../src/engine/riesgo";
 import { serializarCanonico } from "../../src/engine/serializacion";
 
 const OPCIONES = {
@@ -50,6 +51,23 @@ describe("el diagnóstico es byte-idéntico entre corridas", () => {
 
     expect(segunda).toBe(primera);
     expect(primera.length).toBeGreaterThan(1_000); // que no esté comparando dos vacíos
+  });
+
+  it("el diagnóstico COMPLETO —detección y riesgo— es byte-idéntico", () => {
+    // El gate tiene que cubrir todo lo que el usuario ve, no solo la clasificación: el riesgo y
+    // el ranking del advisor son igual de sensibles a un desempate mal fijado, y un ranking que
+    // cambie de orden entre corridas rompe la promesa igual que un tipo mal detectado.
+    const completo = (bloque: number) => {
+      const tabla = construirPorBloques(bloque);
+      const diagnostico = clasificar(tabla);
+      return serializarCanonico({
+        diagnostico,
+        ...evaluarRiesgo(tabla, diagnostico),
+      });
+    };
+
+    expect(completo(311)).toBe(completo(311));
+    expect(completo(1_999)).toBe(completo(311));
   });
 
   it("el tamaño de los chunks del parser NO cambia el resultado", () => {

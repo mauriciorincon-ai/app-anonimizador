@@ -243,6 +243,76 @@ Las muestras van enmascaradas (`103***89`) con un número **fijo** de asteriscos
 caracteres ocultos, la máscara filtraría la longitud del valor. Y las columnas sensibles **no llevan
 muestra**: con tres valores posibles ninguna máscara esconde nada — `I******a` es «Indígena».
 
+## Fase 2 — Motor de riesgo ✅
+
+`src/engine/riesgo.ts` con 161 tests en total (97,3% statements · 94,2% ramas).
+
+### Todo lo que sale de aquí es EXACTO, y lleva la marca puesta
+
+Cada resultado viaja con `naturaleza: "exacto"`. No es decoración: el S2 añadirá los estimadores de
+unicidad poblacional (Pitman/Zayatz), que dependen del modelo y de la fracción de muestreo, y la UI
+tiene que poder distinguirlos sin ambigüedad. Modelo de atacante: **prosecutor** —el más adverso de
+los tres de ARX y el único calculable exacto sobre la muestra—, riesgo por registro = 1/|clase|.
+
+### La tabla de 12 filas calculada a mano
+
+El caso central del test no es un fixture grande: son 12 filas con su aritmética escrita en el
+propio archivo (5 clases de tamaños 4·3·2·2·1 → k=1, riesgo máximo 1, promedio 5/12, 1 único).
+Un motor de riesgo verificado solo contra datasets grandes produce números plausibles que nadie
+comprobó nunca.
+
+De ahí salió un detalle que valía la pena fijar: el riesgo promedio se calcula como
+**clases/filas**, no sumando 500.000 términos de 1/k (que acumularía error de punto flotante en un
+número que se presenta como exacto). La igualdad es demostrable —Σ(|c|×1/|c|)/n = clases/n— y hay un
+test que **confronta las dos formas** para que no quede en la palabra de un comentario.
+
+### Lattice incremental
+
+Las clases de una combinación de tamaño _m_ se derivan de las de tamaño _m−1_ más una columna: un
+pase O(n) sobre enteros por columna añadida, con recorrido en profundidad que hereda del padre. Sin
+esa herencia cada combinación costaría recalcular desde cero.
+
+Hay un test que verifica la **propiedad matemática del retículo**: añadir una columna nunca puede
+bajar el número de clases ni el de únicos. Si el recorrido incremental estuviera mal, esa invariante
+se rompería sin que ningún otro test lo notara.
+
+### El advisor: dos decisiones que cambiaron con los datos
+
+1. **Un comparador roto que el fixture no habría cazado.** El ranking encadenaba tres criterios con
+   `||` y ternarios; la precedencia lo convertía en un `if` sobre el primero que fuera verdadero.
+   No explota: solo hace que dos corridas ordenen distinto — la peor clase de error para este
+   producto. Reescrito en sentencias separadas, con el porqué al lado.
+2. **Las columnas que identifican solas se REPORTAN, no se excluyen.** El primer diseño descartaba
+   las columnas "casi únicas" por su cardinalidad. El kit mostró el problema: a 3.000 filas la fecha
+   de nacimiento (≈24.000 valores posibles) es casi única y quedaba fuera — escondiendo justo el
+   hallazgo más importante del archivo. Ahora el umbral se mide sobre el **efecto** (cuánta gente
+   queda sola, no cuántos valores distintos hay), esas columnas salen en su propia lista
+   `identificanSolas` con su número, y solo se las deja fuera del recorrido de combinaciones porque
+   cualquier combinación que las incluyera heredaría su unicidad sin decir nada nuevo.
+
+   El test que fija la diferencia está construido a mano: 100 filas con 90 valores distintos (el
+   90% — un umbral por cardinalidad la habría descartado) que solo dejan solos a 80 registros
+   (80%). La columna entra a las combinaciones, que es lo correcto.
+
+**Nada de topes silenciosos:** el advisor publica cuántas candidatas mira (6), hasta qué tamaño
+combina (4), cuántas combinaciones evaluó (50 = C(6,2)+C(6,3)+C(6,4)) y **qué quedó fuera con su
+motivo** — identificador directo (señala solo), dato sensible del art. 5 (es el objetivo del ataque,
+no la llave), columna constante, o fuera del tope.
+
+### Rendimiento y resultado sobre el fixture de 500k
+
+**1.254 ms** para la evaluación completa (clases de equivalencia sobre 7 QIs + las 50 combinaciones
+del advisor). Resultado: 500.000 clases, k mínimo 1, **100% de registros únicos** — con esos
+cuasi-identificadores, el archivo no protege a nadie, y el advisor lo desglosa:
+`referencia_pago` 97% · `ip_registro` 97% · `latitud` 94% · `longitud` 93% · `monto` 92% identifican
+solas; la combinación más delatora sin ellas es
+`fecha_nacimiento + fecha_atencion + municipio + estrato` con k=1 y 99,5% de únicos.
+
+### El gate de determinismo ahora cubre el diagnóstico completo
+
+Se extendió para serializar **detección + riesgo + advisor** y comparar entre corridas y entre
+tamaños de chunk. Un ranking que cambie de orden rompe la promesa igual que un tipo mal detectado.
+
 ## Desviación del plan
 
 1. **El endurecimiento de `observability.ts` se adelantó de la Fase 1 a la Fase 0.** Razón: activar
@@ -264,5 +334,11 @@ muestra**: con tres valores posibles ninguna máscara esconde nada — `I******a
    El plan asumía validadores puros de valor. La cédula histórica obligó a abrir la puerta: no es
    una concesión al pragmatismo, es la única forma honesta de tratar una forma que —sin checksum
    público— no se puede distinguir mirando el dato. El resto de validadores ignora el contexto.
+
+5. **El QI advisor reporta las columnas que identifican solas en vez de excluirlas.** El plan decía
+   "top-K candidatas por cardinalidad". La medición mostró que un umbral por cardinalidad esconde
+   el hallazgo más importante cuando el archivo es pequeño (a 3.000 filas, la fecha de nacimiento
+   es casi única). El acotamiento a top-6 y a combinaciones de 2–4 se mantiene tal cual; lo que
+   cambió es el criterio para decidir qué columna entra, que ahora se mide sobre el efecto real.
 
 Ninguna toca el alcance del sprint ni el plan de la casa planeadora.
