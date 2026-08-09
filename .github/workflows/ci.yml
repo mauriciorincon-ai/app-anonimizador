@@ -11,8 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 11 }   # el scaffold estampa pnpm 11 (lockfile + allowBuilds); pnpm 11 exige Node >=22.13
+      - uses: pnpm/action-setup@v4   # SIN `version`: la lee de "packageManager" del package.json (fuente unica, kit v1.10.2)
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
@@ -27,8 +26,7 @@ jobs:
     needs: quality
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 11 }   # el scaffold estampa pnpm 11 (lockfile + allowBuilds); pnpm 11 exige Node >=22.13
+      - uses: pnpm/action-setup@v4   # SIN `version`: la lee de "packageManager" del package.json (fuente unica, kit v1.10.2)
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
@@ -40,8 +38,7 @@ jobs:
     needs: quality
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 11 }   # el scaffold estampa pnpm 11 (lockfile + allowBuilds); pnpm 11 exige Node >=22.13
+      - uses: pnpm/action-setup@v4   # SIN `version`: la lee de "packageManager" del package.json (fuente unica, kit v1.10.2)
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
