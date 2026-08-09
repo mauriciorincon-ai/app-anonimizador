@@ -151,6 +151,98 @@ node --expose-gc --max-old-space-size=6144 scripts/spikes/spike-c-mondrian.mjs
 pnpm kit:generar -- --filas 400000 --seed 42 --formato xlsx --salida tmp/kit-de-prueba/clinico-400000.xlsx
 ```
 
+## Fase 1 — Motor de detección ✅
+
+`src/engine/` con 133 tests y **97,8% de statements / 96,0% de ramas** (umbral: 80%).
+
+### La distinción que sostiene la promesa del producto
+
+Velo dice "si lo marca, es porque el algoritmo oficial lo confirma". Esa frase solo es honesta si el
+código separa lo que confirma de lo que apenas reconoce — así que cada validador declara su
+**certeza**:
+
+- **`algoritmo-oficial`** — hay un dígito de verificación que se recomputa y cuadra: NIT (mod 11 de
+  la DIAN), tarjetas (Luhn, ISO/IEC 7812-1), IBAN (97-10 de ISO 7064). Aquí Velo **afirma**.
+- **`estructural`** — no existe checksum público y solo se puede verificar la forma: cédula
+  (la Registraduría no publica DV), teléfonos, placas, correo, IP, coordenadas, fechas, nombres.
+  Aquí Velo **reconoce**, y la UI no puede presentarlo igual.
+- **`sin-confirmar`** — la conclusión viene del **encabezado**, no de los valores. Es el único
+  camino posible para los datos sensibles del art. 5: ningún cálculo puede mirar `J45.9` y afirmar
+  que es un diagnóstico de salud. Velo lo marca —callarlo sería peor— pero jamás con la misma
+  seguridad, y la evidencia dice explícitamente que fue el nombre de la columna.
+
+Cada validador lleva **su fuente oficial citada en el código**, no en un documento aparte.
+
+### Taxonomía de 4 categorías (decisión de arranque, ya implementada)
+
+`identificador-directo` · `cuasi-identificador` · `dato-sensible (art. 5)` · `no-personal`. El
+encabezado solo puede **subir** la categoría, nunca bajarla: si los valores confirman un NIT, que la
+columna se llame `codigo` no lo vuelve inocuo (hay test).
+
+### Dos correcciones de diseño que salieron del fixture, no de la intuición
+
+1. **La adjudicación es por ESPECIFICIDAD, no por aciertos.** El primer diseño elegía al validador
+   con más aciertos sobre la muestra, y eso está mal por una razón que solo se ve con datos reales:
+   en una columna de cédulas, «es un número» acierta en MÁS filas que «es una cédula» —los valores
+   rotos siguen siendo números—, así que el validador más permisivo se quedaba con todas las
+   columnas. Ahora gana la mayor prioridad; aciertos y orden del registro solo desempatan.
+2. **La cédula histórica exige apoyo del encabezado.** El kit destapó un falso positivo real: la
+   columna `monto` (6–7 dígitos) tiene _exactamente_ la forma de una cédula de serie histórica, y
+   sin dígito de verificación público ningún cálculo puede separarlas. En vez de adivinar, el
+   validador ahora solo reclama el rango histórico si el encabezado lo respalda
+   (`cedula|cc|documento|identificacion|nuip`). El NUIP de 10 dígitos se sigue reclamando solo.
+
+### Las dos columnas-trampa: una vencida, una declarada
+
+| Trampa                                                            | Resultado                                                                                                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `referencia_pago` — 16 dígitos que **pasan Luhn a propósito**     | **Vencida con una regla oficial**, no con una heurística: el primer dígito es el MII de ISO/IEC 7812-1 y el 9 está reservado a asignación nacional. Ninguna tarjeta de pago empieza por ahí. Se clasifica como `numero` / `no-personal`.                                                                                                |
+| `codigo_interno` — consecutivo de 10 dígitos en el rango del NUIP | **No se puede vencer, y el test lo fija por escrito.** Sin DV público, un consecutivo en ese rango es indistinguible de una cédula para cualquier motor determinista. Velo lo marca como cédula con certeza `estructural`, que es la señal de que ahí hay algo que revisar. Esconder el falso positivo habría sido peor que declararlo. |
+
+### El oráculo vive en el kit, no en el test
+
+`esperadoPorColumna()` del generador declara, columna por columna, qué tipo y qué categoría debería
+detectar el motor. El test se mide contra eso, así que **no puede acomodarse** al comportamiento del
+motor: si el motor cambia, falla. Las 24 columnas del perfil clínico coinciden.
+
+Además, el kit ahora genera un 8% de **nombres reales fuera del diccionario del motor** (Zoraida
+Piraquive, Arístides Tarazona). Es la regla anti-supuesto-compartido aplicada al léxico: sin ellos,
+el test mediría al diccionario contra su propia lista. Hay un test que **fija el falso negativo por
+escrito** — un apellido no deja de serlo por faltar en una lista, y "detección de nombres" no puede
+leerse como exhaustiva.
+
+### Gate de determinismo (regla dura nº3)
+
+`tests/unit/determinismo.test.ts` verifica los tres caminos por los que el determinismo se rompe:
+
+1. Dos corridas sobre el mismo archivo ⇒ misma serialización canónica.
+2. **El tamaño de chunk del parser no cambia el resultado** (7, 1.999 y 100.000 filas por bloque dan
+   lo mismo). PapaParse corta por bytes: si el diagnóstico dependiera de dónde cae el corte, dos
+   computadores darían resultados distintos sobre el mismo CSV.
+3. **El código fuente del motor no contiene fuentes de no-determinismo**: un escaneo por archivo
+   prohíbe `Math.random`, `Date.now`, `new Date()`, `crypto.getRandomValues` y `localeCompare` (que
+   ordena según el idioma del sistema). Un test de comportamiento no vería esto: el resultado
+   seguiría siendo plausible, solo dejaría de ser reproducible.
+
+Y un cuarto que evita el autoengaño: **una semilla distinta SÍ cambia la salida** — un gate de
+determinismo que pasa siempre no prueba nada.
+
+`serializacion.ts` existe porque `JSON.stringify` conserva el orden de inserción: comparar con él
+sería medir con una regla que se mueve.
+
+### Rendimiento
+
+**82 ms** para clasificar 500.000 filas × 24 columnas (muestreo determinista de 5.000 filas por
+columna, a zancada fija por todo el archivo — no "las primeras N", que en un archivo ordenado por
+fecha no representa nada). Resultado sobre el fixture: 10 identificadores directos, 7
+cuasi-identificadores, 3 datos sensibles, 4 no personales.
+
+### Privacidad en el diagnóstico
+
+Las muestras van enmascaradas (`103***89`) con un número **fijo** de asteriscos: si contaran los
+caracteres ocultos, la máscara filtraría la longitud del valor. Y las columnas sensibles **no llevan
+muestra**: con tres valores posibles ninguna máscara esconde nada — `I******a` es «Indígena».
+
 ## Desviación del plan
 
 1. **El endurecimiento de `observability.ts` se adelantó de la Fase 1 a la Fase 0.** Razón: activar
@@ -163,4 +255,14 @@ pnpm kit:generar -- --filas 400000 --seed 42 --formato xlsx --salida tmp/kit-de-
    funciona hasta el tope que el spike fije") se cumple igual, con un tope que sí se puede evaluar
    antes de tocar el archivo.
 
-Ninguna de las dos toca el alcance del sprint ni el plan de la casa planeadora.
+3. **El kit de prueba cambió su semilla de salida al añadir los nombres fuera del diccionario.** El
+   SHA-256 de referencia para 1.000 filas con `--seed 42` pasó de `379406f2…0947` a
+   `54d06ff9…0175`. No es una pérdida de determinismo —dos corridas siguen dando el mismo
+   archivo— sino el efecto esperado de ampliar el generador; se anota para que nadie lea el cambio
+   de huella como una regresión.
+4. **Los validadores reciben el nombre de la columna como contexto** (`valida(valor, contexto)`).
+   El plan asumía validadores puros de valor. La cédula histórica obligó a abrir la puerta: no es
+   una concesión al pragmatismo, es la única forma honesta de tratar una forma que —sin checksum
+   público— no se puede distinguir mirando el dato. El resto de validadores ignora el contexto.
+
+Ninguna toca el alcance del sprint ni el plan de la casa planeadora.

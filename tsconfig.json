@@ -31,7 +31,10 @@
     "**/*.mts",
     // Los scripts de gate corren en Node puro (sin build) y por eso son .mjs; se incluyen
     // para que `allowJs` les infiera tipos y los tests puedan importarlos con typecheck real.
-    "scripts/**/*.mjs"
+    "scripts/**/*.mjs",
+    // El generador del kit de prueba es el ORÁCULO de los tests del motor: declara qué debería
+    // detectar cada columna, así que los tests lo importan y necesita tipos inferidos.
+    "docs/kit-de-prueba/*.mjs"
   ],
   "exclude": ["node_modules"]
 }

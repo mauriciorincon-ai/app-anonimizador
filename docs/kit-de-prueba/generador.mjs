@@ -126,6 +126,12 @@ const MUNICIPIOS = [
   "Bogotá", "Medellín", "Cali", "Barranquilla", "Bucaramanga", "Cartagena", "Pereira", "Manizales",
   "Villavicencio", "Neiva", "Pasto", "Armenia", "Sincelejo", "Tunja", "Popayán", "Montería",
 ];
+// Nombres y apellidos REALES pero POCO FRECUENTES, elegidos a propósito FUERA del diccionario
+// del motor. Es la regla anti-supuesto-compartido aplicada al léxico: si el fixture solo trajera
+// nombres que el diccionario ya conoce, el test estaría midiendo al motor contra su propia lista
+// y jamás vería el falso negativo. Un apellido no deja de serlo por no estar en un diccionario.
+const NOMBRES_RAROS = ["Zoraida", "Euclides", "Nohemí", "Arístides", "Yeimy", "Ovidio"];
+const APELLIDOS_RAROS = ["Tarazona", "Chaparro", "Piraquive", "Cuéllar", "Anzola", "Bejarano"];
 const DOMINIOS = ["ejemplo.com", "correo-demo.co", "prueba.org", "muestra.net"];
 // Códigos con forma CIE-10 pero inventados: la columna es sensible (art. 5), el valor no es real.
 const DIAGNOSTICOS = ["J45.9", "E11.9", "I10.X", "F32.1", "M54.5", "K21.0", "N39.0", "B24.X"];
@@ -214,45 +220,101 @@ function fecha(azar, anioMin, anioMax) {
 
 const COLUMNAS = {
   // Identificadores directos
-  cedula_titular: { esperado: "cedula", gen: (a, c) => cedula(a, c.tasaInvalida) },
-  nit_empresa: { esperado: "nit", gen: (a, c) => nit(a, c.tasaInvalida) },
-  celular: { esperado: "celular-co", gen: (a, c) => celular(a, c.tasaInvalida) },
-  telefono_fijo: { esperado: "fijo-co", gen: (a) => telefonoFijo(a) },
-  placa_vehiculo: { esperado: "placa-co", gen: (a, c) => placa(a, c.tasaInvalida) },
-  correo: { esperado: "email", gen: (a, _c, f) => correo(a, f.nombre, f.apellido) },
-  nombre_completo: { esperado: "nombre", gen: (a, _c, f) => `${f.nombre} ${f.apellido}` },
-  tarjeta_pago: { esperado: "tarjeta", gen: (a, c) => tarjeta(a, c.tasaInvalida) },
+  cedula_titular: {
+    tipo: "cedula",
+    categoria: "identificador-directo",
+    gen: (a, c) => cedula(a, c.tasaInvalida),
+  },
+  nit_empresa: {
+    tipo: "nit",
+    categoria: "identificador-directo",
+    gen: (a, c) => nit(a, c.tasaInvalida),
+  },
+  celular: {
+    tipo: "celular-co",
+    categoria: "identificador-directo",
+    gen: (a, c) => celular(a, c.tasaInvalida),
+  },
+  telefono_fijo: {
+    tipo: "fijo-co",
+    categoria: "identificador-directo",
+    gen: (a) => telefonoFijo(a),
+  },
+  placa_vehiculo: {
+    tipo: "placa-co",
+    categoria: "identificador-directo",
+    gen: (a, c) => placa(a, c.tasaInvalida),
+  },
+  correo: {
+    tipo: "email",
+    categoria: "identificador-directo",
+    gen: (a, _c, f) => correo(a, f.nombre, f.apellido),
+  },
+  nombre_completo: {
+    tipo: "nombre",
+    categoria: "identificador-directo",
+    gen: (a, _c, f) => `${f.nombre} ${f.apellido}`,
+  },
+  tarjeta_pago: {
+    tipo: "tarjeta",
+    categoria: "identificador-directo",
+    gen: (a, c) => tarjeta(a, c.tasaInvalida),
+  },
   cuenta_iban: {
-    esperado: "iban",
+    tipo: "iban",
+    categoria: "identificador-directo",
     gen: (a) => ibanConChecksum("DE", `${a.digitos(8)}${a.digitos(10)}`),
   },
   ip_registro: {
-    esperado: "ip",
+    tipo: "ip",
+    categoria: "cuasi-identificador",
     gen: (a) => `${a.entero(1, 223)}.${a.entero(0, 255)}.${a.entero(0, 255)}.${a.entero(1, 254)}`,
   },
 
-  // Cuasi-identificadores: por sí solos no delatan; combinados, sí (Sweeney 87% / Golle 63%)
-  fecha_nacimiento: { esperado: "fecha", gen: (a) => fecha(a, 1940, 2010) },
-  sexo: { esperado: "categoria", gen: (a) => a.de(SEXOS) },
-  municipio: { esperado: "categoria", gen: (a) => a.de(MUNICIPIOS) },
-  estrato: { esperado: "numero", gen: (a) => String(a.entero(1, 6)) },
-  latitud: { esperado: "coordenada", gen: (a) => (a.entero(-4_000_000, 12_000_000) / 1e6).toFixed(6) },
-  longitud: { esperado: "coordenada", gen: (a) => (a.entero(-79_000_000, -67_000_000) / 1e6).toFixed(6) },
+  // Cuasi-identificadores: por sí solos no delatan; combinados, sí (Sweeney 2000 / Golle 2006).
+  // El tipo lo dan los valores; la categoría, el encabezado — y el motor debe distinguirlo.
+  fecha_nacimiento: {
+    tipo: "fecha",
+    categoria: "cuasi-identificador",
+    gen: (a) => fecha(a, 1940, 2010),
+  },
+  sexo: { tipo: "categoria", categoria: "cuasi-identificador", gen: (a) => a.de(SEXOS) },
+  municipio: { tipo: "categoria", categoria: "cuasi-identificador", gen: (a) => a.de(MUNICIPIOS) },
+  estrato: { tipo: "numero", categoria: "cuasi-identificador", gen: (a) => String(a.entero(1, 6)) },
+  latitud: {
+    tipo: "coordenada",
+    categoria: "cuasi-identificador",
+    gen: (a) => (a.entero(-4_000_000, 12_000_000) / 1e6).toFixed(6),
+  },
+  longitud: {
+    tipo: "coordenada",
+    categoria: "cuasi-identificador",
+    gen: (a) => (a.entero(-79_000_000, -67_000_000) / 1e6).toFixed(6),
+  },
 
-  // Datos sensibles — Ley 1581 art. 5 (salud, origen étnico)
-  diagnostico: { esperado: "sensible-salud", gen: (a) => a.de(DIAGNOSTICOS) },
-  aseguradora: { esperado: "sensible-salud", gen: (a) => a.de(ASEGURADORAS) },
-  grupo_etnico: { esperado: "sensible-etnia", gen: (a) => a.de(GRUPOS_ETNICOS) },
+  // Datos sensibles — Ley 1581 art. 5. Ningún algoritmo puede mirar "J45.9" y afirmar que es
+  // salud: aquí el motor SOLO puede apoyarse en el encabezado, y tiene que decirlo.
+  diagnostico: { tipo: "categoria", categoria: "dato-sensible", gen: (a) => a.de(DIAGNOSTICOS) },
+  aseguradora: { tipo: "categoria", categoria: "dato-sensible", gen: (a) => a.de(ASEGURADORAS) },
+  grupo_etnico: { tipo: "categoria", categoria: "dato-sensible", gen: (a) => a.de(GRUPOS_ETNICOS) },
 
   // COLUMNAS-TRAMPA: parecen sensibles y no lo son. Si el motor las marca, es un falso positivo.
   codigo_interno: {
-    esperado: "no-personal",
-    trampa: "10 dígitos con forma de cédula, pero es un consecutivo del sistema",
+    tipo: "cedula",
+    categoria: "identificador-directo",
+    trampa:
+      "10 dígitos con forma de cédula, pero es un consecutivo del sistema. La cédula colombiana " +
+      "NO tiene dígito de verificación público, así que ningún motor determinista puede " +
+      "distinguirlos: el `tipo` esperado es el falso positivo, a propósito. Lo que Velo sí debe " +
+      "hacer es declarar la certeza como estructural para que el usuario lo corrija.",
     gen: (a) => String(1_400_000_000 + a.entero(0, 99_999_999)),
   },
   referencia_pago: {
-    esperado: "no-personal",
-    trampa: "pasa Luhn por accidente — parece tarjeta y es una referencia de recaudo",
+    tipo: "numero",
+    categoria: "no-personal",
+    trampa:
+      "16 dígitos que pasan Luhn a propósito. NO es tarjeta: el primer dígito (MII de ISO/IEC " +
+      "7812-1) es 9, reservado a asignación nacional. Velo debe rechazarla por esa regla oficial.",
     gen: (a) => {
       const base = a.digitos(15, "9");
       return `${base}${digitoLuhn(base)}`;
@@ -260,9 +322,9 @@ const COLUMNAS = {
   },
 
   // No personal
-  sucursal: { esperado: "no-personal", gen: (a) => a.de(SUCURSALES) },
-  monto: { esperado: "numero", gen: (a) => String(a.entero(10_000, 9_999_999)) },
-  fecha_atencion: { esperado: "fecha", gen: (a) => fecha(a, 2024, 2026) },
+  sucursal: { tipo: "categoria", categoria: "no-personal", gen: (a) => a.de(SUCURSALES) },
+  monto: { tipo: "numero", categoria: "no-personal", gen: (a) => String(a.entero(10_000, 9_999_999)) },
+  fecha_atencion: { tipo: "fecha", categoria: "no-personal", gen: (a) => fecha(a, 2024, 2026) },
 };
 
 const PERFILES = {
@@ -298,7 +360,9 @@ export function* generarFilas({ filas, seed, perfil, tasaInvalida, tasaVacia }) 
   for (let i = 0; i < filas; i++) {
     // El nombre se sortea una vez por fila para que `correo` y `nombre_completo` sean coherentes:
     // sin esa coherencia, el riesgo por clases de equivalencia sería irreal.
-    const fila = { nombre: azar.de(NOMBRES), apellido: azar.de(APELLIDOS) };
+    const fila = azar.conProbabilidad(tasaInvalida)
+      ? { nombre: azar.de(NOMBRES_RAROS), apellido: azar.de(APELLIDOS_RAROS) }
+      : { nombre: azar.de(NOMBRES), apellido: azar.de(APELLIDOS) };
     yield columnas.map((nombre) => {
       const valor = COLUMNAS[nombre].gen(azar, config, fila);
       // Las celdas vacías son parte del terreno: un archivo real las trae y el motor no puede
@@ -355,12 +419,20 @@ export async function generarXlsx(opciones) {
   return { sha256: null, columnas: matriz[0] };
 }
 
-/** Oráculo del kit: qué debería detectar el motor en cada columna. Lo consumen los tests. */
+/**
+ * Oráculo del kit: qué debería detectar el motor en cada columna. Lo consumen los tests, así que
+ * el generador no es solo la fuente de datos — es también la respuesta correcta contra la que se
+ * mide el motor.
+ */
 export function esperadoPorColumna(perfil = "clinico") {
   return Object.fromEntries(
     PERFILES[perfil].map((nombre) => [
       nombre,
-      { esperado: COLUMNAS[nombre].esperado, trampa: COLUMNAS[nombre].trampa ?? null },
+      {
+        tipo: COLUMNAS[nombre].tipo,
+        categoria: COLUMNAS[nombre].categoria,
+        trampa: COLUMNAS[nombre].trampa ?? null,
+      },
     ]),
   );
 }
