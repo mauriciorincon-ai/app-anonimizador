@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guía de prueba — [APP_NAME]</title>
+<!--
+  GUÍA DE PRUEBA VIVA Y ACUMULATIVA — entregable estándar de TODO sprint con UI (reglas duras
+  del pipeline, G-Metodo 2026-07-12). Referencia: app-habla/docs/GUIA-DE-PRUEBA.html.
+
+  REGLAS DE ESTE ARCHIVO (no negociables):
+  1. AUTOCONTENIDO: cero CDNs, cero dependencias externas, cero fetch. Se abre con doble clic
+     desde el repo o desde donde el usuario lo copie, sin internet y sin servidor.
+  2. VIVA y ACUMULATIVA (bola de nieve): la última versión contiene TODAS las pruebas vigentes
+     de la app, no solo las del sprint nuevo. El sprint N hereda ENTERAS las pruebas del N-1:
+     no las resume ni las comprime en un "verificar que sigue funcionando" — comprimir la guía
+     BORRA LA REGRESIÓN (caso habla S2: el motor del juego del S1 cambió por dentro y una guía
+     comprimida lo despachaba con "todo como antes"). Una prueba solo se elimina cuando la
+     feature que probaba dejó de existir, y se declara en el historial del pie.
+  3. ORIGEN VISIBLE por prueba, en su propia línea (atributo data-origen + chip):
+       - "Nuevo · SN"       (data-origen="nuevo")    — nació en este sprint.
+       - "Mejorado en SN"   (data-origen="mejorado") — venía de antes y este sprint la cambió:
+                                                       hay que volver a mirarla.
+       - "SN" a secas       (data-origen="heredada") — heredada sin cambios ⇒ ES REGRESIÓN.
+     Los filtros dejan correr todo o solo lo que cambió, sin perder la cobertura completa.
+     AL ABRIR UN SPRINT NUEVO: lo que era "Nuevo/Mejorado · S(N-1)" pasa a chip "S(N-1)"
+     (heredada), salvo que este sprint lo vuelva a tocar (entonces "Mejorado en SN").
+  4. GATE MÍNIMO ⭐ (atributo data-minimo + filtro propio): el subconjunto que el usuario corre
+     cuando no puede cubrirlo todo. Criterio de selección FIJO: solo lo que NINGUNA
+     automatización puede verificar (hardware/micrófono/voz reales, juicio humano sobre el
+     contenido, aprobación visual). Lo que la CI ya respalda (e2e, unit, axe, presupuestos)
+     queda FUERA del mínimo y se corre en pases completos. La cabecera dice cuántas pruebas son
+     y cuánto toman.
+  5. El PREFIJO de localStorage CAMBIA con cada versión de la guía (NS versionado por sprint,
+     ver script): una prueba de regresión sin correr JAMÁS aparece marcada como hecha por el
+     sprint anterior.
+  6. Cada bloque dice QUÉ probar, CÓMO y QUÉ RESULTADO ESPERAR. KIT DE PRUEBA: si un paso
+     requiere documento, código o dataset de prueba, se entrega en el repo
+     (docs/kit-de-prueba/) y se enlaza desde el bloque (callout .kit).
+  7. Doble propósito: (a) el gate de prueba del usuario antes del merge; (b) entregable para
+     usuarios finales.
+  8. "EMPIEZA EN:" POR BLOQUE (kit v1.8.2, gate de habla S4): la meta-línea de CADA bloque abre
+     con la ruta exacta donde arranca su primera prueba ("Empieza en: /jugar"), y la convención
+     se explica UNA vez en la caja de la URL. El probador jamás debe deducir desde dónde parte
+     un bloque.
+  9. LAS PRUEBAS DE ACUMULADOS DECLARAN SU PUNTO DE PARTIDA (kit v1.8.2, gate de habla S4):
+     cuando una prueba observa un acumulado (mínimo/máximo/contador/racha), su "Esperado" dice
+     desde qué estado se parte ("reinicia la sesión y…", "con el contador en cero…"). Origen:
+     la prueba A6 de habla pedía ver subir un mínimo corrido dentro de la misma sesión — un
+     imposible del instrumento que solo el gate humano detectó.
+
+  AL ESTAMPAR/ACTUALIZAR: reemplazar [APP_NAME], [SLUG], [SPRINT], [FECHA], la URL de preview y
+  los bloques de ejemplo por los reales. Actualizar el NS del script a s[SPRINT]. Los tokens de
+  color pueden alinearse con el design-system de la app.
+-->
+<style>
+  :root {
+    --fondo: #fbfbfa; --superficie: #f2f2ef; --borde: #e2e2dd;
+    --tinta: #1e2022; --tinta-suave: #5c6066;
+    --acento: #2f4858; --acento-suave: #dde6ec;
+    --alerta: #a4432f; --alerta-suave: #fbe4dd;
+    --ok: #4f7a4a; --pendiente: #8a6413; --pendiente-suave: #f8ead0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #14171a; --superficie: #1c2024; --borde: #2d333b;
+      --tinta: #f0efec; --tinta-suave: #9aa0a6;
+      --acento: #a8c8dc; --acento-suave: #21303a;
+      --alerta: #f3b3a3; --alerta-suave: #3a2620;
+      --ok: #8dbd86; --pendiente: #e9c470; --pendiente-suave: #33290f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fondo); color: var(--tinta);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.55; }
+  .pagina { max-width: 680px; margin: 0 auto; padding: 24px 18px 80px; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: 2rem;
+    line-height: 1.15; margin: 8px 0 4px; text-wrap: balance; }
+  h2 { font-family: Georgia, serif; font-weight: 400; font-size: 1.35rem; margin: 0; text-wrap: balance; }
+  .eyebrow { font-family: ui-monospace, Menlo, monospace; font-size: 0.68rem;
+    letter-spacing: 0.09em; text-transform: uppercase; color: var(--tinta-suave); }
+  p { margin: 0.5em 0; }
+  .suave { color: var(--tinta-suave); }
+  .chica { font-size: 0.875rem; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 0.85em;
+    background: var(--superficie); padding: 1px 5px; border-radius: 4px; }
+
+  .url-caja { background: var(--superficie); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 12px 14px; margin: 16px 0; overflow-wrap: anywhere; }
+
+  .progreso { position: sticky; top: 0; z-index: 5; background: var(--fondo);
+    padding: 10px 0 8px; border-bottom: 1px solid var(--borde); margin-bottom: 18px; }
+  .progreso-fila { display: flex; align-items: center; gap: 12px; }
+  .barra { flex: 1; height: 8px; background: var(--superficie); border-radius: 99px; overflow: hidden; }
+  .barra > div { height: 100%; width: 0%; background: var(--ok); transition: width 0.2s ease; }
+  .num { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--tinta-suave); }
+
+  .filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .filtros button { font: inherit; font-size: 0.82rem; padding: 5px 12px; border-radius: 99px;
+    border: 1px solid var(--borde); background: var(--superficie); color: var(--tinta); cursor: pointer; }
+  .filtros button.activo { background: var(--acento); border-color: var(--acento); color: var(--fondo); }
+
+  .bloque { background: var(--superficie); border: 1px solid var(--borde);
+    border-radius: 14px; padding: 18px; margin: 0 0 18px; }
+  .bloque-cabeza { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .letra { display: grid; place-items: center; width: 28px; height: 28px; flex: none;
+    background: var(--acento); color: var(--fondo); border-radius: 8px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem; }
+  .meta-bloque { margin: 2px 0 12px; }
+
+  ul.pasos { list-style: none; margin: 0; padding: 0; }
+  ul.pasos li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0;
+    border-top: 1px solid var(--borde); }
+  ul.pasos li:first-child { border-top: 0; }
+  ul.pasos li[hidden] { display: none; }
+  ul.pasos input[type="checkbox"] { margin: 4px 0 0; width: 20px; height: 20px; flex: none;
+    accent-color: var(--ok); cursor: pointer; }
+  ul.pasos label { cursor: pointer; }
+
+  .origen { display: inline-block; font-family: ui-monospace, Menlo, monospace; font-size: 0.65rem;
+    letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 8px; border-radius: 99px;
+    border: 1px solid; white-space: nowrap; vertical-align: 2px; margin-left: 6px; }
+  .origen-nuevo { color: var(--acento); border-color: var(--acento); background: var(--acento-suave); }
+  .origen-mejorado { color: var(--pendiente); border-color: var(--pendiente); background: var(--pendiente-suave); }
+  .origen-heredada { color: var(--tinta-suave); border-color: var(--borde); }
+  .minimo { font-size: 0.75rem; white-space: nowrap; margin-left: 4px; }
+
+  .tabla-scroll { overflow-x: auto; margin: 14px 0 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+  th, td { text-align: left; padding: 7px 10px; border: 1px solid var(--borde); vertical-align: top; }
+  th { background: var(--acento-suave); font-weight: 600; }
+  td.valor { color: var(--ok); }
+
+  .reportame { margin-top: 14px; background: var(--alerta-suave); border-left: 3px solid var(--alerta);
+    border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 0.9rem; }
+  .diferido { background: var(--pendiente-suave); border-left: 3px solid var(--pendiente);
+    border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 0.9rem; margin-top: 14px; }
+  .kit { background: var(--acento-suave); border-left: 3px solid var(--acento);
+    border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 0.9rem; margin-top: 14px; }
+  footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--borde); }
+  footer details { margin-top: 10px; }
+  footer summary { cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <header>
+    <p class="eyebrow">[APP_NAME] · Guía de prueba viva y acumulativa · Sprint [SPRINT] · [FECHA]</p>
+    <h1>Guía de prueba</h1>
+    <p class="suave">Todas las pruebas vigentes de la app — las nuevas de este sprint, las que
+      cambiaron y las heredadas (regresión). Filtra por origen para correr todo o solo lo que
+      cambió. Las casillas se guardan solas en este navegador.</p>
+    <p class="chica"><strong>Gate mínimo ⭐: [N] pruebas · ~[M] min.</strong> Es lo que ninguna
+      automatización puede verificar (hardware/micrófono/voz reales, juicio sobre el contenido,
+      aprobación visual). Lo que la CI ya respalda queda fuera del mínimo y se corre en pases
+      completos.</p>
+    <div class="url-caja">
+      <p class="eyebrow" style="margin:0 0 6px">URL de prueba</p>
+      <code>[URL de la preview de la rama del sprint]</code>
+      <p class="chica suave" style="margin:8px 0 0">Dirección estable de la rama: no cambia aunque
+        se suban correcciones. Si pide login de Vercel: Settings → Deployment Protection →
+        Vercel Authentication → Disabled.</p>
+      <p class="chica suave" style="margin:8px 0 0"><strong>Cada bloque abre con "Empieza en:"</strong> —
+        la ruta exacta (sobre esta URL) donde arranca su primera prueba. Navega ahí antes de
+        empezar el bloque.</p>
+    </div>
+  </header>
+
+  <div class="progreso">
+    <div class="progreso-fila">
+      <div class="barra"><div id="barra-avance"></div></div>
+      <span class="num" id="contador">0/0</span>
+    </div>
+    <div class="filtros" role="group" aria-label="Filtrar pruebas por origen">
+      <button type="button" data-filtro="todo" class="activo">Todo</button>
+      <button type="button" data-filtro="cambios">Lo que cambió en S[SPRINT]</button>
+      <button type="button" data-filtro="minimo">Gate mínimo ⭐</button>
+    </div>
+  </div>
+
+  <!-- ANATOMÍA DE UN BLOQUE (copiar y adaptar; uno por área a probar).
+       Cada <li> DEBE llevar data-origen="nuevo|mejorado|heredada" + su chip visible, y
+       data-minimo (sin valor) + "⭐ mínimo" si integra el gate mínimo. Ids únicos.
+       La meta-línea SIEMPRE abre con "Empieza en:" + la ruta exacta (regla 8). -->
+  <section class="bloque">
+    <div class="bloque-cabeza"><span class="letra">A</span><h2>[Nombre del bloque]</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>[/ruta-exacta]</code> ·
+      [~N min · qué valida en una línea]</p>
+    <ul class="pasos">
+      <li data-origen="nuevo" data-minimo><input type="checkbox" id="a1"><label for="a1">[Paso
+        NUEVO de este sprint que requiere juicio humano/hardware real.]
+        <span class="origen origen-nuevo">Nuevo · S[SPRINT]</span>
+        <span class="minimo">⭐ mínimo</span></label></li>
+      <li data-origen="mejorado"><input type="checkbox" id="a2"><label for="a2">[Paso que venía
+        de antes y este sprint CAMBIÓ — con el resultado esperado en <strong>negrita</strong>.]
+        <span class="origen origen-mejorado">Mejorado en S[SPRINT]</span></label></li>
+      <li data-origen="heredada"><input type="checkbox" id="a3"><label for="a3">[Paso heredado
+        del sprint anterior SIN cambios ⇒ regresión. Se copia ENTERO, no se resume.]
+        <span class="origen origen-heredada">S[SPRINT-1]</span></label></li>
+    </ul>
+    <div class="tabla-scroll"><table>
+      <tr><th>Qué mirar</th><th>Valor / comportamiento correcto</th></tr>
+      <tr><td>[dato o pantalla]</td><td class="valor">[lo que debe verse si está bien]</td></tr>
+    </table></div>
+    <div class="kit"><p><strong>Kit de prueba:</strong> [si un paso necesita documento, código o
+      dataset de prueba, vive en <code>docs/kit-de-prueba/</code> — nómbralo aquí con su ruta y
+      cómo usarlo. Si el bloque no necesita kit, elimina este callout].</p></div>
+    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> [las señales que significan que
+      algo está roto y hay que arreglar antes del merge].</p></div>
+  </section>
+
+  <!-- Repetir <section class="bloque"> por cada área. -->
+
+  <section class="bloque">
+    <div class="bloque-cabeza"><span class="letra">B</span><h2>[Siguiente bloque]</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>[/ruta-exacta]</code> ·
+      [~N min · qué valida en una línea]</p>
+    <ul class="pasos">
+      <li data-origen="heredada"><input type="checkbox" id="b1"><label for="b1">[…]
+        <span class="origen origen-heredada">S[SPRINT-1]</span></label></li>
+    </ul>
+    <div class="diferido"><p><strong>Diferido:</strong> [lo que no se puede probar hoy y por qué;
+      cuándo se probará. Los diferidos se ACUMULAN entre sprints hasta pagarse].</p></div>
+  </section>
+
+  <footer>
+    <p class="chica suave">Guía <strong>viva y acumulativa</strong>: contiene TODAS las pruebas
+      vigentes de la app con su origen visible; una prueba solo se elimina cuando su feature dejó
+      de existir (queda declarado abajo). Archivo autocontenido — se abre sin internet, se
+      versiona con el repo y se puede compartir tal cual.</p>
+    <details class="chica">
+      <summary>Historial de la guía</summary>
+      <ul>
+        <li><strong>S[SPRINT] · [FECHA]:</strong> [qué bloques/pruebas se agregaron o mejoraron ·
+          pruebas eliminadas y la feature muerta que las justifica — o "ninguna eliminada"].</li>
+        <li><strong>S[SPRINT-1] · [FECHA]:</strong> [entrada anterior — el historial también es
+          acumulativo].</li>
+      </ul>
+    </details>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    // NS VERSIONADO POR SPRINT (regla dura): al publicar la guía de un sprint nuevo se cambia
+    // s[SPRINT] — así una regresión sin correr no aparece marcada por el sprint anterior.
+    var NS = "guia-[SLUG]:s[SPRINT]:";
+    var casillas = Array.prototype.slice.call(document.querySelectorAll('input[type="checkbox"]'));
+    var barra = document.getElementById("barra-avance");
+    var contador = document.getElementById("contador");
+    var botones = Array.prototype.slice.call(document.querySelectorAll(".filtros button"));
+    var secciones = Array.prototype.slice.call(document.querySelectorAll("section.bloque"));
+
+    function visible(li, filtro) {
+      if (filtro === "todo") return true;
+      if (filtro === "minimo") return li.hasAttribute("data-minimo");
+      var o = li.getAttribute("data-origen");
+      return o === "nuevo" || o === "mejorado"; // filtro "cambios"
+    }
+    function aplicarFiltro(filtro) {
+      secciones.forEach(function (sec) {
+        var conVisibles = 0;
+        Array.prototype.slice.call(sec.querySelectorAll("ul.pasos li")).forEach(function (li) {
+          var v = visible(li, filtro);
+          if (v) { li.removeAttribute("hidden"); conVisibles++; } else { li.setAttribute("hidden", ""); }
+        });
+        if (conVisibles) { sec.removeAttribute("hidden"); } else { sec.setAttribute("hidden", ""); }
+      });
+      botones.forEach(function (b) { b.classList.toggle("activo", b.getAttribute("data-filtro") === filtro); });
+      actualizar();
+    }
+    function actualizar() {
+      var vis = casillas.filter(function (c) {
+        var li = c.closest("li"), sec = c.closest("section");
+        return !(li && li.hasAttribute("hidden")) && !(sec && sec.hasAttribute("hidden"));
+      });
+      var hechas = vis.filter(function (c) { return c.checked; }).length;
+      barra.style.width = (vis.length ? (hechas / vis.length) * 100 : 0) + "%";
+      contador.textContent = hechas + "/" + vis.length;
+    }
+    // Conteos en los botones (una vez): Todo (N) · Lo que cambió (N) · Gate mínimo (N)
+    botones.forEach(function (b) {
+      var f = b.getAttribute("data-filtro"), n = 0;
+      document.querySelectorAll("ul.pasos li").forEach(function (li) { if (visible(li, f)) n++; });
+      b.textContent = b.textContent + " (" + n + ")";
+      b.addEventListener("click", function () { aplicarFiltro(f); });
+    });
+    casillas.forEach(function (c) {
+      try { c.checked = localStorage.getItem(NS + c.id) === "1"; } catch (e) {}
+      c.addEventListener("change", function () {
+        try { localStorage.setItem(NS + c.id, c.checked ? "1" : "0"); } catch (e) {}
+        actualizar();
+      });
+    });
+    actualizar();
+  })();
+</script>
+</body>
+</html>

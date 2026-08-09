@@ -1,0 +1,19 @@
+#!/bin/sh
+# Hook pre-commit del kit-app: bloquea commits con secretos (gitleaks).
+# Cubre los commits MANUALES del usuario; las escrituras de Claude Code las cubre el hook
+# PreToolUse de .claude/settings.json. Se activa con: git config core.hooksPath githooks
+# (lo hace estampar-app.ps1). Requiere gitleaks: winget install Gitleaks.Gitleaks
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --no-banner --redact
+  status=$?
+  if [ $status -eq 1 ]; then
+    echo ""
+    echo "SECRET DETECTADO: commit bloqueado."
+    echo "Mueve la clave a .env.local (gitignored) o a las env vars de Vercel y reintenta."
+    exit 1
+  fi
+else
+  echo "aviso: gitleaks no esta instalado (winget install Gitleaks.Gitleaks) — commit SIN scan de secretos."
+fi
+exit 0

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://docs.claude.com/en/docs/claude-code/schemas/settings.json",
+  "_comment": "Hooks de seguridad y calidad del kit-app. En Windows corren bajo Git Bash (incluido con Git for Windows). Prerrequisitos: gitleaks (winget install gitleaks), prettier y eslint en devDependencies.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "_comment": "Bloquear secrets en cambios staged/worktree antes de escribir",
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "gitleaks protect --no-banner --redact --staged 2>/dev/null; if [ $? -eq 1 ]; then echo 'SECRET DETECTADO. Escritura bloqueada: mueve la clave a .env.local / Vercel env vars.'; exit 2; fi; exit 0"
+          }
+        ]
+      },
+      {
+        "_comment": "Bloquear push directo a main/master",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); if echo \"$input\" | grep -qE 'git push[^|]*( origin)? +(main|master)( |$|\\\")'; then echo 'BLOQUEADO: push directo a main prohibido. Trabaja en branch sprint-NNN/<tema> y abre PR.'; exit 2; fi; exit 0"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "_comment": "Auto-formato tras edición de fuentes",
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(cat | sed -n 's/.*\"file_path\":\"\\([^\"]*\\)\".*/\\1/p'); case \"$f\" in *.ts|*.tsx|*.js|*.jsx|*.json|*.md) pnpm exec prettier --write \"$f\" >/dev/null 2>&1 || true;; esac; exit 0"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "_comment": "Recordatorio de checkpoint",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -n \"$(git status --porcelain 2>/dev/null)\" ]; then echo 'Hay cambios sin commitear: considera un checkpoint antes de cerrar.'; fi; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

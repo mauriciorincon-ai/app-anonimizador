@@ -1,0 +1,56 @@
+// PLANTILLA DEL KIT (v1.8.1) — NO vive aquí en producción.
+// Al aprovisionar Supabase free, COPIA este archivo a `.github/workflows/supabase-ping.yml`
+// de tu repo (renombrado, sin estas 4 líneas de encabezado) y aplica la migración de abajo.
+//
+// Por qué es plantilla y no un workflow estampado activo: una app SIN Supabase tendría un
+// workflow corriendo en vacío cada 2 días, y su guarda de "faltan secrets → exit 0" se vería
+// VERDE sin haber hecho nada — justo el falso verde que este patrón vino a matar.
+---
+# Keep-alive del proyecto Supabase free: se pausa tras ~7 días sin actividad de API (aviso por
+# correo, luego 90 días para reactivar desde el dashboard; pasados esos, solo descarga de datos).
+# Llama la RPC `ping()` (otorgada a anon) con MARGEN: dos veces por semana, jamás semanal —
+# el umbral es de 7 días y los crons de GitHub se retrasan horas de forma rutinaria (caso real
+# 2026-07-20 en Innmobiliaria: programado 08:17 UTC, corrió 15:31 → aviso de pausa igual).
+# No es un check de PR → no toca la ruleset main-protegida.
+# Requiere los secrets del repo: SUPABASE_URL y SUPABASE_ANON_KEY (checklist de aprovisionamiento).
+name: Supabase keep-alive
+on:
+  schedule:
+    - cron: "17 8 * * 1,4" # lunes y jueves 08:17 UTC — margen contra el umbral de 7 días
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar RPC ping
+        env:
+          URL: ${{ secrets.SUPABASE_URL }}
+          ANON: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$ANON" ]; then
+            echo "::error::Secrets SUPABASE_URL/SUPABASE_ANON_KEY sin configurar: el keep-alive NO está protegiendo el proyecto."
+            exit 1
+          fi
+          # -f es OBLIGATORIO: sin él, un 4xx/5xx devuelve exit 0 y el workflow queda verde
+          # sin haber tocado la base de datos (falso verde).
+          curl -fsS -X POST "$URL/rest/v1/rpc/ping" \
+            -H "apikey: $ANON" \
+            -H "Authorization: Bearer $ANON" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+# ---------------------------------------------------------------------------------------------
+# MIGRACIÓN COMPAÑERA (va en `supabase/migrations/<timestamp>_ping.sql` de tu repo):
+#
+#   -- Keep-alive: función mínima y sin datos, solo para que el proyecto registre actividad.
+#   create or replace function public.ping()
+#   returns text
+#   language sql
+#   stable
+#   as $$ select 'pong'::text $$;
+#
+#   revoke all on function public.ping() from public;
+#   grant execute on function public.ping() to anon;
+#
+# No lee ni escribe ninguna tabla: no expone nada aunque anon la ejecute.
+# ---------------------------------------------------------------------------------------------

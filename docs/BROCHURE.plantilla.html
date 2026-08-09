@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[APP_NAME] — Conócela</title>
+<!--
+  BROCHURE VIVO — MOLDE v2 (kit v1.10.0, 2026-08-08) — entregable de presentación de la app
+  para usuarios finales y clientes. Es el anti-manual: quien odia los manuales lo recorre como
+  una página web y termina conociendo TODO. ADN visual del Estudio CINE (hr03-estudio-cine, RO).
+
+  ⚠️ POR QUÉ EXISTE EL v2: el piloto (app-habla, PR #7) estampó el molde v1 fielmente — CI
+  verde, Lighthouse 100 — y el usuario lo RECHAZÓ («hacia abajo todo mal»). El v1 heredó la
+  LEY del estudio y ninguna de sus TÉCNICAS, y saltaba la dramaturgia. Informe completo:
+  app-habla/sprints/ENTREGA-brochure-informe-planeadora.md. La regla madre que nació de ahí:
+
+  ═══ REGLA CERO · EL BROCHURE NO SE ESTAMPA, SE PRODUCE ═══
+  Antes de UNA línea de HTML, un STORYBOARD aprobado por el usuario («guion aprobado»):
+    - escenas con mensaje + gramática + técnica CON justificación narrativa por escena;
+    - CLÍMAX EXPLÍCITO — ¿cuál es la promesa mayor de la app? Esa jamás va en un acordeón
+      del pie (en el piloto era la privacidad y ahí estaba enterrada);
+    - ritmo (regla del estudio: toda escena clímax = ninguna lo es);
+    - variante reduced-motion declarada POR ESCENA;
+    - dial MOTION_INTENSITY fijado CON el usuario antes de construir + identidad de la pieza
+      en una frase + UNA decisión valiente registrada que el usuario juzga en el gate;
+    - cuadre de mensajes n/n (agrupar sí, omitir jamás).
+  El punto más barato para corregir es el guion. Esqueleto del storyboard + recetas:
+  docs/BROCHURE-banco-de-tecnicas.md (kit). Piloto de referencia completo: app-habla
+  (sprints/ENTREGA-brochure-storyboard.md + docs/BROCHURE.html, comentado en el sitio).
+
+  REGLAS DEL ARCHIVO (no negociables):
+  1. AUTOCONTENIDO: cero CDNs, cero fetch, cero dependencias; abre con doble clic Y se sirve
+     como RUTA PÚBLICA de la app desplegada (/conoce) — la entrega ideal es un LINK. Doble
+     vida: ruta en la app + este archivo en docs/. TRADE-OFF DE TIPOGRAFÍA (declarado, no
+     improvisado): las webfonts de marca de la app NO viajan en un archivo autocontenido
+     (peso); salida recomendada del piloto: serif del sistema (Georgia) para display +
+     system-ui de cuerpo.
+  2. DE LO GENERAL A LO PARTICULAR (4 capas): portada (la promesa en UNA frase) → qué hace
+     (4–6 tarjetas) → el detalle por tarjeta → lo fino (acordeones). Nadie lee lo que no pidió.
+  3. COMPLETO CON REGLA DE CONTEO + TABLA DE MAPEO: TODAS las features del MANUAL-DE-USO
+     aparecen; el pie declara el N; y el summary de la entrega presenta la TABLA DE MAPEO
+     (feature → sección del manual → tarjeta) + qué NO cuenta y por qué. Sin tabla el N es
+     una afirmación; con tabla es evidencia. El brochure documenta la app, NO se documenta a
+     sí mismo (no entra al manual ni al conteo).
+  4. MOTION NARRATIVO CON RECETAS: cada animación refuerza, revela o dramatiza el mensaje —
+     la que no, se corta. Las gramáticas se ejecutan con el banco de técnicas en vanilla
+     (docs/BROCHURE-banco-de-tecnicas.md): sin recetas, «G3» degenera en fundido — el error
+     exacto del v1. G3 (coreografía temporizada) + G2 (estados) por defecto; G1 SERENA
+     permitida CON justificación narrativa en el storyboard (sin pin, sin secuestro de
+     scroll — el "hilo del globo" del piloto es el precedente).
+  5. PERFORMANCE REY: animación solo transform/opacity; toda excepción se DECLARA en el
+     storyboard y se comenta en el código (precedentes sancionados: grid-template-rows en
+     apertura de tarjeta · stroke-dashoffset para dibujar trazo decorativo, un disparo ·
+     filter:blur solo en apertura, jamás en scroll). Cero listeners de scroll sin rAF; cero
+     lectura de layout en el tick (medidas cacheadas en resize). PRESUPUESTO DE RECORRIDO
+     MÓVIL: la coreografía puede costar ~1 pantalla extra de scroll, no 3–4 — quien odia los
+     manuales no paga peaje para llegar al contenido.
+  6. prefers-reduced-motion = EXPERIENCIA ALTERNA COMPLETA, VERIFICADA ACTIVAMENTE: cada
+     escena declara su corte editorial, y un E2E OBLIGATORIO carga la pieza con
+     reducedMotion:"reduce" y AFIRMA visibilidad real (opacidad/tamaño) de los elementos
+     clave. En el piloto, el hero quedaba EN BLANCO bajo reduced-motion y pasó 12 e2e +
+     Lighthouse 100/100: ningún gate automático miraba esa rama.
+  7. A11y ESTRUCTURAL: patrón canónico <h3><button> (JAMÁS <button><h3> — HTML inválido que
+     rompe la navegación por encabezados); lo cerrado queda FUERA del árbol de accesibilidad
+     (visibility en la transición — grid-rows:0fr + overflow:hidden engaña al ojo pero un
+     lector de pantalla recita TODO el contenido "cerrado"; axe NO lo ve: se verifica contra
+     el árbol real por CDP en un e2e); el candidato LCP JAMÁS nace de opacity:0 (sube sin
+     desvanecerse; el fundido va en elementos no candidatos); teclado completo; contraste AA.
+  8. DIRECCIÓN DE ARTE ANCLADA A LA APP: tokens de :root REEMPLAZADOS por el design-system;
+     el ICONO de cada tarjeta sale del design system de la app (jamás un emoji si el DS los
+     prohíbe — el de habla lo hace); las señas visuales de la app (personajes, estados,
+     formas) se llevan como los MISMOS SVG de la app: idénticos y sin desincronizarse.
+     NOTA data-tema: el brochure vive fuera del storage de la app — no puede seguir el
+     selector de tema interno, solo el del sistema; decláralo y no lo persigas.
+  9. VIVO + CERO datos personales (repo público): el sprint que cambia una feature actualiza
+     su tarjeta EN EL MISMO SPRINT; historial en el pie.
+  10. FUENTES: MANUAL-DE-USO (features y conteo) + VISION (promesa, RO) + las guías de
+     prueba de la app (el detalle operativo real). Español llano; le habla a la persona
+     destinataria, jamás al dev; la palabra "manual" no aparece en el texto visible.
+
+  ═══ GATES DE LA ENTREGA — los que la CI no puede ver ═══
+  En el piloto LA CI ESTUVO VERDE CON UN ENTREGABLE RECHAZADO. Verde no es bueno. De los 16
+  defectos corregidos: 4 los vio la CI · 12 solo se vieron MIRANDO CAPTURAS · 11 correcciones
+  más nacieron del gate del usuario · 1 (el mayor) de la verificación externa. Por eso:
+  a. PASADA DE CAPTURAS por bloque, leídas COMO IMAGEN (incluye animaciones cuadro a cuadro:
+     rebobinar la jugada y capturar en el instante del efecto), ANTES de presentar al usuario.
+  b. SALA DE PROYECCIÓN (gate visual del usuario) como PROCESO, no sí/no: rondas de
+     corrección en frío tras aprobar la dirección. FIDELIDAD AL PRODUCTO REAL es criterio de
+     revisión: una maqueta impecable puede MENTIR (las gemelas del piloto mostraban una tecla
+     y el juego tiene dos) — la respuesta correcta suele estar en la app.
+  c. LO MEDIBLE SE CORRIGE MIDIENDO contra la versión anterior (el salto del piloto:
+     1291px → 119px). «Creo que mejoró» es una opinión.
+  d. ÚLTIMA MILLA: el link de producción se prueba DESDE AFUERA, SIN SESIÓN (curl/incógnito)
+     — en el piloto TODA la app llevaba semanas tras el login de Vercel y nadie lo sabía.
+     Dominio + protección de deployment quedan documentados en el BLUEPRINT de la app.
+
+  AL PRODUCIR: reemplazar [APP_NAME], [PROMESA], [SLUG], las tarjetas y los tokens.
+-->
+<style>
+  :root {
+    --fondo: #fbfbfa; --superficie: #f1f1ee; --borde: #e3e3de;
+    --tinta: #1d2023; --tinta-suave: #5d6167;
+    --acento: #2f4858; --acento-suave: #e3ebf1; --acento-vivo: #3d6b84;
+    --realce: #a4632f;
+    --radio: 18px;
+    /* Motion-system de la pieza: deriva estos tokens del design-system de la app y del
+       storyboard (curvas, escala de duraciones, vocabulario). Precedente del piloto:
+       --ease-asentar: cubic-bezier(0.22, 1, 0.36, 1). Nada de números mágicos sueltos. */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #131619; --superficie: #1b2025; --borde: #2c333a;
+      --tinta: #f0efec; --tinta-suave: #9ba1a8;
+      --acento: #a9c9dd; --acento-suave: #212f3a; --acento-vivo: #7fb0cc;
+      --realce: #e0a468;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--fondo); color: var(--tinta);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .lienzo { max-width: 720px; margin: 0 auto; padding: 0 20px 90px; }
+  h1, h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 400;
+    text-wrap: balance; margin: 0; }
+  p { margin: 0.55em 0; }
+  .suave { color: var(--tinta-suave); }
+  .chica { font-size: 0.88rem; }
+  .eyebrow { font-family: ui-monospace, Menlo, monospace; font-size: 0.68rem;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--tinta-suave); }
+
+  /* ===== Capa 0 · Portada: la promesa en una frase ===== */
+  .portada { min-height: 88svh; display: flex; flex-direction: column;
+    justify-content: center; text-align: center; padding: 48px 0 24px; }
+  .portada h1 { font-size: clamp(2.3rem, 8vw, 3.6rem); line-height: 1.08; margin: 14px 0 18px; }
+  .portada .promesa { font-size: clamp(1.05rem, 3.4vw, 1.3rem); color: var(--tinta-suave);
+    max-width: 30ch; margin: 0 auto; }
+  .baja { margin-top: auto; padding-top: 40px; color: var(--tinta-suave);
+    font-size: 0.85rem; }
+  .baja .flecha { display: block; font-size: 1.3rem; margin-top: 6px; }
+
+  /* ===== Capa 1 · Tarjetas ===== */
+  .seccion { padding-top: 46px; }
+  .seccion > h2 { font-size: 1.7rem; margin-bottom: 6px; }
+  .tarjetas { display: grid; gap: 14px; margin-top: 22px; }
+  .tarjeta { background: var(--superficie); border: 1px solid var(--borde);
+    border-radius: var(--radio); overflow: hidden; }
+  /* Patrón canónico: el <h3> ENVUELVE al <button> (regla 7). El heading conserva la
+     navegación por encabezados; el botón conserva la semántica de control. */
+  .tarjeta-cabeza { margin: 0; font-size: inherit; font-weight: inherit; }
+  .tarjeta-boton { display: flex; align-items: center; gap: 14px; width: 100%;
+    padding: 18px; font: inherit; text-align: left; color: inherit;
+    background: none; border: 0; cursor: pointer; }
+  .tarjeta-boton:focus-visible { outline: 3px solid var(--acento-vivo); outline-offset: -3px; }
+  .icono { flex: none; width: 52px; height: 52px; display: grid;
+    place-items: center; background: var(--acento-suave); border-radius: 14px; }
+  .icono svg { width: 28px; height: 28px; }
+  .tarjeta-titulos { flex: 1; min-width: 0; }
+  .tarjeta-titulos .titulo { display: block; font-family: Georgia, serif;
+    font-size: 1.18rem; line-height: 1.3; }
+  .tarjeta-titulos .linea { display: block; margin-top: 2px; font-size: 0.9rem;
+    color: var(--tinta-suave); }
+  .chevron { flex: none; color: var(--tinta-suave); transition: transform 0.35s cubic-bezier(.3,.9,.3,1); }
+  .tarjeta[data-abierta] .chevron { transform: rotate(180deg); }
+
+  /* ===== Capa 2 · Detalle (G2: transición de estado; excepción declarada grid-rows) =====
+     visibility en la transición (regla 7): con un extremo en visible, CSS mantiene el
+     contenido visible durante TODO el colapso (la animación no se corta) y, cerrado, lo
+     saca del árbol de accesibilidad — sin esto, un lector de pantalla recita el detalle
+     completo de todas las tarjetas "cerradas". axe no lo ve; el e2e mira el árbol por CDP. */
+  .detalle { display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows 0.45s cubic-bezier(.3,.9,.3,1); }
+  .tarjeta[data-abierta] .detalle { grid-template-rows: 1fr; }
+  .detalle-interior { overflow: hidden; visibility: hidden;
+    transition: visibility 0.45s; }
+  .tarjeta[data-abierta] .detalle-interior { visibility: visible; }
+  .detalle-cuerpo { padding: 2px 18px 20px; border-top: 1px solid var(--borde);
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.4s ease 0.12s, transform 0.4s ease 0.12s; }
+  .tarjeta[data-abierta] .detalle-cuerpo { opacity: 1; transform: none; }
+  .feature { padding: 13px 0; border-top: 1px solid var(--borde); }
+  .feature:first-of-type { border-top: 0; }
+  .feature h4 { margin: 0; font-size: 1rem; }
+  .feature .como { margin: 5px 0 0; font-size: 0.92rem; color: var(--tinta-suave); }
+  .tip { margin-top: 7px; padding: 8px 12px; background: var(--acento-suave);
+    border-radius: 10px; font-size: 0.88rem; }
+  .tip strong { color: var(--acento-vivo); }
+
+  /* ===== Capa 3 · Lo fino =====
+     El CLÍMAX del storyboard NO vive aquí: la promesa mayor de la app tiene su propia
+     escena arriba (lección del piloto). Aquí la página baja la voz a propósito. */
+  details.fino { background: var(--superficie); border: 1px solid var(--borde);
+    border-radius: var(--radio); padding: 0 18px; margin-top: 12px; }
+  details.fino summary { padding: 15px 0; cursor: pointer; font-weight: 600;
+    list-style-position: inside; }
+  details.fino[open] summary { border-bottom: 1px solid var(--borde); }
+  details.fino .cuerpo { padding: 12px 0 16px; }
+
+  footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--borde); }
+
+  /* ===== G3 · Coreografía de entrada (solo transform/opacity) =====
+     Esto es el PISO, no el techo: las escenas del storyboard traen sus técnicas del banco
+     (blur-to-focus, dibujar el trazo, steps(), contador, confeti determinista…). Stagger
+     con JERARQUÍA, jamás uniforme (la estrella entra un beat antes). */
+  @media (prefers-reduced-motion: no-preference) {
+    .revela { opacity: 0; transform: translateY(18px);
+      transition: opacity 0.6s ease, transform 0.6s cubic-bezier(.25,.8,.3,1); }
+    .revela.visto { opacity: 1; transform: none; }
+    .tarjetas .revela:nth-child(2) { transition-delay: 0.08s; }
+    .tarjetas .revela:nth-child(3) { transition-delay: 0.16s; }
+    .tarjetas .revela:nth-child(4) { transition-delay: 0.24s; }
+    .tarjetas .revela:nth-child(5) { transition-delay: 0.32s; }
+    .tarjetas .revela:nth-child(6) { transition-delay: 0.40s; }
+    /* LCP HONESTO (regla 7): el h1 SUBE sin desvanecerse — opacidad SIEMPRE 1 (un LCP que
+       nace invisible se mide como pintado al final del fundido). El fundido se lo queda la
+       línea de apoyo, que no es candidata. */
+    .portada h1 { animation: alzar-pintado 0.9s cubic-bezier(.25,.8,.3,1) both; }
+    .portada .promesa { animation: alzar 0.9s cubic-bezier(.25,.8,.3,1) 0.25s both; }
+    @keyframes alzar-pintado { from { transform: translateY(22px); } }
+    @keyframes alzar { from { opacity: 0; transform: translateY(22px); } }
+  }
+  /* Reduced motion: experiencia alterna completa — todo visible, cero movimiento.
+     NO es una promesa: el e2e obligatorio (regla 6) la verifica activamente. */
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .revela { opacity: 1; transform: none; }
+    .detalle, .detalle-interior, .detalle-cuerpo, .chevron { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="lienzo">
+
+  <!-- Capa 0 · Portada -->
+  <header class="portada">
+    <p class="eyebrow">[APP_NAME]</p>
+    <h1>[PROMESA — la app en una frase que emociona.<br>Ej.: "Su voz mueve el mundo."]</h1>
+    <p class="promesa">[Una línea de apoyo: para quién es y qué cambia en su vida. Sin
+      jerga, sin la palabra "manual".]</p>
+    <p class="baja">Tócala capa por capa — cada tarjeta se abre solo si tú quieres
+      <span class="flecha" aria-hidden="true">↓</span></p>
+  </header>
+
+  <!-- Capa 1 · Qué hace (4–6 tarjetas). Cada tarjeta agrupa features del MANUAL-DE-USO.
+       El ORDEN de las tarjetas ES la jerarquía: la estrella del producto va primera. -->
+  <section class="seccion" aria-labelledby="t-quehace">
+    <h2 id="t-quehace" class="revela">Qué hace</h2>
+    <p class="suave revela">[Una línea: "N cosas, cada una explicada al abrirla."]</p>
+    <div class="tarjetas">
+
+      <!-- ANATOMÍA DE UNA TARJETA (repetir 4–6 veces). Ids únicos por tarjeta. -->
+      <article class="tarjeta revela">
+        <h3 class="tarjeta-cabeza">
+          <button class="tarjeta-boton" aria-expanded="false" aria-controls="d1">
+            <span class="icono" aria-hidden="true"><!-- SVG del design system de la app
+              (src/components/iconos o equivalente) — JAMÁS un emoji si el DS los prohíbe --></span>
+            <span class="tarjeta-titulos">
+              <span class="titulo">[Nombre del grupo — verbo humano, ej. "Jugar con la voz"]</span>
+              <span class="linea">[Una línea que provoca abrirla]</span>
+            </span>
+            <svg class="chevron" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </h3>
+        <div class="detalle" id="d1" role="region" aria-label="[Nombre del grupo] — detalle">
+          <div class="detalle-interior"><div class="detalle-cuerpo">
+            <!-- Capa 2: UNA .feature por feature del MANUAL-DE-USO (regla de conteo).
+                 Las maquetas/demos que incluyas son FIELES al producto real (gate b):
+                 si el juego tiene dos teclas, la maqueta tiene dos teclas. -->
+            <div class="feature">
+              <h4>[Feature]</h4>
+              <p class="como">[Qué hace y cómo se usa, en pasos humanos: "entra a …, toca
+                …, y verás …". El detalle operativo sale de las guías de prueba.]</p>
+              <p class="tip"><strong>Tip:</strong> [el consejo que un amigo daría].</p>
+            </div>
+            <div class="feature">
+              <h4>[Feature]</h4>
+              <p class="como">[…]</p>
+            </div>
+          </div></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ═══ AQUÍ VAN LAS ESCENAS DEL STORYBOARD ═══
+       Entre las capas: el respiro (la mecánica madre demostrada en 2 segundos) y el CLÍMAX
+       (la promesa mayor con escena propia y el texto VISIBLE — jamás en un acordeón).
+       Técnicas: docs/BROCHURE-banco-de-tecnicas.md. Referencia: app-habla E05/E06. -->
+
+  <!-- Capa 3 · Lo fino: lo que completa el conteo sin estorbar el recorrido. -->
+  <section class="seccion" aria-labelledby="t-fino">
+    <h2 id="t-fino" class="revela">Los detalles finos</h2>
+    <details class="fino revela">
+      <summary>[Qué mide — y qué no finge medir]</summary>
+      <div class="cuerpo chica">[Honestidad total: brochure ≠ promesa inflada.]</div>
+    </details>
+    <details class="fino revela">
+      <summary>[Requisitos y limitaciones]</summary>
+      <div class="cuerpo chica">[Navegador/dispositivo, permisos (ej. micrófono), qué no
+        hace todavía.]</div>
+    </details>
+    <details class="fino revela">
+      <summary>[Mapa de la app — a dónde lleva cada ruta]</summary>
+      <div class="cuerpo chica">[Lista ruta → qué hay ahí. Enlaza las rutas reales: un e2e
+        verifica que todas existan.]</div>
+    </details>
+  </section>
+
+  <footer class="revela">
+    <p class="chica suave">Este recorrido cubre las <strong>[N] funcionalidades</strong> de
+      [APP_NAME] — todas, agrupadas para que las descubras a tu ritmo (el conteo cuadra con
+      el manual de uso del repo; la tabla de mapeo vive en el summary de la entrega).</p>
+    <details class="chica">
+      <summary>Historial del brochure</summary>
+      <ul>
+        <li><strong>S[SPRINT] · [FECHA]:</strong> [qué tarjetas/features nacieron o
+          cambiaron — el brochure es vivo y se actualiza con cada sprint que toca features].</li>
+      </ul>
+    </details>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    // G2 · abrir/cerrar tarjetas (transición de estado; accesible por teclado nativo).
+    document.querySelectorAll(".tarjeta-boton").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var tarjeta = btn.closest(".tarjeta");
+        var abierta = tarjeta.hasAttribute("data-abierta");
+        if (abierta) { tarjeta.removeAttribute("data-abierta"); }
+        else { tarjeta.setAttribute("data-abierta", ""); }
+        btn.setAttribute("aria-expanded", String(!abierta));
+      });
+    });
+    // G3 · coreografía de entrada. Con reduced-motion el CSS ya muestra todo: el observer
+    // solo añade la clase (inofensivo). Sin IntersectionObserver, todo visible (fallback).
+    if ("IntersectionObserver" in window) {
+      var obs = new IntersectionObserver(function (entradas) {
+        entradas.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add("visto"); obs.unobserve(e.target); }
+        });
+      }, { threshold: 0.15 });
+      document.querySelectorAll(".revela").forEach(function (el) { obs.observe(el); });
+    } else {
+      document.querySelectorAll(".revela").forEach(function (el) { el.classList.add("visto"); });
+    }
+  })();
+</script>
+</body>
+</html>

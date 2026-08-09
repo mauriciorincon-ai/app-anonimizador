@@ -1,0 +1,56 @@
+# CI del kit-app — corre en cada PR y en push a main.
+# Gates: typecheck, lint, tests+cobertura, build, audit de deps, e2e, Lighthouse vs perf-budget.json
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11 }   # el scaffold estampa pnpm 11 (lockfile + allowBuilds); pnpm 11 exige Node >=22.13
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test            # vitest run --coverage (umbral 70% en vitest.config)
+      - run: pnpm build
+      - run: pnpm audit --audit-level high
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11 }   # el scaffold estampa pnpm 11 (lockfile + allowBuilds); pnpm 11 exige Node >=22.13
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e        # incluye scans axe (@axe-core/playwright)
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11 }   # el scaffold estampa pnpm 11 (lockfile + allowBuilds); pnpm 11 exige Node >=22.13
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Lighthouse CI contra perf-budget.json (URLs de lighthouse-urls.json)
+        # Cada sprint añade sus rutas nuevas a lighthouse-urls.json (default: ["/"]).
+        # Nota Lantern: el LCP SIMULADO sobre localhost castiga SPAs sanas (nutri-kids S1:
+        # 3.8s simulado vs 242ms observado) — budgets client-side necesitan margen documentado.
+        run: |
+          npm i -g @lhci/cli
+          URLS=$(node -e "console.log(require('./lighthouse-urls.json').map(u=>'--collect.url=http://localhost:3000'+u).join(' '))")
+          lhci autorun --collect.startServerCommand="pnpm start" $URLS --assert.budgetsFile=./perf-budget.json
