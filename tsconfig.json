@@ -28,7 +28,10 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    // Los scripts de gate corren en Node puro (sin build) y por eso son .mjs; se incluyen
+    // para que `allowJs` les infiera tipos y los tests puedan importarlos con typecheck real.
+    "scripts/**/*.mjs"
   ],
   "exclude": ["node_modules"]
 }
