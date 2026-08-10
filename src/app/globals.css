@@ -124,7 +124,11 @@ body {
 .etiqueta {
   font-family: var(--fuente-mono), ui-monospace, monospace;
   font-size: 0.75rem;
-  font-weight: 500;
+  /* 400 y no 500: la mono se descarga en un solo peso a propósito (una fuente menos en el primer
+     instante), y pedir un peso que no existe lo resuelve el navegador sintetizándolo o cayendo al
+     de al lado — dos formas de que la etiqueta se vea distinta de como se diseñó. El carácter de
+     versalita lo dan el tracking y las mayúsculas, que no cuestan bytes. */
+  font-weight: 400;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--tinta-tenue);

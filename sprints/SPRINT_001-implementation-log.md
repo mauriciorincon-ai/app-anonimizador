@@ -404,6 +404,32 @@ necesita — en el segundo en que está a punto de soltar una tabla con datos de
 estado vacío, así que medirlo no diría nada sobre la pantalla real, y medir la real exigiría
 cargarle 130 MB a Lighthouse.
 
+### El LCP puso el CI en rojo, y la respuesta no fue subir el número
+
+El job `lighthouse` falló por **3.091 ms de LCP contra un presupuesto de 3.000**. Antes de tocar el
+presupuesto se fue a buscar la causa, con Lighthouse corrido en local contra el mismo build:
+
+- El elemento LCP es el **párrafo de entrada** de la aduana, y su desglose observado es
+  **7,9 ms de TTFB + 399 ms de retardo de render**: el LCP real ronda los **0,4 s**. Los 3,1 s son
+  el número **simulado** de Lantern, que reproyecta la traza sobre una 4G lenta genérica.
+- Lo que sí se podía arreglar de verdad eran las fuentes: **6 archivos y 96 KB**, los seis
+  precargados y compitiendo por el ancho de banda del primer instante. Se dejó `preload` **solo en
+  la fuente del cuerpo** —la que pinta el elemento LCP—, la display pasó a dos pesos estáticos y la
+  mono a uno solo. Resultado medido: **96 → 86 KB, 6 → 3 archivos en el primer render, y el LCP
+  simulado de ~3.240 a ~2.950 ms**.
+- Se probó y se **descartó** `experimental.inlineCss` (7 KB de CSS embebidos para ahorrar un viaje):
+  tres corridas dieron 2.798 / 3.084 / 3.082 ms contra 2.978 / 2.936 / 2.937 sin él. Los bytes
+  siguen viajando en la ruta crítica, solo que dentro del documento. Queda anotado en
+  `next.config.ts` para que nadie lo intente otra vez creyendo que es gratis.
+
+Con eso, ~2.950 ms contra un tope de 3.000 deja un 2% de margen: un check obligatorio que pasa o
+falla por ruido no es un gate, es una moneda al aire. Así que el presupuesto simulado subió a
+**3.500 ms** (20% de margen) **y a cambio entró un gate que mide lo que de verdad le pasa al
+usuario**: `tests/e2e/rendimiento.spec.ts` afirma que el **LCP observado** en un navegador real está
+por debajo de **1.500 ms** (medido: ~0,4 s). El presupuesto flojo y el estricto van en pareja, y los
+dos números quedan escritos: si la página engorda de verdad, el segundo se pone rojo antes que el
+primero.
+
 ### Gate de honestidad medida, ahora mecánico
 
 `tests/unit/copy.test.ts` barre el código de la interfaz y el manual buscando las frases que la
@@ -448,5 +474,13 @@ que ningún test recorre haría el mismo daño y no la cazaría ninguna aserció
    que el plan tenía en la Fase 4: son el criterio observable de cierre de la Fase 3, así que
    escribirlos allá y usarlos aquí habría sido el orden equivocado. El resto de la suite e2e
    —camino feliz, garantía de red, 500k, Excel, reduced-motion, teclado— sigue en la Fase 4.
+
+7. **El presupuesto de LCP de `perf-budget.json` pasó de 3.000 a 3.500 ms, con contrapartida.** El
+   plan asumía el presupuesto del kit tal cual. La medición mostró que el número simulado de
+   Lantern para esta página (~2.950 ms tras optimizar) no deja margen sano contra 3.000, y que el
+   LCP **observado** es de ~0,4 s. Se subió el simulado a 3.500 y se añadió un gate e2e sobre el
+   observado con techo de 1.500 ms — más estricto en la práctica que el que se aflojó. El detalle
+   y los tres números medidos están arriba; se anota aquí porque tocar un presupuesto de
+   rendimiento nunca puede quedar en un commit silencioso.
 
 Ninguna toca el alcance del sprint ni el plan de la casa planeadora.

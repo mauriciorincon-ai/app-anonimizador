@@ -13,10 +13,17 @@ import "./globals.css";
 // Las tres familias y su oficio están razonados en design-system.md § 2.2. En corto: Fraunces
 // pone la calidez editorial que impide que el producto se lea como un panel de control, Plex Sans
 // habla de tecnología con seriedad sin ser fría, y Plex Mono hace legible una tabla de cifras.
+// `preload` solo en la fuente del CUERPO. Las tres se descargan igual, pero solo una entra a la
+// pelea por el ancho de banda del primer instante — y es la que pinta el elemento más grande de la
+// pantalla (el párrafo de entrada), o sea la que decide el LCP. Precargarlas todas las hace
+// competir entre sí y retrasa justo la que importa. La display y la mono llegan un pelo después y
+// entran con `swap`, sin bloquear nada.
 const display = Fraunces({
   variable: "--fuente-display",
   subsets: ["latin"],
+  weight: ["400", "600"],
   display: "swap",
+  preload: false,
 });
 
 const sans = IBM_Plex_Sans({
@@ -29,8 +36,9 @@ const sans = IBM_Plex_Sans({
 const mono = IBM_Plex_Mono({
   variable: "--fuente-mono",
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {

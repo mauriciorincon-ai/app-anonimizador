@@ -132,6 +132,17 @@ export function analizar(archivo: File): void {
   worker.addEventListener("message", (evento: MessageEvent<MensajeDelWorker>) =>
     recibir(evento.data, archivo.name),
   );
+  // Sin esto, un fallo del worker mismo —el chunk que no carga, una excepción que se escapa del
+  // try— dejaría la pantalla girando en "analizando" para siempre. El texto del evento NO se
+  // usa: como cualquier mensaje de excepción aquí, puede citar contenido del archivo.
+  worker.addEventListener("error", (evento) => {
+    evento.preventDefault();
+    publicar({
+      fase: "error",
+      motivo: "lectura-fallida",
+      nombre: archivo.name,
+    });
+  });
 
   publicar({
     fase: "analizando",
