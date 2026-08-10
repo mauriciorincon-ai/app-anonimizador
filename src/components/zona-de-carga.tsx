@@ -153,13 +153,18 @@ function EnCurso({
   const avance = conBarra ? estado.bytesLeidos / estado.bytesTotales : 0;
 
   return (
-    <div
-      role="status"
-      className="rounded-3 border-borde bg-superficie shadow-1 flex flex-col gap-4 border px-6 py-10"
-    >
+    <div className="rounded-3 border-borde bg-superficie shadow-1 flex flex-col gap-4 border px-6 py-10">
       <div>
         <p className="etiqueta">Analizando</p>
-        <p className="font-display text-tinta mt-1.5 text-2xl font-semibold">
+        {/* La región viva es SOLO el nombre de la etapa, que cambia tres veces en todo el proceso.
+            Si abarcara la tarjeta entera, un lector de pantalla leería el porcentaje en voz alta
+            cada 25.000 filas —veinte veces seguidas en un archivo grande— y el aviso útil se
+            perdería entre el ruido. El avance numérico ya viaja por el `progressbar`, que se
+            consulta cuando se quiere y no se anuncia solo. */}
+        <p
+          role="status"
+          className="font-display text-tinta mt-1.5 text-2xl font-semibold"
+        >
           {terminado ? "Listo" : ETAPAS[etapa]}
         </p>
         <p className="text-tinta-suave mt-1 font-mono text-[0.8125rem] break-all">

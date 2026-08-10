@@ -430,6 +430,22 @@ por debajo de **1.500 ms** (medido: ~0,4 s). El presupuesto flojo y el estricto 
 dos números quedan escritos: si la página engorda de verdad, el segundo se pone rojo antes que el
 primero.
 
+### Dos gates más, los dos sobre el código fuente
+
+**Privacidad (regla dura nº2), desde el otro lado.** `tests/unit/privacidad.test.ts` barre `src/` y
+falla si aparece `localStorage`, `sessionStorage`, `indexedDB`, OPFS, `document.cookie`, `fetch`,
+`XMLHttpRequest`, `WebSocket` o `sendBeacon`. El e2e de la Fase 4 probará lo que **ocurre**
+—intercepta la red durante el flujo con un archivo cargado—; esto prueba lo que **existe**. Hacen
+falta los dos: una escritura a `localStorage` metida en una rama que el e2e no visita pasaría el
+test de comportamiento y rompería la promesa igual. La bóveda cifrada del S3 será la única
+excepción, y entrará aquí con su ADR en vez de borrar el gate.
+
+**Región viva acotada.** El `role="status"` estaba en la tarjeta entera de carga: un lector de
+pantalla habría leído el porcentaje en voz alta cada 25.000 filas —veinte veces seguidas en un
+archivo grande— y el aviso útil se habría perdido entre el ruido. Ahora la región viva es solo el
+nombre de la etapa, que cambia tres veces en todo el proceso; el avance numérico viaja por el
+`progressbar`, que se consulta cuando se quiere y no se anuncia solo.
+
 ### Gate de honestidad medida, ahora mecánico
 
 `tests/unit/copy.test.ts` barre el código de la interfaz y el manual buscando las frases que la
