@@ -682,3 +682,36 @@ Y el rojo **bloquea de verdad**: la ruleset `main-protegida` (activa) exige los 
 —`anti-ia`, `quality`, `e2e`, `lighthouse`— más `pull_request`, `deletion` y `non_fast_forward`.
 
 PR cerrado, branch borrado en el mismo comando, `--prune` corrido. Cero rastro en el historial.
+
+### `/audita-sprint` — Fase 1 (auditoría) y Fase 2 (pagos)
+
+**Cobertura de alcance:** los 12 acceptance criteria, la DoD 6+1 y las cinco fases del plan,
+**todos Completos**, con las 8 desviaciones ya declaradas y ninguna nueva. Una sola casilla de la
+DoD no tenía gate mecánico —«Lighthouse ≥90 en `/`»: el CI compara contra `perf-budget.json`, no
+contra la puntuación de categoría— y se mide en el `/deploy-check` en vez de darse por buena.
+
+**Cuatro hallazgos pagados.** Los cuatro tocan la honestidad medida, que es la columna vertebral
+del producto, y ninguno toca arquitectura.
+
+| Sev.     | Hallazgo                                                                                                                                                                                                                                                                                                             | Pago                                                                                                                                     |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 🔴 Alto  | **La máscara dejaba al descubierto todo menos un carácter.** Extremos fijos de 3+2 desde 6 caracteres: una placa —6 caracteres, identificador directo, columna del perfil `clinico`— salía `ABC***23`. Diez candidatos no son una máscara, y esa muestra viaja dentro del reporte que el usuario le manda a alguien. | Tramos que solo aprietan: **nunca más de la mitad del valor a la vista**. `ABC123` → `AB***3`. Test que lo verifica sobre siete valores. |
+| 🟡 Medio | **«0,0 %» con gente sola.** Una persona única en 3.000 filas es 0,03 %; en 500.000, 0,0002 % — las dos se escribían «0,0 %», el mismo cero tranquilizador que el decimal existía para evitar, y era la cifra grande del panel. El test lo consagraba bajo un comentario que decía lo contrario.                      | Por debajo de lo representable, el número se dice con palabras: **«menos de 0,1 %»**. En la UI y en el reporte.                          |
+| 🟡 Medio | **Un validador citaba una fuente que no cumplía.** `validadorCoordenada` mostraba «latitud [−90, 90]» y aceptaba −150,123456.                                                                                                                                                                                        | La fuente dice el rango común que sí comprueba, y por qué no aplica el estrecho. Test sobre el texto de la fuente.                       |
+| 🟡 Medio | **El panel de riesgo no declaraba a quién no contaba.** La cifra sale solo de los cuasi-identificadores: un archivo con cédula + dos demográficas enseñaba un porcentaje bajo como titular, con la cédula al lado. Cada afirmación estaba bien acotada; la composición decía otra cosa.                              | Una línea bajo la cifra cuando hay identificadores directos. En la UI **y en el reporte**, que se lee fuera de contexto.                 |
+
+**Deuda declarada (Bajos, sin pago en este sprint):** una columna con un solo valor **y vacíos** se
+excluye del advisor aunque separe en dos grupos; el primer chunk del CSV podría tomarse como
+encabezado si estuviera vacío (haría falta más de 10 MB de líneas en blanco al inicio); y
+`sesion.ts` queda en 83% porque su rama de worker caído exige un worker que reviente de verdad.
+
+**Y un hallazgo que salió durante la Fase 2, no de la auditoría:** `pnpm test:e2e` **en local no
+corría lo mismo que en CI**. El `webServer` usaba `next dev` fuera de CI, y sobre un árbol limpio
+salían **5 pruebas en rojo**: el dev server abre un websocket de HMR —que el gate de red denuncia,
+con razón— y React en modo desarrollo pide `eval()`, que la CSP bloquea. Ninguna de las dos cosas
+existe en producción. Era el suite gritando por algo que no estaba mirando. Ahora corre **siempre
+contra el build de producción**, sin reutilizar servidor: si hay un `next dev` olvidado en el 3000,
+Playwright falla con «port in use», que se entiende de una, en vez de probar otro servidor en
+silencio. **39 verdes en local, idéntico a CI.**
+
+Después de la auditoría: **269 pruebas unitarias** (96,5% sentencias · 92,1% ramas) y **39 e2e**.

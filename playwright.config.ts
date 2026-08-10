@@ -25,10 +25,17 @@ export default defineConfig({
     },
   ],
   webServer: {
-    // El job e2e del CI no hace build previo → en CI se construye aquí; local usa dev server.
-    command: process.env.CI ? "pnpm build && pnpm start" : "pnpm dev",
+    // SIEMPRE contra el build de producción, también en local. Antes el local usaba `next dev` y
+    // eso hacía fallar 5 pruebas sobre un árbol limpio: el dev server abre un websocket de HMR
+    // —que el gate de red denuncia, con razón— y React en modo desarrollo pide `eval()`, que la
+    // CSP bloquea. Ninguna de las dos cosas existe en producción, así que eran gritos de un test
+    // que no estaba mirando la aplicación que se despliega. Un suite que sale rojo cuando no pasa
+    // nada acaba ignorado, y este suite es el que sostiene la promesa central del producto.
+    command: "pnpm build && pnpm start",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    // Sin reutilizar: si hay algo escuchando en el 3000 —un `next dev` olvidado— Playwright falla
+    // con "port in use", que se entiende de una. Reutilizarlo probaría otro servidor en silencio.
+    reuseExistingServer: false,
+    timeout: 180_000,
   },
 });

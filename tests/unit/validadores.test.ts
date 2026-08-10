@@ -42,7 +42,9 @@ describe("NIT — dígito de verificación de la DIAN", () => {
 
   it("rechaza el mismo número con el DV cambiado — que es todo el punto del checksum", () => {
     for (const dv of [0, 1, 2, 3, 4, 5, 6, 7, 9]) {
-      expect(validadorNit.valida(`900123456-${dv}`, CONTEXTO_NEUTRO)).toBe(false);
+      expect(validadorNit.valida(`900123456-${dv}`, CONTEXTO_NEUTRO)).toBe(
+        false,
+      );
     }
   });
 
@@ -128,7 +130,9 @@ describe("Cédula — validación estructural declarada", () => {
 describe("Telefonía colombiana — CRC, 10 dígitos desde 2021", () => {
   it("reconoce móviles y fijos, con y sin indicativo +57", () => {
     expect(validadorCelular.valida("3001234567", CONTEXTO_NEUTRO)).toBe(true);
-    expect(validadorCelular.valida("+57 300 123 4567", CONTEXTO_NEUTRO)).toBe(true);
+    expect(validadorCelular.valida("+57 300 123 4567", CONTEXTO_NEUTRO)).toBe(
+      true,
+    );
     expect(validadorFijo.valida("6011234567", CONTEXTO_NEUTRO)).toBe(true);
     expect(validadorFijo.valida("6041234567", CONTEXTO_NEUTRO)).toBe(true);
   });
@@ -170,9 +174,15 @@ describe("Luhn — ISO/IEC 7812-1", () => {
   it("acepta una tarjeta sintética válida y rechaza su vecina", () => {
     // 400000000000000 + dígito de control: solo el '4' inicial cae en posición duplicada
     // (4×2 = 8), la suma es 8 y el control es (10 − 8) mod 10 = 2.
-    expect(validadorTarjeta.valida("4000000000000002", CONTEXTO_NEUTRO)).toBe(true);
-    expect(validadorTarjeta.valida("4000000000000003", CONTEXTO_NEUTRO)).toBe(false);
-    expect(validadorTarjeta.valida("4000 0000 0000 0002", CONTEXTO_NEUTRO)).toBe(true); // con espacios
+    expect(validadorTarjeta.valida("4000000000000002", CONTEXTO_NEUTRO)).toBe(
+      true,
+    );
+    expect(validadorTarjeta.valida("4000000000000003", CONTEXTO_NEUTRO)).toBe(
+      false,
+    );
+    expect(
+      validadorTarjeta.valida("4000 0000 0000 0002", CONTEXTO_NEUTRO),
+    ).toBe(true); // con espacios
   });
 
   it("rechaza un consecutivo interno que pasa Luhn por casualidad", () => {
@@ -182,12 +192,16 @@ describe("Luhn — ISO/IEC 7812-1", () => {
     // El '9' inicial cae en posición duplicada: 9×2 = 18 → 18 − 9 = 9; el control que cierra la
     // suma en múltiplo de 10 es 1.
     expect(cumpleLuhn("9000000000000001")).toBe(true);
-    expect(validadorTarjeta.valida("9000000000000001", CONTEXTO_NEUTRO)).toBe(false);
+    expect(validadorTarjeta.valida("9000000000000001", CONTEXTO_NEUTRO)).toBe(
+      false,
+    );
   });
 
   it("rechaza longitudes fuera del estándar", () => {
     expect(validadorTarjeta.valida("4000002", CONTEXTO_NEUTRO)).toBe(false); // demasiado corta
-    expect(validadorTarjeta.valida("40000000000000000002", CONTEXTO_NEUTRO)).toBe(false); // 20 dígitos
+    expect(
+      validadorTarjeta.valida("40000000000000000002", CONTEXTO_NEUTRO),
+    ).toBe(false); // 20 dígitos
   });
 });
 
@@ -199,7 +213,9 @@ describe("IBAN — ISO 13616 con mod 97-10", () => {
 
   it("rechaza un dígito cambiado", () => {
     expect(cumpleIban("GB82WEST12345698765433")).toBe(false);
-    expect(validadorIban.valida("GB83WEST12345698765432", CONTEXTO_NEUTRO)).toBe(false);
+    expect(
+      validadorIban.valida("GB83WEST12345698765432", CONTEXTO_NEUTRO),
+    ).toBe(false);
   });
 
   it("rechaza lo que ni siquiera tiene forma de IBAN", () => {
@@ -210,7 +226,9 @@ describe("IBAN — ISO 13616 con mod 97-10", () => {
 
 describe("Correo, IP, coordenada y fecha", () => {
   it("reconoce correos y rechaza los que no lo son", () => {
-    expect(validadorEmail.valida("maria.herrera21@correo-demo.co", CONTEXTO_NEUTRO)).toBe(true);
+    expect(
+      validadorEmail.valida("maria.herrera21@correo-demo.co", CONTEXTO_NEUTRO),
+    ).toBe(true);
     for (const malo of [
       "maria@",
       "@dominio.com",
@@ -231,10 +249,25 @@ describe("Correo, IP, coordenada y fecha", () => {
 
   it("exige decimales en las coordenadas para no marcar cualquier entero", () => {
     expect(validadorCoordenada.valida("4.710989", CONTEXTO_NEUTRO)).toBe(true);
-    expect(validadorCoordenada.valida("-74.072092", CONTEXTO_NEUTRO)).toBe(true);
-    expect(validadorCoordenada.valida("200.123456", CONTEXTO_NEUTRO)).toBe(false); // fuera de rango
+    expect(validadorCoordenada.valida("-74.072092", CONTEXTO_NEUTRO)).toBe(
+      true,
+    );
+    expect(validadorCoordenada.valida("200.123456", CONTEXTO_NEUTRO)).toBe(
+      false,
+    ); // fuera de rango
     // Un entero suelto entre −90 y 90 casi siempre es una edad, un estrato o un conteo.
     expect(validadorCoordenada.valida("45", CONTEXTO_NEUTRO)).toBe(false);
+  });
+
+  it("su fuente cita el rango que de verdad comprueba", () => {
+    // Mirando un valor suelto no hay forma de saber si es latitud o longitud, así que se comprueba
+    // el rango común. La fuente decía "latitud [−90, 90]" y aceptaba −150,123456: afirmaba un
+    // rigor que no había, justo en el texto que el usuario lee como justificación.
+    expect(validadorCoordenada.valida("-150.123456", CONTEXTO_NEUTRO)).toBe(
+      true,
+    );
+    expect(validadorCoordenada.fuente).not.toMatch(/−90|-90/);
+    expect(validadorCoordenada.fuente).toMatch(/\[−180, 180\]/);
   });
 
   it("verifica que la fecha EXISTA, no solo que tenga forma", () => {

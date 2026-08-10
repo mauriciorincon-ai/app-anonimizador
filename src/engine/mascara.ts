@@ -7,15 +7,27 @@
 // Regla: se revela poco y siempre por los extremos, que es donde vive el formato (lo que ayuda a
 // reconocer la columna) y no la identidad.
 
-/** Cuántos caracteres se muestran al inicio, como máximo. */
-const CABEZA = 3;
-/** Cuántos al final, como máximo. */
-const COLA = 2;
-/** Por debajo de esta longitud no se revela nada: quedaría casi todo el valor a la vista. */
-const LONGITUD_MINIMA_PARA_REVELAR = 6;
+/**
+ * Cuánto se revela, según lo que haya para esconder.
+ *
+ * La regla: **nunca más de la mitad del valor a la vista.** Con extremos fijos de 3+2 la máscara
+ * se rompía justo donde más importa — una placa mide 6 caracteres, así que `ABC123` salía como
+ * `ABC***23` y dejaba UN carácter oculto: diez candidatos, no una máscara. Una cédula de serie
+ * histórica (7–8 dígitos) quedaba igual de expuesta. Y esa muestra no se queda en la pantalla:
+ * viaja dentro del reporte HTML que el usuario le manda a alguien más.
+ *
+ * Los tramos solo aprietan; ninguno revela más de lo que revelaba antes.
+ */
+function extremos(longitud: number): { cabeza: number; cola: number } {
+  if (longitud >= 10) return { cabeza: 3, cola: 2 };
+  if (longitud >= 6) return { cabeza: 2, cola: 1 };
+  // Por debajo de 6 no hay nada que esconder: revelar los extremos sería enseñar el valor.
+  return { cabeza: 0, cola: 0 };
+}
 
 /**
- * `1032456789` → `103***89`. Determinista: el mismo valor da siempre la misma máscara.
+ * `1032456789` → `103***89`, `ABC123` → `AB***3`. Determinista: el mismo valor da siempre la
+ * misma máscara.
  *
  * El número de asteriscos NO refleja la longitud oculta — es fijo. Si variara, la máscara
  * filtraría cuántos caracteres tiene el valor original, que en un dataset de identificadores es
@@ -24,8 +36,9 @@ const LONGITUD_MINIMA_PARA_REVELAR = 6;
 export function enmascarar(valor: string): string {
   const limpio = valor.trim();
   if (limpio.length === 0) return "";
-  if (limpio.length < LONGITUD_MINIMA_PARA_REVELAR) return "***";
-  return `${limpio.slice(0, CABEZA)}***${limpio.slice(-COLA)}`;
+  const { cabeza, cola } = extremos(limpio.length);
+  if (cabeza === 0) return "***";
+  return `${limpio.slice(0, cabeza)}***${limpio.slice(-cola)}`;
 }
 
 /**

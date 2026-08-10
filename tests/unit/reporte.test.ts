@@ -114,6 +114,17 @@ describe("lleva el diagnóstico, no los datos", () => {
     expect(html).toMatch(/Quedaron fuera:/);
   });
 
+  it("dice que la cifra de riesgo no cuenta a quienes identifican solos", () => {
+    // Quien reciba este documento lo lee fuera de contexto. La cifra se calcula solo sobre
+    // cuasi-identificadores, y un porcentaje bajo junto a una columna de cédulas se lee como
+    // tranquilidad si nadie dice a quién dejó fuera la cuenta.
+    expect(datos.diagnostico.resumen["identificador-directo"]).toBeGreaterThan(
+      0,
+    );
+    expect(html).toMatch(/no cuenta/);
+    expect(html).toMatch(/sin ayuda de ninguna otra/);
+  });
+
   it("no promete lo que Velo no puede cumplir", () => {
     expect(html).not.toMatch(/anonimato garantizad/i);
     expect(html).not.toMatch(/100\s*%?\s*segur/i);

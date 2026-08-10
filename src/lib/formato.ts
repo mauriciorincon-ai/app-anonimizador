@@ -12,12 +12,21 @@ export function numero(valor: number): string {
   return ENTERO.format(valor);
 }
 
+/** Por debajo de esto, un decimal ya no alcanza y el redondeo escribiría un cero. */
+const MINIMO_REPRESENTABLE = 0.05;
+
 /**
  * Porcentaje con la precisión justa: sin decimales cuando el número es grande, con uno cuando es
- * pequeño. Redondear "0,04%" a "0%" convertiría un riesgo real en un cero tranquilizador.
+ * pequeño. Redondear "0,04 %" a "0 %" convertiría un riesgo real en un cero tranquilizador.
+ *
+ * Y el decimal tampoco basta solo: en un archivo de 500.000 filas, UNA persona sola es 0,0002 % —
+ * que con un decimal se escribe "0,0 %", el mismo cero tranquilizador un orden de magnitud más
+ * abajo. Ahí el número deja de ser el instrumento y se dice con palabras. La cifra de al lado
+ * ("1 de 500.000") sigue llevando la verdad exacta; esta línea solo deja de contradecirla.
  */
 export function porcentaje(proporcion: number): string {
   const valor = proporcion * 100;
+  if (valor > 0 && valor < MINIMO_REPRESENTABLE) return "menos de 0,1 %";
   const decimales = valor > 0 && valor < 10 ? 1 : 0;
   return `${new Intl.NumberFormat("es-CO", {
     minimumFractionDigits: decimales,

@@ -58,8 +58,10 @@ function numero(valor: number): string {
   return ENTERO.format(valor);
 }
 
+/** Misma regla que `src/lib/formato.ts`: un porcentaje que redondea a cero se dice con palabras. */
 function porcentaje(proporcion: number): string {
   const valor = proporcion * 100;
+  if (valor > 0 && valor < 0.05) return "menos de 0,1 %";
   const decimales = valor > 0 && valor < 10 ? 1 : 0;
   return `${new Intl.NumberFormat("es-CO", {
     minimumFractionDigits: decimales,
@@ -172,7 +174,10 @@ function filaDeColumna(columna: HallazgoDeColumna): string {
 </tr>`;
 }
 
-function seccionDeRiesgo(riesgo: RiesgoExacto): string {
+function seccionDeRiesgo(
+  riesgo: RiesgoExacto,
+  identificadoresDirectos: number,
+): string {
   if (riesgo.qis.length === 0) {
     return `<section>
 <p class="etiqueta">Riesgo de reidentificación</p>
@@ -188,7 +193,15 @@ se reconocieron columnas cruzables.</p>
 <h2>Cuánta gente queda sola</h2>
 <p class="cifrota ${tonoDelRiesgo(riesgo)}">${porcentaje(riesgo.proporcionUnicos)}</p>
 <p>de los registros son <b>únicos</b>: nadie más comparte su combinación de valores en las columnas
-cruzadas. Son ${numero(riesgo.unicos)} de ${numero(riesgo.filas)} registros.</p>
+cruzadas. Son ${numero(riesgo.unicos)} de ${numero(riesgo.filas)} registros.</p>${
+    identificadoresDirectos > 0
+      ? `\n<p class="por-que">Esta cifra <b>no cuenta</b> ${numero(identificadoresDirectos)} ${
+          identificadoresDirectos === 1
+            ? "columna que identifica"
+            : "columnas que identifican"
+        } sin ayuda de ninguna otra: a esas personas no hay que cruzarlas con nada para saber quiénes son.</p>`
+      : ""
+  }
 <dl class="datos">
 <div><dt>Grupo más pequeño (k)</dt><dd>${numero(riesgo.kMinimo)} <small>${
     riesgo.kMinimo === 1 ? "persona" : "personas"
@@ -299,7 +312,7 @@ ejecutando <code>sha256sum</code> (Linux), <code>shasum -a 256</code> (macOS) o
 </dl>
 </section>
 
-${seccionDeRiesgo(riesgo)}
+${seccionDeRiesgo(riesgo, resumen["identificador-directo"])}
 
 <section>
 <p class="etiqueta">Columna por columna</p>

@@ -25,7 +25,14 @@ function tono(riesgo: RiesgoExacto): string {
   return "text-tinta";
 }
 
-export function PanelDeRiesgo({ riesgo }: { riesgo: RiesgoExacto }) {
+export function PanelDeRiesgo({
+  riesgo,
+  identificadoresDirectos,
+}: {
+  riesgo: RiesgoExacto;
+  /** Cuántas columnas identifican sin ayuda de nadie. La cifra de este panel NO las cuenta. */
+  identificadoresDirectos: number;
+}) {
   if (riesgo.qis.length === 0) {
     return (
       <Panel
@@ -73,6 +80,20 @@ export function PanelDeRiesgo({ riesgo }: { riesgo: RiesgoExacto }) {
           <p className="cifra text-tinta-tenue mt-1 text-[0.8125rem]">
             {deCada(riesgo.unicos, riesgo.filas)} registros.
           </p>
+          {/* Sin esta línea, un archivo con una cédula y dos columnas demográficas enseña "0,0 %"
+              como titular y se lee como tranquilidad. La cifra es correcta y está bien acotada —
+              pero la composición decía otra cosa, y aquí el titular importa tanto como el dato. */}
+          {identificadoresDirectos > 0 ? (
+            <p className="text-aviso mt-3 text-[0.8125rem] leading-relaxed">
+              Esta cifra <strong className="font-medium">no cuenta</strong> las{" "}
+              {numero(identificadoresDirectos)}{" "}
+              {identificadoresDirectos === 1
+                ? "columna que identifica"
+                : "columnas que identifican"}{" "}
+              sin ayuda de ninguna otra: a esa gente no hay que cruzarla con
+              nada para saber quién es.
+            </p>
+          ) : null}
         </div>
 
         <dl className="border-borde grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4">

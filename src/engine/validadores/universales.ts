@@ -121,14 +121,20 @@ export const validadorIp: Validador = {
 
 // ── Coordenadas ───────────────────────────────────────────────────────────────────────────────
 /**
- * Validación por rango definicional: latitud en [−90, 90], longitud en [−180, 180]. Se exigen
- * decimales porque un entero suelto entre −90 y 90 es, casi siempre, cualquier otra cosa (una edad,
- * un estrato, un conteo) — y marcar eso como coordenada sería un falso positivo de manual.
+ * Validación por rango definicional. La latitud vive en [−90, 90] y la longitud en [−180, 180],
+ * pero mirando un valor suelto no hay forma de saber cuál de las dos es: se comprueba el rango
+ * COMÚN, [−180, 180], y la fuente lo dice así. Citar el rango estrecho y comprobar el ancho sería
+ * afirmar un rigor que no hay, justo en el texto que el usuario lee como justificación.
+ *
+ * Se exigen decimales porque un entero suelto entre −90 y 90 es, casi siempre, cualquier otra cosa
+ * (una edad, un estrato, un conteo) — y marcar eso como coordenada sería un falso positivo de manual.
  */
 export const validadorCoordenada: Validador = {
   id: "coordenada",
   etiqueta: "Coordenada geográfica",
-  fuente: "Rango definicional: latitud [−90, 90], longitud [−180, 180]",
+  fuente:
+    "Rango definicional común a latitud y longitud: [−180, 180]. No se distingue cuál de las dos " +
+    "es, así que no se aplica el rango estrecho de la latitud",
   certeza: "estructural",
   categoria: "cuasi-identificador",
   prioridad: 75,

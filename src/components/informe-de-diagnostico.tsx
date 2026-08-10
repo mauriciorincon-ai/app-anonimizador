@@ -95,7 +95,10 @@ export function InformeDeDiagnostico({ informe }: { informe: Informe }) {
         </Panel>
       )}
 
-      <PanelDeRiesgo riesgo={riesgo} />
+      <PanelDeRiesgo
+        riesgo={riesgo}
+        identificadoresDirectos={diagnostico.resumen["identificador-directo"]}
+      />
 
       <Panel
         etiqueta="Columna por columna"

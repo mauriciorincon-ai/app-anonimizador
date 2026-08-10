@@ -74,6 +74,24 @@ describe("archivo con datos personales", () => {
     expect(screen.getByText("Cifra exacta.")).toBeInTheDocument();
   });
 
+  it("declara que la cifra no cuenta a quienes identifican solos", () => {
+    // La cifra del panel se calcula solo sobre cuasi-identificadores. Sin esta línea, un archivo
+    // con una cédula y dos columnas demográficas enseña un porcentaje bajo como titular y se lee
+    // como tranquilidad, con la cédula ahí al lado. Cada afirmación estaba bien acotada; la
+    // composición decía otra cosa.
+    render(<InformeDeDiagnostico informe={informe} />);
+    expect(
+      informe.diagnostico.resumen["identificador-directo"],
+    ).toBeGreaterThan(0);
+    const panel = screen.getByRole("region", {
+      name: "Cuánta gente queda sola en tu tabla",
+    });
+    expect(within(panel).getByText(/no cuenta/)).toBeInTheDocument();
+    expect(
+      within(panel).getByText(/sin ayuda de ninguna otra/),
+    ).toBeInTheDocument();
+  });
+
   it("enseña qué columnas se cruzaron para llegar a esa cifra", () => {
     render(<InformeDeDiagnostico informe={informe} />);
     expect(informe.riesgo.qis.length).toBeGreaterThan(0);
