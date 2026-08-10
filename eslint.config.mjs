@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Salidas generadas (gitignored, pero eslint no lee .gitignore): el reporte HTML de cobertura
+    // trae JS de terceros y los datasets sintéticos no son código de la app.
+    "coverage/**",
+    "tmp/**",
   ]),
 ]);
 

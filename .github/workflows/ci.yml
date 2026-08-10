@@ -1,5 +1,5 @@
 # CI del kit-app — corre en cada PR y en push a main.
-# Gates: typecheck, lint, tests+cobertura, build, audit de deps, e2e, Lighthouse vs perf-budget.json
+# Gates: anti-IA, typecheck, lint, tests+cobertura, build, audit de deps, e2e, Lighthouse vs perf-budget.json
 name: CI
 on:
   pull_request:
@@ -7,6 +7,18 @@ on:
     branches: [main]
 
 jobs:
+  # Gate propio de Velo (S1): la regla dura "cero IA generativa" como check mecánico.
+  # Deliberadamente SIN `needs` y sin `pnpm install`: es el check más barato del pipeline
+  # (~10 s, solo lee package.json y el lockfile) y debe ponerse rojo de inmediato, no al final.
+  anti-ia:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Cero SDKs de IA generativa en el runtime (decisions/001-cero-ia.md)
+        run: node scripts/gate-anti-ia.mjs
+
   quality:
     runs-on: ubuntu-latest
     steps:

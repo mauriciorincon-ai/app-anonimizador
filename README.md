@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Velo — la aduana de tus datos
 
-## Getting Started
+> _Velo para entregar. Desvelo para recuperar._
 
-First, run the development server:
+Velo revisa tus tablas antes de que salgan hacia una IA, una herramienta en la nube o el computador
+de un tercero: te dice **qué datos personales llevan dentro** y **a cuánta gente alcanzan a señalar
+con el dedo**.
+
+Todo ocurre **dentro del navegador**. No hay servidor, no hay carga, no hay copia.
+
+- 🔗 **Producción:** _(se publica al cerrar el ciclo)_
+- 📖 [Manual de uso](docs/MANUAL-DE-USO.md) · 🧪 [Guía de prueba](docs/GUIA-DE-PRUEBA.html) ·
+  🎨 [Sistema de diseño](design-system.md)
+
+---
+
+## Las cuatro reglas que definen este producto
+
+No son preferencias de estilo. Cada una es un **gate mecánico** que puede poner el CI en rojo.
+
+| Regla                                   | Cómo se hace cumplir                                                                                                                                                                                                                                                                                                                                        |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Cero IA generativa, para siempre**    | `scripts/gate-anti-ia.mjs` audita `package.json` **y el lockfile** contra tres familias vetadas de SDKs; una dependencia transitiva cuenta igual que una directa. Es un job propio del CI y un check requerido para mergear. ([ADR-001](decisions/001-cero-ia.md))                                                                                          |
+| **Los datos jamás salen del navegador** | Un e2e intercepta _todas_ las peticiones durante el flujo completo con un archivo cargado y falla si aparece una sola fuera del propio origen, con cuerpo, o con un nombre de columna en la URL. Además, la CSP le prohíbe al navegador conectarse a cualquier otro sitio, y un test de código fuente veta `fetch`, `localStorage`, `indexedDB` y compañía. |
+| **Determinismo byte-idéntico**          | El mismo archivo produce el mismo diagnóstico, siempre. Hay un test que lo corre dos veces y compara la salida serializada, otro que verifica que el tamaño de los trozos del parser no cambia el resultado, y un barrido del código del motor que prohíbe `Math.random`, `Date.now`, `new Date()` y `localeCompare`.                                       |
+| **Honestidad medida**                   | Las cifras exactas se presentan como exactas y llevan su denominador; los topes se declaran donde se aplican. Un test barre la interfaz buscando las frases prohibidas («anonimato garantizado», «100 % seguro», «imposible de reidentificar»).                                                                                                             |
+
+Y una quinta que gobierna el repositorio: **ni un dato real, en ninguna parte**. Todos los archivos
+de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
+
+---
+
+## Qué hace hoy
+
+**Sprint 001 · El diagnóstico.** Velo lee y mide; todavía no transforma.
+
+- **Carga** de CSV (sin tope) y Excel (hasta 150 MB, medido) con arrastre y con teclado.
+- **Detección por columna** con validadores que **citan su fuente oficial en el código**: NIT con el
+  mod 11 de la DIAN, tarjetas con Luhn (ISO/IEC 7812-1), IBAN con el 97-10 (ISO 13616), celulares y
+  fijos de la CRC, placas, cédula (estructural — no existe dígito de verificación público),
+  correo, IP, coordenadas y fechas.
+- **Tres niveles de certeza** —confirmado por algoritmo · reconocido por su forma · sin confirmar—
+  porque afirmar todo con la misma seguridad sería exagerar.
+- **Cuatro categorías de la Ley 1581 de 2012** en su sentido exacto: identificador directo,
+  cuasi-identificador, dato sensible del art. 5, no personal.
+- **Riesgo de reidentificación exacto** (modelo _prosecutor_): k mínimo, riesgo máximo, promedio y
+  porcentaje de registros únicos, contados sobre el archivo completo.
+- **Consejero de cruces**: qué combinaciones de columnas delatan, con su k real — y qué quedó fuera
+  del análisis, con su motivo.
+- **Reporte HTML autocontenido** con la huella SHA-256 del archivo, para que quien lo reciba pueda
+  comprobar que habla de esa copia exacta.
+
+Rendimiento medido: **500.000 filas × 24 columnas (130 MB) en unos 5 segundos**, con **cero tareas
+largas** en el hilo principal.
+
+---
+
+## Cómo correrlo
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev            # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Necesitas Node 22+ y pnpm (la versión la fija `packageManager` en el `package.json`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Archivos de prueba
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm kit:generar -- --filas 3000 --seed 42 --perfil clinico --salida tmp/clinico.csv
+```
 
-## Learn More
+Perfiles: `clinico` (24 columnas, con columnas-trampa), `limpio`, `trampas`, `sin-personales`.
+Misma semilla ⇒ mismo archivo, byte por byte.
 
-To learn more about Next.js, take a look at the following resources:
+### Verificación
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm test            # unitarias + integración, con cobertura
+pnpm test:e2e        # Playwright: flujo completo, garantía de red, 500k, axe, rendimiento
+pnpm gate:anti-ia    # el gate de la regla dura nº1
+pnpm typecheck && pnpm lint && pnpm build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Cómo está hecho
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/
+├─ app/            Next.js App Router — la aduana (/) y el diagnóstico (/diagnostico)
+├─ components/     interfaz, sin lógica de negocio
+├─ engine/         motores puros y deterministas: validadores, clasificador, riesgo, reporte
+├─ workers/        el worker: LA FRONTERA — los datos crudos viven aquí y solo aquí
+└─ lib/            sesión en memoria, formato, SHA-256, observabilidad
+docs/kit-de-prueba/  generador sintético con semilla — la única fuente de datos de prueba
+decisions/           ADRs
+sprints/             bitácora y resumen de cada sprint
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**La frontera.** El archivo se lee, se clasifica y se mide **dentro del worker**. Hacia la interfaz
+solo cruzan conteos, nombres de columna, proporciones y muestras ya enmascaradas — nunca el
+dataset. Cuando la sesión se descarta, el worker se termina y con él muere la única copia.
+
+**Sin backend.** No hay base de datos, ni API con datos, ni servicio externo. Vercel sirve la
+aplicación; los datos viven y mueren en la pestaña.
+
+---
+
+## Licencia y datos
+
+Repositorio público. **Nunca subas un archivo real de una persona**, ni siquiera para probar: para
+eso está el kit sintético.

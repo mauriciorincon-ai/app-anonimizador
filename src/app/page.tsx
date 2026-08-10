@@ -1,69 +1,102 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+// P1 — La aduana.
+//
+// La pantalla tiene UNA cosa que hacer, y todo lo demás retrocede para dejarla hacerla: traer el
+// archivo. La promesa de privacidad va arriba porque es la razón por la que alguien se atreve a
+// soltar una tabla con datos de personas; los tres pasos van abajo porque se leen después de
+// decidir, no antes.
+
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+
+import { Sello } from "@/components/sello";
+import { ZonaDeCarga } from "@/components/zona-de-carga";
+import { analizar, descartar, useSesion } from "@/lib/sesion";
+
+const PASOS = [
+  {
+    titulo: "Sueltas la tabla",
+    texto:
+      "Se abre en esta pestaña, en un hilo aparte para que el navegador no se congele. No hay carga a ningún servidor: es que no hay servidor.",
+  },
+  {
+    titulo: "Velo la lee columna por columna",
+    texto:
+      "Recalcula los dígitos de verificación oficiales —el mod 11 de la DIAN para el NIT, Luhn para las tarjetas, el 97-10 del IBAN— y reconoce las formas colombianas: cédulas, celulares, placas.",
+  },
+  {
+    titulo: "Te dice a quién delata",
+    texto:
+      "Cuenta cuántas personas quedan solas al cruzar unas columnas con otras. La cuenta es exacta: sale de tus filas, no de un modelo estadístico.",
+  },
+];
+
+export default function Aduana() {
+  const estado = useSesion();
+  const router = useRouter();
+  // Solo se navega en la TRANSICIÓN a "listo". Si se navegara cada vez que el estado es "listo",
+  // volver a la aduana con el botón «atrás» rebotaría de vuelta al diagnóstico y el usuario
+  // quedaría atrapado entre las dos pantallas.
+  const faseAnterior = useRef(estado.fase);
+
+  useEffect(() => {
+    if (estado.fase === "listo" && faseAnterior.current !== "listo") {
+      router.push("/diagnostico");
+    }
+    faseAnterior.current = estado.fase;
+  }, [estado.fase, router]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12 sm:py-16">
+      <h1 className="font-display text-tinta text-[clamp(1.875rem,5vw,2.75rem)] leading-[1.1] font-semibold text-balance">
+        Mira tu tabla como la vería un extraño
+      </h1>
+      <p className="text-tinta-suave mt-4 text-lg leading-relaxed text-pretty">
+        Antes de mandar un archivo a una IA, a una herramienta en la nube o al
+        computador de un tercero, Velo te dice qué datos personales lleva dentro
+        y a cuántas personas alcanza a señalar con el dedo.
+      </p>
+
+      <div className="mt-10">
+        <ZonaDeCarga
+          estado={estado}
+          onArchivo={analizar}
+          onReintentar={descartar}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+
+      {/* La promesa va pegada al control, que es donde el usuario la necesita: en el segundo en
+          que está a punto de soltar una tabla con datos de personas reales. */}
+      <div className="mt-4">
+        <Sello />
+      </div>
+
+      <section aria-labelledby="como-funciona" className="mt-16">
+        <h2 id="como-funciona" className="etiqueta">
+          Cómo funciona
+        </h2>
+        <ol className="mt-4 grid gap-6 sm:grid-cols-3">
+          {PASOS.map((paso, i) => (
+            <li key={paso.titulo}>
+              <p className="cifra font-display text-tinta-tenue text-2xl leading-none">
+                {i + 1}
+              </p>
+              <h3 className="text-tinta mt-2 font-semibold">{paso.titulo}</h3>
+              <p className="text-tinta-suave mt-1.5 text-[0.9375rem] leading-relaxed">
+                {paso.texto}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <p className="border-borde text-tinta-tenue mt-10 border-t pt-6 text-[0.8125rem] leading-relaxed">
+        Por ahora Velo <strong className="font-medium">diagnostica</strong>: te
+        muestra lo que hay y lo que arriesga. Todavía no transforma el archivo —
+        enmascarar, seudonimizar y devolver los datos a su forma original llegan
+        después, y sin ellos no tiene sentido prometer nada sobre el resultado.
+      </p>
+    </main>
   );
 }

@@ -3,80 +3,38 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Guía de prueba — [APP_NAME]</title>
+<title>Guía de prueba — Velo</title>
 <!--
-  GUÍA DE PRUEBA VIVA Y ACUMULATIVA — entregable estándar de TODO sprint con UI (reglas duras
-  del pipeline, G-Metodo 2026-07-12). Referencia: app-habla/docs/GUIA-DE-PRUEBA.html.
-
-  REGLAS DE ESTE ARCHIVO (no negociables):
-  1. AUTOCONTENIDO: cero CDNs, cero dependencias externas, cero fetch. Se abre con doble clic
-     desde el repo o desde donde el usuario lo copie, sin internet y sin servidor.
-  2. VIVA y ACUMULATIVA (bola de nieve): la última versión contiene TODAS las pruebas vigentes
-     de la app, no solo las del sprint nuevo. El sprint N hereda ENTERAS las pruebas del N-1:
-     no las resume ni las comprime en un "verificar que sigue funcionando" — comprimir la guía
-     BORRA LA REGRESIÓN (caso habla S2: el motor del juego del S1 cambió por dentro y una guía
-     comprimida lo despachaba con "todo como antes"). Una prueba solo se elimina cuando la
-     feature que probaba dejó de existir, y se declara en el historial del pie.
-  3. ORIGEN VISIBLE por prueba, en su propia línea (atributo data-origen + chip):
-       - "Nuevo · SN"       (data-origen="nuevo")    — nació en este sprint.
-       - "Mejorado en SN"   (data-origen="mejorado") — venía de antes y este sprint la cambió:
-                                                       hay que volver a mirarla.
-       - "SN" a secas       (data-origen="heredada") — heredada sin cambios ⇒ ES REGRESIÓN.
-     Los filtros dejan correr todo o solo lo que cambió, sin perder la cobertura completa.
-     AL ABRIR UN SPRINT NUEVO: lo que era "Nuevo/Mejorado · S(N-1)" pasa a chip "S(N-1)"
-     (heredada), salvo que este sprint lo vuelva a tocar (entonces "Mejorado en SN").
-  4. GATE MÍNIMO ⭐ (atributo data-minimo + filtro propio): el subconjunto que el usuario corre
-     cuando no puede cubrirlo todo. Criterio de selección FIJO: solo lo que NINGUNA
-     automatización puede verificar (hardware/micrófono/voz reales, juicio humano sobre el
-     contenido, aprobación visual). Lo que la CI ya respalda (e2e, unit, axe, presupuestos)
-     queda FUERA del mínimo y se corre en pases completos. La cabecera dice cuántas pruebas son
-     y cuánto toman.
-  5. El PREFIJO de localStorage CAMBIA con cada versión de la guía (NS versionado por sprint,
-     ver script): una prueba de regresión sin correr JAMÁS aparece marcada como hecha por el
-     sprint anterior.
-  6. Cada bloque dice QUÉ probar, CÓMO y QUÉ RESULTADO ESPERAR. KIT DE PRUEBA: si un paso
-     requiere documento, código o dataset de prueba, se entrega en el repo
-     (docs/kit-de-prueba/) y se enlaza desde el bloque (callout .kit).
-  7. Doble propósito: (a) el gate de prueba del usuario antes del merge; (b) entregable para
-     usuarios finales.
-  8. "EMPIEZA EN:" POR BLOQUE (kit v1.8.2, gate de habla S4): la meta-línea de CADA bloque abre
-     con la ruta exacta donde arranca su primera prueba ("Empieza en: /jugar"), y la convención
-     se explica UNA vez en la caja de la URL. El probador jamás debe deducir desde dónde parte
-     un bloque.
-  9. LAS PRUEBAS DE ACUMULADOS DECLARAN SU PUNTO DE PARTIDA (kit v1.8.2, gate de habla S4):
-     cuando una prueba observa un acumulado (mínimo/máximo/contador/racha), su "Esperado" dice
-     desde qué estado se parte ("reinicia la sesión y…", "con el contador en cero…"). Origen:
-     la prueba A6 de habla pedía ver subir un mínimo corrido dentro de la misma sesión — un
-     imposible del instrumento que solo el gate humano detectó.
-
-  AL ESTAMPAR/ACTUALIZAR: reemplazar [APP_NAME], [SLUG], [SPRINT], [FECHA], la URL de preview y
-  los bloques de ejemplo por los reales. Actualizar el NS del script a s[SPRINT]. Los tokens de
-  color pueden alinearse con el design-system de la app.
+  GUÍA DE PRUEBA VIVA Y ACUMULATIVA de Velo (app-anonimizador).
+  Entregable estándar de todo sprint con UI. Autocontenida: cero CDNs, cero fetch, se abre con
+  doble clic sin internet. Acumulativa: cada sprint HEREDA enteras las pruebas del anterior con su
+  chip de origen; comprimirlas borraría la regresión. El NS de localStorage se versiona por sprint.
+  Los colores están alineados con design-system.md de esta app («bóveda serena»).
 -->
 <style>
   :root {
-    --fondo: #fbfbfa; --superficie: #f2f2ef; --borde: #e2e2dd;
-    --tinta: #1e2022; --tinta-suave: #5c6066;
-    --acento: #2f4858; --acento-suave: #dde6ec;
-    --alerta: #a4432f; --alerta-suave: #fbe4dd;
-    --ok: #4f7a4a; --pendiente: #8a6413; --pendiente-suave: #f8ead0;
+    --fondo: #fbf9f4; --superficie: #f2eee5; --borde: #e2dccf;
+    --tinta: #1a211d; --tinta-suave: #4f5a55;
+    --acento: #0d6b57; --acento-suave: #e4f0eb;
+    --alerta: #9e3222; --alerta-suave: #f8e9e5;
+    --ok: #0d6b57; --pendiente: #7c5209; --pendiente-suave: #f6eedb;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --fondo: #14171a; --superficie: #1c2024; --borde: #2d333b;
-      --tinta: #f0efec; --tinta-suave: #9aa0a6;
-      --acento: #a8c8dc; --acento-suave: #21303a;
-      --alerta: #f3b3a3; --alerta-suave: #3a2620;
-      --ok: #8dbd86; --pendiente: #e9c470; --pendiente-suave: #33290f;
+      --fondo: #0f1411; --superficie: #171d19; --borde: #2a322d;
+      --tinta: #ede8dc; --tinta-suave: #aab3ad;
+      --acento: #5cc7a6; --acento-suave: #12312a;
+      --alerta: #ef8e78; --alerta-suave: #35201b;
+      --ok: #5cc7a6; --pendiente: #dda945; --pendiente-suave: #322816;
     }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--fondo); color: var(--tinta);
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.55; }
   .pagina { max-width: 680px; margin: 0 auto; padding: 24px 18px 80px; }
-  h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: 2rem;
+  h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; font-size: 2rem;
     line-height: 1.15; margin: 8px 0 4px; text-wrap: balance; }
-  h2 { font-family: Georgia, serif; font-weight: 400; font-size: 1.35rem; margin: 0; text-wrap: balance; }
+  h2 { font-family: Georgia, serif; font-weight: 600; font-size: 1.35rem; margin: 0; text-wrap: balance; }
   .eyebrow { font-family: ui-monospace, Menlo, monospace; font-size: 0.68rem;
     letter-spacing: 0.09em; text-transform: uppercase; color: var(--tinta-suave); }
   p { margin: 0.5em 0; }
@@ -84,6 +42,8 @@
   .chica { font-size: 0.875rem; }
   code { font-family: ui-monospace, Menlo, monospace; font-size: 0.85em;
     background: var(--superficie); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--superficie); border: 1px solid var(--borde); border-radius: 8px;
+    padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; }
 
   .url-caja { background: var(--superficie); border: 1px solid var(--borde);
     border-radius: 10px; padding: 12px 14px; margin: 16px 0; overflow-wrap: anywhere; }
@@ -145,24 +105,39 @@
 <body>
 <div class="pagina">
   <header>
-    <p class="eyebrow">[APP_NAME] · Guía de prueba viva y acumulativa · Sprint [SPRINT] · [FECHA]</p>
+    <p class="eyebrow">Velo · Guía de prueba viva y acumulativa · Sprint 001 · 9 de agosto de 2026</p>
     <h1>Guía de prueba</h1>
-    <p class="suave">Todas las pruebas vigentes de la app — las nuevas de este sprint, las que
-      cambiaron y las heredadas (regresión). Filtra por origen para correr todo o solo lo que
-      cambió. Las casillas se guardan solas en este navegador.</p>
-    <p class="chica"><strong>Gate mínimo ⭐: [N] pruebas · ~[M] min.</strong> Es lo que ninguna
-      automatización puede verificar (hardware/micrófono/voz reales, juicio sobre el contenido,
-      aprobación visual). Lo que la CI ya respalda queda fuera del mínimo y se corre en pases
+    <p class="suave">Todas las pruebas vigentes de Velo. Este es el primer sprint, así que todas
+      son nuevas; a partir del siguiente convivirán con las heredadas (regresión) y verás su
+      origen en cada línea. Las casillas se guardan solas en este navegador.</p>
+    <p class="chica"><strong>Gate mínimo ⭐: 8 pruebas · ~18 min.</strong> Es lo único que ninguna
+      automatización puede verificar: juicio humano sobre el diseño y el lenguaje, y las dos
+      comprobaciones que solo valen si las haces tú con tus propias herramientas (la huella
+      SHA-256 y el reporte abierto sin internet). Todo lo demás lo respalda la CI —263 pruebas
+      unitarias, 39 e2e, axe en dos temas, presupuestos de rendimiento— y se corre en pases
       completos.</p>
     <div class="url-caja">
       <p class="eyebrow" style="margin:0 0 6px">URL de prueba</p>
-      <code>[URL de la preview de la rama del sprint]</code>
+      <code>https://app-anonimizador-git-sprint-001-el-diagnostico-mauricio-rincon.vercel.app</code>
       <p class="chica suave" style="margin:8px 0 0">Dirección estable de la rama: no cambia aunque
         se suban correcciones. Si pide login de Vercel: Settings → Deployment Protection →
         Vercel Authentication → Disabled.</p>
       <p class="chica suave" style="margin:8px 0 0"><strong>Cada bloque abre con "Empieza en:"</strong> —
         la ruta exacta (sobre esta URL) donde arranca su primera prueba. Navega ahí antes de
         empezar el bloque.</p>
+    </div>
+    <div class="kit">
+      <p><strong>Kit de prueba — ni un dato real, nunca.</strong> Todos los archivos de prueba se
+      generan con el generador sintético del repo (<code>docs/kit-de-prueba/generador.mjs</code>).
+      Con la misma semilla producen el mismo archivo, byte por byte. Genera los tres que usa esta
+      guía antes de empezar:</p>
+      <pre>node docs/kit-de-prueba/generador.mjs --filas 3000   --seed 42 --perfil clinico        --salida tmp/clinico-3000.csv
+node docs/kit-de-prueba/generador.mjs --filas 1200   --seed 7  --perfil sin-personales --salida tmp/limpio.csv
+node docs/kit-de-prueba/generador.mjs --filas 1000   --seed 42 --perfil clinico --formato xlsx --salida tmp/clinico.xlsx
+node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil clinico        --salida tmp/clinico-500k.csv</pre>
+      <p class="chica suave" style="margin:6px 0 0">El último pesa unos 130 MB y tarda un par de
+      segundos. <strong>Nunca uses un archivo real de una persona</strong> para probar: este repo
+      es público y el kit existe justo para eso.</p>
     </div>
   </header>
 
@@ -173,54 +148,343 @@
     </div>
     <div class="filtros" role="group" aria-label="Filtrar pruebas por origen">
       <button type="button" data-filtro="todo" class="activo">Todo</button>
-      <button type="button" data-filtro="cambios">Lo que cambió en S[SPRINT]</button>
+      <button type="button" data-filtro="cambios">Lo que cambió en S1</button>
       <button type="button" data-filtro="minimo">Gate mínimo ⭐</button>
     </div>
   </div>
 
-  <!-- ANATOMÍA DE UN BLOQUE (copiar y adaptar; uno por área a probar).
-       Cada <li> DEBE llevar data-origen="nuevo|mejorado|heredada" + su chip visible, y
-       data-minimo (sin valor) + "⭐ mínimo" si integra el gate mínimo. Ids únicos.
-       La meta-línea SIEMPRE abre con "Empieza en:" + la ruta exacta (regla 8). -->
   <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">A</span><h2>[Nombre del bloque]</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>[/ruta-exacta]</code> ·
-      [~N min · qué valida en una línea]</p>
+    <div class="bloque-cabeza"><span class="letra">A</span><h2>La aduana en reposo</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
+      ~2 min · la primera impresión y la promesa que sostiene el producto.</p>
     <ul class="pasos">
-      <li data-origen="nuevo" data-minimo><input type="checkbox" id="a1"><label for="a1">[Paso
-        NUEVO de este sprint que requiere juicio humano/hardware real.]
-        <span class="origen origen-nuevo">Nuevo · S[SPRINT]</span>
+      <li data-origen="nuevo"><input type="checkbox" id="a1"><label for="a1">Abre la página. Se ve
+        el título <strong>«Mira tu tabla como la vería un extraño»</strong>, el recuadro para traer
+        la tabla y, justo debajo, el sello verde <strong>«Nada sale de este navegador»</strong>.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="a2"><label for="a2">Arriba a la derecha,
+        el sello aparece también en el encabezado, en pequeño. <strong>Está en todas las
+        pantallas</strong> y nunca cambia de color ni se anima.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="a3"><label for="a3">Más abajo, «Cómo
+        funciona» en tres pasos, y al final una nota que dice que <strong>por ahora Velo
+        diagnostica y todavía no transforma</strong>.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo" data-minimo><input type="checkbox" id="a4"><label for="a4"><strong>Léelo
+        como si no supieras nada de la app.</strong> ¿Entiendes en menos de 30 segundos qué hace
+        Velo y por qué deberías confiarle un archivo? Si alguna frase te obliga a releerla, anótala.
+        <span class="origen origen-nuevo">Nuevo · S1</span>
         <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="mejorado"><input type="checkbox" id="a2"><label for="a2">[Paso que venía
-        de antes y este sprint CAMBIÓ — con el resultado esperado en <strong>negrita</strong>.]
-        <span class="origen origen-mejorado">Mejorado en S[SPRINT]</span></label></li>
-      <li data-origen="heredada"><input type="checkbox" id="a3"><label for="a3">[Paso heredado
-        del sprint anterior SIN cambios ⇒ regresión. Se copia ENTERO, no se resume.]
-        <span class="origen origen-heredada">S[SPRINT-1]</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="a5"><label for="a5">Arrastra un archivo
+        por encima del recuadro <strong>sin soltarlo</strong>: el borde se pone verde y el texto
+        cambia a <strong>«Suéltalo aquí»</strong>. Sácalo y vuelve a «Trae tu tabla».
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
     </ul>
-    <div class="tabla-scroll"><table>
-      <tr><th>Qué mirar</th><th>Valor / comportamiento correcto</th></tr>
-      <tr><td>[dato o pantalla]</td><td class="valor">[lo que debe verse si está bien]</td></tr>
-    </table></div>
-    <div class="kit"><p><strong>Kit de prueba:</strong> [si un paso necesita documento, código o
-      dataset de prueba, vive en <code>docs/kit-de-prueba/</code> — nómbralo aquí con su ruta y
-      cómo usarlo. Si el bloque no necesita kit, elimina este callout].</p></div>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> [las señales que significan que
-      algo está roto y hay que arreglar antes del merge].</p></div>
+    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> cualquier frase que prometa
+      «anonimato garantizado», «100 % seguro» o «imposible de reidentificar» — están prohibidas por
+      diseño. También si el sello no aparece en alguna pantalla.</p></div>
   </section>
 
-  <!-- Repetir <section class="bloque"> por cada área. -->
+  <section class="bloque">
+    <div class="bloque-cabeza"><span class="letra">B</span><h2>Cargar y ver el progreso</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
+      ~3 min · las dos vías de carga y el progreso honesto.</p>
+    <ul class="pasos">
+      <li data-origen="nuevo"><input type="checkbox" id="b1"><label for="b1">Suelta
+        <code>tmp/clinico-3000.csv</code> sobre el recuadro. Verás pasar las etapas
+        (<strong>tomando la huella</strong> → <strong>leyendo</strong> → <strong>reconociendo
+        columnas</strong> → <strong>midiendo el riesgo</strong>) y luego el diagnóstico.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="b2"><label for="b2">Vuelve a <code>/</code>
+        con «Analizar otro archivo». Ahora <strong>sin ratón</strong>: pulsa Tab hasta que el botón
+        «Elegir archivo» quede resaltado y pulsa Enter. Se abre el diálogo del sistema y puedes
+        elegir el archivo con el teclado.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="b3"><label for="b3">Con el archivo de
+        500.000 filas, mira la barra: <strong>avanza de verdad</strong> y muestra el porcentaje y
+        las filas leídas. En las etapas que no tienen medida (reconocer, medir riesgo)
+        <strong>no hay barra</strong>, solo el nombre de la etapa.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+    </ul>
+    <div class="tabla-scroll"><table>
+      <tr><th>Qué mirar</th><th>Comportamiento correcto</th></tr>
+      <tr><td>Barra de progreso</td><td class="valor">Solo aparece cuando hay una medida real; nunca una barra que se llena sola</td></tr>
+      <tr><td>Foco del teclado</td><td class="valor">El anillo de foco se ve claramente sobre el botón «Elegir archivo»</td></tr>
+    </table></div>
+    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> una barra que se queda quieta en
+      un número, o que aparece sin que haya nada que medir.</p></div>
+  </section>
 
   <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">B</span><h2>[Siguiente bloque]</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>[/ruta-exacta]</code> ·
-      [~N min · qué valida en una línea]</p>
+    <div class="bloque-cabeza"><span class="letra">C</span><h2>El diagnóstico: qué hay y por qué</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> (carga
+      <code>tmp/clinico-3000.csv</code>) · ~5 min · la tabla columna por columna.</p>
     <ul class="pasos">
-      <li data-origen="heredada"><input type="checkbox" id="b1"><label for="b1">[…]
-        <span class="origen origen-heredada">S[SPRINT-1]</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="c1"><label for="c1">Arriba: el nombre del
+        archivo, <strong>3.000 filas · 24 columnas</strong>, el tiempo que tardó y la
+        <strong>huella SHA-256</strong> completa.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="c2"><label for="c2">En la tabla, busca
+        <code>nit_empresa</code>: dice <strong>«NIT con dígito de verificación»</strong>,
+        <strong>Confirmado</strong>, y cita la fuente (<em>DIAN, Orden Administrativa 4 de
+        1989</em>). Ese «Confirmado» significa que Velo <strong>recalculó el dígito</strong> y cuadra.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="c3"><label for="c3">Busca
+        <code>cedula_titular</code>: dice <strong>«Por su forma»</strong>, no «Confirmado». Es
+        correcto: <strong>la cédula colombiana no tiene dígito de verificación público</strong>, así
+        que solo se puede comprobar la forma, y Velo no finge más certeza de la que tiene.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="c4"><label for="c4">Busca
+        <code>diagnostico</code> y <code>grupo_etnico</code>: categoría
+        <strong>«Dato sensible · art. 5»</strong>, certeza <strong>«Sin confirmar»</strong> y
+        <strong>«sin muestra»</strong> en la última columna. Ningún cálculo puede confirmar que un
+        código es un diagnóstico; solo el nombre de la columna lo sugiere.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="c5"><label for="c5">Ninguna muestra de la
+        última columna es un valor completo: todas se ven como <code>103***89</code>.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="c6"><label for="c6"><strong>Las
+        columnas-trampa.</strong> <code>referencia_pago</code> parece una tarjeta (pasa el algoritmo
+        de Luhn a propósito) y Velo la deja como <strong>«No personal»</strong>: es correcto.
+        <code>codigo_interno</code>, en cambio, sí se marca como cédula — es una
+        <strong>limitación declarada</strong>: tiene exactamente la misma forma y no existe checksum
+        que las separe.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo" data-minimo><input type="checkbox" id="c7"><label for="c7"><strong>Juicio
+        de producto:</strong> lee la columna «Qué encontramos» de tres filas cualesquiera. ¿El
+        «por qué» te convence, o tendrías que creerle a Velo? Si algo se lee como una afirmación sin
+        respaldo, anótalo.
+        <span class="origen origen-nuevo">Nuevo · S1</span>
+        <span class="minimo">⭐ mínimo</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="c8"><label for="c8">Carga ahora
+        <code>tmp/limpio.csv</code>: aparece el panel <strong>«Velo no reconoció datos personales
+        aquí»</strong>, y su nota aclara que eso <strong>no es lo mismo</strong> que decir que el
+        archivo es anónimo.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
     </ul>
-    <div class="diferido"><p><strong>Diferido:</strong> [lo que no se puede probar hoy y por qué;
-      cuándo se probará. Los diferidos se ACUMULAN entre sprints hasta pagarse].</p></div>
+    <div class="kit"><p><strong>Kit de prueba:</strong> <code>tmp/clinico-3000.csv</code> (perfil
+      clínico, 24 columnas con trampas incluidas) y <code>tmp/limpio.csv</code> (perfil
+      <code>sin-personales</code>). Ambos del generador, con semilla.</p></div>
+    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> una muestra que enseñe un valor
+      completo, una columna sensible con muestra visible, o un «Confirmado» en una columna que no
+      tiene algoritmo oficial.</p></div>
+  </section>
+
+  <section class="bloque">
+    <div class="bloque-cabeza"><span class="letra">D</span><h2>El riesgo y el consejero de cruces</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/diagnostico</code>
+      (con <code>tmp/clinico-3000.csv</code> cargado) · ~4 min · la mitad exacta del producto.</p>
+    <ul class="pasos">
+      <li data-origen="nuevo"><input type="checkbox" id="d1"><label for="d1">El panel de riesgo
+        abre con una cifra grande de porcentaje y, debajo, <strong>su denominador</strong>
+        («N de 3.000 registros»). Ningún número aparece suelto.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="d2"><label for="d2">Aparecen los cuatro
+        datos: <strong>grupo más pequeño (k)</strong>, riesgo del más expuesto, riesgo promedio y
+        grupos distintos — cada uno con su explicación de una línea.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="d3"><label for="d3">Está la marca
+        <strong>«Cifra exacta»</strong> y la lista de <strong>columnas cruzadas</strong>. Esa marca
+        importa: en el próximo sprint llegan estimadores, y tendrán que decir «estimado».
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="d4"><label for="d4">En el consejero,
+        <strong>«Estas no necesitan compañía»</strong> lista columnas que ya dejan solo a casi todo
+        el mundo, cada una con su porcentaje y su cuenta.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="d5"><label for="d5">Debajo, las
+        combinaciones más delatoras con su <strong>k real</strong>. Y al pie, el
+        <strong>alcance declarado</strong>: cuántas combinaciones se evaluaron, sobre cuántas
+        candidatas y con qué tope. Abre el desplegable «columnas quedaron fuera, y por qué».
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo" data-minimo><input type="checkbox" id="d6"><label for="d6"><strong>Juicio
+        de producto:</strong> ¿el consejero te dijo algo que no sabías del archivo? Esa es la
+        prueba de fuego de esta pantalla: si solo confirma lo evidente, no está ganándose su sitio.
+        <span class="origen origen-nuevo">Nuevo · S1</span>
+        <span class="minimo">⭐ mínimo</span></label></li>
+    </ul>
+    <div class="tabla-scroll"><table>
+      <tr><th>Qué mirar</th><th>Comportamiento correcto</th></tr>
+      <tr><td>Cifras de riesgo</td><td class="valor">Siempre con denominador y con la marca «exacta»</td></tr>
+      <tr><td>Tope del consejero</td><td class="valor">Declarado en pantalla, con las exclusiones y su motivo</td></tr>
+      <tr><td>Color de la cifra</td><td class="valor">Lacre apagado cuando el riesgo es alto — nunca rojo de semáforo ni iconos de peligro</td></tr>
+    </table></div>
+    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> un tope aplicado sin declararlo,
+      o un número presentado sin decir sobre cuántos registros se calculó.</p></div>
+  </section>
+
+  <section class="bloque">
+    <div class="bloque-cabeza"><span class="letra">E</span><h2>El reporte que te llevas</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/diagnostico</code>
+      (con <code>tmp/clinico-3000.csv</code> cargado) · ~5 min · el único artefacto que sale del navegador.</p>
+    <ul class="pasos">
+      <li data-origen="nuevo"><input type="checkbox" id="e1"><label for="e1">El panel «Llévate el
+        diagnóstico» dice <strong>qué lleva y qué no lleva</strong> el reporte <em>antes</em> de
+        descargarlo.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="e2"><label for="e2">Pulsa «Ver antes de
+        descargar»: se abre el reporte completo dentro de la página. Ciérralo con «Cerrar la vista».
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="e3"><label for="e3">Descárgalo. El archivo
+        se llama <code>velo-diagnostico-clinico-3000.html</code>.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo" data-minimo><input type="checkbox" id="e4"><label for="e4"><strong>Apaga
+        el wifi</strong> y abre el reporte descargado con doble clic. <strong>Tiene que verse
+        completo</strong>: tipografía, colores, tablas y sello. Si algo se ve roto sin internet, el
+        reporte no es autocontenido y eso es un fallo de bloqueo.
+        <span class="origen origen-nuevo">Nuevo · S1</span>
+        <span class="minimo">⭐ mínimo</span></label></li>
+      <li data-origen="nuevo" data-minimo><input type="checkbox" id="e5"><label for="e5"><strong>Comprueba
+        la huella con tus propias herramientas.</strong> En la terminal, sobre el archivo que
+        cargaste: <code>shasum -a 256 tmp/clinico-3000.csv</code> (macOS) o
+        <code>sha256sum</code> (Linux). El texto tiene que ser <strong>idéntico</strong> al del
+        reporte y al que se ve en la pantalla de diagnóstico.
+        <span class="origen origen-nuevo">Nuevo · S1</span>
+        <span class="minimo">⭐ mínimo</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="e6"><label for="e6">En el reporte abierto:
+        no hay ninguna fila de tu tabla, las muestras van enmascaradas y el pie explica
+        <strong>qué NO afirma Velo</strong>.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+    </ul>
+    <div class="tabla-scroll"><table>
+      <tr><th>Qué mirar</th><th>Valor correcto</th></tr>
+      <tr><td>SHA-256 del kit clínico (3.000 filas, semilla 42)</td><td class="valor"><code>50ad2265…f988f1c</code> — y el mismo en pantalla, en el reporte y en tu terminal</td></tr>
+      <tr><td>Reporte sin internet</td><td class="valor">Se ve idéntico a la vista previa</td></tr>
+    </table></div>
+    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> que el reporte se vea distinto sin
+      internet, o que la huella no coincida con la de tu terminal. Cualquiera de las dos rompe la
+      promesa central del producto.</p></div>
+  </section>
+
+  <section class="bloque">
+    <div class="bloque-cabeza"><span class="letra">F</span><h2>Errores y límites</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
+      ~3 min · qué pasa cuando algo no se puede hacer.</p>
+    <ul class="pasos">
+      <li data-origen="nuevo"><input type="checkbox" id="f1"><label for="f1">Suelta un archivo que
+        no sea tabla (un <code>.txt</code> o una imagen). Sale un aviso que dice
+        <strong>qué hacer</strong> («guárdalo como CSV»), no solo qué falló. Y el nombre del archivo
+        aparece para que sepas cuál fue.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="f2"><label for="f2">Pulsa «Elegir otro
+        archivo»: vuelve al estado inicial sin recargar la página.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="f3"><label for="f3">Con un diagnóstico en
+        pantalla, <strong>recarga la página</strong> (F5). Aparece <strong>«No quedó nada, y es a
+        propósito»</strong> con la explicación y el botón para volver. <strong>Esto es correcto</strong>:
+        es la prueba visible de que nada se guardó.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="f4"><label for="f4">Entra directo a
+        <code>/diagnostico</code> sin cargar nada: la misma pantalla.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+    </ul>
+    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> un mensaje de error que muestre
+      texto técnico (nombres de librerías, contenido del archivo) o que no diga qué hacer.</p></div>
+  </section>
+
+  <section class="bloque">
+    <div class="bloque-cabeza"><span class="letra">G</span><h2>Excel</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
+      ~2 min · la otra vía de lectura, con su tope declarado.</p>
+    <ul class="pasos">
+      <li data-origen="nuevo"><input type="checkbox" id="g1"><label for="g1">Suelta
+        <code>tmp/clinico.xlsx</code>. Funciona igual que el CSV: diagnóstico completo, con sus
+        1.000 filas y 24 columnas.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="g2"><label for="g2">En la pantalla inicial
+        se declara el tope: <strong>«el CSV no tiene tope de tamaño; el Excel sí, hasta 150 MB»</strong>.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+    </ul>
+    <div class="kit"><p><strong>Kit de prueba:</strong> <code>tmp/clinico.xlsx</code> — mismo
+      generador, <code>--formato xlsx</code>.</p></div>
+    <div class="diferido"><p><strong>Diferido:</strong> probar a mano un Excel de más de 150 MB no
+      es razonable (generarlo tarda y ocupa). El rechazo por tamaño está cubierto por pruebas
+      automáticas: un e2e fabrica un archivo de 160 MB en el navegador y comprueba que Velo lo
+      rechaza <em>sin abrirlo</em> y guía a CSV.</p></div>
+  </section>
+
+  <section class="bloque">
+    <div class="bloque-cabeza"><span class="letra">H</span><h2>El archivo grande</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
+      ~3 min · 500.000 filas sin congelar la pestaña.</p>
+    <ul class="pasos">
+      <li data-origen="nuevo"><input type="checkbox" id="h1"><label for="h1">Suelta
+        <code>tmp/clinico-500k.csv</code> (unos 130 MB). Termina en pocos segundos y el diagnóstico
+        dice <strong>500.000 filas · 24 columnas</strong>.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo" data-minimo><input type="checkbox" id="h2"><label for="h2"><strong>Mientras
+        procesa</strong>, mueve el ratón, haz scroll y selecciona texto. <strong>La pestaña
+        responde</strong>: el cursor no se traba, la barra avanza y el scroll es fluido. El
+        presupuesto de tareas largas ya lo verifica la CI; lo que solo puedes juzgar tú es si
+        <em>se siente</em> fluido.
+        <span class="origen origen-nuevo">Nuevo · S1</span>
+        <span class="minimo">⭐ mínimo</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="h3"><label for="h3">Al terminar, el
+        encabezado dice cuánto tardó en leer y en analizar. Con este archivo suelen ser unos pocos
+        segundos en total.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+    </ul>
+    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> que la pestaña se congele, que el
+      navegador pida «esperar o cerrar la página», o que el proceso no termine.</p></div>
+  </section>
+
+  <section class="bloque">
+    <div class="bloque-cabeza"><span class="letra">I</span><h2>Diseño y accesibilidad</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
+      ~5 min · el gate visual — lo firma tu ojo, no la CI.</p>
+    <ul class="pasos">
+      <li data-origen="nuevo" data-minimo><input type="checkbox" id="i1"><label for="i1"><strong>Los
+        dos temas.</strong> Cambia tu sistema a modo oscuro y recorre las dos pantallas; luego a
+        claro. Todo tiene que leerse cómodo en ambos: nada de texto que desaparezca sobre su fondo,
+        ningún borde invisible. <strong>La aprobación visual es tuya.</strong>
+        <span class="origen origen-nuevo">Nuevo · S1</span>
+        <span class="minimo">⭐ mínimo</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="i2"><label for="i2">En un teléfono (o con
+        la ventana a ~400 px de ancho): la página <strong>no se desplaza en horizontal</strong>. La
+        tabla de columnas sí se desplaza, pero dentro de su propio marco y avisa de ello.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="i3"><label for="i3">Recorre la página
+        entera con Tab: <strong>el foco siempre se ve</strong> (anillo verde) y el orden tiene
+        sentido. La primera tabulación ofrece «Saltar al contenido».
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="i4"><label for="i4">Activa en tu sistema
+        «reducir movimiento» y recarga: <strong>todo sigue visible</strong> (no desaparece nada),
+        simplemente ya no hay transiciones.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+    </ul>
+    <div class="tabla-scroll"><table>
+      <tr><th>Qué mirar</th><th>Comportamiento correcto</th></tr>
+      <tr><td>Contraste</td><td class="valor">Todo el texto se lee sin esfuerzo en claro y en oscuro</td></tr>
+      <tr><td>Movimiento</td><td class="valor">Sutil y breve; con «reducir movimiento» desaparece sin llevarse el contenido</td></tr>
+      <tr><td>Anti-patrones</td><td class="valor">Sin emojis como iconos, sin gradientes decorativos, sin sombras pesadas</td></tr>
+    </table></div>
+    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> cualquier pantalla donde el
+      contraste te obligue a acercarte, o donde el foco del teclado se pierda.</p></div>
+  </section>
+
+  <section class="bloque">
+    <div class="bloque-cabeza"><span class="letra">J</span><h2>La promesa, comprobada por ti</h2></div>
+    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
+      ~4 min · la regla dura del producto, verificada a mano.</p>
+    <ul class="pasos">
+      <li data-origen="nuevo" data-minimo><input type="checkbox" id="j1"><label for="j1">Abre las
+        herramientas de desarrollo (F12) → pestaña <strong>Red</strong>, y déjala abierta. Carga
+        <code>tmp/clinico-3000.csv</code> y recorre todo el flujo hasta descargar el reporte.
+        <strong>Ninguna petición sale del dominio de Velo y ninguna lleva datos</strong> — solo se
+        piden archivos de la propia aplicación.
+        <span class="origen origen-nuevo">Nuevo · S1</span>
+        <span class="minimo">⭐ mínimo</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="j2"><label for="j2">En la misma pestaña de
+        red, filtra por <em>Fetch/XHR</em>: no hay ni un envío con cuerpo. Velo no tiene servidor al
+        que mandar nada.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+      <li data-origen="nuevo"><input type="checkbox" id="j3"><label for="j3">Corre el mismo archivo
+        <strong>dos veces</strong> y compara: el diagnóstico es idéntico —los mismos tipos, las
+        mismas cifras, el mismo orden en el consejero—. Eso es el determinismo, y es la razón por la
+        que este producto no necesita IA.
+        <span class="origen origen-nuevo">Nuevo · S1</span></label></li>
+    </ul>
+    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> una sola petición a un dominio que
+      no sea el de Velo durante el flujo con archivo cargado. Es fallo de bloqueo absoluto.</p></div>
   </section>
 
   <footer>
@@ -231,10 +495,10 @@
     <details class="chica">
       <summary>Historial de la guía</summary>
       <ul>
-        <li><strong>S[SPRINT] · [FECHA]:</strong> [qué bloques/pruebas se agregaron o mejoraron ·
-          pruebas eliminadas y la feature muerta que las justifica — o "ninguna eliminada"].</li>
-        <li><strong>S[SPRINT-1] · [FECHA]:</strong> [entrada anterior — el historial también es
-          acumulativo].</li>
+        <li><strong>S1 · 9 de agosto de 2026:</strong> primera versión. Bloques A–J: la aduana, la
+          carga y el progreso, el diagnóstico columna por columna, el riesgo y el consejero, el
+          reporte exportable, errores y límites, Excel, el archivo de 500k, diseño y accesibilidad,
+          y la comprobación manual de la promesa de red. Ninguna prueba eliminada (no había).</li>
       </ul>
     </details>
   </footer>
@@ -242,9 +506,9 @@
 
 <script>
   (function () {
-    // NS VERSIONADO POR SPRINT (regla dura): al publicar la guía de un sprint nuevo se cambia
-    // s[SPRINT] — así una regresión sin correr no aparece marcada por el sprint anterior.
-    var NS = "guia-[SLUG]:s[SPRINT]:";
+    // NS VERSIONADO POR SPRINT: al publicar la guía de un sprint nuevo se cambia s001 — así una
+    // regresión sin correr jamás aparece marcada como hecha por el sprint anterior.
+    var NS = "guia-anonimizador:s001:";
     var casillas = Array.prototype.slice.call(document.querySelectorAll('input[type="checkbox"]'));
     var barra = document.getElementById("barra-avance");
     var contador = document.getElementById("contador");
@@ -278,7 +542,6 @@
       barra.style.width = (vis.length ? (hechas / vis.length) * 100 : 0) + "%";
       contador.textContent = hechas + "/" + vis.length;
     }
-    // Conteos en los botones (una vez): Todo (N) · Lo que cambió (N) · Gate mínimo (N)
     botones.forEach(function (b) {
       var f = b.getAttribute("data-filtro"), n = 0;
       document.querySelectorAll("ul.pasos li").forEach(function (li) { if (visible(li, f)) n++; });
