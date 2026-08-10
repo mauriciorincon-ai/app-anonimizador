@@ -4,7 +4,7 @@
 // producción. Un informe de mentira probaría que el componente sabe pintar lo que le pasamos; este
 // prueba que sabe pintar lo que el motor produce, que es lo que el usuario va a ver.
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { generarFilas } from "../../docs/kit-de-prueba/generador.mjs";
@@ -33,7 +33,13 @@ function informeDe(perfil: string, filas = 400): Informe {
   const { riesgo, advisor } = evaluarRiesgo(tabla, diagnostico);
 
   return {
-    archivo: { nombre: `${perfil}.csv`, bytes: 815_899, formato: "csv" },
+    archivo: {
+      nombre: `${perfil}.csv`,
+      bytes: 815_899,
+      formato: "csv",
+      sha256:
+        "50ad22651a462bb3d5ebf08f1adf34486799384aef4688c7724d5a934f988f1c",
+    },
     diagnostico,
     riesgo,
     advisor,
@@ -130,6 +136,46 @@ describe("archivo con datos personales", () => {
     // Y lo que quedó fuera sale con su motivo, no desaparece.
     expect(informe.advisor.excluidas.length).toBeGreaterThan(0);
     expect(screen.getByText(/quedaron fuera, y por qué/)).toBeInTheDocument();
+  });
+
+  it("enseña la huella del archivo sin obligar a descargar nada", () => {
+    render(<InformeDeDiagnostico informe={informe} />);
+    expect(screen.getByText(informe.archivo.sha256)).toBeInTheDocument();
+  });
+
+  it("el reporte dice qué lleva y qué no ANTES de descargarlo", () => {
+    // Es el único artefacto que sale del navegador: quien lo descarga tiene derecho a saber qué
+    // va a mandar antes de mandarlo.
+    render(<InformeDeDiagnostico informe={informe} />);
+    const panel = screen.getByRole("region", {
+      name: "Llévate el diagnóstico",
+    });
+    expect(within(panel).getByText(/No lleva:/)).toBeInTheDocument();
+    expect(
+      within(panel).getByText(/ninguna\s+fila de tu tabla/),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByRole("button", { name: "Descargar el reporte" }),
+    ).toBeInTheDocument();
+  });
+
+  it("la vista previa se abre y se cierra", () => {
+    render(<InformeDeDiagnostico informe={informe} />);
+    const abrir = screen.getByRole("button", {
+      name: "Ver antes de descargar",
+    });
+    expect(abrir).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(abrir);
+    const marco = screen.getByTitle("Vista previa del reporte");
+    // `sandbox` vacío: el reporte se ve tal como lo verá quien lo reciba, y no puede tocar nada.
+    expect(marco).toHaveAttribute("sandbox", "");
+    expect(marco.getAttribute("srcdoc")).toContain(informe.archivo.sha256);
+
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar la vista" }));
+    expect(
+      screen.queryByTitle("Vista previa del reporte"),
+    ).not.toBeInTheDocument();
   });
 
   it("las columnas que delatan solas se reportan aparte", () => {

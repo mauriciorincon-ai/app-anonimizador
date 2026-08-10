@@ -15,7 +15,8 @@ export type FormatoDeArchivo = "csv" | "excel";
 export type MensajeAlWorker = { tipo: "analizar"; archivo: File };
 
 /** Etapas del trabajo, en el orden en que ocurren. La UI las nombra tal cual. */
-export type EtapaDelWorker = "leyendo" | "clasificando" | "midiendo-riesgo";
+export type EtapaDelWorker =
+  "huella" | "leyendo" | "clasificando" | "midiendo-riesgo";
 
 export type MotivoDeError =
   | "formato-no-soportado"
@@ -29,6 +30,14 @@ export interface Informe {
     nombre: string;
     bytes: number;
     formato: FormatoDeArchivo;
+    /**
+     * SHA-256 del archivo tal como está en el disco del usuario, en hexadecimal minúscula.
+     *
+     * Es lo que ata el reporte a UN archivo concreto: quien lo reciba puede correr `sha256sum`
+     * sobre el suyo y comprobar que el diagnóstico habla de ese y no de otro. Se calcula sobre
+     * los bytes crudos, antes de parsear nada.
+     */
+    sha256: string;
   };
   diagnostico: Diagnostico;
   riesgo: RiesgoExacto;

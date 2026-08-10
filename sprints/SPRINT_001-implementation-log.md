@@ -453,6 +453,121 @@ regla dura nº4 prohíbe («anonimato garantizado», «100 % seguro», «imposib
 sus variantes habituales. Mira el **código fuente**, no la salida: una frase escondida en un estado
 que ningún test recorre haría el mismo daño y no la cazaría ninguna aserción de comportamiento.
 
+## Fase 4 — Reporte, suite e2e y entregables ✅
+
+### La huella: por qué el SHA-256 se implementó en vez de llamarlo
+
+El reporte afirma «este diagnóstico corresponde al archivo con esta huella». Para que esa frase
+valga, el usuario tiene que poder correr `sha256sum` sobre su archivo y ver el mismo texto.
+
+`crypto.subtle.digest` —la del navegador— no tiene forma de streaming: hay que pasarle el archivo
+**entero** en un `ArrayBuffer`. En un CSV de 130 MB eso es una copia completa viva en memoria justo
+cuando la tabla columnar también lo está, y para un archivo mayor sencillamente no cabe. Velo se
+comprometió a leer por partes, así que se implementó **SHA-256 en streaming** (`src/lib/sha256.ts`),
+citando FIPS PUB 180-4 en el código como cualquier otro algoritmo del motor.
+
+La implementación **no se cree a sí misma**: se confronta con `crypto.subtle.digest` sobre las
+fronteras del relleno (0, 1, 55, 56, 57, 63, 64, 65, 119, 120, 127, 128, 129 bytes y un archivo de
+300 KB), con los tres vectores publicados en el propio estándar, y con ocho tamaños de trozo
+distintos para probar que partir el archivo no cambia el resultado. **27 tests.**
+
+- **Medido: 85 MB/s** — 1.525 ms para el fixture de 130 MB, con el resultado idéntico al de
+  `node:crypto`. El flujo completo de 500k pasó de ~3,9 s a ~5,4 s, y esa etapa tiene barra de
+  progreso real porque los bytes procesados se conocen.
+
+### El reporte (`src/engine/reporte.ts`)
+
+Un HTML que se abre con doble clic en cualquier computador, sin internet. Tres propiedades, y las
+tres tienen test:
+
+1. **Autocontenido de verdad.** Cero `<link>`, `<script>`, `<img>`, `@import` o `url(` — verificado
+   barriendo el HTML generado, y otra vez sobre el archivo **realmente descargado** en el e2e. Un
+   CDN convertiría un documento que promete que nada salió del navegador en uno que le avisa a un
+   servidor cada vez que alguien lo abre.
+2. **Ninguna fila del archivo.** Nombres de columna, tipos, categorías, cifras y muestras ya
+   enmascaradas. Y lo dice en su propio pie, para que quien lo reciba no tenga que confiar.
+3. **Determinista.** Mismo informe + misma fecha ⇒ mismo archivo. La fecha se **inyecta** desde la
+   UI justo por eso: el motor no puede mirar el reloj (hay un test que lo verifica leyendo el
+   código fuente).
+
+Y una que no estaba en el plan pero que este entregable exige: **el archivo del usuario no puede
+volverse código**. El reporte lo abre un tercero en su máquina, así que una columna llamada
+`<script>alert('xss')</script>` tiene que llegar como texto. El test lo comprueba sobre el **DOM ya
+parseado** —no buscando cadenas— exigiendo cero elementos `script`/`img`/`iframe`/`object` y cero
+atributos que empiecen por `on`.
+
+La vista previa va en un `<iframe sandbox srcdoc>` sin `allow-scripts`: el reporte se ve tal como lo
+verá quien lo reciba, y no puede tocar la página que lo contiene.
+
+### CSP y cabeceras
+
+La directiva que carga con el peso del producto es **`connect-src 'self'`**: el navegador se niega a
+abrir una conexión que no sea al propio origen. Es el cinturón que respalda al e2e de la garantía de
+red — el test prueba que no pasa; la CSP hace que no pueda pasar. Van también `object-src 'none'`,
+`base-uri 'none'`, `form-action 'none'`, `frame-ancestors 'none'`, más `nosniff`,
+`Referrer-Policy: no-referrer` y un `Permissions-Policy` que apaga cámara, micrófono y ubicación.
+
+**`script-src` lleva `'unsafe-inline'`, y se declara en vez de llamar a esto «CSP estricta» y
+seguir:** Next inyecta un script de arranque para la hidratación y sin _nonce_ —que exigiría
+renderizado dinámico y le quitaría a la app su naturaleza estática— no hay forma de permitirlo sin
+la palabra. La superficie que abre es pequeña aquí (no hay backend, no se renderiza HTML del usuario
+en ninguna parte y `connect-src` sigue cerrado), pero queda como **deuda declarada**.
+
+### La suite e2e — 39 pruebas, cero fallos
+
+| Spec                      | Qué demuestra                                                                                                                                                                                                                                                                                                               |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `garantia-de-red.spec.ts` | **La regla dura nº2.** Escucha toda petición y websocket durante el flujo completo con archivo cargado y exige: cero fuera del origen, cero con cuerpo, cero rutas no previstas, cero parámetros de query ajenos a Next y **cero nombres de columna en una URL**. Más un segundo test que revisa el reporte **descargado**. |
+| `aduana.spec.ts`          | Camino feliz por la UI hasta la descarga · vista previa · **carga solo con teclado** · Excel de punta a punta · Excel de 160 MB rechazado **sin abrirlo** (fabricado en el navegador y soltado por arrastre) · archivo que no es tabla · recarga sin datos · **reduced-motion con aserción de visibilidad real**.           |
+| `rendimiento.spec.ts`     | LCP observado < 1.500 ms · **500.000 filas por la UI** con presupuesto de tareas largas.                                                                                                                                                                                                                                    |
+| `a11y.spec.ts`            | axe en 4 estados × 2 temas × 2 viewports.                                                                                                                                                                                                                                                                                   |
+
+Dos decisiones declaradas, para que no se lean como recortes silenciosos:
+
+- **El test de 500k corre en un solo proyecto** (escritorio). El fixture pesa 130 MB y lo que se
+  mide es el hilo principal, que es el mismo en móvil; duplicarlo gastaría el doble sin añadir
+  información. Está escrito en el propio `test.skip`, aquí y en el summary.
+- **El rechazo del Excel por encima del tope no usa un archivo de 150 MB en disco**: se fabrica en
+  el navegador. Probar el tope no requiere mover 160 MB por el canal de pruebas, y de paso ejercita
+  la vía de **arrastre**, que `setInputFiles` no toca.
+
+Un falso positivo que valía la pena arreglar bien: el gate de red buscaba nombres de columna en las
+URLs y `diagnostico` es a la vez una columna del kit **y la ruta de la aplicación**. Gritaba en cada
+navegación normal. Se sacó de la lista con su razón escrita: un test que grita cuando no pasa nada
+acaba silenciado, que es la peor forma de perder un gate.
+
+### Entregables
+
+`docs/MANUAL-DE-USO.md` (español llano, con lo que Velo **no** afirma en su propia sección),
+`docs/GUIA-DE-PRUEBA.html` v1 (plantilla del kit: bloques A–J, «Empieza en:» por bloque, origen por
+línea, filtros, `localStorage` con NS `guia-anonimizador:s001:`, kit de prueba enlazado con sus
+comandos) y `README.md`.
+
+**Gate mínimo ⭐: 8 pruebas, ~18 min** — y el criterio de selección se respetó con disciplina: solo
+entró lo que **ninguna automatización puede verificar**. El juicio humano sobre el lenguaje y el
+diseño; el reporte abierto **con el wifi apagado**; la huella comprobada por el usuario **con su
+propia terminal**; y si el flujo de 500k _se siente_ fluido, que es distinto de cumplir un
+presupuesto. Todo lo que la CI ya respalda quedó fuera del mínimo.
+
+### Los 12 acceptance criteria de la orden, uno por uno
+
+| #   | Criterio                                                     | Estado | Dónde se verifica                                                                 |
+| --- | ------------------------------------------------------------ | ------ | --------------------------------------------------------------------------------- |
+| 1   | 500k con progreso, sin congelar                              | ✅     | `rendimiento.spec.ts` · 0 tareas largas medidas                                   |
+| 2   | Tipo · por qué · categoría · muestra enmascarada             | ✅     | `aduana.spec.ts`, `diagnostico.test.tsx`                                          |
+| 3   | Riesgo exacto + advisor con k real                           | ✅     | `riesgo.test.ts` (tabla de 12 filas a mano), `diagnostico.test.tsx`               |
+| 4   | Excel hasta el tope; por encima, aviso honesto               | ✅     | `aduana.spec.ts` (ambos casos)                                                    |
+| 5   | **Garantía de red**                                          | ✅     | `garantia-de-red.spec.ts` + CSP + `privacidad.test.ts`                            |
+| 6   | Gate anti-IA en CI, y un PR con un SDK lo pone rojo          | ⏳     | job `anti-ia` verde en cada PR; **la demo del PR desechable es del cierre**       |
+| 7   | Reporte autocontenido con hallazgos, riesgo, SHA-256 y fecha | ✅     | `reporte.test.ts`, `garantia-de-red.spec.ts`                                      |
+| 8   | Determinismo byte-idéntico                                   | ✅     | `determinismo.test.ts`                                                            |
+| 9   | `design-system.md` y toda pantalla lo obedece                | ⏳     | existe; pasada de capturas hecha — **falta el gate visual ⭐ del usuario**        |
+| 10  | e2e de reduced-motion + axe en ambos temas                   | ✅     | `aduana.spec.ts`, `a11y.spec.ts` (16/16)                                          |
+| 11  | Guía v1 + kit sintético + manual al día                      | ✅     | `docs/`                                                                           |
+| 12  | Cero datos reales en TODO el repo                            | ⏳     | el kit es la única fuente; **revisión explícita en el `/self-review` del cierre** |
+
+Los tres pendientes son, los tres, del bloque de cierre — no del alcance de esta fase.
+
 ## Desviación del plan
 
 1. **El endurecimiento de `observability.ts` se adelantó de la Fase 1 a la Fase 0.** Razón: activar
@@ -498,5 +613,14 @@ que ningún test recorre haría el mismo daño y no la cazaría ninguna aserció
    observado con techo de 1.500 ms — más estricto en la práctica que el que se aflojó. El detalle
    y los tres números medidos están arriba; se anota aquí porque tocar un presupuesto de
    rendimiento nunca puede quedar en un commit silencioso.
+
+8. **El SHA-256 se implementó en vez de usar `crypto.subtle.digest`.** El plan decía «SHA-256 del
+   archivo vía `crypto.subtle.digest` en el worker». Esa API no tiene forma de streaming: obliga a
+   tener el archivo entero en memoria, que es exactamente lo que la arquitectura de Velo evita. Se
+   implementó FIPS 180-4 en streaming, citando su fuente como cualquier validador, y verificado
+   **contra la propia `crypto.subtle.digest`** sobre las fronteras del relleno y los vectores del
+   estándar. Cuesta 1,5 s en el archivo de 130 MB, con barra de progreso real. La regla «no
+   reinventes cripto» sigue en pie: aquí el hash es una huella de archivo, no un primitivo que
+   proteja un secreto, y la comprobación diferencial hace la implementación auditable.
 
 Ninguna toca el alcance del sprint ni el plan de la casa planeadora.

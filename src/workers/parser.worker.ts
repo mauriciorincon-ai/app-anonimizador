@@ -19,6 +19,7 @@ import { clasificar } from "@/engine/clasificador";
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { evaluarRiesgo } from "@/engine/riesgo";
 import { formatoDeArchivo } from "@/lib/archivo";
+import { Sha256 } from "@/lib/sha256";
 
 import type {
   EtapaDelWorker,
@@ -35,7 +36,44 @@ let tabla: TablaColumnar | null = null;
 /** Cada cuántas filas se avisa del avance. Suficiente para una barra fluida, sin inundar. */
 const FILAS_POR_AVISO = 25_000;
 
-function analizar(archivo: File): void {
+/** Trozo con el que se recorre el archivo para la huella. Ninguno sobrevive al siguiente. */
+const TROZO_DE_HUELLA = 4 * 1024 * 1024;
+
+/** Huella del archivo, tal cual está en el disco. Ver `src/lib/sha256.ts` para el por qué. */
+let huella = "";
+
+/**
+ * SHA-256 del archivo, leyéndolo por partes.
+ *
+ * Va PRIMERO, antes de parsear: la huella tiene que ser la de los bytes que el usuario tiene,
+ * sin pasar por ninguna interpretación de Velo. Y como se lee por trozos, en ningún momento
+ * existe una copia completa del archivo en memoria.
+ */
+async function tomarHuella(archivo: File): Promise<string> {
+  const acumulador = new Sha256();
+  for (let desde = 0; desde < archivo.size; desde += TROZO_DE_HUELLA) {
+    const trozo = await archivo
+      .slice(desde, desde + TROZO_DE_HUELLA)
+      .arrayBuffer();
+    acumulador.actualizar(new Uint8Array(trozo));
+    avisar(
+      "huella",
+      0,
+      Math.min(desde + TROZO_DE_HUELLA, archivo.size),
+      archivo.size,
+    );
+  }
+  return acumulador.terminar();
+}
+
+async function analizar(archivo: File): Promise<void> {
+  try {
+    huella = await tomarHuella(archivo);
+  } catch {
+    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+
   if (formatoDeArchivo(archivo.name) === "excel") {
     void leerExcel(archivo);
     return;
@@ -151,7 +189,12 @@ function diagnosticar(
   const { riesgo, advisor } = evaluarRiesgo(tabla, diagnostico);
 
   const informe: Informe = {
-    archivo: { nombre: archivo.name, bytes: archivo.size, formato },
+    archivo: {
+      nombre: archivo.name,
+      bytes: archivo.size,
+      formato,
+      sha256: huella,
+    },
     diagnostico,
     riesgo,
     advisor,
@@ -186,5 +229,5 @@ function heapUsadoMb(): number | null {
 }
 
 alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
-  if (evento.data?.tipo === "analizar") analizar(evento.data.archivo);
+  if (evento.data?.tipo === "analizar") void analizar(evento.data.archivo);
 });

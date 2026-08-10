@@ -9,6 +9,7 @@
 //   3. **El consejero**, que es qué hacer con ella.
 
 import { PanelDelAdvisor } from "@/components/advisor-de-qis";
+import { DescargaDelReporte } from "@/components/descarga-del-reporte";
 import { InsigniaDeCategoria } from "@/components/insignias";
 import { Panel } from "@/components/panel";
 import { PanelDeRiesgo } from "@/components/panel-de-riesgo";
@@ -55,6 +56,15 @@ export function InformeDeDiagnostico({ informe }: { informe: Informe }) {
             ? ` · ${numero(medicion.heapMb)} MB de memoria`
             : ""}
           .
+        </p>
+        {/* La huella se enseña aquí y no solo en el reporte: es lo que ata este diagnóstico a un
+            archivo concreto, y el usuario puede compararla con la de su propio `sha256sum` sin
+            tener que descargar nada. */}
+        <p className="text-tinta-tenue mt-2 text-[0.6875rem]">
+          <span className="etiqueta mr-1.5 text-[0.6875rem] tracking-[0.14em]">
+            sha-256
+          </span>
+          <code className="font-mono break-all">{archivo.sha256}</code>
         </p>
 
         <ul className="mt-4 flex flex-wrap gap-2">
@@ -103,6 +113,8 @@ export function InformeDeDiagnostico({ informe }: { informe: Informe }) {
       </Panel>
 
       <PanelDelAdvisor advisor={advisor} filas={diagnostico.filas} />
+
+      <DescargaDelReporte informe={informe} />
     </div>
   );
 }

@@ -21,6 +21,7 @@ import { TOPE_EXCEL_BYTES } from "@/lib/archivo";
 import type { EtapaDelWorker, MotivoDeError } from "@/workers/contrato";
 
 const ETAPAS: Record<EtapaDelWorker, string> = {
+  huella: "Tomando la huella del archivo",
   leyendo: "Leyendo el archivo",
   clasificando: "Reconociendo qué hay en cada columna",
   "midiendo-riesgo": "Midiendo el riesgo de reidentificación",
@@ -149,7 +150,9 @@ function EnCurso({
   // SheetJS abre el libro, y una barra inventada para llenar el hueco sería una mentira pequeña
   // en la única pantalla donde el producto está pidiendo confianza.
   const conBarra =
-    !terminado && estado.etapa === "leyendo" && estado.bytesLeidos > 0;
+    !terminado &&
+    (estado.etapa === "huella" || estado.etapa === "leyendo") &&
+    estado.bytesLeidos > 0;
   const avance = conBarra ? estado.bytesLeidos / estado.bytesTotales : 0;
 
   return (
@@ -176,7 +179,7 @@ function EnCurso({
         <div>
           <div
             role="progressbar"
-            aria-label="Avance de la lectura del archivo"
+            aria-label={ETAPAS[etapa]}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(avance * 100)}
@@ -188,7 +191,12 @@ function EnCurso({
             />
           </div>
           <p className="cifra text-tinta-tenue mt-2 text-[0.8125rem]">
-            {porcentaje(avance)} · {numero(estado.filas)} filas leídas
+            {porcentaje(avance)}
+            {/* Durante la huella todavía no se ha leído una sola fila: decir "0 filas leídas"
+                sería contar algo que no está pasando. */}
+            {etapa === "leyendo"
+              ? ` · ${numero(estado.filas)} filas leídas`
+              : ""}
           </p>
         </div>
       ) : (

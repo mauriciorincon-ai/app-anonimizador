@@ -16,18 +16,28 @@ export const DIRECTORIO_DE_FIXTURES = join(process.cwd(), "tmp", "e2e");
 
 /** Cada fixture con su semilla: el mismo archivo, byte por byte, en cada corrida y en cada máquina. */
 const FIXTURES = [
-  { perfil: "clinico", filas: 2_000, seed: 42 },
-  { perfil: "sin-personales", filas: 800, seed: 42 },
+  { perfil: "clinico", filas: 2_000, seed: 42, formato: "csv" },
+  { perfil: "sin-personales", filas: 800, seed: 42, formato: "csv" },
+  // Excel de verdad, para probar la otra vía de lectura de punta a punta.
+  { perfil: "clinico", filas: 1_000, seed: 42, formato: "xlsx" },
+  // El grande: 500.000 × 24 ≈ 130 MB. No se commitea (el repo es público y clonarlo no puede
+  // costar eso); se regenera con su semilla en cada corrida, en unos dos segundos.
+  { perfil: "clinico", filas: 500_000, seed: 42, formato: "csv" },
 ];
 
-export function nombreDeFixture(perfil: string, filas: number, seed: number) {
-  return join(DIRECTORIO_DE_FIXTURES, `${perfil}-${filas}-s${seed}.csv`);
+export function nombreDeFixture(
+  perfil: string,
+  filas: number,
+  seed: number,
+  formato = "csv",
+) {
+  return join(DIRECTORIO_DE_FIXTURES, `${perfil}-${filas}-s${seed}.${formato}`);
 }
 
 export default function generarFixtures(): void {
   mkdirSync(DIRECTORIO_DE_FIXTURES, { recursive: true });
 
-  for (const { perfil, filas, seed } of FIXTURES) {
+  for (const { perfil, filas, seed, formato } of FIXTURES) {
     execFileSync(
       "node",
       [
@@ -39,9 +49,9 @@ export default function generarFixtures(): void {
         "--perfil",
         perfil,
         "--formato",
-        "csv",
+        formato,
         "--salida",
-        nombreDeFixture(perfil, filas, seed),
+        nombreDeFixture(perfil, filas, seed, formato),
       ],
       { stdio: "ignore" },
     );
