@@ -331,6 +331,11 @@ const PERFILES = {
   clinico: Object.keys(COLUMNAS),
   limpio: ["sucursal", "monto", "fecha_atencion", "estrato"],
   trampas: ["codigo_interno", "referencia_pago", "sucursal", "monto", "cedula_titular"],
+  // Sin una sola columna personal — ni siquiera un cuasi-identificador. Existe para poder llegar
+  // al estado "no reconocimos datos personales" de la interfaz por el camino real (soltando un
+  // archivo), y no solo en un test con un informe de mentira. `limpio` no sirve para eso: su
+  // `estrato` es un cuasi-identificador de manual, y así debe seguir siendo.
+  "sin-personales": ["sucursal", "monto", "fecha_atencion"],
 };
 
 // ── Escritura CSV ─────────────────────────────────────────────────────────────────────────────

@@ -4,6 +4,8 @@ import { defineConfig, devices } from "@playwright/test";
 // Patrón validado en app-nutri-kids S1. Móvil primero: las apps del pipeline son mobile-first.
 export default defineConfig({
   testDir: "tests/e2e",
+  // Genera los archivos de prueba con el kit seeded antes de arrancar (ver el propio archivo).
+  globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

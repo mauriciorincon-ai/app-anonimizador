@@ -1,26 +1,158 @@
 @import "tailwindcss";
 
+/* Tokens de «bóveda serena» — la implementación de design-system.md.
+   Regla: si un color, un radio o una duración no está aquí, no se usa en un componente.
+   Los valores de color se midieron contra WCAG 2.1 antes de escribirlos (ver bitácora del S1);
+   el peor caso de texto es 4.75:1 y el de borde de control 3.09:1. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Papel: donde se lee. */
+  --papel: #fbf9f4;
+  --papel-hundido: #f2eee5;
+  --superficie: #ffffff;
+
+  --borde: #e2dccf;
+  /* Los controles necesitan 3:1 propio (WCAG 1.4.11); el borde decorativo no llega y no debe. */
+  --borde-control: #7e8783;
+
+  --tinta: #1a211d;
+  --tinta-suave: #4f5a55;
+  --tinta-tenue: #626b66;
+
+  --acento: #0d6b57;
+  --acento-tenue: #e4f0eb;
+  --alerta: #9e3222;
+  --alerta-tenue: #f8e9e5;
+  --aviso: #7c5209;
+  --aviso-tenue: #f6eedb;
+  --sensible: #71355c;
+  --sensible-tenue: #f4e9f0;
+
+  --radio-1: 4px;
+  --radio-2: 8px;
+  --radio-3: 12px;
+
+  /* Casi no hay sombra: la separación la hace el borde, como en un documento impreso. */
+  --sombra-1: 0 1px 2px rgb(26 33 29 / 0.05);
+  --sombra-2: 0 8px 24px -12px rgb(26 33 29 / 0.28);
+
+  --mov-1: 150ms;
+  --mov-2: 220ms;
+  --mov-3: 320ms;
+  --curva: cubic-bezier(0.2, 0, 0, 1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Bóveda: donde los datos están. No es el mismo diseño en negativo — es estar adentro. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --papel: #0f1411;
+    --papel-hundido: #0a0e0c;
+    --superficie: #171d19;
+
+    --borde: #2a322d;
+    --borde-control: #606b66;
+
+    --tinta: #ede8dc;
+    --tinta-suave: #aab3ad;
+    --tinta-tenue: #8b948e;
+
+    --acento: #5cc7a6;
+    --acento-tenue: #12312a;
+    --alerta: #ef8e78;
+    --alerta-tenue: #35201b;
+    --aviso: #dda945;
+    --aviso-tenue: #322816;
+    --sensible: #dc98c0;
+    --sensible-tenue: #2f1e2a;
+
+    --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --sombra-2: 0 8px 24px -12px rgb(0 0 0 / 0.6);
   }
 }
 
+@theme inline {
+  --color-papel: var(--papel);
+  --color-papel-hundido: var(--papel-hundido);
+  --color-superficie: var(--superficie);
+  --color-borde: var(--borde);
+  --color-borde-control: var(--borde-control);
+  --color-tinta: var(--tinta);
+  --color-tinta-suave: var(--tinta-suave);
+  --color-tinta-tenue: var(--tinta-tenue);
+  --color-acento: var(--acento);
+  --color-acento-tenue: var(--acento-tenue);
+  --color-alerta: var(--alerta);
+  --color-alerta-tenue: var(--alerta-tenue);
+  --color-aviso: var(--aviso);
+  --color-aviso-tenue: var(--aviso-tenue);
+  --color-sensible: var(--sensible);
+  --color-sensible-tenue: var(--sensible-tenue);
+
+  --font-display: var(--fuente-display);
+  --font-sans: var(--fuente-sans);
+  --font-mono: var(--fuente-mono);
+
+  --radius-1: var(--radio-1);
+  --radius-2: var(--radio-2);
+  --radius-3: var(--radio-3);
+
+  --shadow-1: var(--sombra-1);
+  --shadow-2: var(--sombra-2);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--papel);
+  color: var(--tinta);
+  font-family: var(--fuente-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Foco visible en todo lo enfocable, sin excepción y sin depender de que cada componente se
+   acuerde. El anillo usa --acento, que mide ≥3:1 contra los tres fondos de la app. */
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+  border-radius: var(--radio-1);
+}
+
+/* Toda cifra es tabular. Una columna de porcentajes que baila al actualizarse contradice la
+   palabra "preciso" más rápido de lo que cualquier copy la sostiene. */
+.cifra {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Etiqueta de sección: versalitas de mono con tracking. El acento tipográfico de la app. */
+.etiqueta {
+  font-family: var(--fuente-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--tinta-tenue);
+}
+
+/* Región de tabla que se desplaza en horizontal.
+   `contain: paint` no está aquí por rendimiento: sin él, Chromium en móvil suma el ancho de la
+   tabla —aunque esté recortada dentro de su contenedor con scroll— al ancho del documento y
+   "encoge para ajustar" la página ENTERA. Medido en Pixel 7: un viewport de 412 px se dibujaba a
+   747 px, con toda la tipografía a la mitad de su tamaño. La contención le dice al motor que lo
+   que pasa dentro de esta caja no cambia el tamaño de lo de afuera, que es justo lo que un
+   contenedor con scroll debería significar. */
+.tabla-desplazable {
+  contain: paint;
+}
+
+/* Cinturón de reduced-motion: global, no por componente.
+   Confiar en que cada componente lo respete es cómo se cuelan las animaciones que marean.
+   Ojo: `animation: none` rompería un spinner infinito dejándolo congelado a medias, así que se
+   acelera en vez de eliminarse; el ancho de la barra de progreso sigue cambiando, porque ahí el
+   movimiento ES la información. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

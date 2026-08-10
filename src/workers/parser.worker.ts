@@ -2,43 +2,30 @@
 // El worker es LA FRONTERA de Velo.
 //
 // Los datos crudos del usuario viven aquí y solo aquí. Hacia la UI viajan agregados, metadatos y
-// (más adelante) muestras enmascaradas — jamás el dataset. Dos razones, y ninguna es de estilo:
+// muestras ya enmascaradas — jamás el dataset. Dos razones, y ninguna es de estilo:
 //   1. Privacidad: si el hilo principal nunca ve el contenido, ningún componente, ninguna
 //      librería de UI y ningún reporte de error puede filtrarlo por accidente.
 //   2. Rendimiento: parsear 130 MB en el hilo principal congela la pestaña; aquí no toca un frame.
+//
+// Por eso el diagnóstico COMPLETO se calcula aquí dentro: leer el archivo en el worker y luego
+// mandar la tabla a la página para clasificarla habría tirado la frontera por la ventana. Lo que
+// cruza es el informe; la tabla se queda, y muere cuando el worker se termina.
 //
 // El archivo se lee por chunks (PapaParse en modo streaming): nunca existe una copia completa del
 // CSV en memoria, solo la tabla columnar que se va construyendo.
 import Papa from "papaparse";
 
+import { clasificar } from "@/engine/clasificador";
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
+import { evaluarRiesgo } from "@/engine/riesgo";
+import { formatoDeArchivo } from "@/lib/archivo";
 
-export type MensajeAlWorker = { tipo: "parsear"; archivo: File };
-
-export type ResumenDeColumna = {
-  nombre: string;
-  cardinalidad: number;
-  noVacios: number;
-};
-
-export type MensajeDelWorker =
-  | {
-      tipo: "progreso";
-      filas: number;
-      bytesLeidos: number;
-      bytesTotales: number;
-    }
-  | {
-      tipo: "listo";
-      filas: number;
-      columnas: ResumenDeColumna[];
-      msParseo: number;
-      bytes: number;
-      /** Heap usado DENTRO del worker (MB). Desde el hilo principal es invisible: la tabla vive
-       *  aquí, así que este es el único número honesto sobre cuánta memoria cuesta el archivo. */
-      heapMb: number | null;
-    }
-  | { tipo: "error"; motivo: string };
+import type {
+  EtapaDelWorker,
+  Informe,
+  MensajeAlWorker,
+  MensajeDelWorker,
+} from "./contrato";
 
 const alcance = self as unknown as DedicatedWorkerGlobalScope;
 
@@ -48,24 +35,24 @@ let tabla: TablaColumnar | null = null;
 /** Cada cuántas filas se avisa del avance. Suficiente para una barra fluida, sin inundar. */
 const FILAS_POR_AVISO = 25_000;
 
-function parsear(archivo: File): void {
-  if (/\.xlsx?$/i.test(archivo.name)) {
-    void parsearExcel(archivo);
+function analizar(archivo: File): void {
+  if (formatoDeArchivo(archivo.name) === "excel") {
+    void leerExcel(archivo);
     return;
   }
-  parsearCsv(archivo);
+  leerCsv(archivo);
 }
 
 /**
  * Excel es el eslabón débil y se trata como tal. SheetJS no tiene lectura en streaming en el
  * navegador (issue #2757): el libro entero se carga en memoria y de ahí sale una matriz completa
  * — dos copias del archivo vivas a la vez. Por eso Velo declara un TOPE para .xlsx y no para CSV
- * (medido en el spike B; ver decisions/003-excel-tope-y-suministro.md).
+ * (medido en el spike B; ver decisions/003-excel-suministro-y-tope.md).
  *
  * El `import()` es dinámico a propósito: SheetJS pesa ~900 KB y jamás debe entrar al bundle
  * inicial de una página que quizá solo reciba CSV.
  */
-async function parsearExcel(archivo: File): Promise<void> {
+async function leerExcel(archivo: File): Promise<void> {
   const inicio = performance.now();
   try {
     const XLSX = await import("xlsx");
@@ -89,14 +76,14 @@ async function parsearExcel(archivo: File): Promise<void> {
     const constructor = new ConstructorColumnar(matriz[0], matriz.length);
     for (let i = 1; i < matriz.length; i++) constructor.agregarFila(matriz[i]);
     tabla = constructor.finalizar();
-    enviarListo(inicio, archivo.size);
+    diagnosticar(archivo, "excel", performance.now() - inicio);
   } catch {
     // El mensaje de la excepción NUNCA se reenvía: puede citar contenido de la hoja.
     enviar({ tipo: "error", motivo: "excel-excede-memoria" });
   }
 }
 
-function parsearCsv(archivo: File): void {
+function leerCsv(archivo: File): void {
   const inicio = performance.now();
   let constructor: ConstructorColumnar | null = null;
   let filas = 0;
@@ -122,12 +109,7 @@ function parsearCsv(archivo: File): void {
 
       if (filas >= proximoAviso) {
         proximoAviso = filas + FILAS_POR_AVISO;
-        enviar({
-          tipo: "progreso",
-          filas,
-          bytesLeidos: resultados.meta.cursor,
-          bytesTotales: archivo.size,
-        });
+        avisar("leyendo", filas, resultados.meta.cursor, archivo.size);
       }
     },
     complete() {
@@ -136,7 +118,7 @@ function parsearCsv(archivo: File): void {
         return;
       }
       tabla = constructor.finalizar();
-      enviarListo(inicio, archivo.size);
+      diagnosticar(archivo, "csv", performance.now() - inicio);
     },
     error() {
       // El motivo del parser NUNCA se reenvía: puede citar el contenido de la línea que falló.
@@ -145,25 +127,54 @@ function parsearCsv(archivo: File): void {
   });
 }
 
+/**
+ * Clasificación + riesgo, dentro del worker. Los dos avisos de etapa se envían ANTES de empezar
+ * cada cálculo: el trabajo es síncrono y bloquea este hilo, pero el mensaje ya está encolado hacia
+ * la página, que sigue respondiendo y puede pintar el avance.
+ */
+function diagnosticar(
+  archivo: File,
+  formato: "csv" | "excel",
+  msLectura: number,
+): void {
+  if (!tabla) return;
+  if (tabla.filas === 0) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+
+  const inicio = performance.now();
+  avisar("clasificando", tabla.filas, archivo.size, archivo.size);
+  const diagnostico = clasificar(tabla);
+
+  avisar("midiendo-riesgo", tabla.filas, archivo.size, archivo.size);
+  const { riesgo, advisor } = evaluarRiesgo(tabla, diagnostico);
+
+  const informe: Informe = {
+    archivo: { nombre: archivo.name, bytes: archivo.size, formato },
+    diagnostico,
+    riesgo,
+    advisor,
+    medicion: {
+      msLectura: Math.round(msLectura),
+      msDiagnostico: Math.round(performance.now() - inicio),
+      heapMb: heapUsadoMb(),
+    },
+  };
+  enviar({ tipo: "listo", informe });
+}
+
 function enviar(mensaje: MensajeDelWorker): void {
   alcance.postMessage(mensaje);
 }
 
-/** Lo único que cruza la frontera al terminar: conteos y nombres de columna. Ni un valor. */
-function enviarListo(inicio: number, bytes: number): void {
-  if (!tabla) return;
-  enviar({
-    tipo: "listo",
-    filas: tabla.filas,
-    columnas: tabla.columnas.map((c) => ({
-      nombre: c.nombre,
-      cardinalidad: c.valores.length - 1,
-      noVacios: c.noVacios,
-    })),
-    msParseo: Math.round(performance.now() - inicio),
-    bytes,
-    heapMb: heapUsadoMb(),
-  });
+function avisar(
+  etapa: EtapaDelWorker,
+  filas: number,
+  bytesLeidos: number,
+  bytesTotales: number,
+): void {
+  enviar({ tipo: "progreso", etapa, filas, bytesLeidos, bytesTotales });
 }
 
 /** Heap usado por ESTE worker, en MB. Solo Chromium lo expone; en el resto devuelve null. */
@@ -175,5 +186,5 @@ function heapUsadoMb(): number | null {
 }
 
 alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
-  if (evento.data?.tipo === "parsear") parsear(evento.data.archivo);
+  if (evento.data?.tipo === "analizar") analizar(evento.data.archivo);
 });

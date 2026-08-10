@@ -313,6 +313,104 @@ solas; la combinación más delatora sin ellas es
 Se extendió para serializar **detección + riesgo + advisor** y comparar entre corridas y entre
 tamaños de chunk. Un ranking que cambie de orden rompe la promesa igual que un tipo mal detectado.
 
+## Fase 3 — UI: la aduana y el diagnóstico ✅
+
+### `design-system.md` primero — «bóveda serena»
+
+El documento se escribió antes de la primera línea de JSX, y las pantallas lo obedecen.
+Personalidad: **precisa · serena · cómplice**, y explícitamente **nunca alarmista, nunca clínica,
+nunca ostentosa**. La metáfora que ordena las decisiones son **dos materiales**: el _papel_ (fondo
+claro y cálido, donde se lee) y la _bóveda_ (fondo verde-negro, donde los datos están) — el tema
+oscuro no es el mismo diseño en negativo, es estar adentro.
+
+- **El sello «nada sale de aquí» es el elemento de identidad**, dibujado en SVG inline. La razón no
+  es de rendimiento: una marca servida desde un CDN sería una petición externa, o sea que el sello
+  que promete que nada sale estaría hecho de algo que sí salió. No es clicable, no se anima y no
+  reacciona a nada — es lo único de la interfaz que nunca cambia, porque nunca deja de ser cierto.
+- **Contraste medido, no estimado a ojo** (script WCAG 2.1 antes de fijar la paleta): todo texto
+  ≥4,5:1 sobre sus tres fondos posibles en los dos temas; el peor caso es `--tinta-tenue` sobre
+  `--papel-hundido` con **4,75:1** en claro y **5,48:1** en oscuro. `--borde-control` existe como
+  token aparte precisamente porque los controles necesitan su propio 3:1 (WCAG 1.4.11) y el borde
+  decorativo no llega ni debe.
+- **Tres familias con oficio**: Fraunces (display, la calidez editorial que impide que esto se lea
+  como un panel de control), IBM Plex Sans (interfaz) e IBM Plex Mono (cifras, nombres de columna,
+  fuentes citadas). Self-hosteadas por `next/font` en build: cero peticiones a Google en runtime.
+
+### La frontera se movió a donde tenía que estar
+
+El worker ya no solo parsea: **clasifica y mide el riesgo dentro de sí mismo**. Leer el archivo en
+el worker y mandar la tabla a la página para analizarla habría tirado la frontera por la ventana.
+Lo que cruza es el informe —conteos, nombres de columna, proporciones y muestras ya
+enmascaradas—; la tabla se queda, y muere cuando el worker se termina.
+
+- `src/workers/contrato.ts` es la lista de lo permitido, en tipos. Vive aparte del worker para que
+  la UI pueda importarlo sin arrastrar PapaParse y el motor al bundle de la página.
+- `src/lib/sesion.ts`: store en memoria, cero persistencia. `descartar()` **termina el worker**, que
+  es la única forma real de borrar: dejar de tenerlo.
+- La transición ante los mensajes del worker se extrajo como función pura (`siguienteEstado`) —
+  entre otras cosas para cerrar el caso del **progreso rezagado**: un mensaje que el worker ya había
+  encolado cuando el usuario descartó no puede resucitar la pantalla de análisis.
+
+### P1 «La aduana» y P2 «El diagnóstico»
+
+Los cinco estados de cada pantalla existen y están construidos, no rellenados. Dos decisiones que
+son de producto y no de estilo:
+
+- **No hay barra de progreso falsa.** La barra solo aparece cuando hay una medida real que enseñar
+  (los bytes leídos del CSV). Un `.xlsx` no reporta avance mientras SheetJS abre el libro, y las
+  etapas de clasificación y riesgo no tienen fracción: ahí se nombra la etapa y se cuentan las
+  filas, sin barra. Inventar el relleno sería una mentira pequeña en la única pantalla donde el
+  producto está pidiendo confianza.
+- **El estado «sin datos cargados» es una pantalla diseñada, no un error.** Recargar
+  `/diagnostico` no recupera nada, y la pantalla dice exactamente eso: _«No quedó nada, y es a
+  propósito»_. Esa pérdida es la prueba visible de la promesa.
+
+El advisor declara su alcance donde se aplica: cuántas combinaciones evaluó, sobre cuántas
+candidatas, con qué tope, y qué columnas quedaron fuera **con su motivo**.
+
+### Tres defectos que solo aparecieron al mirar la pantalla
+
+1. **La página entera se encogía en móvil.** La tabla de columnas vive en un contenedor con
+   `overflow-x: auto`, así que su ancho no debería salir de ahí — pero Chromium en móvil lo sumaba
+   igual al ancho del documento y aplicaba «encoger para ajustar»: un viewport de 412 px se
+   dibujaba a **747 px**, con toda la tipografía a la mitad. Se cerró con `contain: paint` sobre la
+   región (medido antes y después). No lo habría cazado ningún test de comportamiento: la página
+   funcionaba, solo se veía mal.
+2. **`opacity` sobre texto = contraste roto.** La línea de la fuente oficial iba con `opacity-80`
+   para «atenuarla»; eso mezcla el color con el fondo y lo dejaba en **3,58:1** (claro) y **3,98:1**
+   (oscuro). axe lo marcó en 18 nodos. La jerarquía la hacen ahora la familia mono y el tamaño, que
+   no cuestan contraste.
+3. **El `<dl>` del panel de riesgo no era un `<dl>`.** La explicación iba como `<p>` hermano del
+   `<dd>`, lo que rompe la lista de definiciones para un lector de pantalla. La explicación se
+   movió dentro del `<dd>`.
+
+Y una de composición: **el sello aparecía dos veces en la misma pantalla** (encabezado y bloque
+grande, a diez centímetros). Repetir la frase no refuerza una promesa, la abarata: el bloque
+extendido ahora la _desarrolla_ y se colocó pegado a la zona de carga, que es donde el usuario la
+necesita — en el segundo en que está a punto de soltar una tabla con datos de personas reales.
+
+### Verificación
+
+| Qué                               | Resultado                                                                  |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| Tests unitarios y de integración  | **206 pasando** · cobertura 96,7% stmts / 93,9% ramas                      |
+| axe (`@axe-core/playwright`)      | **16/16** — 4 estados × 2 temas × móvil y desktop, **cero violaciones**    |
+| Flujo de 500k filas **por la UI** | **3.882 ms** de punta a punta · **0 tareas largas** en el hilo principal   |
+| Peticiones durante todo el flujo  | **23, todas al propio origen; 0 externas y 0 con cuerpo**                  |
+| Peso inicial de `/`               | script **209 KB** (presupuesto 350) · total **319 KB** (presupuesto 1.000) |
+| Pasada de capturas                | 20 capturas leídas como imagen: 5 estados × 2 temas × móvil y desktop      |
+
+`lighthouse-urls.json` se queda en `["/"]`: `/diagnostico` sin archivo cargado es —a propósito— el
+estado vacío, así que medirlo no diría nada sobre la pantalla real, y medir la real exigiría
+cargarle 130 MB a Lighthouse.
+
+### Gate de honestidad medida, ahora mecánico
+
+`tests/unit/copy.test.ts` barre el código de la interfaz y el manual buscando las frases que la
+regla dura nº4 prohíbe («anonimato garantizado», «100 % seguro», «imposible de reidentificar») más
+sus variantes habituales. Mira el **código fuente**, no la salida: una frase escondida en un estado
+que ningún test recorre haría el mismo daño y no la cazaría ninguna aserción de comportamiento.
+
 ## Desviación del plan
 
 1. **El endurecimiento de `observability.ts` se adelantó de la Fase 1 a la Fase 0.** Razón: activar
@@ -340,5 +438,15 @@ tamaños de chunk. Un ranking que cambie de orden rompe la promesa igual que un 
    el hallazgo más importante cuando el archivo es pequeño (a 3.000 filas, la fecha de nacimiento
    es casi única). El acotamiento a top-6 y a combinaciones de 2–4 se mantiene tal cual; lo que
    cambió es el criterio para decidir qué columna entra, que ahora se mide sobre el efecto real.
+
+6. **El kit ganó un perfil (`sin-personales`) y los e2e de la Fase 3 se adelantaron.** El estado
+   «Velo no reconoció datos personales» era inalcanzable por el camino real: el perfil `limpio`
+   tiene `estrato`, que es un cuasi-identificador de manual y debe seguir siéndolo. Se añadió un
+   perfil sin una sola columna personal para poder llegar a ese estado soltando un archivo, y no
+   solo con un informe de mentira en un test. De paso entraron el `globalSetup` de Playwright
+   (genera los fixtures con el kit seeded, a `tmp/`, que está en `.gitignore`) y el barrido de axe,
+   que el plan tenía en la Fase 4: son el criterio observable de cierre de la Fase 3, así que
+   escribirlos allá y usarlos aquí habría sido el orden equivocado. El resto de la suite e2e
+   —camino feliz, garantía de red, 500k, Excel, reduced-motion, teclado— sigue en la Fase 4.
 
 Ninguna toca el alcance del sprint ni el plan de la casa planeadora.
