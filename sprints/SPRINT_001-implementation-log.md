@@ -551,22 +551,22 @@ presupuesto. Todo lo que la CI ya respalda quedó fuera del mínimo.
 
 ### Los 12 acceptance criteria de la orden, uno por uno
 
-| #   | Criterio                                                     | Estado | Dónde se verifica                                                                 |
-| --- | ------------------------------------------------------------ | ------ | --------------------------------------------------------------------------------- |
-| 1   | 500k con progreso, sin congelar                              | ✅     | `rendimiento.spec.ts` · 0 tareas largas medidas                                   |
-| 2   | Tipo · por qué · categoría · muestra enmascarada             | ✅     | `aduana.spec.ts`, `diagnostico.test.tsx`                                          |
-| 3   | Riesgo exacto + advisor con k real                           | ✅     | `riesgo.test.ts` (tabla de 12 filas a mano), `diagnostico.test.tsx`               |
-| 4   | Excel hasta el tope; por encima, aviso honesto               | ✅     | `aduana.spec.ts` (ambos casos)                                                    |
-| 5   | **Garantía de red**                                          | ✅     | `garantia-de-red.spec.ts` + CSP + `privacidad.test.ts`                            |
-| 6   | Gate anti-IA en CI, y un PR con un SDK lo pone rojo          | ⏳     | job `anti-ia` verde en cada PR; **la demo del PR desechable es del cierre**       |
-| 7   | Reporte autocontenido con hallazgos, riesgo, SHA-256 y fecha | ✅     | `reporte.test.ts`, `garantia-de-red.spec.ts`                                      |
-| 8   | Determinismo byte-idéntico                                   | ✅     | `determinismo.test.ts`                                                            |
-| 9   | `design-system.md` y toda pantalla lo obedece                | ⏳     | existe; pasada de capturas hecha — **falta el gate visual ⭐ del usuario**        |
-| 10  | e2e de reduced-motion + axe en ambos temas                   | ✅     | `aduana.spec.ts`, `a11y.spec.ts` (16/16)                                          |
-| 11  | Guía v1 + kit sintético + manual al día                      | ✅     | `docs/`                                                                           |
-| 12  | Cero datos reales en TODO el repo                            | ⏳     | el kit es la única fuente; **revisión explícita en el `/self-review` del cierre** |
+| #   | Criterio                                                     | Estado | Dónde se verifica                                                             |
+| --- | ------------------------------------------------------------ | ------ | ----------------------------------------------------------------------------- |
+| 1   | 500k con progreso, sin congelar                              | ✅     | `rendimiento.spec.ts` · 0 tareas largas medidas                               |
+| 2   | Tipo · por qué · categoría · muestra enmascarada             | ✅     | `aduana.spec.ts`, `diagnostico.test.tsx`                                      |
+| 3   | Riesgo exacto + advisor con k real                           | ✅     | `riesgo.test.ts` (tabla de 12 filas a mano), `diagnostico.test.tsx`           |
+| 4   | Excel hasta el tope; por encima, aviso honesto               | ✅     | `aduana.spec.ts` (ambos casos)                                                |
+| 5   | **Garantía de red**                                          | ✅     | `garantia-de-red.spec.ts` + CSP + `privacidad.test.ts`                        |
+| 6   | Gate anti-IA en CI, y un PR con un SDK lo pone rojo          | ✅     | job `anti-ia` verde en cada PR; **demo PR #3, rojo en 7 s** (ver cierre)      |
+| 7   | Reporte autocontenido con hallazgos, riesgo, SHA-256 y fecha | ✅     | `reporte.test.ts`, `garantia-de-red.spec.ts`                                  |
+| 8   | Determinismo byte-idéntico                                   | ✅     | `determinismo.test.ts`                                                        |
+| 9   | `design-system.md` y toda pantalla lo obedece                | ⏳     | existe; pasada de capturas hecha — **falta el gate visual ⭐ del usuario**    |
+| 10  | e2e de reduced-motion + axe en ambos temas                   | ✅     | `aduana.spec.ts`, `a11y.spec.ts` (16/16)                                      |
+| 11  | Guía v1 + kit sintético + manual al día                      | ✅     | `docs/`                                                                       |
+| 12  | Cero datos reales en TODO el repo                            | ✅     | barrido del `/self-review` del cierre (abajo) + gitleaks sobre los 12 commits |
 
-Los tres pendientes son, los tres, del bloque de cierre — no del alcance de esta fase.
+El único pendiente, el nº 9, es del usuario: nadie más puede dar un gate visual.
 
 ## Desviación del plan
 
@@ -624,3 +624,61 @@ Los tres pendientes son, los tres, del bloque de cierre — no del alcance de es
    proteja un secreto, y la comprobación diferencial hace la implementación auditable.
 
 Ninguna toca el alcance del sprint ni el plan de la casa planeadora.
+
+## Cierre
+
+### `/self-review` — el barrido de «cero datos reales» (acceptance criterion 12)
+
+La regla nº5 del CLAUDE.md no se verifica leyendo el diff con buena voluntad. Se buscó dato real,
+con la hipótesis contraria: **suponer que hay uno y tratar de encontrarlo.**
+
+| Búsqueda                                  | Resultado                                                                                                                                       |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Archivos de datos rastreados              | Cero `.csv`/`.xlsx`/`.tsv`/`.db`. Los únicos `.json` son configuración.                                                                         |
+| Correos en todo el repo                   | Tres, todos inventados y con dominio de ejemplo: `ejemplo@sentry.invalid`, `maria.herrera@ejemplo.com`, `maria herrera@x.com` (este, inválido). |
+| Nombres propios en entregables            | Cero nombre-apellido de persona en manual, guía, README o design system.                                                                        |
+| Diccionario de nombres                    | Léxico de 302 palabras corrientes, con la distinción **palabra ≠ persona** declarada en su cabecera.                                            |
+| `tmp/` (fixtures generados)               | 20 archivos, todos del generador seeded. `tmp/` está en `.gitignore` desde el estampado.                                                        |
+| `gitleaks detect` sobre el historial      | 12 commits, 929 KB escaneados: **no leaks found**.                                                                                              |
+| Hook `pre-commit` con la carnada canónica | **Bloquea** (exit 1, «SECRET DETECTADO: commit bloqueado»). Verificado hoy, no supuesto. `core.hooksPath = githooks`.                           |
+
+Verificar el hook importaba: `.git/hooks/` está vacío en este repo y el belt vive en `githooks/`
+por `core.hooksPath`. Un vistazo al directorio de siempre habría concluido «no hay hook».
+
+**Higiene del código del sprint:** cero `any`, cero `@ts-ignore`, cero `console.*`, cero código
+comentado, cero `TODO`/`FIXME` (los tres aciertos del grep son la palabra española «todo»).
+`typecheck` + `lint` + 263 pruebas + gate anti-IA, todo verde.
+
+**Cobertura sin cubrir, revisada línea a línea:** las 22 sentencias descubiertas son guardas
+defensivas —formato en KB para archivos diminutos, `tabla.filas === 0`, ramas de `undefined` en el
+serializador— no caminos del producto. `sesion.ts` es el archivo más bajo (83%) porque su rama de
+`worker.addEventListener("error")` exige un worker que reviente de verdad; el e2e lo cubre por otro
+lado.
+
+**Veredicto: listo para PR.**
+
+### La demo del gate anti-IA (acceptance criterion 6)
+
+Un gate que nunca se ha visto fallar es una promesa sin evidencia. Se abrió el **PR #3**
+(`demo/gate-anti-ia` → la rama del sprint, para que el diff fuera de una línea) con
+`"openai": "^4.104.0"` en `dependencies`:
+
+```
+✗ GATE ANTI-IA EN ROJO — la regla dura nº1 de Velo está rota.
+
+  · openai  (sdk de proveedor de LLM)  — declarado en package.json
+
+Velo no lleva IA generativa en el runtime: el determinismo ES la propuesta de valor
+(reproducible ⇒ auditable). Ver decisions/001-cero-ia.md.
+Si el paquete no es un SDK de IA, corrige la lista de este gate en el mismo PR.
+##[error]Process completed with exit code 1.
+```
+
+**`anti-ia` fail — 7 s.** El job corre sin `pnpm install` a propósito: es el check más barato del
+pipeline y tiene que ponerse rojo antes que nada. `quality` cayó después a los 15 s
+(`--frozen-lockfile` contra un manifiesto tocado), y `e2e` y `lighthouse` quedaron en `skipping`.
+
+Y el rojo **bloquea de verdad**: la ruleset `main-protegida` (activa) exige los cuatro checks
+—`anti-ia`, `quality`, `e2e`, `lighthouse`— más `pull_request`, `deletion` y `non_fast_forward`.
+
+PR cerrado, branch borrado en el mismo comando, `--prune` corrido. Cero rastro en el historial.
