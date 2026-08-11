@@ -530,6 +530,15 @@ archivo que **entró**, y puestas debajo de un balance se leerían como las del 
 Ahora se titula «el archivo ORIGINAL» cuando hay tratamiento, y el balance va **antes** que ella en
 el documento. Nadie escribió nunca una frase falsa; la habría escrito el orden.
 
+### Costo, medido
+
+Sobre el fixture de 500.000 × 24 del kit, con una política que suprime, enmascara, generaliza y
+reparte: **`aplicarPolitica` 344 ms** (Mondrian incluido, sobre tres columnas de baja cardinalidad)
+y **`medirUtilidad` 303 ms**. El segundo compara celda por celda las 24 columnas —12 millones de
+comparaciones de texto— para saber cuántas cambiaron de verdad, en vez de deducirlo de la técnica
+aplicada: una columna generalizada puede dejar valores idénticos, y contarlos como cambiados sería
+inflar la pérdida. El presupuesto real se verifica por la UI en la Fase 5.
+
 ### Desviación del plan
 
 Ninguna. El plan pedía «distribuciones marginales y correlaciones»: las marginales se entregan como
