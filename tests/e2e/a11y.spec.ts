@@ -58,5 +58,54 @@ for (const tema of ["light", "dark"] as const) {
       const { violations } = await new AxeBuilder({ page }).analyze();
       expect(resumir(violations)).toEqual([]);
     });
+
+    test("el taller sin datos cargados pasa axe", async ({ page }) => {
+      await page.goto("/transformar");
+      await page
+        .getByRole("heading", { name: /No hay nada que transformar/ })
+        .waitFor();
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
+
+    test("el taller con el editor y la llave pasa axe", async ({ page }) => {
+      // La pantalla con más controles del producto: 24 desplegables, un campo de contraseña, un
+      // número y dos botones de archivo. Es donde un `label` suelto o un contraste flojo se
+      // esconden mejor.
+      await page.goto("/");
+      await page.setInputFiles("#archivo", CLINICO);
+      await page.waitForURL("**/diagnostico");
+      await page
+        .getByRole("link", { name: "Transformar este archivo" })
+        .click();
+      await page.waitForURL("**/transformar");
+      await page.getByRole("button", { name: /Habeas Data/ }).click();
+      await page.getByLabel("Frase de paso del proyecto").waitFor();
+
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
+
+    test("el taller con el balance en pantalla pasa axe", async ({ page }) => {
+      await page.goto("/");
+      await page.setInputFiles("#archivo", CLINICO);
+      await page.waitForURL("**/diagnostico");
+      await page
+        .getByRole("link", { name: "Transformar este archivo" })
+        .click();
+      await page.waitForURL("**/transformar");
+      await page
+        .getByLabel("Técnica para la columna latitud")
+        .selectOption("suprimir");
+      await page
+        .getByRole("button", { name: "Transformar", exact: true })
+        .click();
+      await page
+        .getByRole("heading", { name: "Qué cambió, y qué sigue igual" })
+        .waitFor({ timeout: 60_000 });
+
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
   });
 }

@@ -21,6 +21,23 @@ import { z } from "zod";
 import { sha256 } from "@/lib/sha256";
 import { serializarCanonico } from "./serializacion";
 
+/**
+ * Zod, sin compilar validadores con `new Function`.
+ *
+ * Zod 4 acelera el análisis generando código en tiempo de ejecución. La CSP de Velo no permite
+ * `eval` —`script-src` no lleva `'unsafe-eval'` y no va a llevarlo—, así que ese intento se
+ * bloquea, Zod cae a su camino interpretado y todo sigue funcionando… dejando una violación de CSP
+ * registrada en cada carga. Lo encontró la pasada de Lighthouse de la Fase 5: `/transformar` sacaba
+ * 96 en buenas prácticas contra el 100 de `/`, y el único punto era este.
+ *
+ * Apagarlo explícitamente no es cosmético. Una violación de CSP registrada en cada visita es ruido
+ * permanente en el panel de incidencias del navegador, y ruido permanente es donde se esconde la
+ * violación que sí importa. Además deja de depender de que la detección de Zod acierte: si un día
+ * su fallback fallara, la validación de políticas se rompería en producción y **ningún test
+ * unitario lo vería**, porque jsdom no aplica CSP.
+ */
+z.config({ jitless: true });
+
 /** Versión del formato. Un archivo de otra versión se rechaza con su nombre, no se adivina. */
 export const VERSION_DE_POLITICA = 1;
 

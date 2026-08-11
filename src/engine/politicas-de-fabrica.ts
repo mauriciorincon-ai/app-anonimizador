@@ -323,11 +323,24 @@ export interface ColumnaParaPolitica {
  * El tipo manda sobre la categoría: una cédula tiene su tratamiento propio (seudónimo con formato
  * válido) que es más específico que «es un identificador directo». Sin regla por tipo, decide la
  * categoría; sin categoría reconocible, se conserva — nunca se inventa un tratamiento.
+ *
+ * **Con una excepción que costó un hallazgo:** si la política declara un `kObjetivo`, los
+ * cuasi-identificadores entran al reparto aunque tengan regla por tipo. La versión anterior dejaba
+ * que `fecha_nacimiento` recibiera «recortar al año» —correcto por sí solo, y recomendado por la
+ * guía— y con eso la sacaba de Mondrian: el reparto alcanzaba k=7 sobre las columnas que sí
+ * miraba, y el archivo entregado quedaba en **k=1**, porque la fecha recortada seguía partiendo las
+ * clases. La política prometía un k que sus propias reglas impedían cumplir.
+ *
+ * No es una preferencia de implementación: **k-anonimato es una propiedad del conjunto de
+ * cuasi-identificadores**, así que un QI fuera del reparto no es una excepción al k — es su
+ * negación. Las reglas por tipo siguen mandando en todo lo demás (`fecha_atencion`, que es no
+ * personal, se sigue recortando al año).
  */
 export function construirPolitica(
   fabrica: PoliticaDeFabrica,
   columnas: readonly ColumnaParaPolitica[],
 ): Politica {
+  const conK = fabrica.kObjetivo !== null;
   return {
     version: 1,
     origen: fabrica.id,
@@ -335,8 +348,10 @@ export function construirPolitica(
     reglas: columnas.map((columna) => ({
       columna: columna.nombre,
       tecnica:
-        fabrica.porTipo[columna.tipo] ??
-        fabrica.porCategoria[columna.categoria],
+        conK && columna.categoria === "cuasi-identificador"
+          ? fabrica.porCategoria["cuasi-identificador"]
+          : (fabrica.porTipo[columna.tipo] ??
+            fabrica.porCategoria[columna.categoria]),
     })),
   };
 }

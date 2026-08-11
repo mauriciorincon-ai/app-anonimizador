@@ -13,13 +13,16 @@
 
 import { useSyncExternalStore } from "react";
 
+import type { Politica } from "@/engine/politica";
 import { excedeElTope, excelGrande, formatoDeArchivo } from "@/lib/archivo";
+import { generarSal } from "@/lib/llave";
 import type {
   EtapaDelWorker,
   FormatoDeArchivo,
   Informe,
   MensajeDelWorker,
   MotivoDeError,
+  ResultadoDeTransformacion,
 } from "@/workers/contrato";
 
 export type EstadoDeSesion =
@@ -39,15 +42,88 @@ export type EstadoDeSesion =
   | { fase: "listo"; informe: Informe }
   | { fase: "error"; motivo: MotivoDeError; nombre: string };
 
+/**
+ * El taller — el estado de la transformación, al lado de la sesión y no dentro.
+ *
+ * Va aparte porque tiene otro ciclo de vida: la sesión nace al soltar el archivo y muere al
+ * descartarlo; el taller nace y muere muchas veces mientras tanto, cada vez que el usuario cambia
+ * la política. Meterlo dentro de `EstadoDeSesion` habría obligado a reconstruir el informe entero
+ * en cada tecleo del editor.
+ */
+export type EstadoDeLlave =
+  | { fase: "sin-llave" }
+  | { fase: "derivando" }
+  | { fase: "lista"; huella: string; sal: string };
+
+export type EstadoDeTransformacion =
+  | { fase: "sin-hacer" }
+  | { fase: "transformando" }
+  | { fase: "hecha"; resultado: ResultadoDeTransformacion }
+  | { fase: "fallo"; motivo: MotivoDeError };
+
+export interface EstadoDelTaller {
+  readonly llave: EstadoDeLlave;
+  readonly transformacion: EstadoDeTransformacion;
+  /** La etapa que el worker está corriendo ahora mismo, para poder nombrarla en pantalla. */
+  readonly etapa: EtapaDelWorker | null;
+  /** El archivo listo para guardar, como asa opaca. Ver `AsaDeArchivo`. */
+  readonly archivo: AsaDeArchivo | null;
+}
+
+/**
+ * El archivo anonimizado, como **asa opaca** (ADR-005).
+ *
+ * El `Blob` no está aquí, y no está en ninguna otra parte de la interfaz: se convierte en URL
+ * dentro de `asaDeArchivo` y su referencia se pierde ahí mismo. Lo que llega a los componentes es
+ * una **cadena**, así que no existe un objeto sobre el que se pudiera llamar `.text()` ni aunque
+ * alguien lo intentara. No es una convención que haya que recordar ni una regla que un gate de
+ * texto tenga que perseguir: es que la referencia no existe.
+ */
+export interface AsaDeArchivo {
+  readonly nombre: string;
+  readonly bytes: number;
+  /** URL `blob:` lista para un `<a download>`. Es lo ÚNICO que la página recibe del archivo. */
+  readonly url: string;
+}
+
+function asaDeArchivo(blob: Blob, nombre: string): AsaDeArchivo {
+  // El `Blob` se convierte en URL aquí mismo y la referencia se pierde al salir de esta función.
+  // A partir de este punto ni siquiera existe un objeto sobre el que se pudiera llamar `.text()`:
+  // lo que viaja a la interfaz es una cadena. El navegador guarda los bytes en su propio registro
+  // y los suelta cuando se revoca la URL.
+  return { nombre, bytes: blob.size, url: URL.createObjectURL(blob) };
+}
+
+/** Suelta los bytes del archivo preparado. Mientras la URL viva, ocupan memoria (ADR-005). */
+function soltarArchivo(): void {
+  if (tallerActual.archivo) URL.revokeObjectURL(tallerActual.archivo.url);
+}
+
 const VACIO: EstadoDeSesion = { fase: "vacio" };
+const TALLER_VACIO: EstadoDelTaller = {
+  llave: { fase: "sin-llave" },
+  transformacion: { fase: "sin-hacer" },
+  etapa: null,
+  archivo: null,
+};
 
 let estadoActual: EstadoDeSesion = VACIO;
+let tallerActual: EstadoDelTaller = TALLER_VACIO;
 let worker: Worker | null = null;
 const oyentes = new Set<() => void>();
 
+function avisarATodos(): void {
+  for (const oyente of oyentes) oyente();
+}
+
 function publicar(siguiente: EstadoDeSesion): void {
   estadoActual = siguiente;
-  for (const oyente of oyentes) oyente();
+  avisarATodos();
+}
+
+function publicarTaller(cambio: Partial<EstadoDelTaller>): void {
+  tallerActual = { ...tallerActual, ...cambio };
+  avisarATodos();
 }
 
 function suscribir(oyente: () => void): () => void {
@@ -70,11 +146,77 @@ export function useSesion(): EstadoDeSesion {
   return useSyncExternalStore(suscribir, leer, leerEnServidor);
 }
 
-/** Mata el worker y con él la tabla. Es la única forma de "borrar": dejar de tenerlo. */
+export function useTaller(): EstadoDelTaller {
+  return useSyncExternalStore(
+    suscribir,
+    () => tallerActual,
+    () => TALLER_VACIO,
+  );
+}
+
+/**
+ * Mata el worker y con él la tabla. Es la única forma de "borrar": dejar de tenerlo.
+ *
+ * Se lleva también la llave, que vive dentro del worker: terminarlo es lo que garantiza que no
+ * queda ni una `CryptoKey` viva en ninguna parte del navegador.
+ */
 export function descartar(): void {
   worker?.terminate();
   worker = null;
+  soltarArchivo();
+  tallerActual = TALLER_VACIO;
   publicar(VACIO);
+}
+
+/**
+ * Invalida el resultado anterior. Se llama al tocar la política, y no es cosmético: dejar en
+ * pantalla un balance calculado con la política de hace tres clics es exactamente la clase de
+ * mentira que este sprint persigue — cada cifra sería cierta, pero de otro archivo.
+ */
+export function invalidarTransformacion(): void {
+  if (
+    tallerActual.transformacion.fase === "sin-hacer" &&
+    tallerActual.archivo === null
+  ) {
+    return;
+  }
+  soltarArchivo();
+  publicarTaller({
+    transformacion: { fase: "sin-hacer" },
+    archivo: null,
+    etapa: null,
+  });
+}
+
+/** Deriva la llave del proyecto. La frase entra al worker y no vuelve a salir. */
+export function derivarLlaveDelProyecto(frase: string): void {
+  if (!worker) return;
+  const sal = generarSal();
+  publicarTaller({ llave: { fase: "derivando" }, etapa: "derivando-llave" });
+  worker.postMessage({ tipo: "derivar-llave", frase, sal });
+  // La sal se guarda para poder enseñarla: sin ella, la misma frase daría otra llave el mes que
+  // viene y los seudónimos dejarían de cuadrar. No es secreta — su trabajo es que dos derivaciones
+  // de la misma frase no den la misma llave por accidente entre proyectos distintos.
+  salPendiente = sal;
+}
+
+let salPendiente = "";
+
+export function transformar(politica: Politica): void {
+  if (!worker) return;
+  soltarArchivo();
+  publicarTaller({
+    transformacion: { fase: "transformando" },
+    archivo: null,
+    etapa: "transformando",
+  });
+  worker.postMessage({ tipo: "transformar", politica });
+}
+
+export function prepararArchivo(): void {
+  if (!worker) return;
+  publicarTaller({ etapa: "escribiendo" });
+  worker.postMessage({ tipo: "construir-archivo" });
 }
 
 /**
@@ -103,7 +245,11 @@ export function siguienteEstado(
   }
   if (mensaje.tipo === "listo")
     return { fase: "listo", informe: mensaje.informe };
-  return { fase: "error", motivo: mensaje.motivo, nombre };
+  if (mensaje.tipo === "error")
+    return { fase: "error", motivo: mensaje.motivo, nombre };
+  // Los mensajes del taller —llave, transformación, archivo— no tocan la sesión: el informe del
+  // análisis sigue siendo el mismo mientras se transforma. Se atienden en `recibir`.
+  return actual;
 }
 
 export function analizar(archivo: File): void {
@@ -159,6 +305,52 @@ export function analizar(archivo: File): void {
 }
 
 function recibir(mensaje: MensajeDelWorker, nombre: string): void {
+  if (mensaje.tipo === "llave-lista") {
+    publicarTaller({
+      llave: { fase: "lista", huella: mensaje.huella, sal: salPendiente },
+      etapa: null,
+    });
+    return;
+  }
+  if (mensaje.tipo === "transformado") {
+    publicarTaller({
+      transformacion: { fase: "hecha", resultado: mensaje.resultado },
+      etapa: null,
+    });
+    return;
+  }
+  if (mensaje.tipo === "archivo") {
+    // El `Blob` se envuelve AQUÍ y no se guarda en ningún sitio: a partir de esta línea, la única
+    // forma de llegar a él es pedirle una URL.
+    publicarTaller({
+      archivo: asaDeArchivo(mensaje.blob, mensaje.nombre),
+      etapa: null,
+    });
+    return;
+  }
+  if (mensaje.tipo === "progreso") {
+    // El progreso del taller no cambia la sesión pero sí la etiqueta que se lee en pantalla.
+    if (
+      tallerActual.transformacion.fase !== "sin-hacer" ||
+      tallerActual.llave.fase === "derivando"
+    )
+      publicarTaller({ etapa: mensaje.etapa });
+  }
+  if (
+    mensaje.tipo === "error" &&
+    (mensaje.motivo === "sin-tabla" ||
+      mensaje.motivo === "sin-llave" ||
+      mensaje.motivo === "transformacion-fallida")
+  ) {
+    // Un fallo transformando NO tumba el informe: el archivo original sigue analizado y la
+    // pantalla puede decir qué pasó sin obligar a cargarlo de nuevo.
+    publicarTaller({
+      transformacion: { fase: "fallo", motivo: mensaje.motivo },
+      etapa: null,
+    });
+    return;
+  }
+
   const siguiente = siguienteEstado(estadoActual, mensaje, nombre);
   if (siguiente !== estadoActual) publicar(siguiente);
 }

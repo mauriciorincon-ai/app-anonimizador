@@ -558,3 +558,137 @@ Ninguna. El plan pedía «distribuciones marginales y correlaciones»: las margi
 **entropía en bits** en vez de como la distribución completa, porque después de generalizar los dos
 dominios son distintos y las distribuciones no se pueden comparar término a término — la entropía
 sí, y es la cifra que responde la pregunta que el usuario tiene.
+
+---
+
+## Fase 5 — La UI: Velo deja de mirar y transforma
+
+**Estado:** completa. `pnpm test` → **502 pruebas verdes**; `pnpm test:e2e` → **68 verdes, 2
+saltadas declaradas** (el fixture de 500k corre en un solo proyecto). Lighthouse local:
+`/` 93/100/100/100 · `/transformar` **92/100/100/100**.
+
+Archivos nuevos: `src/app/transformar/page.tsx` · `src/components/editor-de-politica.tsx` ·
+`llave-del-proyecto.tsx` · `vista-previa.tsx` · `balance-en-pantalla.tsx` ·
+`descarga-del-archivo.tsx` · `decisions/005-la-frontera-y-la-descarga.md` ·
+`tests/e2e/transformar.spec.ts` (9) · `tests/unit/balance-en-pantalla.test.tsx` (8).
+Tocados: `workers/contrato.ts` · `workers/parser.worker.ts` · `lib/sesion.ts` ·
+`app/diagnostico/page.tsx` · `engine/politica.ts` · `engine/politicas-de-fabrica.ts` ·
+`components/zona-de-carga.tsx` · `tests/e2e/{garantia-de-red,a11y}.spec.ts` ·
+`tests/unit/{privacidad,politicas-de-fabrica}.test.ts` · `lighthouse-urls.json` ·
+`docs/MANUAL-DE-USO.md`.
+
+### La frontera sobrevive a la descarga (ADR-005)
+
+Descargar exige bytes, y la salida obvia —serializar en el worker, mandar el string a la página—
+habría tirado la frontera por la ventana **sin que se notara**: la pantalla se vería idéntica. El
+worker construye el `Blob` y lo transfiere; la página lo convierte en URL y nunca lo lee.
+
+Y no lo lee **porque no puede**: `asaDeArchivo()` convierte el `Blob` en URL y su referencia se
+pierde ahí mismo. Lo que llega a los componentes es una **cadena**. No hay ningún objeto sobre el
+que se pudiera llamar `.text()`, así que la regla deja de ser una convención que alguien tiene que
+recordar.
+
+Eso obligó a rehacer un gate que había escrito mal media hora antes: veté `.text()` fuera del
+worker con una expresión regular, y chocó de inmediato con el importador de políticas, que lee un
+JSON que el usuario eligió a mano. **Una regex no distingue ese archivo del de datos**, y un gate
+que no distingue acaba con una lista de excepciones — que es un gate muerto. Se cambió por la
+clausura, que sí distingue, y el gate de texto se quedó solo con `.arrayBuffer()` y `FileReader`,
+que no le hacen falta a nadie fuera del worker.
+
+**Y el reparto de Mondrian viaja SIN su tabla.** `ResultadoDeMondrian` la lleva dentro; reenviarlo
+tal cual habría mandado el archivo entero a la página en el sprint que pone la frontera a prueba.
+Los campos se copian **uno a uno** en vez de con un `Omit`: así el día que el reparto gane un campo
+nuevo no cruza solo — hay que escribirlo y mirarlo.
+
+### La llave no existe en la página
+
+La frase de paso entra al worker y no vuelve a salir; la llave se deriva allá, es no extraíble, y
+de vuelta cruza solo la huella de 12 hex. La pantalla borra la frase de su propio estado en cuanto
+la manda. Y `descartar()` termina el worker, que es lo que garantiza que no queda una `CryptoKey`
+viva en ninguna parte.
+
+### Lo que la pasada de capturas encontró — y ningún test veía
+
+Los tres hallazgos de la fase salieron de **mirar las imágenes**, no de ejecutar nada. Ninguno
+habría fallado un axe, un e2e ni un unitario.
+
+**1. Habeas Data dejaba el archivo en k=1.** La pantalla decía «el reparto alcanzó k=7» y, al lado,
+«1.978 registros (99 %) siguen solos». Las dos ciertas. La causa: `fecha_nacimiento` recibía su
+regla por tipo —«recortar al año», que es lo que la guía recomienda— y con eso **salía del
+reparto**; la fecha recortada seguía partiendo las clases desde fuera. La política prometía un k
+que sus propias reglas impedían cumplir.
+
+El arreglo va en `construirPolitica`: si la política declara `kObjetivo`, los cuasi-identificadores
+entran al reparto aunque tengan regla por tipo. No es una preferencia — **k-anonimato es una
+propiedad del conjunto de cuasi-identificadores**, así que uno fuera del reparto no es una
+excepción al k, es su negación. Las reglas por tipo siguen mandando en todo lo demás
+(`fecha_atencion`, que es no personal, se sigue recortando). Medido después: k del archivo **1 → 7**,
+únicos **1.978 → 0**, y el balance pasa a poder lucir su cifra. Tres tests de regresión, incluido el
+complemento que impide que la excepción se aplique a lo ancho.
+
+Vale la pena decir de dónde salió: **la maquinaria funcionó**. La salvedad
+`k-del-reparto-no-es-el-del-archivo` de la Fase 4 hizo exactamente su trabajo — enseñó en pantalla
+una composición que era falsa. Lo que faltaba no era el detector, era arreglar lo que detectó.
+
+**2. Una frase del copy era falsa para una de las dos políticas.** El botón de fábrica llevaba
+«3 de 4 automáticos» junto a «9 de 18 automáticos»: dos coberturas con **denominadores distintos**,
+que puestas lado a lado se comparan solas y la comparación es falsa. Al bajarlas al aviso de origen
+escribí «de los N identificadores que enumera esa fuente» — cierto para HIPAA, que enumera 18, y
+**falso para la Ley 1581**, que no enumera identificadores: esos 4 puntos son el resumen que hace
+Velo. Ahora dice «Velo resume esa fuente en N puntos», que es verdad en los dos casos.
+
+**3. Dos defectos de maquetación que solo existen en un tamaño.** La tabla del editor recortaba el
+desplegable en 412 px (tres columnas no caben; la categoría bajó bajo el nombre y ahora son dos), y
+«Grupo mínimo, después» envolvía a dos líneas dejando su número un renglón por debajo de los otros
+tres — la fila de cuatro cifras dejaba de leerse como una fila. El primero no lo ve axe; el segundo
+no lo ve nadie que no mire.
+
+### Lo que la pasada de Lighthouse encontró
+
+`/transformar` sacaba **96 en buenas prácticas** contra el 100 de `/`, y el único punto era una
+**violación de CSP por `eval`**. La fuente: **Zod 4 compila validadores con `new Function`**. La CSP
+de Velo no lleva `'unsafe-eval'` y no va a llevarlo, así que el intento se bloqueaba, Zod caía a su
+camino interpretado y todo funcionaba… dejando una violación registrada en cada carga.
+
+Se apagó con `z.config({ jitless: true })`, y no por el punto de Lighthouse: **una violación de CSP
+en cada visita es ruido permanente en el panel de incidencias, y el ruido permanente es donde se
+esconde la violación que sí importa.** Además deja de depender de que la detección de Zod acierte —
+si su fallback fallara un día, la validación de políticas se rompería en producción y **ningún test
+unitario lo vería, porque jsdom no aplica CSP**.
+
+Eso destapó un hueco: la verificación nº2 del plan (política exportada → importada ⇒ misma
+política) solo existía en unitarios. Ahora hay un e2e que la hace **por la UI, con la CSP real**,
+incluida la recarga de la página en medio.
+
+### Los dos contrapesos del ⭐ diferido
+
+Exigibles por el método, no opcionales:
+
+- **Teclado completo en la tabla editable.** El editor usa `<select>` nativo, y por dos razones que
+  no son de gusto: el navegador ya trae Alt+↓, flechas, Escape y el anuncio del lector de pantalla
+  —y en un teléfono abre la rueda del sistema—, y el `contain: paint` que el S1 puso en
+  `.tabla-desplazable` recortaría cualquier menú propio pintado dentro de esa caja (riesgo 7 del
+  plan). El desplegable nativo se pinta en la capa superior del navegador. El e2e enfoca, cambia
+  el valor y tabula sin ratón.
+- **`prefers-reduced-motion` con visibilidad real.** No comprueba que no haya movimiento —eso lo
+  garantiza el cinturón global del S1— sino que **nada quedó invisible** al quitarlo: recorre las
+  cinco pantallas y mide la opacidad calculada, porque un elemento que solo aparece por una
+  animación de entrada desaparece para siempre.
+
+### Alcances declarados
+
+- **Lighthouse mide `/transformar` VACÍA.** Sin archivo cargado no hay editor, ni 24 desplegables,
+  ni balance: el gate de categorías nunca ve el estado pesado que el riesgo 4 del plan temía. El 92
+  de rendimiento es real y es del estado ligero. Queda dicho aquí y en el summary; medir el estado
+  pesado exigiría que Lighthouse cargara un archivo, y eso no lo puede hacer.
+- **El e2e de 500k corre en un solo proyecto** (`desktop-chromium`), igual que el del S1 y por la
+  misma razón: el fixture pesa 130 MB y lo que se mide —el hilo principal— es el mismo en móvil.
+- **El `Blob` preparado vive en memoria** hasta que se guarda o se descarta la sesión. Es memoria,
+  no persistencia —nada tocó el disco—, y la URL se revoca al invalidar o al descartar.
+
+### Desviación del plan
+
+Ninguna en alcance. Dos precisiones: la política se importa con `File.text()` en la página (es la
+política, no la tabla: la tabla no sale del worker), y el `Blob` se convierte en URL dentro de la
+tienda en vez de en el componente — el dueño del recurso es quien controla su ciclo de vida, y así
+el componente no necesita un efecto para crearla ni para revocarla.

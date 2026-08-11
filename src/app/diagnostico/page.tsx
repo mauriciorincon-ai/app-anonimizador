@@ -26,6 +26,17 @@ export default function PaginaDeDiagnostico() {
       <InformeDeDiagnostico informe={estado.informe} />
 
       <div className="border-borde mt-10 border-t pt-6">
+        <Link href="/transformar" className={clasesDeBoton("principal")}>
+          Transformar este archivo
+        </Link>
+        <p className="text-tinta-suave mt-3 max-w-prose text-[0.9375rem] leading-relaxed">
+          El diagnóstico dice qué te delata. El taller lo cambia: eliges qué se
+          le hace a cada columna, ves el antes y el después, y te llevas el
+          archivo tratado. Sin salir de esta pestaña.
+        </p>
+      </div>
+
+      <div className="border-borde mt-8 border-t pt-6">
         <button
           type="button"
           className={clasesDeBoton("discreto")}

@@ -15,10 +15,26 @@
 // CSV en memoria, solo la tabla columnar que se va construyendo.
 import Papa from "papaparse";
 
-import { clasificar } from "@/engine/clasificador";
-import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
+import { balanceDelTratamiento } from "@/engine/balance";
+import {
+  clasificar,
+  posicionesDeMuestra,
+  type Diagnostico,
+} from "@/engine/clasificador";
+import {
+  ConstructorColumnar,
+  type ColumnaColumnar,
+  type TablaColumnar,
+} from "@/engine/columnar";
+import { filasDeCsv, nombreDelArchivoAnonimizado } from "@/engine/csv";
+import { medirDiversidad } from "@/engine/diversidad";
+import { enmascarar } from "@/engine/mascara";
+import { hashDePolitica, tecnicaDe, type Politica } from "@/engine/politica";
 import { evaluarRiesgo } from "@/engine/riesgo";
+import { aplicarPolitica } from "@/engine/tecnicas";
+import { medirUtilidad } from "@/engine/utilidad";
 import { formatoDeArchivo } from "@/lib/archivo";
+import { derivarLlave } from "@/lib/llave";
 import { Sha256 } from "@/lib/sha256";
 
 import type {
@@ -26,12 +42,16 @@ import type {
   Informe,
   MensajeAlWorker,
   MensajeDelWorker,
+  MuestraDeTransformacion,
 } from "./contrato";
 
 const alcance = self as unknown as DedicatedWorkerGlobalScope;
 
 /** La tabla vive en el worker entre mensajes: la UI la consulta, nunca la recibe. */
 let tabla: TablaColumnar | null = null;
+
+/** El diagnóstico se guarda porque la transformación lo necesita: qué es cada columna. */
+let diagnosticoActual: Diagnostico | null = null;
 
 /** Cada cuántas filas se avisa del avance. Suficiente para una barra fluida, sin inundar. */
 const FILAS_POR_AVISO = 25_000;
@@ -184,6 +204,7 @@ function diagnosticar(
   const inicio = performance.now();
   avisar("clasificando", tabla.filas, archivo.size, archivo.size);
   const diagnostico = clasificar(tabla);
+  diagnosticoActual = diagnostico;
 
   avisar("midiendo-riesgo", tabla.filas, archivo.size, archivo.size);
   const { riesgo, advisor } = evaluarRiesgo(tabla, diagnostico);
@@ -228,6 +249,219 @@ function heapUsadoMb(): number | null {
   return memoria ? Math.round(memoria.usedJSHeapSize / 1_048_576) : null;
 }
 
+// ── La transformación, del mismo lado de la frontera ──────────────────────────────────────────
+//
+// Todo esto vive aquí por la misma razón que el diagnóstico: transformar exige leer cada celda, y
+// leer cada celda en el hilo principal significaría que la tabla cruzó. Hacia la página viajan el
+// balance, la utilidad, unas muestras y —al final— un `Blob`, que es un asa, no un contenido.
+
+/** La llave del proyecto. Nace aquí, se queda aquí, y muere con el worker. */
+let llave: CryptoKey | null = null;
+/** La tabla ya transformada, para poder escribir el archivo sin rehacer el trabajo. */
+let transformada: TablaColumnar | null = null;
+let hashDeLaPolitica = "";
+
+async function derivar(frase: string, sal: string): Promise<void> {
+  avisar("derivando-llave", tabla?.filas ?? 0, 0, 0);
+  const proyecto = await derivarLlave(frase, sal);
+  llave = proyecto.clave;
+  // Solo la huella cruza. La `CryptoKey` es no extraíble y ni siquiera podría serializarse con
+  // sus bytes: lo que se evita mandando solo esto es que exista en la página, punto.
+  enviar({ tipo: "llave-lista", huella: proyecto.huella });
+}
+
+/** Hasta cuántas filas se enseñan en la vista previa. Suficiente para reconocer el cambio. */
+const FILAS_DE_MUESTRA = 6;
+
+function muestraDeColumna(
+  original: ColumnaColumnar,
+  nueva: ColumnaColumnar | undefined,
+  politica: Politica,
+  categoria: string,
+  filas: number,
+): MuestraDeTransformacion {
+  const tecnica = tecnicaDe(politica, original.nombre).tipo;
+  if (nueva === undefined) {
+    return {
+      nombre: original.nombre,
+      tecnica,
+      filas: [],
+      despuesEnmascarado: false,
+      omitida: false,
+      suprimida: true,
+    };
+  }
+
+  const posiciones = posicionesDeMuestra(filas, FILAS_DE_MUESTRA);
+  const pares = posiciones.map((p) => ({
+    antes: original.valores[original.codigos[p]],
+    despues: nueva.valores[nueva.codigos[p]],
+  }));
+  const cambio = pares.some((par) => par.antes !== par.despues);
+
+  // Una columna sensible que NO cambió no tiene nada que enseñar: su «después» es su «antes», y
+  // enseñarlo aquí sería sacar un dato del art. 5 a una pantalla que no lo necesita.
+  if (categoria === "dato-sensible" && !cambio) {
+    return {
+      nombre: original.nombre,
+      tecnica,
+      filas: [],
+      despuesEnmascarado: true,
+      omitida: true,
+      suprimida: false,
+    };
+  }
+
+  return {
+    nombre: original.nombre,
+    tecnica,
+    filas: pares.map((par) => ({
+      antes: enmascarar(par.antes),
+      // Completo solo si cambió: un seudónimo o un intervalo no son el dato de nadie, y
+      // enmascararlos volvería inútil la única pantalla que responde «¿qué recibe el otro?».
+      despues: cambio ? par.despues : enmascarar(par.despues),
+    })),
+    despuesEnmascarado: !cambio,
+    omitida: false,
+    suprimida: false,
+  };
+}
+
+async function transformar(politica: Politica): Promise<void> {
+  if (!tabla || !diagnosticoActual) {
+    enviar({ tipo: "error", motivo: "sin-tabla" });
+    return;
+  }
+
+  const inicio = performance.now();
+  const original = tabla;
+  const diagnostico = diagnosticoActual;
+
+  try {
+    avisar("transformando", original.filas, 0, 0);
+    const resultado = await aplicarPolitica(original, politica, llave);
+
+    avisar("midiendo-el-despues", original.filas, 0, 0);
+    const sensibles = diagnostico.columnas
+      .filter((c) => c.categoria === "dato-sensible")
+      .map((c) => c.nombre)
+      .filter((n) => !resultado.suprimidas.includes(n));
+    const qis = diagnostico.columnas
+      .filter((c) => c.categoria === "cuasi-identificador")
+      .map((c) => c.nombre)
+      .filter((n) => !resultado.suprimidas.includes(n));
+    const diversidad = medirDiversidad(resultado.tabla, qis, sensibles);
+
+    const balance = balanceDelTratamiento({
+      tablaOriginal: original,
+      tablaTransformada: resultado.tabla,
+      diagnostico,
+      politica,
+      suprimidas: resultado.suprimidas,
+      colisiones: resultado.colisiones,
+      mondrian: resultado.mondrian,
+      diversidad,
+    });
+
+    const porNombre = new Map(
+      resultado.tabla.columnas.map((c) => [c.nombre, c]),
+    );
+    const categorias = new Map(
+      diagnostico.columnas.map((c) => [c.nombre, c.categoria as string]),
+    );
+    const muestras = original.columnas.map((columna) =>
+      muestraDeColumna(
+        columna,
+        porNombre.get(columna.nombre),
+        politica,
+        categorias.get(columna.nombre) ?? "no-personal",
+        original.filas,
+      ),
+    );
+
+    transformada = resultado.tabla;
+    hashDeLaPolitica = hashDePolitica(politica);
+
+    // `mondrian` viaja SIN su tabla: `ResultadoDeMondrian` la lleva dentro, y reenviarlo entero
+    // habría mandado el archivo a la página sin que se notara en pantalla. Se copian los campos
+    // UNO A UNO en vez de con un `Omit`: así la frontera es literal, y el día que el reparto gane
+    // un campo nuevo no cruza solo — hay que escribirlo aquí y mirarlo.
+    const m = resultado.mondrian;
+    const mondrian = m
+      ? {
+          kObjetivo: m.kObjetivo,
+          kAlcanzado: m.kAlcanzado,
+          alcanzado: m.alcanzado,
+          motivo: m.motivo,
+          dimensiones: m.dimensiones,
+          sinCortes: m.sinCortes,
+          particiones: m.particiones,
+        }
+      : null;
+
+    enviar({
+      tipo: "transformado",
+      resultado: {
+        hashDePolitica: hashDeLaPolitica,
+        balance,
+        utilidad: medirUtilidad(original, resultado.tabla),
+        mondrian,
+        diversidad,
+        suprimidas: resultado.suprimidas,
+        colisiones: resultado.colisiones,
+        pendientesDeMondrian: resultado.pendientesDeMondrian,
+        muestras,
+        ms: Math.round(performance.now() - inicio),
+      },
+    });
+  } catch {
+    // El mensaje de la excepción NUNCA se reenvía: puede citar el valor de la celda que falló.
+    enviar({
+      tipo: "error",
+      motivo: llave === null ? "sin-llave" : "transformacion-fallida",
+    });
+  }
+}
+
+/** Cuántas filas se juntan antes de cerrar un trozo del Blob. */
+const FILAS_POR_TROZO = 20_000;
+
+function construirArchivo(): void {
+  if (!transformada) {
+    enviar({ tipo: "error", motivo: "sin-tabla" });
+    return;
+  }
+  avisar("escribiendo", transformada.filas, 0, 0);
+
+  // El CSV se acumula en trozos y no en una sola cadena: 500.000 filas × 24 columnas son ~130 MB
+  // de texto, y concatenarlos en un solo string obligaría a tener dos copias vivas al duplicar el
+  // buffer. `Blob` acepta la lista y la junta él, una sola vez.
+  const trozos: string[] = [];
+  let acumulado = "";
+  let filas = 0;
+  for (const fila of filasDeCsv(transformada)) {
+    acumulado += fila;
+    if (++filas % FILAS_POR_TROZO === 0) {
+      trozos.push(acumulado);
+      acumulado = "";
+    }
+  }
+  if (acumulado) trozos.push(acumulado);
+
+  const blob = new Blob(trozos, { type: "text/csv;charset=utf-8" });
+  enviar({
+    tipo: "archivo",
+    blob,
+    nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica),
+    bytes: blob.size,
+  });
+}
+
 alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
-  if (evento.data?.tipo === "analizar") void analizar(evento.data.archivo);
+  const mensaje = evento.data;
+  if (mensaje?.tipo === "analizar") void analizar(mensaje.archivo);
+  if (mensaje?.tipo === "derivar-llave")
+    void derivar(mensaje.frase, mensaje.sal);
+  if (mensaje?.tipo === "transformar") void transformar(mensaje.politica);
+  if (mensaje?.tipo === "construir-archivo") construirArchivo();
 });

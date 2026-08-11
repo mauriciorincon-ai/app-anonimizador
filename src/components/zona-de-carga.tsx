@@ -20,7 +20,9 @@ import type { EstadoDeSesion } from "@/lib/sesion";
 import { TOPE_EXCEL_BYTES } from "@/lib/archivo";
 import type { EtapaDelWorker, MotivoDeError } from "@/workers/contrato";
 
-const ETAPAS: Record<EtapaDelWorker, string> = {
+// Solo las etapas del ANÁLISIS. Las de la transformación viven en `/transformar`, que es donde se
+// ven: un `Record` completo obligaría a esta pantalla a tener texto para trabajos que nunca hace.
+const ETAPAS: Partial<Record<EtapaDelWorker, string>> = {
   huella: "Tomando la huella del archivo",
   leyendo: "Leyendo el archivo",
   clasificando: "Reconociendo qué hay en cada columna",
@@ -28,7 +30,9 @@ const ETAPAS: Record<EtapaDelWorker, string> = {
 };
 
 /** Los errores dicen QUÉ HACER. Decir "error al procesar" es dejar al usuario donde estaba. */
-const ERRORES: Record<MotivoDeError, { titulo: string; salida: string }> = {
+const ERRORES: Partial<
+  Record<MotivoDeError, { titulo: string; salida: string }>
+> = {
   "formato-no-soportado": {
     titulo: "Velo no reconoce ese tipo de archivo",
     salida:
@@ -239,7 +243,15 @@ function Fallo({
   nombre: string;
   onReintentar: () => void;
 }) {
-  const { titulo, salida } = ERRORES[motivo];
+  // Los tres motivos de la transformación (`sin-tabla`, `sin-llave`, `transformacion-fallida`) no
+  // pueden nacer en la aduana: se producen en `/transformar` y allá tienen su propio texto. Si uno
+  // llegara aquí sería por una navegación rara, y la salida honesta es la misma de siempre —
+  // volver a soltar el archivo—, no un «error inesperado» que deja al usuario donde estaba.
+  const { titulo, salida } = ERRORES[motivo] ?? {
+    titulo: "Se perdió el archivo que estabas revisando",
+    salida:
+      "Velo no guarda copias en ningún lado, así que no hay nada que recuperar. Suéltalo otra vez: tarda lo mismo que la primera.",
+  };
   return (
     <div
       role="alert"

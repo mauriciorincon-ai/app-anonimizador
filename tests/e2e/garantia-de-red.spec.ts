@@ -22,6 +22,7 @@ const CLINICO = nombreDeFixture("clinico", 2_000, 42);
 const RUTAS_PERMITIDAS = [
   /^\/$/,
   /^\/diagnostico$/,
+  /^\/transformar$/,
   /^\/_next\/static\//,
   /^\/favicon\.ico$/,
 ];
@@ -117,6 +118,36 @@ test("cero peticiones con datos durante todo el flujo", async ({
     page.getByRole("button", { name: "Descargar el reporte" }).click(),
   ]);
   await descarga.path();
+
+  // ── Y el taller: transformar y DESCARGAR el archivo anonimizado ───────────────────────────
+  //
+  // Sin esta parte, la promesa central se quedaba sin gate justo en el sprint que la pone a
+  // prueba: hasta aquí el archivo solo se había leído; a partir de aquí se reescribe entero y
+  // sale del navegador hacia el disco. Es el momento con más superficie para una fuga —y el
+  // único en que Velo produce bytes nuevos con datos dentro.
+  await page.getByRole("link", { name: "Transformar este archivo" }).click();
+  await page.waitForURL("**/transformar");
+
+  await page.getByRole("button", { name: /Habeas Data/ }).click();
+  await page.getByLabel("Frase de paso del proyecto").fill("una frase larga de prueba");
+  await page.getByRole("button", { name: "Derivar la llave" }).click();
+  await page.getByText("Llave lista").waitFor({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "Transformar", exact: true }).click();
+  await page.getByRole("heading", { name: "Qué cambió, y qué sigue igual" }).waitFor({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "Preparar el archivo" }).click();
+  const guardar = page.getByRole("link", { name: /^Guardar velo-anonimizado-/ });
+  await guardar.waitFor({ timeout: 60_000 });
+
+  // La URL del enlace es `blob:` — un origen opaco de este documento. No hay petición de red que
+  // interceptar porque no hay red: los bytes ya están en el navegador.
+  expect(await guardar.getAttribute("href")).toMatch(/^blob:/);
+  const [anonimizado] = await Promise.all([
+    page.waitForEvent("download"),
+    guardar.click(),
+  ]);
+  await anonimizado.path();
 
   // Y un momento de reposo por si algo se enviara con retraso (un beacon diferido, por ejemplo).
   await page.waitForTimeout(1_500);

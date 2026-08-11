@@ -15,7 +15,11 @@ import {
   resumenDeCobertura,
   type ColumnaParaPolitica,
 } from "@/engine/politicas-de-fabrica";
-import { hashDePolitica, tecnicaDe } from "@/engine/politica";
+import {
+  columnasDeMondrian,
+  hashDePolitica,
+  tecnicaDe,
+} from "@/engine/politica";
 import { VALIDADORES } from "@/engine/validadores";
 
 /** Las 18 letras del §164.514(b)(2)(i). Escritas a mano: son el contrato, no un dato derivado. */
@@ -215,5 +219,57 @@ describe("de criterio a política concreta", () => {
   it("marca su origen, para que el reporte pueda decir de dónde salió", () => {
     expect(construirPolitica(HIPAA, COLUMNAS).origen).toBe("hipaa");
     expect(construirPolitica(HABEAS_DATA, COLUMNAS).origen).toBe("habeas-data");
+  });
+});
+
+describe("una política que declara un k tiene que poder cumplirlo", () => {
+  // REGRESIÓN, encontrada en la pasada de capturas de la Fase 5 y no por un test: Habeas Data
+  // dejaba el archivo en k=1 mientras la pantalla decía «el reparto alcanzó k=7». Las dos cifras
+  // eran ciertas. La causa: `fecha_nacimiento` recibía su regla por tipo —«recortar al año», que
+  // es lo que la guía recomienda— y con eso salía del reparto; la fecha recortada seguía partiendo
+  // las clases desde fuera.
+  //
+  // k-anonimato es una propiedad del CONJUNTO de cuasi-identificadores: uno fuera del reparto no
+  // es una excepción al k, es su negación.
+  const COLUMNAS = [
+    { nombre: "cedula", tipo: "cedula", categoria: "identificador-directo" },
+    { nombre: "fecha_nacimiento", tipo: "fecha", categoria: "cuasi-identificador" },
+    { nombre: "municipio", tipo: "categoria", categoria: "cuasi-identificador" },
+    { nombre: "fecha_atencion", tipo: "fecha", categoria: "no-personal" },
+  ] as const;
+
+  it("ningún cuasi-identificador se queda fuera del reparto", () => {
+    const politica = construirPolitica(HABEAS_DATA, [...COLUMNAS]);
+    const qis = COLUMNAS.filter(
+      (c) => c.categoria === "cuasi-identificador",
+    ).map((c) => c.nombre);
+
+    for (const nombre of qis) {
+      expect(tecnicaDe(politica, nombre).tipo, nombre).toBe(
+        "generalizar-automatico",
+      );
+    }
+    expect(columnasDeMondrian(politica).sort()).toEqual([...qis].sort());
+  });
+
+  it("y la regla por tipo sigue mandando en todo lo demás", () => {
+    // El complemento: si la excepción se hubiera aplicado a lo ancho, `fecha_atencion` —que no es
+    // personal— también habría entrado al reparto y generalizaría un dato que nadie pidió tocar.
+    const politica = construirPolitica(HABEAS_DATA, [...COLUMNAS]);
+    expect(tecnicaDe(politica, "fecha_atencion").tipo).toBe(
+      "generalizar-fecha",
+    );
+    expect(tecnicaDe(politica, "cedula").tipo).toBe(
+      "seudonimizar-con-formato",
+    );
+  });
+
+  it("sin kObjetivo declarado, la regla por tipo manda también en los QIs", () => {
+    // HIPAA no declara k (Safe Harbor es una lista de supresiones, no un modelo de riesgo), así
+    // que ahí no hay k que proteger y la excepción no aplica.
+    const sinK = { ...HABEAS_DATA, kObjetivo: null };
+    expect(tecnicaDe(construirPolitica(sinK, [...COLUMNAS]), "fecha_nacimiento").tipo).toBe(
+      "generalizar-fecha",
+    );
   });
 });
