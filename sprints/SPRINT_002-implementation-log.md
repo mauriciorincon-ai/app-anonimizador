@@ -692,3 +692,44 @@ Ninguna en alcance. Dos precisiones: la política se importa con `File.text()` e
 política, no la tabla: la tabla no sale del worker), y el `Blob` se convierte en URL dentro de la
 tienda en vez de en el componente — el dueño del recurso es quien controla su ciclo de vida, y así
 el componente no necesita un efecto para crearla ni para revocarla.
+
+### CI en rojo tras la Fase 5 — el umbral de cobertura, y por qué no lo vi
+
+El commit `f7ed785` puso el job `quality` en rojo. **Las 502 pruebas pasaron**: lo que falló fue el
+umbral de `src/lib/**`, en 79,91 % contra el 80 % exigido.
+
+```
+ERROR: Coverage for statements (79.91%) does not meet "src/lib/**/*.ts" threshold (80%)
+ERROR: Coverage for branches (68.86%) does not meet "src/lib/**/*.ts" threshold (80%)
+```
+
+El causante era `sesion.ts` al **46,73 %** — el archivo que la Fase 5 dobló de tamaño. Y el fallo de
+proceso es mío y es simple: verifiqué con `pnpm vitest run`, que corre las pruebas, en vez de
+`pnpm test`, que es el que pasa `--coverage` y aplica los umbrales. Leí el 94,87 % de «All files»
+—cierto— y no las cuatro líneas de ERROR que venían después con el desglose por glob. **Es el
+patrón del sprint cometido contra mí mismo:** la cifra que miré era verdadera y la conclusión que
+saqué de ella, falsa.
+
+**El arreglo no fue bajar el umbral.** `tests/unit/sesion.test.tsx` declara en su cabecera que solo
+prueba los caminos de rechazo porque «un archivo válido instanciaría un `Worker`, que en jsdom no
+existe — ese camino lo cubre el e2e». Era cierto en el S1, cuando la sesión terminaba en el informe.
+La Fase 5 le metió el taller entero y esa frase pasó a cubrir la mitad del archivo.
+
+`tests/unit/taller.test.tsx` (17 pruebas) dobla el worker —cuyo contrato son dos cosas,
+`postMessage` y eventos `message`— y dobla también el registro de URLs de objeto, que jsdom no
+implementa. Con eso se pueden hacer preguntas **que el e2e no puede hacer**: `URL.revokeObjectURL`
+no deja rastro en la pantalla, así que un Velo que nunca revocara se vería idéntico y acumularía un
+archivo entero en memoria por cada edición de la política — cientos de MB con 500k filas. Las tres
+que importan:
+
+- **el asa que llega a la interfaz tiene tres campos y los tres son cadena o número** — la versión
+  ejecutable de lo que ADR-005 decía solo en un comentario y en un tipo;
+- **invalidar, transformar de nuevo y descartar sueltan los bytes**, cada uno con su URL;
+- **la frase de paso no aparece en el estado publicado** (`JSON.stringify(taller)` no la contiene).
+
+`sesion.ts` quedó en **96,73 %** y `src/lib/**` en 98,39 % / 97,16 %. Total: **519 pruebas**, 98,34 %
+de sentencias. Las tres líneas que siguen sin cubrir son las dos de renderizado en servidor y el
+`return actual` de los mensajes del taller, que el propio `recibir` intercepta antes.
+
+**Lo que queda como regla:** verificar con `pnpm test`, que es lo que corre el CI. Un comando
+parecido que no aplica los gates no es una verificación, es un ensayo.
