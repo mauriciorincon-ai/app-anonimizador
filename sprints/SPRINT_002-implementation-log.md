@@ -193,3 +193,98 @@ lleva los nombres de columna del usuario. Ninguno sale, verificado sobre el payl
 De paso quedó escrito algo que no es obvio: el **hash** de la política sí podría viajar sin revelar
 nada, pero tiene 64 caracteres y el sanitizador lo descarta igual. Está bien que así sea — el gate
 no puede distinguir «hash inofensivo» de «llave» mirando la cadena.
+
+---
+
+## Fase 2 — Las cuatro familias de técnicas
+
+**354 pruebas unitarias** (96,9 % sentencias · 92,3 % ramas). `engine/tecnicas/` al 98,1 %,
+`csv.ts` al 100 %, `llave.ts` al 94,4 %.
+
+### La llave vive fuera del motor, y no es orden
+
+El gate de determinismo del S1 veta `crypto.getRandomValues` en cada `.ts` de `src/engine/` — un
+motor que puede producir azar deja de ser reproducible. Generar una sal necesita azar de verdad.
+Así que `src/lib/llave.ts` genera y deriva (**PBKDF2-600k**, con la cifra de OWASP citada en el
+código), y al motor le llega la llave **ya derivada**: las técnicas siguen siendo funciones puras
+de (valor, llave). Era el riesgo nº1 del plan y se pagó donde estaba previsto, no al chocar.
+
+La llave se deriva **no extraíble**: aunque alguien consiga una referencia, no puede leer sus
+bytes. Y lleva una **huella corta** —el HMAC de una constante— para que el usuario reconozca que
+dos archivos salieron de la misma llave sin enseñar un solo byte de ella.
+
+### Se transforma el diccionario, no las filas — y luego se re-deduplica
+
+Una columna de 500.000 filas con 3 valores distintos cuesta **3** transformaciones. Es el regalo de
+la representación columnar del S1.
+
+Lo que no era obvio: **después hay que reconstruir el diccionario**. Generalizar junta valores —40
+edades distintas caen en 5 rangos— y un diccionario que conservara las 40 entradas haría que la
+columna mintiera sobre su propia cardinalidad. De la cardinalidad salen las clases de equivalencia,
+o sea el riesgo: una columna que miente ahí produce un k equivocado, que es la peor forma de fallar
+en este producto. Hay test.
+
+### El hallazgo de la fase: el formato preservado colisiona, y hay que decirlo
+
+Un seudónimo tiene que caber en el formato que el sistema del destino espera. Un NIT son 9 dígitos
+que empiezan por 8 o 9: **2×10⁸ combinaciones**, no 2⁶⁴. Por la paradoja del cumpleaños, en un
+archivo grande dos valores distintos caen en el mismo seudónimo — y entonces dos empresas se ven
+como una.
+
+Medido sobre 500.000 valores distintos, con el código que se despacha:
+
+| Formato | Espacio | Colisiones medidas | Teoría (n²/2N) |
+| ------- | ------- | ------------------ | -------------- |
+| NIT     | 2×10⁸   | **620**            | 625            |
+| Cédula  | 10⁹     | **127**            | 125            |
+
+La predicción y la medición cuadran al 1 %. No es un caso raro: es aritmética, y le pasa a
+cualquier herramienta que preserve formato.
+
+**Por qué Velo no lo resuelve rehasheando.** La salida obvia —ante una colisión, volver a hashear
+con un contador hasta encontrar hueco— rompería en silencio justo lo que este sprint promete: el
+seudónimo dejaría de depender solo del valor y la llave, y pasaría a depender de **qué más había en
+el archivo**. El mismo cliente saldría distinto en marzo que en abril, y los cruces —la razón de
+existir de C9— se romperían donde nadie los está mirando. Así que Velo **las cuenta y las reporta**,
+y ofrece el camino sin colisiones prácticas: el seudónimo hexadecimal, que conserva el cruce y
+pierde el parecido.
+
+### C9 no se construye: cae sola
+
+Mismo valor + misma llave ⇒ mismo seudónimo, dentro del archivo y entre archivos. No hay tabla de
+correspondencia que mantener: es lo que un HMAC hace. Lo que sí hay es un test que carga **dos
+archivos distintos** con las filas en otro orden y comprueba que el join sigue cuadrando — porque
+una propiedad que nadie comprueba es una esperanza.
+
+### El determinismo, en sus dos direcciones y con su complemento
+
+- **Misma llave ⇒ archivo byte-idéntico** (SHA-256 del CSV de salida), y el tamaño de los trozos
+  del parser no lo cambia.
+- **Llave distinta ⇒ archivo distinto** — la dirección que atrapa un HMAC mal cableado que
+  devolviera una constante y pasaría la primera con nota perfecta.
+- Y el **complemento**, que no estaba en el plan y hacía falta: lo que NO depende de la llave
+  —enmascarado, fechas generalizadas, municipio— tiene que salir **idéntico** con las dos llaves.
+  Si cambiara, algo estaría leyendo la llave donde no debe.
+
+### El CSV, con sus cinco decisiones escritas
+
+Separador coma (RFC 4180) · comillas solo cuando hacen falta · la comilla se duplica, no se escapa
+con barra —eso es JSON— · **fin de línea `\n`** · **sin BOM**.
+
+Las dos últimas se apartan de RFC 4180 (que pide CRLF) **a propósito y con su consecuencia
+declarada**: mezclar finales de línea daría archivos distintos según el sistema donde se generó, que
+es exactamente lo que el determinismo prohíbe. El precio va al manual: _Excel en Windows puede
+necesitar que le digas que el archivo es UTF-8 al abrirlo._ Se prefiere decirlo a romper la promesa
+por comodidad.
+
+Y el archivo descargado **no repite el nombre del original**: `pacientes-oncologia-2026.csv` cuenta
+de qué va el contenido antes de que nadie lo abra, y ese nombre viaja en el asunto de un correo y en
+una carpeta compartida. Sale como `velo-anonimizado-<8 del hash de la política>.csv`, que además
+permite reconocer dos entregas del mismo tratamiento.
+
+### Nota de rendimiento
+
+Seudonimizar 500k valores distintos cuesta **~5 s en Node** y **~0,7 s en Chromium** (ADR-004). La
+diferencia es la misma que el Spike A destapó: `crypto.subtle` del navegador es mucho más rápido
+que el de Node. El presupuesto real se mide en el gate de la Fase 5, por la UI y con el hilo
+principal vigilado.
