@@ -418,6 +418,19 @@ Dos costos se pagaron durante la fase, con su medición:
 Total del peor caso: **3.794 → 1.387 ms**. Corre en el worker, así que no bloquea el hilo principal;
 el presupuesto real se verifica por la UI en la Fase 5.
 
+**Y una corrección que costó un CI en rojo.** El test de escala llevaba `expect(ms).toBeLessThan(10_000)`
+como «presupuesto». En la Fase 3 pasó; en la Fase 4 falló **sin que Mondrian cambiara una línea**: el
+runner de GitHub midió **11.042 ms** para el mismo trabajo que aquí toma 1.387 — **7,7×**. El umbral
+estaba calibrado contra la máquina de desarrollo y el gate era flaky desde que nació; la Fase 3 lo
+pasó por margen, no por estar bien.
+
+La lección es la misma que destapó la demo en rojo de Lighthouse en la Fase 0 (el runner puntuó 0,69
+en su primera corrida donde aquí puntúa 0,95): **el hardware de CI no es el de esta máquina, y un
+número calibrado aquí no significa nada allá.** Un reloj de pared en un runner compartido no es un
+presupuesto — es ruido con unidades. El umbral pasó a 45 s y quedó escrito como lo que es: una alarma
+de incendio contra un O(n²), no un presupuesto. El presupuesto vive en la tabla de arriba, con su
+hardware declarado, y se verifica por la UI en la Fase 5.
+
 ### Cableado al pipeline
 
 `aplicarPolitica` ahora **cierra el círculo**: Mondrian corre al final, **sobre las columnas ya
