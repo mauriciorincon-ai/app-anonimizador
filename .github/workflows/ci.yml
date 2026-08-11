@@ -55,11 +55,17 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - name: Lighthouse CI contra perf-budget.json (URLs de lighthouse-urls.json)
+      - name: Lighthouse CI — budgets (perf-budget.json) + categorias >=90 (kit v1.12.0)
         # Cada sprint añade sus rutas nuevas a lighthouse-urls.json (default: ["/"]).
         # Nota Lantern: el LCP SIMULADO sobre localhost castiga SPAs sanas (nutri-kids S1:
         # 3.8s simulado vs 242ms observado) — budgets client-side necesitan margen documentado.
+        # DOS asserts sobre UNA sola coleccion: LHCI declara `budgetsFile` mutuamente excluyente
+        # con `assertions` — y la casilla ">=90 en las 4 categorias" del /deploy-check no la
+        # medía nadie hasta v1.12.0 (el budget mide tiempos y pesos, que es otra cosa).
+        # Ojo al flag: `lhci collect` usa --url=, no --collect.url= (que es de `autorun`).
         run: |
           npm i -g @lhci/cli
-          URLS=$(node -e "console.log(require('./lighthouse-urls.json').map(u=>'--collect.url=http://localhost:3000'+u).join(' '))")
-          lhci autorun --collect.startServerCommand="pnpm start" $URLS --assert.budgetsFile=./perf-budget.json
+          URLS=$(node -e "console.log(require('./lighthouse-urls.json').map(u=>'--url=http://localhost:3000'+u).join(' '))")
+          lhci collect --startServerCommand="pnpm start" $URLS
+          lhci assert --budgetsFile=./perf-budget.json
+          lhci assert --config=./lighthouse-categorias.json

@@ -7,6 +7,9 @@ build/
 coverage/
 playwright-report/
 test-results/
+# Reportes crudos de `lhci collect` (un .json por corrida, ~1 MB). El CI los produce y los
+# consume en el mismo job; correr el gate en local no debe ensuciar el árbol.
+.lighthouseci/
 # Datasets sintéticos generados por docs/kit-de-prueba/generador.mjs: se REGENERAN con su semilla
 # (byte-idénticos), nunca se commitean — un CSV de 500k filas pesa 130 MB y el repo es público.
 tmp/
