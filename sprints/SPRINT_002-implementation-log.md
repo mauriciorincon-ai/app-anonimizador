@@ -431,3 +431,108 @@ SHA-256; trozos de parser distintos, mismo SHA-256; otro k, otro archivo.
 Ninguna. El plan pedía además «verificación de l-diversity y t-closeness sobre la partición ya
 formada»: vive en `src/engine/diversidad.ts` en vez de dentro de `mondrian.ts`, porque son
 mediciones sobre una partición cualquiera y no dependen de cómo se formó.
+
+---
+
+## Fase 4 — El antes y el después, y dónde podía mentir
+
+**Estado:** completa. `pnpm test` → **444 pruebas verdes**, cobertura 98,0 % sentencias / 93,4 %
+ramas; `engine/balance.ts` 100 % sentencias, `engine/utilidad.ts` 98,1 %, `engine/reporte.ts`
+94,7 % (venía de 90,9 %).
+
+Archivos nuevos: `src/engine/balance.ts` · `src/engine/utilidad.ts` ·
+`tests/unit/balance.test.ts` (12) · `tests/unit/utilidad.test.ts` (17).
+Tocados: `src/engine/reporte.ts` (sección de tratamiento + sección de utilidad) ·
+`tests/unit/reporte.test.ts` (+14).
+
+### La regla de honestidad no vive en la pantalla: vive en el tipo
+
+El plan la pedía como criterio de aceptación. Escribirla como convención —«acuérdate de poner la
+advertencia arriba»— habría durado hasta la tercera pantalla. Así que `reduccion` no viaja como un
+`number` suelto:
+
+- `salvedades` sale **ya ordenada**, con las descalificantes delante. Ninguna vista tiene que
+  ordenarlas, y por tanto ninguna puede desordenarlas.
+- `esTitular` es un campo del motor, no un cálculo de cada componente. Tres pantallas que lo
+  recalculen son tres oportunidades de olvidarlo.
+
+Son **seis salvedades**, y cada una sale de **números medidos**, no de un umbral elegido a ojo:
+
+| Salvedad | Gravedad | De dónde sale |
+| --- | --- | --- |
+| `identificadores-sin-tratar` | descalifica | la política conserva un identificador directo |
+| `unicos-restantes` | descalifica | `despues.unicos > 0` |
+| `k-no-alcanzado` | descalifica | Mondrian pidió k y no llegó |
+| `k-del-reparto-no-es-el-del-archivo` | descalifica | `despues.kMinimo < mondrian.kAlcanzado` |
+| `clases-homogeneas` | matiza | ℓ=1 en alguna clase (Fase 3) |
+| `colisiones-de-seudonimo` | matiza | colisiones del formato preservado (Fase 2) |
+
+La cuarta **cierra el hallazgo de la Fase 3**: aquel test exhibía el engaño; este lo convierte en
+algo que la pantalla no puede callar. Y se detecta comparando los dos números que ya se midieron,
+no adivinando qué columnas quedaron fuera del reparto.
+
+La separación entre **descalifica** y **matiza** tampoco es un color: lo primero desmiente la
+lectura «ya está tratado» (alguien sigue señalable); lo segundo la acompaña (el ataque de
+homogeneidad y las colisiones son revelación de ATRIBUTO, otro eje). Confundirlos habría hecho que
+`esTitular` fuera falso casi siempre, y un mecanismo que nunca deja pasar nada deja de significar
+algo.
+
+### Dos decisiones sobre la cifra misma
+
+**`reduccion` es `null`, no `0 %`, cuando antes no había ningún único.** Presentar ese 0/0 como
+«0 %» alarma sin motivo y como «100 %» tranquiliza sin motivo: son cifras inventadas en direcciones
+opuestas. Se dice con palabras y se remite a la cifra que sí existe — cuántos hay **ahora**.
+
+**Las dos medidas salen de la misma función del S1**, corrida sobre la tabla original y sobre la
+transformada. Si el riesgo de después se calculara con otro modelo, la resta no significaría nada.
+Los cuasi-identificadores de «después» son los de «antes» **menos los suprimidos** —quien reciba el
+archivo no tendrá esas columnas, así que descontarlas es legítimo— y el reporte **lo dice y las
+nombra**, porque callarlo no lo sería.
+
+### La utilidad perdida, sin puntuación
+
+`utilidad.ts` mide en dos planos y **no puntúa**. No hay un «85 % de utilidad conservada» porque
+ese número exige decidir qué columna importa, y eso lo sabe el usuario, no Velo.
+
+- **Por columna:** valores distintos, celdas cambiadas y **entropía de Shannon en bits** — que es
+  literalmente «cuántas preguntas de sí/no hacen falta para distinguir una fila por esta columna».
+  Pasar de 15,2 a 2,3 bits dice más que «se generalizó».
+- **Entre columnas:** **V de Cramér antes y después** (Cramér 1946, §21.9). Es la que duele y la
+  que nadie mira: una columna puede conservar su distribución entera y haber perdido su RELACIÓN
+  con otra, y con ella el análisis que el destinatario pensaba hacer. Se ordenan de la que más se
+  perdió a la que menos: es el hallazgo, no el inventario.
+
+Dos topes **declarados con su motivo**, no callados: 64 valores distintos por columna y 8 columnas
+al cruce. El primero es estadístico antes que de rendimiento — una tabla de contingencia con más
+casillas que filas está casi toda vacía y la V sale **inflada hacia 1 por pura escasez**. Y los
+valores del diccionario que ya nadie usa no cuentan para los grados de libertad, con test propio:
+generalizar deja entradas huérfanas, y contarlas subiría la V sin que la relación hubiera cambiado.
+
+### El criterio de aceptación: orden, no cifra
+
+El reporte exportado se abre **fuera de contexto**, en el correo de alguien que no estuvo en la
+pantalla. Así que el orden del documento es lo único que decide qué se lee primero, y el test lo
+compara por posición:
+
+```
+seccion.indexOf('class="salvedades') < seccion.indexOf('class="reduccion"')
+```
+
+Sobre un archivo real del kit con una reducción del **87 %** —grande, lucible— y la cédula intacta:
+la salvedad va primera, la cifra **no** se emite como titular (`cifrota` no aparece), y la salvedad
+**nombra** `cedula_titular`. Con su complemento, sin el cual el test pasaría por vacío: cuando nada
+descalifica, la cifra **sí** sale de titular.
+
+### La composición que se cometía por omisión
+
+Al añadir el tratamiento, la sección de riesgo del S1 pasó a ser ambigua: sus cifras describen el
+archivo que **entró**, y puestas debajo de un balance se leerían como las del archivo que sale.
+Ahora se titula «el archivo ORIGINAL» cuando hay tratamiento, y el balance va **antes** que ella en
+el documento. Nadie escribió nunca una frase falsa; la habría escrito el orden.
+
+### Desviación del plan
+
+Ninguna. El plan pedía «distribuciones marginales y correlaciones»: las marginales se entregan como
+**entropía en bits** en vez de como la distribución completa, porque después de generalizar los dos
+dominios son distintos y las distribuciones no se pueden comparar término a término — la entropía
+sí, y es la cifra que responde la pregunta que el usuario tiene.
