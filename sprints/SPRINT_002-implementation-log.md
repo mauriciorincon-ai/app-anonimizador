@@ -288,3 +288,146 @@ Seudonimizar 500k valores distintos cuesta **~5 s en Node** y **~0,7 s en Chromi
 diferencia es la misma que el Spike A destapó: `crypto.subtle` del navegador es mucho más rápido
 que el de Node. El presupuesto real se mide en el gate de la Fase 5, por la UI y con el hilo
 principal vigilado.
+
+---
+
+## Fase 3 — Mondrian: el reparto que decide cuánto generalizar
+
+**Estado:** completa. `pnpm test` → **397 pruebas verdes**, cobertura 97,6 % sentencias / 93,5 %
+ramas; `engine/mondrian.ts` 100 % sentencias y 98,7 % ramas, `engine/diversidad.ts` 100 %.
+
+Archivos nuevos: `src/engine/mondrian.ts` · `src/engine/diversidad.ts` ·
+`tests/unit/mondrian.test.ts` (23) · `tests/unit/diversidad.test.ts` (13).
+Tocados: `docs/kit-de-prueba/generador.mjs` (perfil nuevo) · `src/engine/tecnicas/index.ts`
+(cableado) · `tests/unit/tecnicas.test.ts` · `tests/unit/determinismo-transformacion.test.ts`.
+
+### El fixture va primero, y por una razón
+
+El perfil **`mediana-repetida`** del kit se escribió **antes** que el algoritmo. Un dataset
+uniforme no distingue una implementación correcta de una rota: con valores bien repartidos, cortar
+por la posición central y cortar por el **valor** de la mediana dan casi lo mismo. La diferencia
+solo aparece cuando la mediana se repite tanto que caería a los dos lados del corte por posición.
+
+El perfil trae dos columnas con la mediana clavada — medido sobre 2.000 filas: `edad_reportada`
+**54 %** en el valor `40`, `puntaje_triage` **79 %** en `50` — y un test verifica esa proporción,
+para que el caso duro no se ablande en silencio si alguien toca el generador.
+
+Las dos columnas viven **fuera** de `COLUMNAS` en el generador: el perfil `clinico` es
+`Object.keys(COLUMNAS)`, así que añadirlas ahí habría cambiado el archivo del S1 —y su hash, y los
+fixtures de e2e— sin pedir permiso.
+
+### El contrato del ADR-002 §3, punto por punto
+
+1. **Dimensión de mayor rango, empate por menor índice de columna.** Con test que lo distingue:
+   dos dimensiones de rango idéntico y presupuesto para un solo corte — se corta la primera. Y otro
+   que fija que el índice es **el de la tabla, no el de la lista de la política**: si mandara el
+   orden en que la política nombra las columnas, reordenar la política sin cambiar nada cambiaría
+   el archivo de salida.
+2. **Partición por valor, jamás por posición.** El test obligatorio no pregunta «¿las clases tienen
+   k filas?» —cortar por posición también las produce— sino **¿la generalización sigue siendo una
+   función del valor?**: dos filas con el mismo valor original tienen que recibir la misma etiqueta.
+   Y su consecuencia observable, que es la que muerde: **barajar las filas no cambia una sola
+   etiqueta**. Cortando por posición, el archivo anonimizado dependería del orden en que llegaron
+   las filas — la regla dura nº3 rota de la forma más silenciosa posible.
+3. **Caché de la proyección por columna** (`WeakMap` sobre la identidad de la columna, que es
+   inmutable en este motor). Memorizar una función pura no toca el determinismo y aquí paga: mover
+   el k en la interfaz vuelve a repartir, y sin caché volvería a ordenar los 477.701 valores
+   distintos de `latitud` en cada movimiento.
+
+### Las etiquetas, y la celda vacía
+
+La etiqueta es el **intervalo observado**: `18 a 39`, o el valor tal cual si la partición tiene uno
+solo. Separador `" a "` y no el `30-39` de `generalizar-rango`, **porque no son la misma cosa**:
+aquel produce un balde canónico de ancho fijo, este produce dos valores que salieron de este
+archivo. Con fechas, además, `1987-03-14-1990-05-02` no se puede ni leer.
+
+La celda vacía **recibe la etiqueta de su partición**, con el sufijo `(o vacío)`. No es un adorno:
+si el vacío se quedara vacío, dos filas de la misma clase saldrían con valores distintos y el k
+prometido se partiría en dos sin que nadie lo notara. El sufijo es lo que impide que la celda
+afirme un dato que nunca existió.
+
+### Lo que Mondrian promete, y lo que la pantalla podría hacerle decir
+
+**El hallazgo de honestidad de la fase, con test que lo exhibe.** Mondrian garantiza k sobre **las
+columnas que entraron al reparto**. El k del **archivo** se mide sobre todos sus
+cuasi-identificadores. Un QI que la política conserva parte esas clases y deja el k real por debajo
+del prometido — el test construye el caso: `kAlcanzado = 5` sobre `edad`, y el archivo entregado
+tiene clases de **una sola fila** por culpa de un código de empleado que nadie tocó. Ninguna de las
+dos cifras miente por separado; la composición sí.
+
+Por eso `kAlcanzado` **no se lee del tamaño de las particiones** sino de las clases de equivalencia
+de la tabla de salida (dos particiones pueden fundirse en una clase, y leer el mínimo de partición
+daría un número pesimista pero igual de falso), y por eso la Fase 4 vuelve a medir con todos los QIs.
+
+**k no alcanzable no se resuelve solo:** si el archivo tiene menos filas que el k pedido, Mondrian
+generaliza todo lo que puede y lo devuelve dicho (`alcanzado: false`, `motivo`), sin suprimir filas
+por su cuenta. Borrar registros del archivo de alguien es decisión suya — y además es silenciosa:
+un archivo con menos filas de las que entró no se nota mirándolo. Igual con `kObjetivo: null` y
+columnas marcadas: salen intactas y quedan en `pendientesDeMondrian`; elegir un k por el usuario
+sería elegir por él cuánta información pierde.
+
+### l-diversity y t-closeness — se miden, no se optimizan (ADR-002 §4)
+
+`src/engine/diversidad.ts`, con sus fuentes citadas (Machanavajjhala et al., ICDE 2006; Li, Li &
+Venkatasubramanian, ICDE 2007). k=5 impecable no dice nada si las 5 personas de la clase comparten
+el diagnóstico: eso es el ataque de homogeneidad, y ℓ lo ve. Y una clase puede tener ℓ=3 aprobado y
+ser un 80 % de un diagnóstico que en el archivo pesa mucho menos: eso lo ve t y ℓ no. Hay un test
+para cada una de esas dos frases.
+
+Tres límites **declarados en el propio archivo**, no escondidos:
+
+- ℓ es la variante **distinta**, no la entrópica ni la recursiva (c,ℓ).
+- t usa **distancia de variación total**, propia de atributos categóricos. Para atributos con orden
+  natural el paper usa EMD ordenada, que Velo no implementa: un CIE-10 no tiene orden, así que la
+  métrica encaja con el caso real, pero si alguien marcara sensible una columna ordenada el número
+  saldría **más optimista de lo que debería**.
+- Se **miden y se reportan**. Optimizarlas es NP-hard; verificarlas sobre una partición ya hecha es
+  lineal, y eso es lo que se hace.
+
+La celda vacía cuenta como un valor del atributo: una clase donde todos lo tienen en blanco es tan
+homogénea como una donde todos comparten diagnóstico, y tratarla como «ausencia» la dejaría pasar
+por diversa.
+
+### Rendimiento: el spike medía otra cosa, y hay que decirlo
+
+El ADR-002 reportó **171 ms** (8 QIs, 500k) y avisó: _«el S2 debe medir en su propio gate en vez de
+citar esta tabla»_. Medido aquí, sobre el fixture de 500k×24 del kit, con el código que se despacha:
+
+| Escenario | Proyección | Reparto + tabla de salida | k medido | **Total** | Particiones |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Los 8 QIs exactos del ADR-002 | 84 ms | 650 ms | 85 ms | **819 ms** | 65.596 |
+| 8 QIs con tres columnas casi únicas (`latitud`, `longitud`, `ip_registro`) | 597 ms | 702 ms | 89 ms | **1.387 ms** | 65.734 |
+
+k=5 alcanzado en los dos. **La proyección del ADR (78 ms) coincide con la medida (84 ms); el
+algoritmo no.** La razón no es que el spike se equivocara: el spike **solo particionaba**. El
+producto además proyecta, **construye la tabla de salida** (65.596 particiones × 8 dimensiones de
+etiquetas, más el diccionario) y **mide el k del resultado**. Comparar 171 ms con 819 ms es comparar
+media tarea con la tarea.
+
+Dos costos se pagaron durante la fase, con su medición:
+
+- **Claves numéricas precalculadas.** `sort` llama al comparador ~n·log n veces; convertir el texto
+  a número ahí dentro eran 9 millones de `replace` + `Number` en una columna de 480.000 valores
+  distintos. Proyección: **1.734 → 601 ms**.
+- **Mediana por dos caminos.** El histograma es imbatible mientras el dominio quepa, y desastroso
+  cuando el dominio tiene 477.701 casillas y la partición tiene 5 filas — que es todo el fondo del
+  árbol con una columna casi única. Cuando el ancho supera al número de filas se ordenan los
+  ordinales de la partición (`TypedArray.sort()`, numérico y sin locale). Reparto: **1.915 → 702 ms**.
+  Ninguno de los dos usa pivote, o sea ninguno usa azar, que en este motor está prohibido.
+
+Total del peor caso: **3.794 → 1.387 ms**. Corre en el worker, así que no bloquea el hilo principal;
+el presupuesto real se verifica por la UI en la Fase 5.
+
+### Cableado al pipeline
+
+`aplicarPolitica` ahora **cierra el círculo**: Mondrian corre al final, **sobre las columnas ya
+transformadas** —generalizar lo que entró en vez de lo que sale produciría intervalos sobre valores
+que ya no existen en el archivo— y el resultado viaja en `TablaTransformada.mondrian`. El gate de
+determinismo del archivo de salida se extendió a una política **con reparto**: dos corridas, mismo
+SHA-256; trozos de parser distintos, mismo SHA-256; otro k, otro archivo.
+
+### Desviación del plan
+
+Ninguna. El plan pedía además «verificación de l-diversity y t-closeness sobre la partición ya
+formada»: vive en `src/engine/diversidad.ts` en vez de dentro de `mondrian.ts`, porque son
+mediciones sobre una partición cualquiera y no dependen de cómo se formó.

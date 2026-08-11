@@ -22,7 +22,8 @@
 //   pnpm kit:generar -- --filas 5000 --perfil limpio --salida tmp/limpio.csv
 //
 // Perfiles: clinico (default, mezcla completa con datos del art. 5) · limpio (cero datos
-// personales: el estado "archivo limpio" de la UI) · trampas (concentra los señuelos).
+// personales: el estado "archivo limpio" de la UI) · trampas (concentra los señuelos) ·
+// sin-personales (ni un cuasi-identificador) · mediana-repetida (el caso duro de Mondrian).
 
 import { createHash } from "node:crypto";
 import { createWriteStream, mkdirSync } from "node:fs";
@@ -327,10 +328,47 @@ const COLUMNAS = {
   fecha_atencion: { tipo: "fecha", categoria: "no-personal", gen: (a) => fecha(a, 2024, 2026) },
 };
 
+// ── Columnas de MEDIANA REPETIDA — el caso que rompe a Mondrian si se corta por POSICIÓN ───────
+//
+// Un dataset uniforme nunca expone ese defecto: con valores bien repartidos, cortar por la posición
+// central y cortar por el VALOR de la mediana dan casi lo mismo. La diferencia solo aparece cuando
+// la mediana se repite tanto que cae a los dos lados del corte por posición — y entonces dos filas
+// con el MISMO valor reciben etiquetas distintas, la generalización deja de ser una función del
+// valor, y el archivo pasa a depender del orden en que llegaron las filas. Aquí el sesgo ES el
+// fixture: sin él, el test obligatorio del ADR-002 §3 pasaría sin haber probado nada.
+//
+// Viven fuera de `COLUMNAS` a propósito: el perfil `clinico` es `Object.keys(COLUMNAS)`, así que
+// añadirlas ahí cambiaría el archivo del S1 —y su hash, y sus fixtures de e2e— sin pedir permiso.
+const COLUMNAS_SESGADAS = {
+  edad_reportada: {
+    tipo: "numero",
+    categoria: "cuasi-identificador",
+    gen: (a) => (a.conProbabilidad(0.55) ? "40" : String(a.entero(18, 89))),
+  },
+  puntaje_triage: {
+    tipo: "numero",
+    categoria: "cuasi-identificador",
+    gen: (a) => (a.conProbabilidad(0.82) ? "50" : String(a.entero(0, 100))),
+  },
+};
+
+const TODAS_LAS_COLUMNAS = { ...COLUMNAS, ...COLUMNAS_SESGADAS };
+
 const PERFILES = {
   clinico: Object.keys(COLUMNAS),
   limpio: ["sucursal", "monto", "fecha_atencion", "estrato"],
   trampas: ["codigo_interno", "referencia_pago", "sucursal", "monto", "cedula_titular"],
+  // Para Mondrian: dos columnas con la mediana clavada (55 % en `40`, 82 % en `50`) junto a
+  // cuasi-identificadores normales y un dato sensible del art. 5 para medir l-diversity.
+  "mediana-repetida": [
+    "sexo",
+    "municipio",
+    "estrato",
+    "edad_reportada",
+    "puntaje_triage",
+    "diagnostico",
+    "monto",
+  ],
   // Sin una sola columna personal — ni siquiera un cuasi-identificador. Existe para poder llegar
   // al estado "no reconocimos datos personales" de la interfaz por el camino real (soltando un
   // archivo), y no solo en un test con un informe de mentira. `limpio` no sirve para eso: su
@@ -369,7 +407,7 @@ export function* generarFilas({ filas, seed, perfil, tasaInvalida, tasaVacia }) 
       ? { nombre: azar.de(NOMBRES_RAROS), apellido: azar.de(APELLIDOS_RAROS) }
       : { nombre: azar.de(NOMBRES), apellido: azar.de(APELLIDOS) };
     yield columnas.map((nombre) => {
-      const valor = COLUMNAS[nombre].gen(azar, config, fila);
+      const valor = TODAS_LAS_COLUMNAS[nombre].gen(azar, config, fila);
       // Las celdas vacías son parte del terreno: un archivo real las trae y el motor no puede
       // dividir por cero al calcular el % de aciertos sobre no-vacíos.
       return azar.conProbabilidad(tasaVacia) ? "" : valor;
@@ -434,9 +472,9 @@ export function esperadoPorColumna(perfil = "clinico") {
     PERFILES[perfil].map((nombre) => [
       nombre,
       {
-        tipo: COLUMNAS[nombre].tipo,
-        categoria: COLUMNAS[nombre].categoria,
-        trampa: COLUMNAS[nombre].trampa ?? null,
+        tipo: TODAS_LAS_COLUMNAS[nombre].tipo,
+        categoria: TODAS_LAS_COLUMNAS[nombre].categoria,
+        trampa: TODAS_LAS_COLUMNAS[nombre].trampa ?? null,
       },
     ]),
   );

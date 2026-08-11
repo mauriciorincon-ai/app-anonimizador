@@ -145,6 +145,55 @@ describe("llave distinta ⇒ archivo distinto", () => {
   });
 });
 
+describe("con Mondrian en la política, el archivo sigue siendo byte-idéntico", () => {
+  // El reparto es la parte del pipeline con más sitios donde perder el determinismo: el orden en
+  // que se eligen las dimensiones, el desempate de rangos iguales, la mediana cuando se repite, y
+  // el orden del diccionario que sale. El gate del S1 no lo veía porque no existía.
+  const CON_REPARTO: Politica = {
+    ...POLITICA,
+    kObjetivo: 5,
+    reglas: [
+      ...POLITICA.reglas,
+      { columna: "municipio", tecnica: { tipo: "generalizar-automatico" } },
+      { columna: "estrato", tecnica: { tipo: "generalizar-automatico" } },
+      { columna: "latitud", tecnica: { tipo: "generalizar-automatico" } },
+    ],
+  };
+
+  async function huellaConReparto(tabla: TablaColumnar): Promise<string> {
+    const { tabla: transformada, mondrian } = await aplicarPolitica(
+      tabla,
+      CON_REPARTO,
+      llaveA,
+    );
+    expect(mondrian?.alcanzado).toBe(true);
+    return sha256(new TextEncoder().encode(serializarCsv(transformada)));
+  }
+
+  it("dos corridas dan el mismo SHA-256", async () => {
+    const primera = await huellaConReparto(tablaPorBloques(500));
+    expect(await huellaConReparto(tablaPorBloques(500))).toBe(primera);
+  });
+
+  it("y el tamaño de los trozos del parser tampoco lo mueve", async () => {
+    expect(await huellaConReparto(tablaPorBloques(100_000))).toBe(
+      await huellaConReparto(tablaPorBloques(13)),
+    );
+  });
+
+  it("otro k da otro archivo — el gate no compara constantes", async () => {
+    const tabla = tablaPorBloques(500);
+    const conK50 = await aplicarPolitica(
+      tabla,
+      { ...CON_REPARTO, kObjetivo: 50 },
+      llaveA,
+    );
+    expect(
+      sha256(new TextEncoder().encode(serializarCsv(conK50.tabla))),
+    ).not.toBe(await huellaConReparto(tabla));
+  });
+});
+
 describe("el gate no está comparando constantes", () => {
   it("otra política sobre la misma tabla da otro archivo", async () => {
     const tabla = tablaPorBloques(500);

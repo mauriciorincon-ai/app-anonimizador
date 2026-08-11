@@ -271,12 +271,16 @@ describe("el pipeline completo", () => {
     expect(columna.valores).toEqual(["", "1987", "1982"]);
   });
 
-  it("las columnas de Mondrian salen intactas y anotadas para la fase siguiente", async () => {
+  it("una política que pide Mondrian SIN decir qué k deja la columna intacta y lo declara", async () => {
+    // No se adivina un k. Si la política marca columnas para el reparto y no dice cuánto, salen
+    // como entraron y quedan en `pendientesDeMondrian` para que la UI lo diga: elegir un k por el
+    // usuario sería elegir por él cuánta información pierde.
     const politica = politicaDe([
       { columna: "municipio", tecnica: { tipo: "generalizar-automatico" } },
       { columna: "monto", tecnica: { tipo: "suprimir" } },
     ]);
     const r = await aplicarPolitica(TABLA, politica, null);
+    expect(r.mondrian).toBeNull();
     expect(r.pendientesDeMondrian).toEqual(["municipio"]);
     expect(valoresDe(r.tabla, "municipio")).toEqual([
       "05001",
@@ -292,6 +296,64 @@ describe("el pipeline completo", () => {
     ]);
     const r = await aplicarPolitica(TABLA, politica, null);
     expect(r.pendientesDeMondrian).toEqual(["edad"]);
+  });
+
+  it("con k declarado, el reparto ocurre y sale en el resultado", async () => {
+    const filas = Array.from({ length: 60 }, (_, i) => [
+      String(1_000_000_000 + i),
+      String(11_001 + (i % 9)),
+      String(20 + (i % 40)),
+      "1987-03-14",
+      String(i),
+    ]);
+    const tabla = tablaDe(
+      ["cedula", "municipio", "edad", "fecha_nac", "monto"],
+      filas,
+    );
+    const politica: Politica = {
+      version: 1,
+      origen: "manual",
+      kObjetivo: 5,
+      reglas: [
+        { columna: "municipio", tecnica: { tipo: "generalizar-automatico" } },
+        { columna: "edad", tecnica: { tipo: "generalizar-automatico" } },
+      ],
+    };
+    const r = await aplicarPolitica(tabla, politica, null);
+
+    expect(r.pendientesDeMondrian).toEqual([]);
+    expect(r.mondrian?.alcanzado).toBe(true);
+    expect(r.mondrian?.kAlcanzado).toBeGreaterThanOrEqual(5);
+    expect(r.mondrian?.dimensiones).toEqual(["municipio", "edad"]);
+    // La columna que no entró al reparto sale intacta, dígito por dígito.
+    expect(valoresDe(r.tabla, "monto")[0]).toBe("0");
+  });
+
+  it("Mondrian corre DESPUÉS de las técnicas por columna, sobre lo que el archivo llevará", async () => {
+    // Generalizar lo que entró en vez de lo que sale produciría intervalos sobre valores que ya no
+    // existen en el archivo: etiquetas que hablan de un dato que nadie va a recibir.
+    const filas = Array.from({ length: 40 }, (_, i) => [
+      `${1940 + i}-06-15`,
+      String(i),
+    ]);
+    const tabla = tablaDe(["fecha_nac", "monto"], filas);
+    const politica: Politica = {
+      version: 1,
+      origen: "manual",
+      kObjetivo: 5,
+      reglas: [
+        {
+          columna: "fecha_nac",
+          tecnica: { tipo: "generalizar-fecha", precision: "anio" },
+        },
+        { columna: "monto", tecnica: { tipo: "generalizar-automatico" } },
+      ],
+    };
+    const r = await aplicarPolitica(tabla, politica, null);
+
+    // La fecha ya venía recortada al año cuando Mondrian miró la tabla.
+    expect(valoresDe(r.tabla, "fecha_nac")[0]).toBe("1940");
+    expect(r.mondrian?.kAlcanzado).toBeGreaterThanOrEqual(5);
   });
 
   it("sin llave, una política que seudonimiza no produce un archivo a medias", async () => {

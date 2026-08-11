@@ -20,6 +20,7 @@ import {
   type TablaColumnar,
 } from "../columnar";
 import { enmascarar } from "../mascara";
+import { anonimizarConMondrian, type ResultadoDeMondrian } from "../mondrian";
 import {
   columnasDeMondrian,
   tecnicaDe,
@@ -44,8 +45,15 @@ export interface TablaTransformada {
   readonly suprimidas: readonly string[];
   /** Dónde dos valores distintos acabaron con el mismo seudónimo. Vacío es lo normal. */
   readonly colisiones: readonly ColisionEnColumna[];
-  /** Columnas que Mondrian todavía tiene que generalizar (Fase 3). */
+  /**
+   * Columnas marcadas para el reparto de Mondrian que quedaron SIN generalizar. Con una política
+   * bien formada está vacío; si `kObjetivo` es null y hay columnas marcadas, aquí están —salieron
+   * intactas y el usuario tiene que enterarse, porque una política que pide k sin decir cuál no
+   * puede resolverse adivinando.
+   */
   readonly pendientesDeMondrian: readonly string[];
+  /** El reparto, cuando la política pidió k. `null` cuando no había nada que repartir. */
+  readonly mondrian: ResultadoDeMondrian | null;
 }
 
 /** ¿Esta política necesita una llave para poder aplicarse? */
@@ -185,13 +193,25 @@ export async function aplicarPolitica(
     columnas.push(reconstruirColumna(columna, resultado.valores));
   }
 
+  // Solo las que sobrevivieron: una columna marcada para Mondrian y suprimida a la vez no existe.
+  const paraMondrian = columnasDeMondrian(politica).filter(
+    (nombre) => !suprimidas.includes(nombre),
+  );
+
+  // Mondrian va AL FINAL, sobre las columnas ya transformadas: generaliza lo que el archivo va a
+  // llevar de verdad, no lo que llevaba al entrar. Y va aparte porque no es una técnica por
+  // columna — mira todas las marcadas a la vez y decide dónde cortar.
+  const transformada: TablaColumnar = { columnas, filas: tabla.filas };
+  const mondrian =
+    paraMondrian.length > 0 && politica.kObjetivo !== null
+      ? anonimizarConMondrian(transformada, paraMondrian, politica.kObjetivo)
+      : null;
+
   return {
-    tabla: { columnas, filas: tabla.filas },
+    tabla: mondrian?.tabla ?? transformada,
     suprimidas,
     colisiones,
-    // Solo las que sobrevivieron: una columna marcada para Mondrian y suprimida a la vez no existe.
-    pendientesDeMondrian: columnasDeMondrian(politica).filter(
-      (nombre) => !suprimidas.includes(nombre),
-    ),
+    pendientesDeMondrian: mondrian === null ? paraMondrian : [],
+    mondrian,
   };
 }
