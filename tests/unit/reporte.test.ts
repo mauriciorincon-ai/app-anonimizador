@@ -268,6 +268,7 @@ async function reporteConTratamiento(politica: Politica) {
     tablaTransformada: transformada.tabla,
     diagnostico,
     politica,
+    pendientesDeMondrian: transformada.pendientesDeMondrian,
     suprimidas: transformada.suprimidas,
     colisiones: transformada.colisiones,
     mondrian: transformada.mondrian,
@@ -572,5 +573,53 @@ describe("cada salvedad se escribe, y dice lo suyo", () => {
     );
     expect(seccion.split("s-descalifica").length - 1).toBe(4);
     expect(seccion.split("s-matiza").length - 1).toBe(2);
+  });
+});
+
+// ── A2 — la identidad del archivo cuando SÍ hubo tratamiento ──────────────────────────────────
+//
+// El reporte del S1 dice «este documento habla de un archivo concreto» y publica su SHA-256 para
+// que quien lo reciba lo compruebe. Con tratamiento esa frase se vuelve una trampa: la huella es la
+// del archivo que ENTRÓ, y lo que se entrega es otro archivo con otra huella. Quien corriera
+// `sha256sum` sobre el CSV anonimizado no encontraría nada — y concluiría que el documento no
+// corresponde, o peor, que alguien lo cambió.
+
+describe("A2 — el reporte del tratamiento se lee fuera de contexto", () => {
+  it("declara que la huella es la del archivo que entró, no la del que se entrega", async () => {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    const html = construirReporte(datos);
+
+    expect(html).toContain("que ENTRÓ a Velo");
+    expect(html).toContain("Esta huella no es la del archivo que se entrega");
+    // Y remite a lo que sí identifica el archivo entregado: el hash de la política.
+    expect(html).toContain("velo-anonimizado-");
+  });
+
+  it("sin tratamiento conserva la frase del S1, que ahí sí es cierta", () => {
+    const html = construirReporte(datosDe("clinico", 600));
+    expect(html).toContain("corresponde a su copia");
+    expect(html).not.toContain("Esta huella no es la del archivo que se entrega");
+  });
+
+  it("el hash de la política viaja completo en el documento", async () => {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    const html = construirReporte(datos);
+    expect(html).toContain(datos.tratamiento!.hashDePolitica);
+  });
+});
+
+describe("A1 en el reporte — las columnas que salieron intactas", () => {
+  it("la salvedad se imprime con sus columnas", async () => {
+    const politica: Politica = {
+      version: 1,
+      origen: "manual",
+      kObjetivo: null,
+      reglas: [
+        { columna: "municipio", tecnica: { tipo: "generalizar-automatico" } },
+      ],
+    };
+    const { seccion } = await reporteConTratamiento(politica);
+    expect(seccion).toContain("salió <b>intacta</b>");
+    expect(seccion).toContain("<code>municipio</code>");
   });
 });

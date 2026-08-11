@@ -149,3 +149,43 @@ describe("las cuatro cifras del pie", () => {
     expect(dd?.className).toContain("text-alerta");
   });
 });
+
+describe("A1 en pantalla — las columnas que salieron intactas", () => {
+  const CON_REPARTO_SIN_K: BalanceDelTratamiento = {
+    antes: ANTES,
+    despues: { ...DESPUES, unicos: 40, proporcionUnicos: 0.04 },
+    reduccion: 0.867,
+    esTitular: false,
+    salvedades: [
+      {
+        gravedad: "descalifica",
+        tipo: "reparto-sin-k",
+        columnas: ["municipio", "estrato"],
+      },
+      {
+        gravedad: "descalifica",
+        tipo: "unicos-restantes",
+        cuantos: 40,
+        proporcion: 0.04,
+      },
+    ],
+  };
+
+  it("las nombra, y dice por qué salieron así", () => {
+    render(<BalanceEnPantalla balance={CON_REPARTO_SIN_K} />);
+    const texto = screen.getByTestId("salvedades").textContent ?? "";
+    expect(texto).toContain("municipio");
+    expect(texto).toContain("estrato");
+    expect(texto).toMatch(/no fijó un grupo mínimo/);
+  });
+
+  it("y siguen yendo antes que la cifra", () => {
+    render(<BalanceEnPantalla balance={CON_REPARTO_SIN_K} />);
+    expect(
+      screen
+        .getByTestId("salvedades")
+        .compareDocumentPosition(screen.getByTestId("reduccion")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});

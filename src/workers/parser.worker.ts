@@ -16,20 +16,12 @@
 import Papa from "papaparse";
 
 import { balanceDelTratamiento } from "@/engine/balance";
-import {
-  clasificar,
-  posicionesDeMuestra,
-  type Diagnostico,
-} from "@/engine/clasificador";
-import {
-  ConstructorColumnar,
-  type ColumnaColumnar,
-  type TablaColumnar,
-} from "@/engine/columnar";
+import { clasificar, type Diagnostico } from "@/engine/clasificador";
+import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { filasDeCsv, nombreDelArchivoAnonimizado } from "@/engine/csv";
 import { medirDiversidad } from "@/engine/diversidad";
-import { enmascarar } from "@/engine/mascara";
-import { hashDePolitica, tecnicaDe, type Politica } from "@/engine/politica";
+import { muestraDeColumna } from "@/engine/muestra";
+import { hashDePolitica, type Politica } from "@/engine/politica";
 import { evaluarRiesgo } from "@/engine/riesgo";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
@@ -42,7 +34,6 @@ import type {
   Informe,
   MensajeAlWorker,
   MensajeDelWorker,
-  MuestraDeTransformacion,
 } from "./contrato";
 
 const alcance = self as unknown as DedicatedWorkerGlobalScope;
@@ -270,62 +261,6 @@ async function derivar(frase: string, sal: string): Promise<void> {
   enviar({ tipo: "llave-lista", huella: proyecto.huella });
 }
 
-/** Hasta cuántas filas se enseñan en la vista previa. Suficiente para reconocer el cambio. */
-const FILAS_DE_MUESTRA = 6;
-
-function muestraDeColumna(
-  original: ColumnaColumnar,
-  nueva: ColumnaColumnar | undefined,
-  politica: Politica,
-  categoria: string,
-  filas: number,
-): MuestraDeTransformacion {
-  const tecnica = tecnicaDe(politica, original.nombre).tipo;
-  if (nueva === undefined) {
-    return {
-      nombre: original.nombre,
-      tecnica,
-      filas: [],
-      despuesEnmascarado: false,
-      omitida: false,
-      suprimida: true,
-    };
-  }
-
-  const posiciones = posicionesDeMuestra(filas, FILAS_DE_MUESTRA);
-  const pares = posiciones.map((p) => ({
-    antes: original.valores[original.codigos[p]],
-    despues: nueva.valores[nueva.codigos[p]],
-  }));
-  const cambio = pares.some((par) => par.antes !== par.despues);
-
-  // Una columna sensible que NO cambió no tiene nada que enseñar: su «después» es su «antes», y
-  // enseñarlo aquí sería sacar un dato del art. 5 a una pantalla que no lo necesita.
-  if (categoria === "dato-sensible" && !cambio) {
-    return {
-      nombre: original.nombre,
-      tecnica,
-      filas: [],
-      despuesEnmascarado: true,
-      omitida: true,
-      suprimida: false,
-    };
-  }
-
-  return {
-    nombre: original.nombre,
-    tecnica,
-    filas: pares.map((par) => ({
-      antes: enmascarar(par.antes),
-      // Completo solo si cambió: un seudónimo o un intervalo no son el dato de nadie, y
-      // enmascararlos volvería inútil la única pantalla que responde «¿qué recibe el otro?».
-      despues: cambio ? par.despues : enmascarar(par.despues),
-    })),
-    despuesEnmascarado: !cambio,
-    omitida: false,
-    suprimida: false,
-  };
-}
 
 async function transformar(politica: Politica): Promise<void> {
   if (!tabla || !diagnosticoActual) {
@@ -361,6 +296,7 @@ async function transformar(politica: Politica): Promise<void> {
       colisiones: resultado.colisiones,
       mondrian: resultado.mondrian,
       diversidad,
+      pendientesDeMondrian: resultado.pendientesDeMondrian,
     });
 
     const porNombre = new Map(

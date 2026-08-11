@@ -309,6 +309,15 @@ ayuda de ninguna otra: ${salvedad.columnas
             " · ",
           )}. Mientras estén en el archivo, ninguna cifra de esta página describe datos
 tratados.`;
+      case "reparto-sin-k":
+        return `${
+          salvedad.columnas.length === 1
+            ? "Una columna salió <b>intacta</b>"
+            : `${numero(salvedad.columnas.length)} columnas salieron <b>intactas</b>`
+        }: la política las marcó para generalización automática y no fijó un grupo mínimo (k), así
+que no había hasta dónde generalizar. ${salvedad.columnas
+          .map((c) => `<code>${escapar(c)}</code>`)
+          .join(" · ")}.`;
       case "unicos-restantes":
         return `Después del tratamiento, <b>${numero(salvedad.cuantos)}</b> registros
 (${porcentaje(salvedad.proporcion)}) siguen <b>solos</b> en su combinación de valores: nadie más
@@ -497,11 +506,22 @@ ${numero(diagnostico.columnas.length)} columnas · ${megabytes(archivo.bytes)} �
 <section>
 <p class="etiqueta">Identidad del archivo</p>
 <h2>Este reporte habla de un archivo concreto</h2>
-<p style="margin:0 0 6px">SHA-256 del archivo analizado:</p>
+<p style="margin:0 0 6px">SHA-256 del archivo ${
+    hayTratamiento ? "que ENTRÓ a Velo" : "analizado"
+  }:</p>
 <p class="huella">${escapar(archivo.sha256)}</p>
-<p class="por-que">Quien reciba este documento puede comprobar que corresponde a su copia
+${
+  hayTratamiento
+    ? `<p class="por-que"><b>Esta huella no es la del archivo que se entrega.</b> Es la del original,
+la copia sobre la que se midió todo lo de abajo. El archivo tratado es otro archivo y tiene otra
+huella; se reconoce por el hash de la política que lleva en el nombre
+(<code>velo-anonimizado-…</code>), y ese hash está en la sección siguiente. Quien reciba los dos
+puede comprobar con <code>sha256sum</code> (Linux), <code>shasum -a 256</code> (macOS) o
+<code>Get-FileHash</code> (Windows) que el original es el que dice este documento.</p>`
+    : `<p class="por-que">Quien reciba este documento puede comprobar que corresponde a su copia
 ejecutando <code>sha256sum</code> (Linux), <code>shasum -a 256</code> (macOS) o
-<code>Get-FileHash</code> (Windows) sobre el archivo y comparando el texto de arriba.</p>
+<code>Get-FileHash</code> (Windows) sobre el archivo y comparando el texto de arriba.</p>`
+}
 <dl class="datos" style="margin-top:14px">
 <div><dt>Identificadores directos</dt><dd>${numero(resumen["identificador-directo"])}</dd></div>
 <div><dt>Datos sensibles (art. 5)</dt><dd>${numero(resumen["dato-sensible"])}</dd></div>

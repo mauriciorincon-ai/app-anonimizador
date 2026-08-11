@@ -18,6 +18,7 @@ import { useState } from "react";
 import { BalanceEnPantalla } from "@/components/balance-en-pantalla";
 import { clasesDeBoton, Boton } from "@/components/boton";
 import { DescargaDelArchivo } from "@/components/descarga-del-archivo";
+import { DescargaDelReporte } from "@/components/descarga-del-reporte";
 import { EditorDePolitica } from "@/components/editor-de-politica";
 import { LlaveDelProyecto } from "@/components/llave-del-proyecto";
 import { MarcaDeSello } from "@/components/sello";
@@ -163,7 +164,21 @@ export default function PaginaDeTransformacion() {
               preparando={taller.etapa === "escribiendo"}
               filas={informe.diagnostico.filas}
               suprimidas={hecha.suprimidas}
+              hashDePolitica={hecha.hashDePolitica}
               onPreparar={prepararArchivo}
+            />
+            {/* El archivo no puede salir solo. Un CSV anonimizado sin un documento que diga qué se
+                le hizo obliga a quien lo recibe a creer; y el reporte del diagnóstico, que describe
+                el archivo ORIGINAL, mandado junto al tratado es la mentira por composición de este
+                sprint a nivel de artefacto. Hallazgo A2 de la auditoría. */}
+            <DescargaDelReporte
+              informe={informe}
+              tratamiento={{
+                balance: hecha.balance,
+                utilidad: hecha.utilidad,
+                hashDePolitica: hecha.hashDePolitica,
+                suprimidas: hecha.suprimidas,
+              }}
             />
           </>
         ) : null}

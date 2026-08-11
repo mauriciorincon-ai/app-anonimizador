@@ -99,6 +99,9 @@ const OPCIONES: readonly { valor: string; texto: string; tecnica: Tecnica }[] =
     },
   ];
 
+/** El k que se fija solo al pedir generalización automática. 5 es el mínimo de las dos de fábrica. */
+const K_POR_DEFECTO = 5;
+
 /** De técnica a valor del desplegable. Los parámetros distinguen dos opciones del mismo tipo. */
 function valorDe(tecnica: Tecnica): string {
   switch (tecnica.tipo) {
@@ -146,6 +149,17 @@ export function EditorDePolitica({
       // decir «Habeas Data» sobre algo que el usuario ya editó sería atribuirle a una guía oficial
       // una decisión que no es suya.
       origen: origenTrasEditar(politica.origen),
+      // Elegir «generalizar hasta el k» FIJA el k en la política, no solo en la casilla.
+      //
+      // Antes la casilla pintaba `kObjetivo ?? 5` y la política guardaba `null`: la pantalla
+      // prometía en futuro «Velo generaliza esas columnas hasta que nadie quede en un grupo de
+      // menos de 5» y el motor, que solo reparte con un k declarado, las dejaba INTACTAS sin que
+      // nada lo dijera. Hallazgo A1 de la auditoría del S2. Lo que se ve tiene que ser lo que hay.
+      kObjetivo:
+        opcion.tecnica.tipo === "generalizar-automatico" &&
+        politica.kObjetivo === null
+          ? K_POR_DEFECTO
+          : politica.kObjetivo,
       reglas: [
         ...politica.reglas.filter((r) => r.columna !== nombre),
         { columna: nombre, tecnica: opcion.tecnica },
@@ -323,7 +337,9 @@ export function EditorDePolitica({
             min={2}
             max={1000}
             step={1}
-            value={politica.kObjetivo ?? 5}
+            // Vacía cuando la política no trae k, jamás con un 5 de adorno: una casilla que enseña
+            // un número que la política no tiene es la mentira exacta del hallazgo A1.
+            value={politica.kObjetivo ?? ""}
             className="rounded-1 border-borde-control bg-superficie text-tinta w-24 border px-2 py-1.5 text-[0.875rem]"
             onChange={(evento) =>
               onCambio({
@@ -332,13 +348,25 @@ export function EditorDePolitica({
               })
             }
           />
-          <p className="text-tinta-tenue w-full text-[0.8125rem] leading-relaxed">
-            Con k = {numero(politica.kObjetivo ?? 5)}, Velo generaliza esas
-            columnas hasta que nadie quede en un grupo de menos de{" "}
-            {numero(politica.kObjetivo ?? 5)} registros. Cuanto más alto el k,
-            menos preciso queda el dato. Si no se puede alcanzar sin borrar
-            filas, Velo lo dice y no borra nada.
-          </p>
+          {politica.kObjetivo === null ? (
+            // Solo lo alcanza una política importada: elegir la opción en esta pantalla ya fija el
+            // k. Aun así se dice aquí y no solo en el balance — que llega después de transformar,
+            // cuando el archivo ya salió intacto.
+            <p className="text-alerta w-full text-[0.8125rem] leading-relaxed">
+              Esta política pide generalización automática y{" "}
+              <strong className="font-medium">no fija un k</strong>. Sin él no
+              hay hasta dónde generalizar: esas columnas saldrían intactas.
+              Escribe un número arriba.
+            </p>
+          ) : (
+            <p className="text-tinta-tenue w-full text-[0.8125rem] leading-relaxed">
+              Con k = {numero(politica.kObjetivo)}, Velo generaliza esas
+              columnas hasta que nadie quede en un grupo de menos de{" "}
+              {numero(politica.kObjetivo)} registros. Cuanto más alto el k,
+              menos preciso queda el dato. Si no se puede alcanzar sin borrar
+              filas, Velo lo dice y no borra nada.
+            </p>
+          )}
         </div>
       ) : null}
     </Panel>

@@ -32,6 +32,20 @@ function textoDeSalvedad(salvedad: Salvedad): React.ReactNode {
           datos tratados.
         </>
       );
+    case "reparto-sin-k":
+      return (
+        <>
+          <strong className="font-medium">
+            {salvedad.columnas.length === 1
+              ? "Una columna salió intacta"
+              : `${numero(salvedad.columnas.length)} columnas salieron intactas`}
+          </strong>
+          : las marcaste para que Velo decidiera cuánto generalizarlas y la
+          política no fijó un grupo mínimo (k), así que no había hasta dónde
+          generalizar.{" "}
+          <span className="font-mono">{salvedad.columnas.join(" · ")}</span>.
+        </>
+      );
     case "unicos-restantes":
       return (
         <>

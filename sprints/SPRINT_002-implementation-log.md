@@ -733,3 +733,136 @@ de sentencias. Las tres líneas que siguen sin cubrir son las dos de renderizado
 
 **Lo que queda como regla:** verificar con `pnpm test`, que es lo que corre el CI. Un comando
 parecido que no aplica los gates no es una verificación, es un ensayo.
+
+### El diseño nunca ha pasado por el usuario — queda registrado
+
+Al cerrar la Fase 5 el usuario preguntó por qué en ningún momento se le pidió aprobar el diseño o
+el design system. La respuesta de proceso es que el `design-system.md` nació en el S1, que la orden
+del S2 lo declara base cerrada («es la base declarada y **manda**») y que el gate visual está
+**diferido al S3** por default del método v1.12.0 — con los dos contrapesos mecánicos exigibles
+precisamente porque «son lo único que mira la experiencia mientras el ojo humano espera al cierre
+del ciclo».
+
+Esa explicación es cierta y es incompleta. **La personalidad, la metáfora rectora, la paleta y la
+tipografía las decidió el builder solo**, y llevan dos sprints de UI encima sin que el usuario las
+haya visto para aprobarlas. El diferimiento explica por qué no se pidió el gate *en el cierre*; no
+explica por qué no se mostró antes, que se podía hacer cualquier día sin gastar el ⭐.
+
+**Decisión del usuario:** no se corrige en este sprint —el diseño se queda como está— y el ajuste
+al método lo hace la planeadora, para que no vuelva a ocurrir.
+
+**Consecuencia para el S3, que hay que llevar al summary:** el gate ⭐ acumulado del cierre no será
+la primera revisión de *las pantallas nuevas* solamente — será la **primera vez que el usuario
+juzga el sistema de diseño entero**. Si algo de la base no convence, la corrección alcanza a las
+once pantallas del ciclo, no solo a las cinco de este sprint. El S3 tiene que presupuestarlo.
+
+---
+
+## `/audita-sprint` — la auditoría del cierre
+
+Dos fases, como manda el método. La Fase 1 leyó el sprint entero con las **tres preguntas** del
+patrón `la-composicion-de-verdades-puede-mentir` puestas sobre cada pantalla y cada documento que
+afirma cifras. Salieron **tres hallazgos Alto, tres Medio y dos Bajo**, y ninguno es un cálculo
+equivocado: los tres Alto son composición, que es exactamente lo que el patrón predice y lo que las
+519 pruebas no podían ver.
+
+Los dos primeros se confirmaron con una **sonda desechable** antes de escribir una línea de
+arreglo, no leyendo el código. Es la diferencia entre «creo que pasa» y «pasa».
+
+### A1 — «Generalizar hasta alcanzar el k» sin k: la pantalla prometía lo que el motor no hacía
+
+```
+pendientesDeMondrian: [ 'edad', 'municipio' ]
+mondrian: null
+edad, 3 primeras: [ '20', '21', '22' ]      ← intactas
+salvedades: [{"tipo":"unicos-restantes","cuantos":40}]   ← no nombra ni una
+```
+
+Cuatro sitios conspiraban. La casilla del editor pintaba `politica.kObjetivo ?? 5` mientras la
+política guardaba `null`, y al lado una frase en futuro: «Con k = 5, Velo generaliza esas columnas
+hasta que nadie quede en un grupo de menos de 5 registros». El usuario no tiene ningún motivo para
+tocar un número que ya dice lo que quiere. El motor solo reparte con un k declarado; las columnas
+salían intactas; `pendientesDeMondrian` las registraba —con un comentario mío que decía **«el
+usuario tiene que enterarse»**— y no llegaba ni al balance ni a la pantalla.
+
+Lo que se pagó, por los dos lados:
+
+- **Que el estado no se produzca:** elegir la opción **fija el k en la política**, no en la casilla.
+  Lo que se ve es lo que hay.
+- **Que si llega, se diga:** salvedad nueva `reparto-sin-k`, **descalificante**, en el orden 1 —
+  justo detrás de los identificadores sin tratar y **delante** de «quedan únicos», porque explica de
+  dónde salen esos únicos y una explicación después de su consecuencia se lee como excusa.
+- **Que la casilla no mienta con una política importada** (el esquema admite `generalizar-automatico`
+  con `kObjetivo: null`): va **vacía**, y en su sitio aparece en alerta «esas columnas saldrían
+  intactas».
+
+### A2 — El reporte del tratamiento existía, estaba probado, y no lo producía nadie
+
+`descarga-del-reporte.tsx` llamaba `construirReporte` con cinco campos y **jamás con
+`tratamiento`** — y ese componente solo vivía en `/diagnostico`. De los 9 campos de
+`ResultadoDeTransformacion`, **6 no tenían un solo consumidor** en la UI. `seccionDelTratamiento()`,
+`seccionDeUtilidad()` y las ramas `hayTratamiento` eran ~150 líneas con pruebas verdes y ningún
+llamador.
+
+**La tercera pregunta del patrón —¿sobrevive fuera de contexto?— fallaba a nivel de artefacto.** El
+usuario descargaba `velo-anonimizado-3f2a1b8c.csv` y el único documento que podía acompañarlo
+describía el archivo **original**: su riesgo, su huella. Mandar los dos juntos es el par engañoso
+con las dos piezas ciertas.
+
+Al cablearlo apareció una trampa heredada que el propio arreglo destapaba: el reporte dice «este
+documento habla de un archivo concreto» y publica un SHA-256 **que es el del archivo que entró**.
+Quien recibiera el CSV anonimizado y corriera `sha256sum` no encontraría nada, y concluiría que el
+documento no corresponde — o que alguien lo cambió. Ahora, cuando hay tratamiento, el documento lo
+dice con esas palabras y remite a lo que sí identifica el archivo entregado: el hash de la política,
+que va completo en la sección siguiente y abreviado en el nombre del archivo.
+
+### A3 — La muestra decidía por columna una regla que es del valor
+
+`cambio` se calculaba para toda la columna y se aplicaba a cada fila. Una generalización deja filas
+intactas dentro de una columna que sí cambió —una partición de Mondrian con un solo valor se rotula
+con ese valor; un prefijo de 2 no toca lo que ya mide 2— y esas filas salían a la pantalla
+**completas, con el dato crudo**, porque una fila vecina había cambiado. El peor caso es una columna
+del **artículo 5** en la que algunas filas cambiaron: no entra por la rama `omitida`, y sus filas
+intactas se imprimen en claro.
+
+Es el hallazgo «la muestra que no enmascara» del S1 reapareciendo con otra cara, y la regla vuelve a
+ser la misma: **es del valor, no del conjunto**.
+
+Para poder probarlo, la función se mudó del worker a **`src/engine/muestra.ts`**. No es cosmética la
+mudanza: ahí vivía sin una sola prueba porque nada del worker es alcanzable desde Vitest, y es una
+**regla de producto** —hermana de `mascara.ts`— que en `engine/` tiene la cobertura exigida. El
+fixture del test es un par que se lee solo: `Cali → Ca` se enseña (derivado, ya no es de nadie) y
+`CA → ***` se tapa (original), dos cadenas casi idénticas en lados opuestos de la regla.
+
+### M1, de regalo — el cambio se medía sobre 6 filas y se presentaba como exacto
+
+Al mover la función quedó a la vista que `cambio` salía de las 6 filas de la vista previa. De ahí
+colgaban dos afirmaciones falsas: el «N de M columnas cambian» de la pantalla era una conclusión de
+6 filas con cara de cifra exacta, y una columna sensible que hubiera cambiado **fuera** de esas 6 se
+escondía como «dato sensible sin cambios». Ahora se recorre el archivo entero, **cortando en la
+primera diferencia**: la columna que cambió se resuelve casi siempre en la primera fila, y la que se
+recorre entera es la que no cambió — que es justo la respuesta que no se puede adivinar.
+
+### B1 — los ocho caracteres del nombre
+
+`velo-anonimizado-3f2a1b8c.csv` lleva el principio del SHA-256 de la política, y eso estaba en el
+código y en ningún texto. Ahora la pantalla de entrega lo dice, y el reporte lleva el hash completo.
+
+### Deuda declarada, con pago asignado
+
+- **M2 · la sal no viaja con la política.** La pantalla pide guardarla a mano y `exportarPolitica`
+  no la incluye, así que «los mismos seudónimos el mes que viene» depende de un copiar-pegar. **Pago
+  en el S3**, con la bóveda: es el sprint donde el material de llave deja de ser algo que el usuario
+  custodia a mano.
+- **B2 · carga duplicada en el contrato.** `mondrian`, `diversidad` y `colisiones` cruzan la frontera
+  **y además** vienen ya plegados dentro de `balance.salvedades`. Son agregados, no datos, pero el
+  contrato debería llevar solo lo que se pinta. **Pago en el S3**, cuando el certificado obligue a
+  revisar qué necesita de verdad cada consumidor.
+
+### Lo que la auditoría dice del sprint
+
+Los tres Alto vivían en el punto exacto donde el plan había puesto su atención —la honestidad de las
+cifras— y aun así pasaron. Dos de ellos porque la verificación era del **motor** y el defecto era del
+**cableado**: A1 tenía la salvedad bien construida sobre una entrada que nadie le pasaba, y A2 tenía
+el documento entero escrito y probado sin un solo llamador. Un motor probado no es un producto
+probado, y la prueba que los habría cazado antes es la que entra por donde entra una persona.

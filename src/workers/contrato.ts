@@ -91,17 +91,23 @@ export type ResumenDeMondrian = Omit<ResultadoDeMondrian, "tabla">;
  * Una columna en la vista previa, con la regla de exposición que la gobierna.
  *
  * `antes` va SIEMPRE enmascarado: es el dato crudo del usuario y la regla del S1 no se relaja
- * porque ahora estemos transformando. `despues` va **completo solo si cambió** — un seudónimo o un
- * intervalo no son el dato de nadie, y enseñarlos a medias haría inútil la única pantalla cuyo
- * trabajo es responder «¿qué va a recibir el otro?». Si la técnica fue `conservar`, el valor de
- * después ES el de antes, y entonces se enmascara igual.
+ * porque ahora estemos transformando. `despues` va **completo solo si ese valor cambió** — un
+ * seudónimo o un intervalo no son el dato de nadie, y enseñarlos a medias haría inútil la única
+ * pantalla cuyo trabajo es responder «¿qué va a recibir el otro?». Si el valor no cambió, el de
+ * después ES el de antes, y entonces se enmascara igual. **La regla es del valor, no de la
+ * columna** (auditoría del S2, A3): una generalización deja filas intactas dentro de una columna
+ * que sí cambió, y decidir por columna las imprimía en claro.
  */
 export interface MuestraDeTransformacion {
   readonly nombre: string;
   readonly tecnica: string;
   /** Vacío cuando la columna es sensible y no cambió: ahí no hay nada que enseñar. */
   readonly filas: readonly { antes: string; despues: string }[];
-  /** Si el lado «después» va enmascarado (porque el valor no cambió). */
+  /**
+   * La columna entera va enmascarada porque NINGÚN valor cambió. Se mide sobre el archivo
+   * completo, no sobre las filas de la muestra: es lo que sostiene el «N de M columnas cambian»
+   * de la vista previa, que se lee como una cifra exacta y ahora lo es.
+   */
   readonly despuesEnmascarado: boolean;
   readonly omitida: boolean;
   readonly suprimida: boolean;

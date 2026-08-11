@@ -46,6 +46,20 @@ export type Salvedad = { readonly gravedad: "descalifica" | "matiza" } & (
       readonly columnas: readonly string[];
     }
   | {
+      /**
+       * Columnas marcadas para que Velo decidiera cuánto generalizarlas, en una política que no
+       * fijó un k. Salieron **intactas**.
+       *
+       * Es la salvedad más importante de las que no existían: la pantalla del editor enseñaba un
+       * k y prometía en futuro lo que iba a hacer con esas columnas, y el archivo salía sin
+       * tocarlas. No es un caso defensivo —una política importada puede llegar así, y hasta el
+       * arreglo del editor la propia UI lo producía con dos clics— y descalifica cualquier cifra
+       * de reducción, porque la política dice haber tratado algo que no trató.
+       */
+      readonly tipo: "reparto-sin-k";
+      readonly columnas: readonly string[];
+    }
+  | {
       /** Registros que siguen SOLOS en su clase después del tratamiento. */
       readonly tipo: "unicos-restantes";
       readonly cuantos: number;
@@ -111,16 +125,21 @@ export interface EntradasDelBalance {
   readonly colisiones: readonly ColisionEnColumna[];
   readonly mondrian: ResultadoDeMondrian | null;
   readonly diversidad: readonly MedidaDeDiversidad[];
+  /** Columnas del reparto que quedaron sin generalizar porque la política no fijó un k. */
+  readonly pendientesDeMondrian: readonly string[];
 }
 
 /** El orden de las salvedades es parte del contrato: primero lo que deja a alguien señalable. */
 const ORDEN: Record<Salvedad["tipo"], number> = {
   "identificadores-sin-tratar": 0,
-  "unicos-restantes": 1,
-  "k-no-alcanzado": 2,
-  "k-del-reparto-no-es-el-del-archivo": 3,
-  "clases-homogeneas": 4,
-  "colisiones-de-seudonimo": 5,
+  // Va segunda y no quinta: explica POR QUÉ quedan únicos, y una explicación después de su
+  // consecuencia se lee como una excusa.
+  "reparto-sin-k": 1,
+  "unicos-restantes": 2,
+  "k-no-alcanzado": 3,
+  "k-del-reparto-no-es-el-del-archivo": 4,
+  "clases-homogeneas": 5,
+  "colisiones-de-seudonimo": 6,
 };
 
 function riesgoDe(tabla: TablaColumnar, qis: readonly string[]): RiesgoExacto {
@@ -155,6 +174,7 @@ export function balanceDelTratamiento(
     colisiones,
     mondrian,
     diversidad,
+    pendientesDeMondrian,
   } = entradas;
 
   const qisAntes = diagnostico.columnas
@@ -173,6 +193,14 @@ export function balanceDelTratamiento(
       gravedad: "descalifica",
       tipo: "identificadores-sin-tratar",
       columnas: sinTratar,
+    });
+  }
+
+  if (pendientesDeMondrian.length > 0) {
+    salvedades.push({
+      gravedad: "descalifica",
+      tipo: "reparto-sin-k",
+      columnas: pendientesDeMondrian,
     });
   }
 

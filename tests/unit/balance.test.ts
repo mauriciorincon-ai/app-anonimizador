@@ -70,6 +70,7 @@ async function balanceDe(
     politica,
     suprimidas: transformada.suprimidas,
     colisiones: transformada.colisiones,
+    pendientesDeMondrian: transformada.pendientesDeMondrian,
     mondrian: transformada.mondrian,
     diversidad: medirDiversidad(transformada.tabla, qis, sensibles),
   };
@@ -298,6 +299,7 @@ describe("las colisiones de seudónimo llegan al balance", () => {
       tablaTransformada: tabla,
       diagnostico,
       politica,
+      pendientesDeMondrian: [],
       suprimidas: [],
       colisiones: [{ columna: "nit_empresa", cuantas: 3 }],
       mondrian: null,
@@ -358,5 +360,48 @@ describe("la reducción, cuando se puede afirmar", () => {
     const balance = await balanceDe(tabla, politicaDe([]));
     expect(balance.reduccion).toBe(0);
     expect(balance.esTitular).toBe(false);
+  });
+});
+
+describe("A1 — la política pide reparto automático y no fija un k", () => {
+  // Auditoría del S2. El editor enseñaba un k que la política no tenía, el motor solo reparte con
+  // un k declarado, y esas columnas salían INTACTAS sin que ninguna salvedad lo dijera. La única
+  // que aparecía era «quedan únicos» — cierta, y muda sobre la causa.
+  const CON_REPARTO = politicaDe(
+    [
+      { columna: "municipio", tecnica: { tipo: "generalizar-automatico" } },
+      { columna: "estrato", tecnica: { tipo: "generalizar-automatico" } },
+    ],
+    null,
+  );
+
+  it("lo dice, nombra las columnas, y descalifica la cifra", async () => {
+    const balance = await balanceDe(delKit("mediana-repetida", 400), CON_REPARTO);
+    const salvedad = balance.salvedades.find((s) => s.tipo === "reparto-sin-k");
+
+    expect(salvedad).toBeDefined();
+    expect(salvedad).toMatchObject({
+      gravedad: "descalifica",
+      columnas: ["municipio", "estrato"],
+    });
+    expect(balance.esTitular).toBe(false);
+  });
+
+  it("y va ANTES que los únicos, porque explica de dónde salen", async () => {
+    const balance = await balanceDe(delKit("mediana-repetida", 400), CON_REPARTO);
+    const tipos = balance.salvedades.map((s) => s.tipo);
+    expect(tipos.indexOf("reparto-sin-k")).toBeLessThan(
+      tipos.indexOf("unicos-restantes"),
+    );
+  });
+
+  it("con el k puesto, la salvedad desaparece — el gate no es una constante", async () => {
+    const balance = await balanceDe(
+      delKit("mediana-repetida", 400),
+      politicaDe(CON_REPARTO.reglas, 5),
+    );
+    expect(
+      balance.salvedades.some((s) => s.tipo === "reparto-sin-k"),
+    ).toBe(false);
   });
 });

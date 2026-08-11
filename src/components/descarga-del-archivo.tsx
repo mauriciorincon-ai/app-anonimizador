@@ -24,12 +24,14 @@ export function DescargaDelArchivo({
   preparando,
   filas,
   suprimidas,
+  hashDePolitica,
   onPreparar,
 }: {
   archivo: AsaDeArchivo | null;
   preparando: boolean;
   filas: number;
   suprimidas: readonly string[];
+  hashDePolitica: string;
   onPreparar: () => void;
 }) {
   return (
@@ -62,6 +64,19 @@ export function DescargaDelArchivo({
         ) : null}
         . Separado por comas, terminado en salto de línea y sin BOM — si Excel
         en Windows te pregunta por la codificación, es UTF-8.
+      </p>
+
+      {/* Los 8 caracteres del nombre no son un número de serie: son el principio del SHA-256 de la
+          política. Dos entregas con el mismo trozo recibieron el mismo trato, y el reporte lleva el
+          hash completo. Estaba en el código y en ningún texto (hallazgo B1 de la auditoría). */}
+      <p className="text-tinta-tenue mt-3 text-[0.875rem] leading-relaxed">
+        Los ocho caracteres del nombre —
+        <span className="text-tinta font-mono">
+          {hashDePolitica.slice(0, 8)}
+        </span>
+        — son el principio del SHA-256 de la política. Dos archivos que lo
+        compartan recibieron exactamente el mismo tratamiento; el reporte lleva
+        el hash completo.
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">

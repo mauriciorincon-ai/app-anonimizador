@@ -370,3 +370,44 @@ test("un archivo que no es una política dice QUÉ pasó", async ({ page }) => {
   await expect(aviso).toBeVisible();
   await expect(aviso).toContainText("JSON");
 });
+
+// ── A2 de la auditoría — el archivo no puede salir solo ───────────────────────────────────────
+//
+// El motor sabía escribir el reporte del tratamiento desde la Fase 4 y estaba probado; lo que no
+// existía era la pantalla que lo pidiera. El usuario se llevaba el CSV anonimizado y el único
+// documento a mano describía el archivo ORIGINAL — con su riesgo y su huella. Mandar los dos
+// juntos es la mentira por composición de este sprint a nivel de artefacto, y ningún unit la ve
+// porque cada pieza, por separado, estaba bien.
+test("el taller entrega también el documento que dice qué se le hizo", async ({
+  page,
+}) => {
+  await cargarYLlegarAlTaller(page);
+  await page.getByRole("button", { name: /Habeas Data/ }).click();
+  await derivarLlave(page);
+  await page.getByRole("button", { name: "Transformar", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Llévate el reporte del tratamiento" })
+    .waitFor({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "Ver antes de descargar" }).click();
+  const reporte = page.frameLocator('iframe[title="Vista previa del reporte"]');
+
+  // La aclaración que hace falta al leerlo sin esta pantalla al lado.
+  await expect(
+    reporte.getByText(/Esta huella no es la del archivo que se entrega/),
+  ).toBeVisible();
+
+  // Y el orden: qué se le hizo ANTES que el riesgo, que es del archivo original.
+  const posiciones = await page
+    .frameLocator('iframe[title="Vista previa del reporte"]')
+    .locator("body")
+    .evaluate((cuerpo) => {
+      const texto = cuerpo.textContent ?? "";
+      return {
+        tratamiento: texto.indexOf("Balance del tratamiento"),
+        riesgo: texto.indexOf("el archivo ORIGINAL"),
+      };
+    });
+  expect(posiciones.tratamiento).toBeGreaterThan(-1);
+  expect(posiciones.riesgo).toBeGreaterThan(posiciones.tratamiento);
+});
