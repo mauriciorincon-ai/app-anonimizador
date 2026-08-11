@@ -8,15 +8,36 @@
     "fuera, el assert de budgets lo cargaría solo y estallaría por la exclusividad mutua.",
     "Umbral 0.9 = la casilla '>=90 en las 4 categorías' del /deploy-check, que hasta v1.11.0",
     "nadie medía (el budget mide tiempos y pesos, que es otra cosa).",
-    "Subir un umbral es una decisión de sprint; BAJARLO exige deuda técnica declarada."
+    "Subir un umbral es una decisión de sprint; BAJARLO exige deuda técnica declarada.",
+    "DEMO EN ROJO (temporal): minScore 1.0 para comprobar que el gate falla nombrando la categoria. Se revierte."
   ],
   "ci": {
     "assert": {
       "assertions": {
-        "categories:performance": ["error", { "minScore": 0.9 }],
-        "categories:accessibility": ["error", { "minScore": 0.9 }],
-        "categories:best-practices": ["error", { "minScore": 0.9 }],
-        "categories:seo": ["error", { "minScore": 0.9 }]
+        "categories:performance": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ],
+        "categories:accessibility": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ],
+        "categories:best-practices": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ],
+        "categories:seo": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ]
       }
     }
   }
