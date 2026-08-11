@@ -116,3 +116,80 @@ dentro del worker. Se medirá en el gate de rendimiento de este sprint, no citan
 Tercer punto de la fase, y el más rápido: confirmar que los 5 rojos del dev server siguen
 enterrados. `pnpm test:e2e` en local, contra el build, **39 pasadas y 1 saltada por diseño** — el
 mismo resultado que el CI. La fricción que originó el delta v1.12.0 no volvió.
+
+---
+
+## Fase 1 — El motor de políticas
+
+**307 pruebas unitarias** (96,7 % sentencias · 91,7 % ramas). `politica.ts` al 100 % de sentencias;
+`politicas-de-fabrica.ts`, al 100 %.
+
+### La política es un archivo con identidad
+
+`src/engine/politica.ts`. Una política no es una preferencia de la sesión: es el documento que dice
+qué tratamiento recibió un archivo, y por eso lleva **hash SHA-256**. Mismo hash ⇒ mismo
+tratamiento — y eso es lo que va al reporte y, en el S3, al certificado.
+
+Tres decisiones sostienen esa promesa:
+
+1. **El hash se calcula sobre la forma normalizada**, con las reglas ordenadas por columna. El
+   usuario no tiene por qué saber en qué orden tocó las filas.
+2. **Se ordena por punto de código, jamás con `localeCompare`** — que depende del idioma del
+   sistema y le daría a la misma política dos hashes en dos computadores. El gate de determinismo
+   del S1 ya lo prohíbe en el motor; aquí se ve por qué.
+3. **`origen` entra al hash.** Aplicar Habeas Data y editarlo hasta dejarlo igual que una política
+   manual idéntica **no es lo mismo**: la procedencia es parte de lo que el reporte declara, y dos
+   documentos que dicen cosas distintas no pueden compartir identidad.
+
+`importarPolitica` **no lanza**: devuelve el motivo. Un archivo que el usuario eligió a mano falla
+de formas normales —JSON roto, otra versión, forma inválida— y cada una necesita un mensaje
+distinto en pantalla. Un `throw` genérico las volvería todas «archivo inválido», que no le dice a
+nadie qué hacer. La versión se mira **antes** que la forma, para que un archivo v2 diga «es de otra
+versión» y no una lista de campos que no cuadran.
+
+### El hallazgo de la fase: Safe Harbor es SUPRIMIR, no seudonimizar
+
+45 CFR §164.514(b)(2) pide **eliminar** los 18 identificadores. El §164.514(c) permite conservar un
+código de reidentificación, pero con una condición que aquí no se cumple: **el código no puede
+derivarse de la información**. Un HMAC del valor se deriva del valor — así que seudonimizar una
+cédula deja el archivo **fuera de Safe Harbor**, por muy irreversible que sea el seudónimo.
+
+Es una diferencia que decide el diseño, no una nota al pie: la política de HIPAA **suprime** donde
+la norma dice suprimir, aunque el archivo pierda sus llaves de cruce; y la de Habeas Data —que no
+tiene lista tipo Safe Harbor, sino principios y una guía— seudonimiza conservando formato para que
+el cruce sobreviva. Las dos tratan el mismo archivo de forma distinta, y **el hash lo demuestra**.
+
+Otra decisión con la misma lógica: **el dato sensible del art. 5 se CONSERVA**. Es el atributo que
+el análisis quiere medir, no la llave por la que se enlaza; suprimirlo sería anonimizar destruyendo
+el propósito. Queda protegido por el k de los cuasi-identificadores, que es el modelo entero de
+k-anonimato.
+
+### Lo que Velo no ve, dicho en la tabla
+
+Los 18 identificadores están enumerados de la A a la R **con cómo los ve Velo o por qué no los ve**.
+El reparto real: **7 por validador · 2 por nombre de columna · 9 que no ve en absoluto** (fax,
+SSN, historia clínica, afiliado, licencia, dispositivo, URL, fotografías, y la cláusula de cierre
+del literal R —que por definición no tiene forma, y es lo que hace que Safe Harbor no se pueda
+automatizar del todo).
+
+**Un defecto que el test cazó y que vale registrar:** la advertencia de HIPAA decía _«Velo solo
+reconoce automáticamente 8 de los 18»_ y la tabla decía 7. Un número escrito a mano dentro de una
+prosa que describe una tabla se desincroniza en el primer cambio y nadie se entera — es la «cita
+que no se cumple» del S1 en su versión de copy. **Arreglo:** la prosa no lleva números y la cifra
+la compone la UI con `resumenDeCobertura()`, más un test que prohíbe la forma `N de los M` en
+cualquier advertencia. El error se hizo imposible, no se corrigió.
+
+Y ninguna de las dos se presenta como certificación: son la interpretación de Velo de una guía,
+aplicada a las columnas que Velo alcanzó a reconocer. Ningún programa que solo ve una tabla puede
+decidir si un tratamiento es lícito.
+
+### El gate de observabilidad creció con los objetos nuevos
+
+El sanitizador del S1 cerraba las dos puertas que existían entonces (encabezados y celdas). Este
+sprint trae dos objetos más que jamás pueden salir, y el gate creció **el mismo día que nacieron**:
+una **llave** —entera, en pedazos, la frase de paso y la sal— y una **política** exportada, que
+lleva los nombres de columna del usuario. Ninguno sale, verificado sobre el payload crudo.
+
+De paso quedó escrito algo que no es obvio: el **hash** de la política sí podría viajar sin revelar
+nada, pero tiene 64 caracteres y el sanitizador lo descarta igual. Está bien que así sea — el gate
+no puede distinguir «hash inofensivo» de «llave» mirando la cadena.

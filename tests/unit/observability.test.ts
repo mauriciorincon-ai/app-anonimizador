@@ -9,6 +9,7 @@ import {
   sanitizarKind,
   sanitizarMeta,
 } from "../../src/lib/observability";
+import { exportarPolitica } from "../../src/engine/politica";
 
 const capturarMensaje = vi.fn();
 vi.mock("@sentry/nextjs", () => ({
@@ -192,6 +193,71 @@ describe("reportError", () => {
 
     const enviado = JSON.stringify(capturarMensaje.mock.calls[0]);
     for (const prohibido of [...ENCABEZADOS_REALES, ...VALORES_DE_CELDA]) {
+      expect(enviado).not.toContain(prohibido);
+    }
+  });
+
+  // ── S2: los objetos nuevos del sprint ───────────────────────────────────────────────────────
+  // El sanitizador del S1 cerraba las dos puertas que existían entonces (encabezados y celdas).
+  // Este sprint trae dos objetos más que jamás pueden salir, y el gate tiene que crecer con ellos
+  // el mismo día que nacen — no el día que alguien se acuerde.
+
+  it("una LLAVE no sale, ni entera ni en pedazos", () => {
+    process.env.NEXT_PUBLIC_SENTRY_DSN = "https://ejemplo@sentry.invalid/1";
+
+    // Una llave filtrada vuelve enlazables TODOS los seudónimos a la vez: es la peor fuga posible
+    // de este producto, peor que una celda suelta.
+    const llaveHex =
+      "9f2c4a7e1b03d85f6a2e9c0b47d1f83a5e6b2c9d0f4a7183e5b2c6d9f0a4718c";
+    const frase = "mi frase de paso del proyecto de agosto";
+
+    reportError("tecnicas/hmac-fallido", {
+      llave: llaveHex,
+      frase,
+      "llave-parcial": llaveHex.slice(0, 8),
+      "sal-base64": "dGhpcyBpcyBhIHNhbHQ=",
+    });
+
+    const enviado = JSON.stringify(capturarMensaje.mock.calls[0]);
+    for (const secreto of [
+      llaveHex,
+      frase,
+      llaveHex.slice(0, 8),
+      "dGhpcyBpcyBhIHNhbHQ=",
+    ]) {
+      expect(enviado).not.toContain(secreto);
+    }
+  });
+
+  it("una POLÍTICA no sale: lleva los nombres de columna del usuario", () => {
+    process.env.NEXT_PUBLIC_SENTRY_DSN = "https://ejemplo@sentry.invalid/1";
+
+    const politica = exportarPolitica({
+      version: 1,
+      origen: "manual",
+      kObjetivo: 5,
+      reglas: [
+        { columna: "Cédula del titular", tecnica: { tipo: "suprimir" } },
+        { columna: "DIAGNOSTICO_CIE10", tecnica: { tipo: "conservar" } },
+      ],
+    });
+
+    reportError("politica/importacion-fallida", {
+      politica,
+      columna: "Cédula del titular",
+      // El hash SÍ puede viajar: identifica el tratamiento sin revelar una sola columna. Pero
+      // tiene 64 caracteres, así que el sanitizador lo descarta igual — y está bien que así sea,
+      // porque el gate no distingue «hash inofensivo» de «llave» mirando la cadena.
+      hash: "a".repeat(64),
+    });
+
+    const enviado = JSON.stringify(capturarMensaje.mock.calls[0]);
+    for (const prohibido of [
+      "Cédula del titular",
+      "DIAGNOSTICO_CIE10",
+      "suprimir",
+      politica,
+    ]) {
       expect(enviado).not.toContain(prohibido);
     }
   });
