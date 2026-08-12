@@ -369,6 +369,24 @@ const PERFILES = {
     "diagnostico",
     "monto",
   ],
+  // Para el REGRESO (S3): un archivo donde la colisión de formato es segura, no probable.
+  //
+  // Un seudónimo con formato de NIT tiene que caber en 9 dígitos que empiezan por 8 o 9: son
+  // 2×10⁸ valores posibles, no 2⁶⁴. Por la paradoja del cumpleaños, con n NITs distintos caben
+  // esperar n²/(2·2×10⁸) pares que colisionen — o sea que la colisión no es un caso raro que haya
+  // que esperar sentado: es aritmética, y con suficientes filas ocurre siempre.
+  //
+  //     n = 20.000 → ~1 par        n = 60.000 → ~9 pares       n = 100.000 → ~25 pares
+  //
+  // Este perfil existe para que la ambigüedad de la restauración se pruebe con datos que la
+  // producen de verdad, y no solo con una bóveda escrita a mano. Con 60.000 filas la probabilidad
+  // de NO ver ninguna colisión es de una entre ocho mil. Y con semilla fija y llave fija, el número
+  // exacto es reproducible: el test lo afirma, no lo tolera.
+  //
+  // `cedula_titular` va al lado a propósito: su rango (10⁹) es cinco veces mayor, así que con las
+  // mismas filas colisiona mucho menos. Sirve para que el fixture tenga una columna reversible
+  // limpia junto a la sucia, que es el caso realista.
+  "colisiones-de-formato": ["nit_empresa", "cedula_titular", "sucursal"],
   // Sin una sola columna personal — ni siquiera un cuasi-identificador. Existe para poder llegar
   // al estado "no reconocimos datos personales" de la interfaz por el camino real (soltando un
   // archivo), y no solo en un test con un informe de mentira. `limpio` no sirve para eso: su

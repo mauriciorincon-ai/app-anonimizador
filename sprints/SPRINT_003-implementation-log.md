@@ -324,3 +324,109 @@ llave HMAC) llega en la Fase 5. Se declara aquí en vez de descubrirlo en la aud
 test de round-trip, y si la Fase 5 no lo consume, sobra.
 
 ---
+
+## Fase 2 — Seudonimización reversible
+
+### El riesgo 5 se disolvió, no se pagó
+
+El plan preveía extender `ResultadoDeSeudonimo` para que registrara la correspondencia, y avisaba
+del precio: ese contrato ya lo tienen `tecnicas/index.ts`, `contrato.ts` y el balance. **No hizo
+falta tocarlo.**
+
+La correspondencia ya estaba ahí: `aplicarPolitica` tiene en la mano el diccionario de entrada
+(`columna.valores`) y el de salida (lo que devuelve la técnica), **en paralelo y en el mismo orden**
+— que es exactamente la forma que `construirBoveda` recibe. Guardar la correspondencia son tres
+líneas y cero cambios de contrato:
+
+```ts
+if (esReversible(tecnica)) {
+  correspondencias.push({
+    columna: columna.nombre,
+    originales: columna.valores,   // ANTES de reconstruir: después ya no existe
+    seudonimos: resultado.valores,
+  });
+}
+```
+
+Que salga gratis es consecuencia de la forma que se eligió en la Fase 1 —arreglos paralelos— y no de
+la suerte. Las colisiones también: `construirBoveda` agrupa por seudónimo, así que un seudónimo con
+dos originales **se guarda con los dos** sin una sola rama especial.
+
+`TablaTransformada` gana un campo, `correspondencias`, **sin identidad a propósito**: la huella de
+la llave, su sal y el hash de la política son hechos de la sesión, no de la transformación. El motor
+entrega el material; la bóveda se arma donde vive la identidad.
+
+### El eje sin romper la identidad de las políticas del S2
+
+`reversible` entra como **campo opcional**, no como `boolean` con default `false`. La diferencia no
+es de estilo: la identidad de una política es el SHA-256 de su forma normalizada, y si el campo
+apareciera como `false` en todas, **cambiaría el hash de todas las políticas del S2** — los reportes
+ya emitidos dejarían de cuadrar con el mismo tratamiento repetido hoy.
+
+- Ausente = irreversible. Es el default seguro y deja intacta la identidad anterior.
+- `normalizarPolitica` convierte un `false` explícito en ausencia: dos formas de decir lo mismo, un
+  solo hash.
+- `true` **sí** cambia el hash, y debe: guardar la correspondencia es otro tratamiento.
+
+Con su test: una política exportada por el S2 se importa, se comporta igual y **hashea igual**.
+
+`requiereBoveda` vive en `politica.ts`, al lado de `requiereLlave` y por la misma razón medida en el
+S2: es una pregunta que la UI necesita responder, e importarla de `tecnicas/index.ts` arrastraría el
+motor entero al bundle. El gate de Lighthouse ya cobró eso una vez.
+
+**`esReversible` solo admite las dos técnicas de seudónimo**, y no por limitación de versión:
+enmascarar y generalizar **destruyen** información. `103***89` y `30-39` no vuelven ni con bóveda,
+porque los dígitos que faltan no existen en ningún sitio. El seudónimo no destruye, sustituye.
+
+### El fixture de colisión provocada
+
+Perfil nuevo `colisiones-de-formato` en el generador seeded (`nit_empresa` + `cedula_titular` +
+`sucursal`), con la aritmética escrita en el propio archivo: un seudónimo con formato de NIT cabe en
+2×10⁸ valores, así que con n NITs distintos caben esperar n²/(2·2×10⁸) pares colisionados.
+
+```
+n = 20.000 → ~1 par     n = 60.000 → ~9 pares     n = 100.000 → ~25 pares
+```
+
+Con 60.000 filas la probabilidad de no ver ninguna colisión es de **una entre ocho mil**. Medido con
+semilla 42 y llave fija: **5 colisiones sobre 59.988 seudónimos**. Cinco contra nueve no es un
+defecto —con λ=9 un proceso de Poisson deja P(X≤5) ≈ 12 %—, y el test afirma `> 0` y no `= 5` a
+propósito: el fixture garantiza que la ambigüedad **ocurre**, no cuántas veces, y clavar el número
+lo volvería rojo ante cualquier retoque legítimo del generador.
+
+Lo que el test verifica de verdad no es el conteo: es que el seudónimo colisionado **guarda sus dos
+originales**. Elegir uno y callarse sería devolverle a alguien el dato de otra empresa.
+
+### §4 — las frases que caducan (revisadas ahora, no en el cierre)
+
+Tres frases dicen que el seudónimo es irreversible. **Ninguna es falsa todavía**: el eje existe en
+el motor y la UI no lo ofrece, así que hoy un usuario no puede hacer nada reversible. Caducan en la
+Fase 5, el día que la pantalla lo permita:
+
+| Dónde | Qué dice | Qué pasa en la Fase 5 |
+|---|---|---|
+| `README.md:36` | «un seudónimo de hoy es irreversible, porque la bóveda llega en el S3» | falsa: la bóveda llegó |
+| `docs/MANUAL-DE-USO.md:325` | «Hoy los seudónimos son irreversibles a propósito» | falsa por el mismo motivo |
+| `src/components/editor-de-politica.tsx:57` | etiqueta «Seudónimo irreversible» | correcta, pero necesita su hermana reversible al lado |
+
+Se dejan como están **a propósito**: cambiarlas hoy las volvería falsas en sentido contrario —
+anunciarían una capacidad que el usuario todavía no tiene.
+
+### Verificación de la Fase 2
+
+| Criterio del plan | Resultado |
+|---|---|
+| Una columna reversible da el MISMO seudónimo que sin bóveda (regresión de C9) | ✅ valores y códigos idénticos, con y sin |
+| La bóveda contiene su correspondencia completa | ✅ cada original del archivo se recupera desde su seudónimo |
+| Un fixture con colisión provocada la registra con sus dos originales | ✅ perfil nuevo, 5 colisiones medidas |
+| Cobertura >80 % | ✅ ver abajo |
+
+`pnpm typecheck` y `pnpm lint` limpios. `pnpm test`: **584 verdes, 1 saltada** — y entre ellas todas
+las del S2 sobre hashes de política y determinismo de la transformación, que es la prueba de que la
+compatibilidad se conservó.
+
+**Declarado por §5:** `correspondencias` no tiene consumidor de producción hasta la Fase 5, cuando el
+worker arme la bóveda con la identidad de la sesión. Hoy lo leen sus tests. Va escrito aquí, junto a
+`salDeLlave` de la Fase 1, para que la auditoría los encuentre declarados y no huérfanos.
+
+---

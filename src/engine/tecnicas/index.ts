@@ -21,8 +21,10 @@ import {
 } from "../columnar";
 import { enmascarar } from "../mascara";
 import { anonimizarConMondrian, type ResultadoDeMondrian } from "../mondrian";
+import type { EntradaDeBoveda } from "../boveda";
 import {
   columnasDeMondrian,
+  esReversible,
   requiereLlave,
   tecnicaDe,
   type Politica,
@@ -55,6 +57,21 @@ export interface TablaTransformada {
   readonly pendientesDeMondrian: readonly string[];
   /** El reparto, cuando la política pidió k. `null` cuando no había nada que repartir. */
   readonly mondrian: ResultadoDeMondrian | null;
+  /**
+   * El material de la bóveda: una entrada por columna **reversible**, con su diccionario original y
+   * los seudónimos que salieron de él, en paralelo.
+   *
+   * **Sale gratis, y eso es un hallazgo de la Fase 2, no una casualidad.** El plan preveía extender
+   * `ResultadoDeSeudonimo` para que registrara la correspondencia; no hizo falta tocar ese contrato
+   * —ni sus tres consumidores— porque aquí ya están los dos diccionarios en paralelo: el de entrada
+   * es `columna.valores` y el de salida es lo que devuelve la técnica. La correspondencia son esas
+   * dos listas, que es exactamente la forma que `construirBoveda` recibe.
+   *
+   * Va sin identidad a propósito. La huella de la llave, su sal y el hash de la política son hechos
+   * de la **sesión**, no de la transformación, y quien los tiene es el worker. El motor entrega el
+   * material; la bóveda se arma donde vive la identidad.
+   */
+  readonly correspondencias: readonly EntradaDeBoveda[];
 }
 
 /**
@@ -137,6 +154,7 @@ export async function aplicarPolitica(
   const columnas: ColumnaColumnar[] = [];
   const suprimidas: string[] = [];
   const colisiones: ColisionEnColumna[] = [];
+  const correspondencias: EntradaDeBoveda[] = [];
 
   for (const columna of tabla.columnas) {
     const tecnica = tecnicaDe(politica, columna.nombre);
@@ -182,6 +200,15 @@ export async function aplicarPolitica(
         cuantas: resultado.colisiones,
       });
     }
+    // ANTES de reconstruir: `columna.valores` es todavía el diccionario original, que es la mitad
+    // izquierda de la correspondencia. Después de reconstruir ya no existe.
+    if (esReversible(tecnica)) {
+      correspondencias.push({
+        columna: columna.nombre,
+        originales: columna.valores,
+        seudonimos: resultado.valores,
+      });
+    }
     columnas.push(reconstruirColumna(columna, resultado.valores));
   }
 
@@ -205,5 +232,6 @@ export async function aplicarPolitica(
     colisiones,
     pendientesDeMondrian: mondrian === null ? paraMondrian : [],
     mondrian,
+    correspondencias,
   };
 }

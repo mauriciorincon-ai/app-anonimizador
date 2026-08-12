@@ -45,6 +45,21 @@ export const VERSION_DE_POLITICA = 1;
 // El discriminante es plano (`tipo`) y no anidado: un `generalizar` con un `modo` adentro obliga
 // a Zod a un union de unions y a la UI a un select de selects, y no compra nada.
 
+/**
+ * El eje reversible/irreversible de las dos técnicas de seudónimo (S3).
+ *
+ * **Es opcional y no un `boolean` con default, y esa decisión sostiene una promesa del S2.** La
+ * identidad de una política es el SHA-256 de su forma normalizada, y «mismo hash ⇒ mismo
+ * tratamiento» tiene que seguir siendo cierto entre sprints. Si este campo apareciera como
+ * `reversible: false` en toda política, **cambiaría el hash de todas las del S2** — reportes ya
+ * emitidos dejarían de cuadrar con el mismo tratamiento repetido hoy.
+ *
+ * Ausente significa irreversible, que es el default seguro. `normalizarPolitica` convierte un
+ * `false` explícito en ausencia, para que las dos formas de decir lo mismo tengan un solo hash.
+ * Un `true` sí cambia el hash, y debe: guardar la correspondencia **es** otro tratamiento.
+ */
+const reversibleSchema = z.boolean().optional();
+
 const tecnicaSchema = z.discriminatedUnion("tipo", [
   /** Se deja tal cual. Es una decisión explícita, no la ausencia de una. */
   z.object({ tipo: z.literal("conservar") }),
@@ -52,10 +67,11 @@ const tecnicaSchema = z.discriminatedUnion("tipo", [
   z.object({ tipo: z.literal("suprimir") }),
   /** `1032456789` → `103***89`, con la regla del S1: nunca más de la mitad a la vista. */
   z.object({ tipo: z.literal("enmascarar") }),
-  /** HMAC-SHA256 con la llave del usuario → hexadecimal. Irreversible sin bóveda (S3). */
+  /** HMAC-SHA256 con la llave del usuario → hexadecimal. Irreversible sin bóveda. */
   z.object({
     tipo: z.literal("seudonimizar"),
     longitud: z.number().int().min(6).max(64),
+    reversible: reversibleSchema,
   }),
   /**
    * HMAC → dígitos → dígito de verificación oficial recalculado. El seudónimo PARECE un NIT o una
@@ -65,6 +81,7 @@ const tecnicaSchema = z.discriminatedUnion("tipo", [
   z.object({
     tipo: z.literal("seudonimizar-con-formato"),
     formato: z.enum(["nit", "cedula"]),
+    reversible: reversibleSchema,
   }),
   /** Números a intervalos: edad 37 con amplitud 10 → `30-39`. */
   z.object({
@@ -118,12 +135,32 @@ export type Politica = z.infer<typeof politicaSchema>;
 // ── Identidad ─────────────────────────────────────────────────────────────────────────────────
 
 /**
+ * `reversible: false` y `reversible` ausente son el mismo tratamiento, y no pueden tener dos hashes.
+ * `serializarCanonico` y `JSON.stringify` omiten las claves `undefined`, así que dejarlo así es
+ * suficiente — y deja intacta la identidad de toda política escrita antes del S3.
+ */
+function sinReversibleFalso(regla: Regla): Regla {
+  const { tecnica } = regla;
+  if (
+    tecnica.tipo !== "seudonimizar" &&
+    tecnica.tipo !== "seudonimizar-con-formato"
+  ) {
+    return regla;
+  }
+  return {
+    ...regla,
+    tecnica: { ...tecnica, reversible: tecnica.reversible || undefined },
+  };
+}
+
+/**
  * Forma normalizada: reglas ordenadas por nombre de columna, sin duplicados (gana la última, que
  * es lo que el usuario acaba de escribir). Es lo que se hashea y lo que se compara.
  */
 export function normalizarPolitica(politica: Politica): Politica {
   const porColumna = new Map<string, Regla>();
-  for (const regla of politica.reglas) porColumna.set(regla.columna, regla);
+  for (const regla of politica.reglas)
+    porColumna.set(regla.columna, sinReversibleFalso(regla));
 
   const reglas = [...porColumna.values()].sort((a, b) =>
     // Punto de código, no locale: la misma política tiene que dar el mismo hash en toda máquina.
@@ -251,6 +288,34 @@ export function requiereLlave(politica: Politica): boolean {
       regla.tecnica.tipo === "seudonimizar" ||
       regla.tecnica.tipo === "seudonimizar-con-formato",
   );
+}
+
+/**
+ * ¿Esta técnica guarda la correspondencia para poder deshacerse?
+ *
+ * Solo las dos de seudónimo pueden ser reversibles, y no es una limitación de esta versión: una
+ * máscara y una generalización **destruyen información**. `103***89` y `30-39` no vuelven ni con
+ * bóveda ni con nada, porque los dígitos que faltan ya no existen en ningún sitio. El seudónimo es
+ * distinto: no destruye, sustituye — y por eso admite una tabla que lo deshaga.
+ */
+export function esReversible(tecnica: Tecnica): boolean {
+  return (
+    (tecnica.tipo === "seudonimizar" ||
+      tecnica.tipo === "seudonimizar-con-formato") &&
+    tecnica.reversible === true
+  );
+}
+
+/**
+ * ¿Esta política necesita bóveda?
+ *
+ * Hermana de `requiereLlave`, y vive aquí por la misma razón de peso: es una pregunta que la
+ * interfaz necesita responder para saber si pedir la frase de la bóveda, e importarla de
+ * `tecnicas/index.ts` arrastraría el motor entero al bundle de la página. El gate de Lighthouse ya
+ * cobró eso una vez, en el cierre del S2.
+ */
+export function requiereBoveda(politica: Politica): boolean {
+  return politica.reglas.some((regla) => esReversible(regla.tecnica));
 }
 
 /** Columnas marcadas para que Mondrian decida cuánto generalizarlas. */
