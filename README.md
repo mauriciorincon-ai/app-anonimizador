@@ -32,7 +32,8 @@ de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
 
 ## Qué hace hoy
 
-**Sprint 001 · El diagnóstico.** Velo lee y mide; todavía no transforma.
+**Sprints 001–002 · El diagnóstico y el disfraz.** Velo lee, mide **y transforma**. Lo que todavía
+no hace es la vuelta: un seudónimo de hoy es irreversible, porque la bóveda llega en el S3.
 
 - **Carga** de CSV (sin tope) y Excel (hasta 150 MB, medido) con arrastre y con teclado.
 - **Detección por columna** con validadores que **citan su fuente oficial en el código**: NIT con el
@@ -49,9 +50,21 @@ de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
   del análisis, con su motivo.
 - **Reporte HTML autocontenido** con la huella SHA-256 del archivo, para que quien lo reciba pueda
   comprobar que habla de esa copia exacta.
+- **Política por columna** —o **Habeas Data** / **HIPAA Safe Harbor** de un clic, cada una citando su
+  fuente— que se exporta e importa como archivo y lleva su propio **hash SHA-256** como identidad.
+- **Cuatro familias de técnicas**: enmascarar, seudonimizar (HMAC-SHA256 con llave derivada por
+  PBKDF2-600k), seudonimizar **conservando el formato** (con el dígito de verificación oficial
+  recalculado — no es FPE, y el código dice por qué), generalizar y suprimir.
+- **k-anonimato con Mondrian** (LeFevre et al., ICDE 2006) sobre las columnas que se marquen, con
+  **l-diversity** y **t-closeness** medidas y reportadas.
+- **Balance antes/después** con una regla dura: si algo quedó sin tratar, **eso se lee antes que
+  cualquier porcentaje de reducción**, y la cifra pierde el tratamiento de titular.
+- **Archivo CSV anonimizado** escrito por el navegador —nunca por un servidor— y su **reporte del
+  tratamiento**, que declara qué se le hizo y que su huella es la del archivo que *entró*.
 
-Rendimiento medido: **500.000 filas × 24 columnas (130 MB) en unos 5 segundos**, con **cero tareas
-largas** en el hilo principal.
+Rendimiento medido: **500.000 filas × 24 columnas (130 MB) en unos 5 segundos** para el diagnóstico
+y **~1,4 s** para el reparto de Mondrian sobre 8 cuasi-identificadores, con **cero tareas largas** en
+el hilo principal.
 
 ---
 

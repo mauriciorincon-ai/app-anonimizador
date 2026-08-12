@@ -7,6 +7,17 @@ export default defineConfig({
   // Genera los archivos de prueba con el kit seeded antes de arrancar (ver el propio archivo).
   globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: true,
+  // El default de Playwright son 30 s, pensados para una app en la que se hace clic en botones.
+  // Este suite parsea archivos de 130 MB y transforma 500.000 filas **en paralelo con las demás
+  // pruebas**, así que las pequeñas compiten por CPU con las grandes: en el `/deploy-check` del
+  // S2, tres pruebas de 2.000 filas se pasaron de 30 s mientras la de 500k corría al lado. En CI
+  // no se había visto porque `retries: 2` las reintentaba y la segunda pasaba — o sea que el gate
+  // dependía de sus propios reintentos para taparse.
+  //
+  // 90 s no es un presupuesto de rendimiento: es una **alarma de incendio**. Lo que mide el
+  // rendimiento de verdad es `rendimiento.spec.ts` (tareas largas del hilo principal) y el job de
+  // Lighthouse, que sí comparan contra números.
+  timeout: 90_000,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
