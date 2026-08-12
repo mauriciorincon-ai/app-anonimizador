@@ -204,3 +204,123 @@ completo sobre archivo grande, el margen que queda son 30 s, y el sitio donde se
 es justo ahí.
 
 ---
+
+## Fase 1 — La bóveda, y su medición ANTES de la UI
+
+Dos archivos nuevos, y la frontera entre ellos **es** la decisión:
+
+| Archivo | Qué hace | Por qué ahí |
+|---|---|---|
+| `src/engine/boveda.ts` | construye, serializa, deserializa, huella, consultas | puro y síncrono: el gate de determinismo barre `src/engine/**` |
+| `src/lib/boveda-archivo.ts` | AES-GCM, PBKDF2, el azar, el formato `.velo` | es lo único que el motor tiene prohibido: azar y `async` |
+
+Es la misma frontera que el S2 trazó con la llave HMAC, y no una organización de carpetas: el motor
+recibe lo derivado, nunca lo genera.
+
+### Tres decisiones que no venían en el plan
+
+**1. Arreglos paralelos, no un arreglo de objetos.** `seudonimos[i]` volvió de `originales[i]`, como
+la tabla columnar hace con `valores` y `codigos`. El plan estimaba ~50 B por par y ~24 MB en el peor
+caso; medido son **26 B por par y 11,64 MB** — la mitad, porque un arreglo de objetos repetiría dos
+nombres de clave 446.006 veces. Y la colisión sale gratis: **no es una excepción del formato, es una
+entrada con dos originales.**
+
+**2. Las iteraciones de PBKDF2 viajan DENTRO del `.velo`** (cuatro bytes en la cabecera). Si el
+número viviera solo en el código, endurecerlo el año que viene volvería ilegible toda bóveda sellada
+antes — y una bóveda que deja de abrirse es la pérdida total que el producto existe para evitar. Con
+la consecuencia atendida: la cabecera va en claro, así que un `.velo` manipulado puede pedir cuatro
+mil millones de iteraciones y colgar la pestaña un cuarto de hora. **Tope de 5.000.000 comprobado
+antes de derivar nada**, con su test que además cronometra que el rechazo es inmediato.
+
+**3. La validación al deserializar es a mano, no con Zod.** La política son decenas de reglas y Zod
+es la herramienta correcta ahí. Una bóveda son 446.006 pares: pasarlos por un esquema es una
+validación por cadena con la maquinaria de issues y rutas detrás, sobre la única estructura del
+producto que llega a medio millón de entradas. Lo que hay que comprobar son cuatro formas y un
+paralelismo.
+
+### La medición del peor caso
+
+`MEDIR_BOVEDA=1 pnpm vitest run tests/unit/boveda-peor-caso.test.ts --coverage.enabled=false` —
+se salta por defecto (tarda ~7 s y no verifica: mide). Columna `cedula_titular`, 500.000 filas del
+generador seeded, por el camino real.
+
+```
+  valores distintos                  446006
+  HMAC con formato (cedula)          3990 ms      ← Node; el número del navegador es el ADR-004
+  colisiones de formato              100          ← teoría n²/2·10⁹ ≈ 99,5
+  construirBoveda                    289 ms
+  serializarBoveda                   117 ms
+  tamaño en claro                    11.64 MB
+  huellaDeBoveda (SHA-256)           255 ms
+  sellarBoveda (PBKDF2 + AES-GCM)    138 ms
+  tamaño del .velo                   11.64 MB
+  abrirBoveda                        123 ms
+  gzip del claro (referencia)        3.78 MB (32 % del claro)
+  heap usado al terminar             239.56 MB
+```
+
+**Cabe con holgura: no hay tope que declarar.** Y la teoría de colisiones cuadra con la medida al
+0,5 % — 100 contra 99,5 predichas —, que es la confirmación de que la cifra que la UI va a enseñar
+en la Fase 4 no es una estimación de servilleta.
+
+**No se comprime**, aunque gzip deje el claro en un tercio. 11,6 MB ya cabe sin apretar, y comprimir
+añade un paso cuyo modo de fallo —un flujo truncado— produce una bóveda ilegible, el peor desenlace
+posible del producto. Queda medido: si algún caso lo necesita, la decisión se toma con la cifra.
+
+### Lo que la medición desmintió (y obligó a corregir código del S2)
+
+`src/lib/llave.ts` afirmaba: *«Tarda del orden de un segundo, y eso es lo que compra»*. Medido en
+Chromium con `tests/medicion/cripto-en-el-navegador.mjs`:
+
+```
+PBKDF2-HMAC-SHA256 (ms por derivación, mediana de 3):
+  600.000 iteraciones → 36 ms
+  1.000.000 iteraciones → 61 ms
+  2.000.000 iteraciones → 121 ms
+
+AES-GCM 256:  cifrar 26 MB → 12 ms   ·   descifrar 26 MB → 10 ms
+```
+
+**36 ms, no un segundo.** Tres consecuencias, en orden de importancia:
+
+1. **La garantía es el número de iteraciones, no los segundos.** El tiempo varía un orden de
+   magnitud entre un portátil y un teléfono de gama baja; por eso OWASP se expresa en iteraciones.
+   Escribir el tiempo como si fuera la propiedad era escribir una cifra sin fuente.
+2. **`ITERACIONES_PBKDF2` es una constante de COMPATIBILIDAD desde el S2, no un parámetro.** Subirla
+   cambia la llave derivada de la misma frase y la misma sal, o sea **cambia todos los seudónimos**
+   — que es romper C9 entre archivos de meses distintos. Endurecerla exige versión de llave y
+   migración. Esto no estaba escrito en ningún sitio y era exactamente la clase de cosa que se
+   descubre rompiéndole los cruces a alguien.
+3. **Entrada para la Fase 5:** la orden describe un estado «derivando (tarda a propósito, y lo
+   dice)». En esta máquina no hay espera perceptible. El costo deliberado es real —600.000
+   iteraciones lo son—, pero una pantalla que prometa una espera que no ocurre es la misma mentira
+   por composición de siempre. El copy se decide en la Fase 5 con este número delante.
+
+AES-GCM, de paso, resultó irrelevante: 12 ms por 26 MB. El cifrado nunca iba a ser el problema.
+
+### Verificación de la Fase 1
+
+| Criterio del plan | Resultado |
+|---|---|
+| Round-trip serializar→cifrar→descifrar→deserializar con la misma huella | ✅ |
+| El `.velo` no contiene un valor original en claro (barrido de bytes) | ✅ ni originales, ni seudónimos, ni nombres de columna |
+| Dos serializaciones en claro son byte-idénticas | ✅ y el orden de llegada no cambia la huella |
+| Dos sellados **sí** difieren, y ambos abren la misma bóveda | ✅ las dos mitades juntas, o la afirmación se lee mal |
+| Medición del peor caso en la bitácora | ✅ arriba, con su script repetible |
+| Cobertura >80 % | ✅ `engine/boveda.ts` 100 % stmts / 96,9 % ramas · `lib/boveda-archivo.ts` **100 / 100** |
+| ADR | ✅ `decisions/006-la-boveda-archivo-no-base-de-datos.md` |
+
+`pnpm typecheck` y `pnpm lint` limpios. `pnpm test`: **574 pruebas verdes, 1 saltada** (la medición).
+
+**El riesgo 2 del plan queda cubierto sin código nuevo:** `abrirBoveda` recibe **bytes, no un
+`File`**. Como el gate de privacidad ya veta `.arrayBuffer()` y `new FileReader` fuera de
+`src/workers/`, el único que puede convertir el archivo en bytes es el worker. La defensa es la
+forma de la API, no una regla añadida.
+
+**Sobre §5 de la auditoría (campos sin consumidor):** todos los campos de `Boveda` tienen lector hoy
+—`version` y las tres identidades en `deserializarBoveda`, `huellaDeLlave` en `esDeLaMismaLlave`,
+`columnas` en `indiceDeColumna`— **salvo `salDeLlave`**, cuyo consumidor real (volver a derivar la
+llave HMAC) llega en la Fase 5. Se declara aquí en vez de descubrirlo en la auditoría: hoy lo lee su
+test de round-trip, y si la Fase 5 no lo consume, sobra.
+
+---
