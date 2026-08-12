@@ -3,7 +3,7 @@ app: anonimizador
 sprint: 002
 titulo: "El disfraz — Velo transforma, y lo demuestra"
 branch: sprint-002/el-disfraz
-pr: 3
+pr: 4
 cerrado: 2026-08-11
 ---
 
