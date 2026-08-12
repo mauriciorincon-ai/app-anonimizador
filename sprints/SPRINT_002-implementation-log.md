@@ -866,3 +866,38 @@ cifras— y aun así pasaron. Dos de ellos porque la verificación era del **mot
 **cableado**: A1 tenía la salvedad bien construida sobre una entrada que nadie le pasaba, y A2 tenía
 el documento entero escrito y probado sin un solo llamador. Un motor probado no es un producto
 probado, y la prueba que los habría cazado antes es la que entra por donde entra una persona.
+
+### Un hallazgo tardío, encontrado escribiendo la guía
+
+Al redactar el bloque de la portada para la guía v2 hubo que releer lo que la portada dice, y decía
+esto: **«Por ahora Velo diagnostica… Todavía no transforma el archivo»**. El manual llevaba la misma
+frase en su sección de alcance.
+
+Es el texto más leído de la app —lo primero que ve alguien que llega— y estaba describiendo la
+versión del sprint pasado. No lo cazó la auditoría porque la auditoría miró las superficies que el
+S2 construyó y el reporte que exporta; la portada era del S1 y nadie la había tocado.
+
+Portada y manual corregidos: Velo diagnostica **y transforma**, y lo que todavía no hace es **la
+vuelta** — que es la frase honesta, porque un seudónimo de hoy sigue siendo irreversible. Se añadió
+el cuarto paso de «Cómo funciona» y la rejilla pasó a cuatro columnas.
+
+**La lección para el método:** una feature nueva no solo añade pantallas, **caduca frases en las
+viejas**. Merece una casilla propia en el cierre, del estilo de «¿qué afirmaciones del sprint
+anterior dejó de ser ciertas este sprint?» — la buscamos en el código y no en el copy heredado.
+
+### La guía v2 — acumulativa de verdad
+
+`docs/GUIA-DE-PRUEBA.html` pasa de 44 a **82 pruebas**: las 44 del S1 enteras, marcadas ahora como
+**regresión heredada**, más **38 nuevas** en siete bloques (K–Q): la política y las de fábrica, la
+llave, el antes y después, el balance, el archivo con su documento, el taller a 500.000 filas y el
+diseño de la pantalla nueva. **Ninguna prueba eliminada.**
+
+El filtro ⭐ muestra el **acumulado del ciclo** —las 8 del S1 más las 6 del S2, 14 en total, ~40
+minutos—, no solo lo nuevo: una ⭐ diferida que desaparece del filtro es una prueba perdida. El NS de
+`localStorage` sube a `s002`, así que las 44 heredadas vuelven a estar sin marcar, que es justamente
+el punto de una regresión.
+
+**Cuatro pruebas nacen de la auditoría** y se reconocen porque comprueban algo que estuvo mal: K7
+(la casilla del k no se inventa un 5), M3 (las filas intactas siguen enmascaradas dentro de una
+columna que cambió), N4 (las columnas que salieron intactas se nombran) y O5 (la huella del reporte
+es la del archivo que entró). Un hallazgo que no deja prueba manual detrás se puede volver a colar.
