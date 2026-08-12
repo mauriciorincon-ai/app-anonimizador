@@ -3,12 +3,12 @@
 > _Velo para entregar. Desvelo para recuperar._
 
 Velo revisa tus tablas antes de que salgan hacia una IA, una herramienta en la nube o el computador
-de un tercero: te dice **qué datos personales llevan dentro** y **a cuánta gente alcanzan a señalar
-con el dedo**.
+de un tercero: te dice **qué datos personales llevan dentro**, **a cuánta gente alcanzan a señalar
+con el dedo**, y te las devuelve **anonimizadas**.
 
 Todo ocurre **dentro del navegador**. No hay servidor, no hay carga, no hay copia.
 
-- 🔗 **Producción:** _(se publica al cerrar el ciclo)_
+- 🔗 **Producción:** <https://app-anonimizador.vercel.app> — pública desde el Sprint 001.
 - 📖 [Manual de uso](docs/MANUAL-DE-USO.md) · 🧪 [Guía de prueba](docs/GUIA-DE-PRUEBA.html) ·
   🎨 [Sistema de diseño](design-system.md)
 
