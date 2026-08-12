@@ -180,4 +180,27 @@ Contra la alarma de 90 s eso es holgura de sobra, pero el dato **no existía** �
 que 70 pruebas tardaban 2,5 minutos entre todas. Es exactamente la visibilidad que justifica el
 cambio, ahora que la razón del delta se cayó.
 
+### Los cuatro checks en el runner (PR #7, borrador desde la Fase 0)
+
+```
+anti-ia: pass    quality: pass    e2e: pass    lighthouse: pass
+```
+
+`e2e`: **70 passed, 2 skipped, cero `flaky`** (2,4 m). Lighthouse corrió las **tres** rutas,
+`/regreso` incluida, y los dos asserts procesaron sin fallo.
+
+**Y aquí está el número que justifica el cambio de reporter, esta vez de verdad.** En el runner, la
+misma prueba de 500.000 filas tarda **1,0 m**:
+
+```
+✓  69 [desktop-chromium] › … › 500.000 filas: Habeas Data de un clic, preview y descarga (1.0m)
+```
+
+**60 s contra una alarma de 90 s: dos tercios del presupuesto, no la holgura cómoda que sugería el
+27,6 s de local.** El runner de GitHub es la mitad de rápido que esta máquina para esa prueba, y esa
+línea **no existía en el log antes de hoy** — el reporter `github` a secas salta de «Running 70
+tests» al resumen. Se anota como número vigilado del sprint: si la Fase 5 mete al e2e un round-trip
+completo sobre archivo grande, el margen que queda son 30 s, y el sitio donde se va a notar primero
+es justo ahí.
+
 ---
