@@ -10,9 +10,13 @@ export default defineConfig({
   // El default de Playwright son 30 s, pensados para una app en la que se hace clic en botones.
   // Este suite parsea archivos de 130 MB y transforma 500.000 filas **en paralelo con las demás
   // pruebas**, así que las pequeñas compiten por CPU con las grandes: en el `/deploy-check` del
-  // S2, tres pruebas de 2.000 filas se pasaron de 30 s mientras la de 500k corría al lado. En CI
-  // no se había visto porque `retries: 2` las reintentaba y la segunda pasaba — o sea que el gate
-  // dependía de sus propios reintentos para taparse.
+  // S2, tres pruebas de 2.000 filas se pasaron de 30 s mientras la de 500k corría al lado.
+  //
+  // (Corrección del S3, con los logs delante: aquí decía que en CI "no se había visto porque
+  // `retries: 2` las reintentaba". Falso — las 12 corridas verdes del historial reportan `N
+  // passed` y **ni un solo `flaky`**, que es lo que Playwright imprime cuando un reintento
+  // rescata una prueba. El timeout de 30 s nunca se disparó en el runner: solo en local, sin
+  // reintentos y con la máquina ocupada. Era una inferencia razonable escrita como hecho.)
   //
   // 90 s no es un presupuesto de rendimiento: es una **alarma de incendio**. Lo que mide el
   // rendimiento de verdad es `rendimiento.spec.ts` (tareas largas del hilo principal) y el job de
@@ -20,7 +24,18 @@ export default defineConfig({
   timeout: 90_000,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  // DOS reporters en CI, no uno (kit v1.15.0) — con la razón CORREGIDA por la demo de la Fase 0.
+  //
+  // El delta del kit pedía este cambio "porque `github` no imprime la línea `N flaky`". Se midió
+  // antes de creerlo y es falso: `github` extiende el reporter base, así que imprime el resumen
+  // final —`1 flaky` incluido— Y además lo publica como anotación `::notice`. La línea nunca
+  // estuvo perdida. (Demo con su salida literal en `sprints/SPRINT_003-implementation-log.md`.)
+  //
+  // Lo que `github` NO imprime es el avance por prueba: sin `list` el log salta de "Running 70
+  // tests" al resumen, sin una sola línea intermedia. Eso es lo que se gana aquí — ver QUÉ prueba
+  // corre, cuánto tarda cada una y cuál se quedó colgada. Es la información que convierte el
+  // timeout de 90 s de abajo en una alarma legible en vez de un job que muere sin decir dónde.
+  reporter: process.env.CI ? [["github"], ["list"]] : "list",
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
