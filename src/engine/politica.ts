@@ -233,6 +233,26 @@ export function tecnicaDe(politica: Politica, columna: string): Tecnica {
   );
 }
 
+/**
+ * ¿Esta política necesita una llave para poder aplicarse?
+ *
+ * Vive aquí y no en `tecnicas/`, y la razón es de peso —literalmente—: es la **única** pregunta del
+ * motor de transformación que la interfaz necesita responder, porque de ella depende si se pinta el
+ * panel de la llave. Importarla de `tecnicas/index.ts` arrastraba al bundle de `/transformar` el
+ * motor entero: Mondrian, los seudónimos, las generalizaciones y la columnar — código que solo
+ * corre **dentro del worker**. El gate de Lighthouse lo cobró en el CI del cierre del S2.
+ *
+ * Es una propiedad de la política, igual que `tecnicaDe` o `columnasDeMondrian`. Estaba en el sitio
+ * equivocado.
+ */
+export function requiereLlave(politica: Politica): boolean {
+  return politica.reglas.some(
+    (regla) =>
+      regla.tecnica.tipo === "seudonimizar" ||
+      regla.tecnica.tipo === "seudonimizar-con-formato",
+  );
+}
+
 /** Columnas marcadas para que Mondrian decida cuánto generalizarlas. */
 export function columnasDeMondrian(politica: Politica): string[] {
   return politica.reglas

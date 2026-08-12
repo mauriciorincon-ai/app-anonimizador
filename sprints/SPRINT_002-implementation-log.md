@@ -901,3 +901,41 @@ el punto de una regresión.
 (la casilla del k no se inventa un 5), M3 (las filas intactas siguen enmascaradas dentro de una
 columna que cambió), N4 (las columnas que salieron intactas se nombran) y O5 (la huella del reporte
 es la del archivo que entró). Un hallazgo que no deja prueba manual detrás se puede volver a colar.
+
+### El gate de Lighthouse se puso rojo en el PR — y tenía razón
+
+`/transformar` sacó **0,88** en el runner (0,87 · 0,88 · 0,85) contra el 0,90 exigido. Dos datos que
+cambian la lectura:
+
+1. **El código era idéntico al de la corrida verde anterior.** Entre `3697f39` (verde) y `9570f68`
+   (rojo) solo cambió un archivo `.md` del directorio `sprints/`. O sea que la categoría llevaba
+   tiempo apoyada en el filo: en local daba 91, y el runner corre unos 4 puntos por debajo.
+2. **El desglose señalaba a una sola métrica.** FCP 1,1 s, TBT 50 ms, CLS 0 — y **LCP 3,6 s con
+   score 62**. Con 143 KiB de JavaScript sin usar.
+
+Y el JavaScript sin usar tenía dueño: **yo, en el arreglo A2**. Cablear `DescargaDelReporte` en la
+página metió `@/engine/reporte` —la plantilla entera del documento— en el bundle inicial. Pero al
+tirar de ese hilo apareció algo mayor y más viejo: `page.tsx` importaba `requiereLlave` de
+`@/engine/tecnicas`, y ese import **arrastraba Mondrian, los seudónimos, las generalizaciones y la
+columnar** a una pantalla que no transforma nada — la transformación ocurre en el worker.
+
+Tres pagos, en orden de tamaño:
+
+- **`requiereLlave` se mudó a `politica.ts`.** Es una propiedad de la política, igual que `tecnicaDe`
+  o `columnasDeMondrian`; estaba en el sitio equivocado y el precio era el motor entero en el bundle
+  de la UI.
+- **El taller entero se carga bajo demanda** (`src/components/taller.tsx`). `/transformar` **sin
+  archivo** es un callejón sin salida que dice «no hay nada que transformar», y cargar ahí el editor
+  con las dos políticas de fábrica, la llave, la vista previa y el balance son ~140 KB que nadie va
+  a ejecutar. El costo en el camino real es despreciable, y conviene decirlo en vez de esconderlo: a
+  esta pantalla se llega **después de parsear el archivo**, que tarda segundos.
+- **`DescargaDelReporte`, dinámico** dentro del taller: solo existe después de transformar.
+
+Medido: **91 → 93** de mediana, LCP **3,6 s → 3,1 s**, peso **418 → 340 KB**. Ahora `/transformar`
+tiene el mismo margen que `/`, que lleva pasando desde el S1.
+
+**Lo que deja como lección:** el gate estaba midiendo bien y lo que fallaba era el bundle, pero
+*también* es cierto que una categoría que vive un punto por encima del umbral **va a parpadear** —
+pasó dos veces y falló dos veces con el mismo código. Un gate al filo no informa: sortea. La
+diferencia entre este caso y el timeout del e2e es que aquí, al mirar el desglose en vez del número,
+había una causa real y barata detrás.

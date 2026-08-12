@@ -23,6 +23,7 @@ import { enmascarar } from "../mascara";
 import { anonimizarConMondrian, type ResultadoDeMondrian } from "../mondrian";
 import {
   columnasDeMondrian,
+  requiereLlave,
   tecnicaDe,
   type Politica,
   type Tecnica,
@@ -54,15 +55,6 @@ export interface TablaTransformada {
   readonly pendientesDeMondrian: readonly string[];
   /** El reparto, cuando la política pidió k. `null` cuando no había nada que repartir. */
   readonly mondrian: ResultadoDeMondrian | null;
-}
-
-/** ¿Esta política necesita una llave para poder aplicarse? */
-export function requiereLlave(politica: Politica): boolean {
-  return politica.reglas.some(
-    (regla) =>
-      regla.tecnica.tipo === "seudonimizar" ||
-      regla.tecnica.tipo === "seudonimizar-con-formato",
-  );
 }
 
 /**

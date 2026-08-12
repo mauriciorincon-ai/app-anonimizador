@@ -4,7 +4,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
-import { aplicarPolitica, requiereLlave } from "@/engine/tecnicas";
+import { aplicarPolitica } from "@/engine/tecnicas";
+import { requiereLlave } from "@/engine/politica";
 import {
   generalizarFecha,
   generalizarPrefijo,

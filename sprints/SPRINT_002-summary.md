@@ -54,12 +54,12 @@ sprint pasado.
 
 | Estándar           | Estado | Evidencia                                                                                                                                                                                                            |
 | ------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Testing**        | ✅     | **541 unitarias** (98,5 % sentencias · 93,9 % ramas; motor y `lib` por encima del 80 % exigido) + **70 e2e**, 2 saltadas por diseño y declaradas.                                                                    |
+| **Testing**        | ✅     | **542 unitarias** (98,5 % sentencias · 93,9 % ramas; motor y `lib` por encima del 80 % exigido) + **70 e2e**, 2 saltadas por diseño y declaradas.                                                                    |
 | **CI/CD**          | ✅     | Los cuatro jobs verdes y requeridos en la ruleset. El job `lighthouse` se desdobló (una colección, dos asserts) y **nació con su demo en rojo**, registrada con su salida literal.                                   |
 | **Determinismo**   | ✅     | `determinismo-transformacion.test.ts`, en las dos direcciones.                                                                                                                                                       |
 | **Observabilidad** | ✅     | El sanitizador de `reportError` se amplió a **política y llave** en el mismo commit en que nacieron los tipos.                                                                                                       |
 | **Seguridad**      | ✅     | `pnpm audit` limpio · doble cinturón gitleaks activo en cada commit del sprint · CSP sin `unsafe-eval` (y Zod configurado `jitless` para no violarla).                                                               |
-| **Performance**    | ✅     | Lighthouse móvil: `/` **93 · 100 · 100 · 100** · `/transformar` **91 · 100 · 100 · 100**. Presupuesto de `perf-budget.json` en verde en las dos rutas.                                                               |
+| **Performance**    | ✅     | Lighthouse móvil: `/` **93 · 100 · 100 · 100** · `/transformar` **93 · 100 · 100 · 100**. El gate se puso **rojo en el PR** con 0,88 en `/transformar` y tenía razón: ver abajo.                                                               |
 | **UX + A11y**      | ⏳     | axe limpio en **dos temas × dos tamaños** · teclado completo en la tabla editable · `prefers-reduced-motion` con e2e que mide **opacidad calculada**. **Falta el gate visual ⭐ del usuario — diferido, ver abajo.** |
 | **IA embebida**    | ✅     | **N/A estructural**, por ausencia verificada.                                                                                                                                                                        |
 | **Guía + manual**  | ✅     | `docs/GUIA-DE-PRUEBA.html` **v2 acumulativa: 82 pruebas** (44 heredadas + 38 nuevas, ninguna eliminada) · `docs/MANUAL-DE-USO.md` · `README.md`.                                                                     |
@@ -112,7 +112,7 @@ patrón predice, y lo que 519 pruebas verdes no podían ver. Los dos primeros se
 | **M2** | La **sal no viaja con la política**: repetir los seudónimos el mes que viene depende de un copiar-pegar.                                                                                                                                    | **Deuda declarada · pago en el S3**, con la bóveda. Documentado en el manual.                                                                                                                                                  |
 | **B2** | `mondrian`, `diversidad` y `colisiones` cruzan la frontera **y además** vienen plegados en `balance.salvedades`.                                                                                                                            | **Deuda declarada · pago en el S3**, cuando el certificado obligue a revisar qué necesita cada consumidor.                                                                                                                     |
 
-**Y dos hallazgos tardíos, fuera de la auditoría formal**, que valen tanto como los de dentro:
+**Y tres hallazgos tardíos, fuera de la auditoría formal**, que valen tanto como los de dentro:
 
 - **Escribir la guía obligó a releer la portada, y decía «Todavía no transforma el archivo».** El
   manual y el README llevaban la misma frase. El texto más leído de la app describía el sprint
@@ -122,6 +122,14 @@ patrón predice, y lo que 519 pruebas verdes no podían ver. Los dos primeros se
   El `timeout: 180_000` estaba en `webServer`, no en las pruebas, que usaban el default de
   Playwright. En CI no se veía porque `retries: 2` las reintentaba: **el gate dependía de sus
   propios reintentos para taparse.**
+- **El gate de Lighthouse se puso rojo en el PR con código idéntico al de la corrida verde
+  anterior** (entre las dos solo cambió un `.md`). El desglose señalaba una sola métrica —**LCP 3,6 s
+  con score 62**, con FCP, TBT y CLS perfectos— y 143 KiB de JS sin usar. Dueño: el propio arreglo
+  A2, que metió `@/engine/reporte` en el bundle inicial; y detrás, algo más viejo y mayor:
+  `page.tsx` importaba `requiereLlave` de `@/engine/tecnicas` y **arrastraba Mondrian y el motor
+  entero** a una pantalla que no transforma nada. Pagado con tres cambios —`requiereLlave` a
+  `politica.ts`, el taller cargado bajo demanda, el reporte dinámico—: **91 → 93**, LCP 3,6 → 3,1 s,
+  peso 418 → 340 KB.
 
 ---
 
