@@ -30,6 +30,11 @@ const PASOS = [
     texto:
       "Cuenta cuántas personas quedan solas al cruzar unas columnas con otras. La cuenta es exacta: sale de tus filas, no de un modelo estadístico.",
   },
+  {
+    titulo: "Y lo transformas",
+    texto:
+      "Eliges qué se le hace a cada columna —o aplicas Habeas Data de un clic—, ves el antes y el después, y te llevas el archivo tratado con el documento que dice qué se le hizo.",
+  },
 ];
 
 export default function Aduana() {
@@ -54,8 +59,9 @@ export default function Aduana() {
       </h1>
       <p className="text-tinta-suave mt-4 text-lg leading-relaxed text-pretty">
         Antes de mandar un archivo a una IA, a una herramienta en la nube o al
-        computador de un tercero, Velo te dice qué datos personales lleva dentro
-        y a cuántas personas alcanza a señalar con el dedo.
+        computador de un tercero, Velo te dice qué datos personales lleva dentro,
+        a cuántas personas alcanza a señalar con el dedo, y te lo devuelve
+        anonimizado.
       </p>
 
       <div className="mt-10">
@@ -76,7 +82,7 @@ export default function Aduana() {
         <h2 id="como-funciona" className="etiqueta">
           Cómo funciona
         </h2>
-        <ol className="mt-4 grid gap-6 sm:grid-cols-3">
+        <ol className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {PASOS.map((paso, i) => (
             <li key={paso.titulo}>
               <p className="cifra font-display text-tinta-tenue text-2xl leading-none">
@@ -92,10 +98,12 @@ export default function Aduana() {
       </section>
 
       <p className="border-borde text-tinta-tenue mt-10 border-t pt-6 text-[0.8125rem] leading-relaxed">
-        Por ahora Velo <strong className="font-medium">diagnostica</strong>: te
-        muestra lo que hay y lo que arriesga. Todavía no transforma el archivo —
-        enmascarar, seudonimizar y devolver los datos a su forma original llegan
-        después, y sin ellos no tiene sentido prometer nada sobre el resultado.
+        Velo <strong className="font-medium">diagnostica y transforma</strong>:
+        te muestra lo que hay, lo que arriesga, y te devuelve el archivo tratado.
+        Lo que todavía no hace es <strong className="font-medium">la vuelta</strong>{" "}
+        — un seudónimo de hoy no se puede revertir, porque la bóveda que guarda la
+        correspondencia llega después. Hasta entonces, Velo reduce el riesgo y lo
+        mide; no declara ningún archivo anónimo.
       </p>
     </main>
   );

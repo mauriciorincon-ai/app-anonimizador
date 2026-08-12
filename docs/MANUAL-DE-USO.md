@@ -1,7 +1,7 @@
 # Manual de uso — Velo
 
 > _Velo para entregar. Desvelo para recuperar._
-> Actualizado en el Sprint 001 · 9 de agosto de 2026
+> Actualizado en el Sprint 002 · 11 de agosto de 2026
 
 Velo es la **aduana de tus datos**: lo que revisa tu tabla antes de que salga hacia una IA, una
 herramienta en la nube o el computador de un tercero. Este manual cubre todo lo que Velo sabe
@@ -19,9 +19,13 @@ Eso tiene una consecuencia que conviene saber de antemano: **si recargas la pág
 desaparece**. No es un error. Es la misma razón por la que tus datos no se filtran: nunca se
 guardaron en ningún sitio. Volver a soltar el archivo tarda lo mismo que la primera vez.
 
-Y una advertencia sobre el alcance: **en esta versión Velo diagnostica, no transforma**. Te muestra
-qué datos personales lleva tu tabla y a cuánta gente delata, pero todavía no enmascara, no
-seudonimiza y no devuelve los datos a su forma original. Eso llega después.
+Y una advertencia sobre el alcance: **Velo ya diagnostica y transforma, pero todavía no
+desanonimiza**. Puedes enmascarar, seudonimizar y generalizar, y llevarte el archivo tratado con su
+reporte; lo que aún no existe es el camino de vuelta —la bóveda que guarda la correspondencia y te
+devuelve los datos originales cuando el tercero termina—. Eso llega después.
+
+Mientras tanto, **un seudónimo no se puede revertir**. Si necesitas volver a cruzar el archivo
+tratado con el original, guarda tú la correspondencia, o espera a la bóveda.
 
 ---
 
@@ -155,6 +159,115 @@ El texto que salga tiene que ser idéntico al del reporte.
 
 ---
 
+### 4. Transforma: el taller
+
+Desde el diagnóstico, **Transformar este archivo** te lleva al taller. Es la parte que cambia los
+datos de verdad, y ocurre igual que el diagnóstico: dentro de esta pestaña, sin subir nada.
+
+#### La política: qué se le hace a cada columna
+
+Una fila por columna, con un desplegable. Puedes elegir columna por columna o partir de una
+**política de fábrica**:
+
+- **Habeas Data (Colombia)** — Ley 1581 de 2012 y Decreto 1377 de 2013, con las técnicas de la guía
+  de anonimización AGN + SIC. Declara un objetivo de grupo mínimo (k = 5).
+- **HIPAA · Safe Harbor** — los 18 identificadores de 45 CFR §164.514(b)(2). Ojo: Safe Harbor manda
+  **borrar**, no seudonimizar, porque §164.514(c) prohíbe un código derivado de la información.
+
+Las dos dicen, ahí mismo, cuántos de sus puntos reconoce Velo por el contenido de la columna,
+cuántos solo por el nombre y **cuántos tienes que marcar tú**. Ninguna es una certificación.
+
+En cuanto tocas una regla de una política de fábrica, Velo lo dice: _«ya no es Habeas Data»_. La
+guía oficial no respalda una decisión que no tomó.
+
+La política **no se guarda en ningún lado**. Si la quieres para el mes que viene, **expórtala** —
+es un archivo JSON que puedes volver a importar. Lleva los nombres de tus columnas, que son datos
+tuyos, y por eso no entra a la memoria de este navegador.
+
+#### «Generalizar hasta alcanzar el k»
+
+Es la única técnica que no decides tú del todo: marcas las columnas y **Velo mira todas juntas** y
+decide dónde cortar hasta que nadie quede en un grupo de menos de _k_ registros. Al elegirla aparece
+la casilla del **grupo mínimo**, con 5 puesto — y ese 5 queda **dentro de la política** desde ese
+momento, no solo en la pantalla. Cuanto más alto el k, más seguro y menos preciso el dato.
+
+Si importas una política que pide generalización automática y **no trae un k**, Velo te lo dice en
+rojo y deja la casilla vacía: sin un k no hay hasta dónde generalizar, y esas columnas saldrían
+intactas. Si aun así transformas, el balance lo pone arriba del todo con sus nombres.
+
+#### La llave, si pides seudónimos
+
+Un seudónimo se calcula con una **frase de paso que solo tú tienes**. Tres cosas que conviene saber
+antes de escribirla:
+
+- **La misma frase da los mismos seudónimos.** Es lo que te permite cruzar el archivo de marzo con
+  el de abril sin tener los datos reales delante.
+- **Si la pierdes, no hay vuelta atrás.** Nadie puede regenerarla; es la contrapartida de que nadie
+  más la tenga.
+- **Si se filtra, los seudónimos se vuelven enlazables.** Trátala como una contraseña.
+
+Derivarla tarda alrededor de un segundo, **y ese segundo es la protección**: son 600.000 vueltas de
+PBKDF2 (el mínimo que recomienda OWASP), que encarecen por igual cada intento de adivinarla. Guarda
+la frase **y la sal** que Velo te enseña: sin las dos, los seudónimos del mes que viene no cuadran.
+
+#### Antes y después
+
+La vista previa enseña, columna por columna, qué va a recibir la otra persona. Los valores de la
+izquierda van **enmascarados** porque siguen siendo tus datos; los de la derecha van completos
+**cuando ese valor cambió**. Una columna sensible que no cambió no se muestra.
+
+Verás filas de la derecha enmascaradas dentro de columnas que sí cambiaron, y es correcto: una
+generalización deja intacto lo que ya estaba en su sitio —un prefijo de 2 no toca lo que ya mide
+2— y un valor que no cambió sigue siendo tu dato, así que se tapa igual.
+
+Debajo, el balance. Y aquí hay una regla del producto que conviene conocer: **si queda algo sin
+tratar, eso se lee antes que cualquier porcentaje**. Una cédula intacta al lado de un «riesgo
+reducido 87 %» son dos frases ciertas cuya suma dice algo falso, así que Velo pone la advertencia
+arriba y **no** presenta la cifra como titular hasta que nada la desmienta.
+
+Lo que puede aparecer ahí:
+
+| Advertencia                           | Qué significa                                                                                                                       |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Identificadores sin tratar            | Hay columnas que señalan a la persona sin ayuda de ninguna otra y la política las deja intactas.                                    |
+| Registros que siguen solos            | Después del tratamiento, alguien sigue siendo único en su combinación de valores.                                                   |
+| El k pedido no se alcanzó             | Pediste grupos de N y el reparto llegó a menos. Velo **no borra filas** para lograrlo.                                              |
+| El k del reparto no es el del archivo | Las columnas generalizadas alcanzaron su k, pero otras columnas que no entraron parten esos grupos. **Vale el número del archivo.** |
+| Grupos homogéneos                     | Hay grupos donde todos comparten el mismo dato sensible: dar con el grupo basta para saberlo.                                       |
+| Colisiones de seudónimo               | Conservar el formato (cédula, NIT) reduce el espacio disponible y dos valores distintos pueden chocar.                              |
+
+#### El archivo
+
+**Preparar el archivo** lo escribe, y **Guardar** lo baja. Sale como
+`velo-anonimizado-<8 caracteres>.csv` y no repite el nombre del original a propósito: un nombre como
+`pacientes-2026.csv` cuenta de qué va el contenido antes de que nadie lo abra, y ese nombre viaja en
+el asunto de un correo.
+
+Esos ocho caracteres **no son un número de serie**: son el principio del SHA-256 de la política que
+aplicaste. Dos archivos que lo compartan recibieron exactamente el mismo tratamiento — y el reporte
+lleva el hash completo, para que puedas comprobarlo.
+
+Es un CSV separado por comas, con salto de línea `\n` y **sin BOM**. Si Excel en Windows te pregunta
+por la codificación, es **UTF-8**. (Velo no genera `.xlsx`: un `.xlsx` es un zip y sus entradas
+llevan fecha, así que dos archivos iguales no saldrían idénticos byte por byte — y esa igualdad es
+justo lo que Velo promete.)
+
+#### El reporte del tratamiento
+
+El taller también entrega un documento, y no es el mismo del diagnóstico: además de lo que hay en la
+tabla, dice **qué se le hizo** — el balance con sus advertencias, la utilidad que se perdió y el hash
+completo de la política. Como todo reporte de Velo, puedes **verlo antes de descargarlo**.
+
+Mándalo con el archivo. Un CSV anonimizado que llega solo obliga a quien lo recibe a creerte; con el
+documento al lado, puede leer qué se hizo y con qué criterio.
+
+> **Una advertencia que el propio documento repite:** la huella SHA-256 que lleva es la del archivo
+> que **entró** a Velo, no la del que descargas. El archivo tratado es otro archivo y tiene otra
+> huella. Si quien lo recibe corre `sha256sum` sobre el anonimizado y no le cuadra, no es que el
+> reporte esté mal: es que esa huella identifica el original.
+
+---
+
 ## Lo que Velo NO afirma
 
 Esta sección es tan parte del producto como las otras.
@@ -186,9 +299,16 @@ sea el suyo.
 Porque nunca se guardó nada. Es la contrapartida de la promesa.
 
 **¿Velo usa inteligencia artificial?**
-No, y no es una limitación: es el diseño. Todo lo que hace es determinista — el mismo archivo
-produce siempre el mismo diagnóstico, byte por byte, y por eso el resultado es auditable. Hay un
-control automático que impide que entre al proyecto cualquier librería de IA generativa.
+No, y no es una limitación: es el diseño. Todo lo que hace es determinista — el mismo archivo con la
+misma política y la misma llave produce siempre el mismo diagnóstico **y el mismo archivo de
+salida**, byte por byte, y por eso el resultado es auditable. Hay un control automático que impide
+que entre al proyecto cualquier librería de IA generativa, y otro que corre el motor dos veces y
+compara los bytes.
+
+**Entregué un archivo el mes pasado. ¿Cómo consigo los mismos seudónimos?**
+Con la **misma frase de paso y la misma sal**. La frase la guardas tú; la sal te la enseña Velo al
+derivar la llave y **hoy no viaja dentro de la política exportada** — cópiala a tu gestor de
+contraseñas junto a la frase. (Que la sal viaje con la política llega con la bóveda.)
 
 **¿Funciona sin internet?**
 La primera vez necesitas cargar la página. Después, el análisis ocurre entero en tu computador.
@@ -202,6 +322,7 @@ segundos sin que la pestaña se congele, porque el trabajo pesado ocurre en un h
 
 ## Lo que viene
 
-Transformar de verdad: enmascarar, seudonimizar de forma reversible y **devolver los datos a su
-forma original** cuando el tercero te entregue el resultado. Ese viaje de ida y vuelta es la razón
-de ser de Velo, y llega en los siguientes sprints.
+**La vuelta.** Hoy los seudónimos son irreversibles a propósito: sin bóveda no hay camino de
+regreso. Lo que falta es la otra mitad del viaje — una bóveda cifrada con tu llave que permita
+**devolver los datos a su forma original** cuando el tercero te entregue el resultado procesado.
+Ese ida y vuelta es la razón de ser de Velo, y llega en el siguiente sprint.

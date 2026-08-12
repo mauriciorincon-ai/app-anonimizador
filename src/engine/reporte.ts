@@ -16,9 +16,19 @@
 // nombres de columna, las muestras— se escapa. Este documento lo va a abrir alguien más, y una
 // columna llamada `<script>` no puede convertirse en un script.
 
+import type { BalanceDelTratamiento, Salvedad } from "./balance";
 import type { Diagnostico, HallazgoDeColumna } from "./clasificador";
 import type { AdvisorDeQis, RiesgoExacto } from "./riesgo";
+import type { Utilidad } from "./utilidad";
 import type { CategoriaLey1581 } from "./validadores/tipos";
+
+export interface DatosDelTratamiento {
+  balance: BalanceDelTratamiento;
+  utilidad: Utilidad;
+  /** Identidad de la política aplicada: mismo hash ⇒ mismo tratamiento. */
+  hashDePolitica: string;
+  suprimidas: readonly string[];
+}
 
 export interface DatosDelReporte {
   archivo: { nombre: string; bytes: number; sha256: string };
@@ -27,6 +37,8 @@ export interface DatosDelReporte {
   advisor: AdvisorDeQis;
   /** Fecha ya formateada por quien llama. Inyectada para que el reporte sea reproducible. */
   fecha: string;
+  /** Presente solo cuando el archivo se transformó. Sin él, el reporte es el diagnóstico del S1. */
+  tratamiento?: DatosDelTratamiento;
 }
 
 const ETIQUETAS_DE_CATEGORIA: Record<CategoriaLey1581, string> = {
@@ -129,6 +141,13 @@ ul.limpia li{border:1px solid var(--borde);border-radius:8px;padding:7px 10px;ma
 display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;font-size:.85rem}
 ul.limpia li b{font-variant-numeric:tabular-nums}
 .sola{border-color:var(--alerta);background:var(--alerta-tenue)}
+/* Las salvedades van antes que la cifra, y se ven antes que la cifra. Que la descalificante pese
+   más que la que solo matiza no es decoración: es la diferencia entre "esto desmiente el número"
+   y "esto lo acompaña". */
+ul.salvedades li{display:block;line-height:1.5;border-left-width:3px}
+ul.salvedades li.s-descalifica{border-color:var(--alerta);background:var(--alerta-tenue)}
+ul.salvedades li.s-matiza{border-color:var(--aviso);background:var(--aviso-tenue)}
+ul.salvedades code{font-family:ui-monospace,Menlo,monospace}
 .huella{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;word-break:break-all;color:var(--tinta-suave)}
 footer{color:var(--tinta-tenue);font-size:.8rem;line-height:1.55;border-top:1px solid var(--borde);padding-top:16px;margin-top:28px}
 footer p{margin:0 0 8px}
@@ -177,10 +196,15 @@ function filaDeColumna(columna: HallazgoDeColumna): string {
 function seccionDeRiesgo(
   riesgo: RiesgoExacto,
   identificadoresDirectos: number,
+  hayTratamiento: boolean,
 ): string {
+  // Con un tratamiento en el documento, esta sección deja de ser «el riesgo» y pasa a ser «el
+  // riesgo del archivo que entró». Sin decirlo, sus cifras se leerían como las del archivo que se
+  // descarga — la misma composición que este sprint tiene prohibida, cometida por omisión.
+  const deQue = hayTratamiento ? " · el archivo ORIGINAL" : "";
   if (riesgo.qis.length === 0) {
     return `<section>
-<p class="etiqueta">Riesgo de reidentificación</p>
+<p class="etiqueta">Riesgo de reidentificación${deQue}</p>
 <h2>No hay ningún cruce que medir</h2>
 <p>Velo no clasificó ninguna columna como cuasi-identificador, así que no existe una combinación
 sobre la cual contar clases de equivalencia. Eso no vuelve anónimo el archivo: quiere decir que no
@@ -189,8 +213,8 @@ se reconocieron columnas cruzables.</p>
   }
 
   return `<section>
-<p class="etiqueta">Riesgo de reidentificación · cifras exactas</p>
-<h2>Cuánta gente queda sola</h2>
+<p class="etiqueta">Riesgo de reidentificación · cifras exactas${deQue}</p>
+<h2>Cuánta gente queda sola${hayTratamiento ? " en el archivo original" : ""}</h2>
 <p class="cifrota ${tonoDelRiesgo(riesgo)}">${porcentaje(riesgo.proporcionUnicos)}</p>
 <p>de los registros son <b>únicos</b>: nadie más comparte su combinación de valores en las columnas
 cruzadas. Son ${numero(riesgo.unicos)} de ${numero(riesgo.filas)} registros.</p>${
@@ -266,6 +290,184 @@ ${excluidas}
 </section>`;
 }
 
+// ── El tratamiento ────────────────────────────────────────────────────────────────────────────
+//
+// El orden de este bloque ES el contrato, no una preferencia de maquetación: las salvedades se
+// escriben ANTES que la cifra de reducción. Un lector que se detenga en el primer párrafo tiene que
+// haber leído lo que descalifica el número, no el número. `tests/unit/reporte.test.ts` compara las
+// posiciones en el documento — un test de composición, no de cifra.
+
+function itemDeSalvedad(salvedad: Salvedad): string {
+  const cuerpo = (() => {
+    switch (salvedad.tipo) {
+      case "identificadores-sin-tratar":
+        return `La política deja <b>intactas</b> ${numero(salvedad.columnas.length)}
+${salvedad.columnas.length === 1 ? "columna que señala" : "columnas que señalan"} a la persona sin
+ayuda de ninguna otra: ${salvedad.columnas
+          .map((c) => `<code>${escapar(c)}</code>`)
+          .join(
+            " · ",
+          )}. Mientras estén en el archivo, ninguna cifra de esta página describe datos
+tratados.`;
+      case "reparto-sin-k":
+        return `${
+          salvedad.columnas.length === 1
+            ? "Una columna salió <b>intacta</b>"
+            : `${numero(salvedad.columnas.length)} columnas salieron <b>intactas</b>`
+        }: la política las marcó para generalización automática y no fijó un grupo mínimo (k), así
+que no había hasta dónde generalizar. ${salvedad.columnas
+          .map((c) => `<code>${escapar(c)}</code>`)
+          .join(" · ")}.`;
+      case "unicos-restantes":
+        return `Después del tratamiento, <b>${numero(salvedad.cuantos)}</b> registros
+(${porcentaje(salvedad.proporcion)}) siguen <b>solos</b> en su combinación de valores: nadie más
+en la tabla comparte la suya.`;
+      case "k-no-alcanzado":
+        return `La política pidió grupos de al menos <b>${numero(salvedad.kObjetivo)}</b> y el
+reparto llegó a <b>${numero(salvedad.kAlcanzado)}</b>. El archivo no cumple el k que declara.`;
+      case "k-del-reparto-no-es-el-del-archivo":
+        return `El reparto alcanzó k=<b>${numero(salvedad.kDelReparto)}</b> sobre las columnas que
+generaliza, pero el archivo completo tiene grupos de <b>${numero(salvedad.kDelArchivo)}</b>: hay
+cuasi-identificadores fuera del reparto que parten esos grupos. <b>El número que vale es el del
+archivo</b>, no el del reparto.`;
+      case "clases-homogeneas":
+        return `<b>${numero(salvedad.filas)}</b> registros están en grupos donde todo el mundo
+comparte el mismo valor de <code>${escapar(salvedad.atributo)}</code>. Dar con el grupo basta para
+saber el dato, aunque no se sepa cuál de las filas es la persona.`;
+      case "colisiones-de-seudonimo":
+        return `En <code>${escapar(salvedad.columna)}</code>, <b>${numero(salvedad.cuantas)}</b>
+${salvedad.cuantas === 1 ? "par de valores distintos recibió" : "pares de valores distintos recibieron"}
+el mismo seudónimo. Conservar el formato reduce el espacio disponible y algunos chocan: dos
+entidades distintas se ven como una.`;
+    }
+  })();
+  return `<li class="s-${salvedad.gravedad}">${cuerpo}</li>`;
+}
+
+export function seccionDelTratamiento(datos: DatosDelTratamiento): string {
+  const { balance, hashDePolitica, suprimidas } = datos;
+  const { antes, despues, reduccion, salvedades } = balance;
+
+  const bloqueDeSalvedades = salvedades.length
+    ? `<ul class="salvedades limpia">${salvedades.map(itemDeSalvedad).join("")}</ul>`
+    : `<p class="por-que">Velo no encontró salvedades que matizar sobre las columnas que revisó.
+Eso no vuelve anónimo el archivo: quiere decir que las comprobaciones que Velo sabe hacer salieron
+limpias.</p>`;
+
+  const cifra = (() => {
+    if (reduccion === null) {
+      return `<p>Antes del tratamiento no había ningún registro único en las columnas cruzadas, así
+que no hay reducción que medir. La cifra que importa es la de abajo: cuántos hay <b>ahora</b>.</p>`;
+    }
+    if (balance.esTitular) {
+      return `<p class="cifrota">−<b class="reduccion">${porcentaje(reduccion)}</b></p>
+<p>de registros únicos respecto del archivo original, sobre las ${numero(antes.qis.length)} columnas
+cruzadas. Pasó de ${numero(antes.unicos)} a ${numero(despues.unicos)} de ${numero(antes.filas)}
+registros.</p>`;
+    }
+    return `<p>La proporción de registros únicos bajó de ${porcentaje(antes.proporcionUnicos)} a
+${porcentaje(despues.proporcionUnicos)} — una reducción del
+<b class="reduccion">${porcentaje(reduccion)}</b>. <b class="alerta">Esa cifra no describe un
+archivo tratado</b> mientras siga en pie lo de arriba: se refiere solo al cruce de
+cuasi-identificadores, y no cuenta nada de lo que quedó sin tocar.</p>`;
+  })();
+
+  return `<section>
+<p class="etiqueta">Balance del tratamiento</p>
+<h2>Qué cambió, y qué sigue igual</h2>
+${bloqueDeSalvedades}
+${cifra}
+<dl class="datos" style="margin-top:16px">
+<div><dt>Registros únicos, antes</dt><dd>${numero(antes.unicos)} <small>${porcentaje(
+    antes.proporcionUnicos,
+  )}</small></dd></div>
+<div><dt>Registros únicos, después</dt><dd class="${
+    despues.unicos > 0 ? "alerta" : ""
+  }">${numero(despues.unicos)} <small>${porcentaje(despues.proporcionUnicos)}</small></dd></div>
+<div><dt>Grupo más pequeño, antes</dt><dd>${numero(antes.kMinimo)}</dd></div>
+<div><dt>Grupo más pequeño, después</dt><dd>${numero(despues.kMinimo)}</dd></div>
+</dl>
+<p class="por-que" style="margin-top:14px">Las dos medidas salen del mismo cálculo del S1, corrido
+sobre el archivo original y sobre el que se descarga. Las columnas cruzadas «después» son las de
+«antes» menos ${
+    suprimidas.length
+      ? `las suprimidas (${suprimidas.map((s) => `<code>${escapar(s)}</code>`).join(" · ")})`
+      : "ninguna, porque no se suprimió ninguna columna"
+  }: quien reciba el archivo no las tendrá.</p>
+<p class="por-que">Identidad del tratamiento (SHA-256 de la política aplicada):</p>
+<p class="huella">${escapar(hashDePolitica)}</p>
+</section>`;
+}
+
+function seccionDeUtilidad(utilidad: Utilidad): string {
+  const perdidas = utilidad.columnas.filter((c) => c.estado !== "intacta");
+  const filas = perdidas
+    .map(
+      (columna) => `<tr>
+<td class="col">${escapar(columna.nombre)}</td>
+<td>${
+        columna.estado === "suprimida"
+          ? "<b>suprimida</b>"
+          : `${numero(columna.cardinalidadAntes)} → <b>${numero(columna.cardinalidadDespues)}</b>`
+      }</td>
+<td>${columna.bitsAntes.toFixed(1)} → <b>${columna.bitsDespues.toFixed(1)}</b> bits</td>
+<td>${porcentaje(columna.celdasCambiadas)}</td>
+</tr>`,
+    )
+    .join("");
+
+  const cruces = utilidad.correlaciones
+    .slice(0, 8)
+    .map(
+      (cruce) =>
+        `<li><code>${escapar(cruce.columnas[0])} + ${escapar(cruce.columnas[1])}</code><span>V ${cruce.antes.toFixed(
+          2,
+        )} → <b>${cruce.despues.toFixed(2)}</b></span></li>`,
+    )
+    .join("");
+
+  return `<section>
+<p class="etiqueta">Lo que el archivo perdió</p>
+<h2>El otro lado de la balanza</h2>
+<p>Cada bit de riesgo que se quita sale de un bit de información que alguien iba a usar. Estas son
+las cifras del intercambio; qué tanto duele cada una lo sabe quien conoce para qué era el archivo.</p>
+<dl class="datos">
+<div><dt>Información total, antes</dt><dd>${utilidad.bitsAntes.toFixed(1)} <small>bits</small></dd></div>
+<div><dt>Información total, después</dt><dd>${utilidad.bitsDespues.toFixed(1)} <small>bits</small></dd></div>
+<div><dt>Columnas tocadas</dt><dd>${numero(perdidas.length)} <small>de ${numero(
+    utilidad.columnas.length,
+  )}</small></dd></div>
+</dl>
+${
+  filas
+    ? `<table style="margin-top:16px">
+<thead><tr><th>Columna</th><th>Valores distintos</th><th>Información</th><th>Celdas cambiadas</th></tr></thead>
+<tbody>${filas}</tbody></table>`
+    : '<p class="por-que" style="margin-top:14px">Ninguna columna cambió.</p>'
+}
+${
+  cruces
+    ? `<h2 style="margin-top:18px;font-size:1.05rem">Relaciones entre columnas</h2>
+<p class="por-que">V de Cramér antes y después, de la que más se perdió a la que menos. Una relación
+que desaparece se lleva con ella el análisis que dependía de ella — y eso no se ve mirando las
+columnas por separado.</p>
+<ul class="limpia">${cruces}</ul>`
+    : ""
+}
+${
+  utilidad.fueraDelCruce.length
+    ? `<p class="por-que" style="margin-top:14px">Fuera del cruce: ${utilidad.fueraDelCruce
+        .map((f) => `<code>${escapar(f.nombre)}</code> (${escapar(f.motivo)})`)
+        .join("; ")}. El tope es ${numero(
+        utilidad.tope.columnasMaximas,
+      )} columnas de hasta ${numero(
+        utilidad.tope.cardinalidadMaxima,
+      )} valores distintos: no es el universo entero de cruces posibles.</p>`
+    : ""
+}
+</section>`;
+}
+
 /** Nombre sugerido para el archivo descargado. Sin caracteres que peleen con un sistema de archivos. */
 export function nombreDelReporte(nombreDelArchivo: string): string {
   const base = nombreDelArchivo
@@ -277,21 +479,26 @@ export function nombreDelReporte(nombreDelArchivo: string): string {
 }
 
 export function construirReporte(datos: DatosDelReporte): string {
-  const { archivo, diagnostico, riesgo, advisor, fecha } = datos;
+  const { archivo, diagnostico, riesgo, advisor, fecha, tratamiento } = datos;
   const resumen = diagnostico.resumen;
+  const hayTratamiento = tratamiento !== undefined;
 
   return `<!doctype html>
 <html lang="es-CO">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Diagnóstico de ${escapar(archivo.nombre)} — Velo</title>
+<title>${hayTratamiento ? "Tratamiento" : "Diagnóstico"} de ${escapar(archivo.nombre)} — Velo</title>
 <style>${ESTILOS}</style>
 </head>
 <body>
 <div class="hoja">
 <p class="sello">${SELLO}Nada salió de ese navegador</p>
-<p class="etiqueta" style="margin-top:18px">Diagnóstico de datos personales</p>
+<p class="etiqueta" style="margin-top:18px">${
+    hayTratamiento
+      ? "Diagnóstico y tratamiento de datos personales"
+      : "Diagnóstico de datos personales"
+  }</p>
 <h1>${escapar(archivo.nombre)}</h1>
 <p style="color:var(--tinta-suave);margin:4px 0 0">${numero(diagnostico.filas)} filas ·
 ${numero(diagnostico.columnas.length)} columnas · ${megabytes(archivo.bytes)} · ${escapar(fecha)}</p>
@@ -299,11 +506,22 @@ ${numero(diagnostico.columnas.length)} columnas · ${megabytes(archivo.bytes)} �
 <section>
 <p class="etiqueta">Identidad del archivo</p>
 <h2>Este reporte habla de un archivo concreto</h2>
-<p style="margin:0 0 6px">SHA-256 del archivo analizado:</p>
+<p style="margin:0 0 6px">SHA-256 del archivo ${
+    hayTratamiento ? "que ENTRÓ a Velo" : "analizado"
+  }:</p>
 <p class="huella">${escapar(archivo.sha256)}</p>
-<p class="por-que">Quien reciba este documento puede comprobar que corresponde a su copia
+${
+  hayTratamiento
+    ? `<p class="por-que"><b>Esta huella no es la del archivo que se entrega.</b> Es la del original,
+la copia sobre la que se midió todo lo de abajo. El archivo tratado es otro archivo y tiene otra
+huella; se reconoce por el hash de la política que lleva en el nombre
+(<code>velo-anonimizado-…</code>), y ese hash está en la sección siguiente. Quien reciba los dos
+puede comprobar con <code>sha256sum</code> (Linux), <code>shasum -a 256</code> (macOS) o
+<code>Get-FileHash</code> (Windows) que el original es el que dice este documento.</p>`
+    : `<p class="por-que">Quien reciba este documento puede comprobar que corresponde a su copia
 ejecutando <code>sha256sum</code> (Linux), <code>shasum -a 256</code> (macOS) o
-<code>Get-FileHash</code> (Windows) sobre el archivo y comparando el texto de arriba.</p>
+<code>Get-FileHash</code> (Windows) sobre el archivo y comparando el texto de arriba.</p>`
+}
 <dl class="datos" style="margin-top:14px">
 <div><dt>Identificadores directos</dt><dd>${numero(resumen["identificador-directo"])}</dd></div>
 <div><dt>Datos sensibles (art. 5)</dt><dd>${numero(resumen["dato-sensible"])}</dd></div>
@@ -312,7 +530,9 @@ ejecutando <code>sha256sum</code> (Linux), <code>shasum -a 256</code> (macOS) o
 </dl>
 </section>
 
-${seccionDeRiesgo(riesgo, resumen["identificador-directo"])}
+${tratamiento ? seccionDelTratamiento(tratamiento) : ""}
+
+${seccionDeRiesgo(riesgo, resumen["identificador-directo"], hayTratamiento)}
 
 <section>
 <p class="etiqueta">Columna por columna</p>
@@ -322,6 +542,8 @@ ${seccionDeRiesgo(riesgo, resumen["identificador-directo"])}
 <tbody>${diagnostico.columnas.map(filaDeColumna).join("")}</tbody>
 </table>
 </section>
+
+${tratamiento ? seccionDeUtilidad(tratamiento.utilidad) : ""}
 
 ${seccionDelAdvisor(advisor, diagnostico.filas)}
 
@@ -333,10 +555,20 @@ muestra siquiera.</p>
 <p><b>Qué significan las cifras.</b> Todas son exactas: se contaron registro por registro sobre el
 archivo completo. No hay muestreo ni estimación. La detección de tipos, en cambio, se hizo sobre
 una muestra de hasta 5.000 valores por columna, y cada columna dice con qué certeza se concluyó.</p>
-<p><b>Qué NO afirma Velo.</b> Este diagnóstico mide el riesgo de reidentificación; no lo elimina y
+<p><b>Qué NO afirma Velo.</b> Este ${
+    hayTratamiento ? "documento" : "diagnóstico"
+  } mide el riesgo de reidentificación; no lo elimina y
 no declara el archivo anónimo. El modelo k-anonimato es atacable y se degrada al añadir columnas.
 Un identificador propio de una organización puede señalar a una persona sin que ningún algoritmo
-público lo reconozca.</p>
+público lo reconozca.</p>${
+    hayTratamiento
+      ? `\n<p><b>Sobre el tratamiento.</b> Las cifras de reducción se calculan sobre las columnas que
+Velo reconoció como cuasi-identificadores, y solo sobre ellas. Una columna que Velo no supo leer no
+entra a ninguna de estas cuentas — ni a la de antes ni a la de después—, así que la reducción no
+describe el archivo entero sino el cruce medido. Las salvedades del balance no son advertencias de
+cortesía: cada una nombra algo que la cifra no cubre.</p>`
+      : ""
+  }
 <p>Generado por <b>Velo</b> — la aduana de datos. El análisis ocurrió íntegramente dentro del
 navegador de quien cargó el archivo: no hubo servidor, ni carga, ni copia.</p>
 </footer>
