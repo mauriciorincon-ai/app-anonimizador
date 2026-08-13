@@ -12,9 +12,11 @@
 // Si un día alguien añade una analítica, un reporte de errores con contenido o un "guardar en la
 // nube", este archivo se pone rojo antes de que llegue a `main`.
 
+import { join } from "node:path";
+
 import { expect, test } from "@playwright/test";
 
-import { nombreDeFixture } from "./global-setup";
+import { DIRECTORIO_DE_FIXTURES, nombreDeFixture } from "./global-setup";
 
 const CLINICO = nombreDeFixture("clinico", 2_000, 42);
 
@@ -23,6 +25,7 @@ const RUTAS_PERMITIDAS = [
   /^\/$/,
   /^\/diagnostico$/,
   /^\/transformar$/,
+  /^\/regreso$/,
   /^\/_next\/static\//,
   /^\/favicon\.ico$/,
 ];
@@ -129,6 +132,12 @@ test("cero peticiones con datos durante todo el flujo", async ({
   await page.waitForURL("**/transformar");
 
   await page.getByRole("button", { name: /Habeas Data/ }).click();
+  // Una columna reversible: sin bóveda no habría regreso que auditar, y el regreso es justo la
+  // superficie nueva de este sprint.
+  await page
+    .getByLabel("Técnica para la columna cedula_titular")
+    .selectOption("seudonimizar");
+  await page.getByRole("checkbox").first().check();
   await page.getByLabel("Frase de paso del proyecto").fill("una frase larga de prueba");
   await page.getByRole("button", { name: "Derivar la llave" }).click();
   await page.getByText("Llave lista").waitFor({ timeout: 60_000 });
@@ -148,6 +157,50 @@ test("cero peticiones con datos durante todo el flujo", async ({
     guardar.click(),
   ]);
   await anonimizado.path();
+
+  // ── Y el REGRESO: abrir la bóveda y restaurar (S3) ────────────────────────────────────────
+  //
+  // La extensión que este sprint exige. Hasta aquí el gate cubría leer y escribir el archivo
+  // anonimizado; a partir de aquí Velo abre un archivo cifrado que contiene los valores
+  // ORIGINALES del usuario y los vuelve a escribir. Es el material más sensible que el producto
+  // maneja y la superficie donde una fuga costaría más.
+  await page.getByLabel("Frase de paso de la bóveda").fill("la frase de la boveda");
+  await page.getByRole("button", { name: "Cifrar y preparar la bóveda" }).click();
+  const guardarBoveda = page.getByRole("link", { name: "Guardar la bóveda" });
+  await guardarBoveda.waitFor({ timeout: 60_000 });
+  expect(await guardarBoveda.getAttribute("href")).toMatch(/^blob:/);
+  const [boveda] = await Promise.all([
+    page.waitForEvent("download"),
+    guardarBoveda.click(),
+  ]);
+  const rutaDeBoveda = join(DIRECTORIO_DE_FIXTURES, "red-boveda.velo");
+  await boveda.saveAs(rutaDeBoveda);
+
+  await page.getByRole("link", { name: "Ir al regreso" }).click();
+  await page.waitForURL("**/regreso");
+  await page.getByLabel("Elegir el archivo de bóveda").setInputFiles(rutaDeBoveda);
+  await page.getByLabel("Frase de paso de la bóveda").fill("la frase de la boveda");
+  await page.getByRole("button", { name: "Abrir la bóveda" }).click();
+  await page.getByRole("heading", { name: "Bóveda abierta" }).waitFor({ timeout: 60_000 });
+
+  // El archivo devuelto es el propio anonimizado: para la red da igual quién lo tocó antes.
+  await page
+    .getByLabel("Elegir el archivo que devolvió el tercero")
+    .setInputFiles(await anonimizado.path());
+  await page.getByRole("button", { name: "Restaurar los valores originales" }).click();
+  await page
+    .getByRole("button", { name: "Preparar el archivo restaurado" })
+    .click({ timeout: 60_000 });
+  const guardarRestaurado = page.getByRole("link", {
+    name: "Guardar el archivo restaurado",
+  });
+  await guardarRestaurado.waitFor({ timeout: 60_000 });
+  expect(await guardarRestaurado.getAttribute("href")).toMatch(/^blob:/);
+  const [restaurado] = await Promise.all([
+    page.waitForEvent("download"),
+    guardarRestaurado.click(),
+  ]);
+  await restaurado.path();
 
   // Y un momento de reposo por si algo se enviara con retraso (un beacon diferido, por ejemplo).
   await page.waitForTimeout(1_500);

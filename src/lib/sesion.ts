@@ -61,6 +61,15 @@ export type EstadoDeTransformacion =
   | { fase: "hecha"; resultado: ResultadoDeTransformacion }
   | { fase: "fallo"; motivo: MotivoDeError };
 
+/**
+ * La bóveda del tratamiento (S3). Solo existe si la política marcó alguna columna como reversible.
+ *
+ * La frase de paso de la bóveda **no está aquí**, ni en ningún otro estado de la página: entra al
+ * worker por `postMessage` y no vuelve. Lo que queda es el asa del archivo sellado.
+ */
+export type EstadoDeBoveda =
+  { fase: "sin-sellar" } | { fase: "sellando" } | { fase: "sellada" };
+
 export interface EstadoDelTaller {
   readonly llave: EstadoDeLlave;
   readonly transformacion: EstadoDeTransformacion;
@@ -68,6 +77,9 @@ export interface EstadoDelTaller {
   readonly etapa: EtapaDelWorker | null;
   /** El archivo listo para guardar, como asa opaca. Ver `AsaDeArchivo`. */
   readonly archivo: AsaDeArchivo | null;
+  readonly boveda: EstadoDeBoveda;
+  /** El `.velo` listo para guardar, también como asa. */
+  readonly archivoDeBoveda: AsaDeArchivo | null;
 }
 
 /**
@@ -86,7 +98,14 @@ export interface AsaDeArchivo {
   readonly url: string;
 }
 
-function asaDeArchivo(blob: Blob, nombre: string): AsaDeArchivo {
+/**
+ * Envuelve el `Blob` y **pierde su referencia aquí mismo**.
+ *
+ * Se exporta para que el regreso (S3) use ESTA función y no una copia: la propiedad del ADR-005 es
+ * que exista un solo sitio en toda la app donde un `Blob` del usuario deja de ser alcanzable. Dos
+ * implementaciones serían dos sitios que auditar, y una de las dos acabaría divergiendo.
+ */
+export function asaDeArchivo(blob: Blob, nombre: string): AsaDeArchivo {
   // El `Blob` se convierte en URL aquí mismo y la referencia se pierde al salir de esta función.
   // A partir de este punto ni siquiera existe un objeto sobre el que se pudiera llamar `.text()`:
   // lo que viaja a la interfaz es una cadena. El navegador guarda los bytes en su propio registro
@@ -94,9 +113,11 @@ function asaDeArchivo(blob: Blob, nombre: string): AsaDeArchivo {
   return { nombre, bytes: blob.size, url: URL.createObjectURL(blob) };
 }
 
-/** Suelta los bytes del archivo preparado. Mientras la URL viva, ocupan memoria (ADR-005). */
+/** Suelta los bytes de lo preparado. Mientras la URL viva, ocupan memoria (ADR-005). */
 function soltarArchivo(): void {
   if (tallerActual.archivo) URL.revokeObjectURL(tallerActual.archivo.url);
+  if (tallerActual.archivoDeBoveda)
+    URL.revokeObjectURL(tallerActual.archivoDeBoveda.url);
 }
 
 const VACIO: EstadoDeSesion = { fase: "vacio" };
@@ -105,6 +126,8 @@ const TALLER_VACIO: EstadoDelTaller = {
   transformacion: { fase: "sin-hacer" },
   etapa: null,
   archivo: null,
+  boveda: { fase: "sin-sellar" },
+  archivoDeBoveda: null,
 };
 
 let estadoActual: EstadoDeSesion = VACIO;
@@ -185,6 +208,10 @@ export function invalidarTransformacion(): void {
     transformacion: { fase: "sin-hacer" },
     archivo: null,
     etapa: null,
+    // La bóveda también caduca: describe la correspondencia de una política que ya no es la que
+    // está en pantalla. Dejarla sería ofrecer la vuelta de un tratamiento que no se hizo.
+    boveda: { fase: "sin-sellar" },
+    archivoDeBoveda: null,
   });
 }
 
@@ -211,6 +238,22 @@ export function transformar(politica: Politica): void {
     etapa: "transformando",
   });
   worker.postMessage({ tipo: "transformar", politica });
+}
+
+/**
+ * Sella la bóveda del tratamiento. La frase entra al worker y no vuelve a salir — no se guarda en
+ * ningún estado, ni siquiera un instante.
+ */
+export function sellarLaBoveda(frase: string): void {
+  if (!worker) return;
+  if (tallerActual.archivoDeBoveda)
+    URL.revokeObjectURL(tallerActual.archivoDeBoveda.url);
+  publicarTaller({
+    boveda: { fase: "sellando" },
+    archivoDeBoveda: null,
+    etapa: "sellando-boveda",
+  });
+  worker.postMessage({ tipo: "sellar-boveda", frase });
 }
 
 export function prepararArchivo(): void {
@@ -322,6 +365,14 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
   if (mensaje.tipo === "archivo") {
     // El `Blob` se envuelve AQUÍ y no se guarda en ningún sitio: a partir de esta línea, la única
     // forma de llegar a él es pedirle una URL.
+    if (mensaje.proposito === "boveda") {
+      publicarTaller({
+        archivoDeBoveda: asaDeArchivo(mensaje.blob, mensaje.nombre),
+        boveda: { fase: "sellada" },
+        etapa: null,
+      });
+      return;
+    }
     publicarTaller({
       archivo: asaDeArchivo(mensaje.blob, mensaje.nombre),
       etapa: null,
@@ -340,10 +391,17 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
     mensaje.tipo === "error" &&
     (mensaje.motivo === "sin-tabla" ||
       mensaje.motivo === "sin-llave" ||
+      mensaje.motivo === "sin-boveda" ||
       mensaje.motivo === "transformacion-fallida")
   ) {
     // Un fallo transformando NO tumba el informe: el archivo original sigue analizado y la
     // pantalla puede decir qué pasó sin obligar a cargarlo de nuevo.
+    if (mensaje.motivo === "sin-boveda") {
+      // Un fallo sellando no tumba la transformación: el archivo tratado sigue listo y la pantalla
+      // puede decir que la bóveda no salió sin obligar a rehacerlo todo.
+      publicarTaller({ boveda: { fase: "sin-sellar" }, etapa: null });
+      return;
+    }
     publicarTaller({
       transformacion: { fase: "fallo", motivo: mensaje.motivo },
       etapa: null,

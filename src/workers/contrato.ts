@@ -12,6 +12,12 @@ import type { Diagnostico } from "@/engine/clasificador";
 import type { MedidaDeDiversidad } from "@/engine/diversidad";
 import type { ResultadoDeMondrian } from "@/engine/mondrian";
 import type { Politica } from "@/engine/politica";
+import type {
+  CeldasDeColumna,
+  ColumnaRestaurada,
+  ReconocimientoDeBoveda,
+  SalvedadDelRegreso,
+} from "@/engine/restaurar";
 import type { AdvisorDeQis, RiesgoExacto } from "@/engine/riesgo";
 import type { ColisionEnColumna } from "@/engine/tecnicas";
 import type { Utilidad } from "@/engine/utilidad";
@@ -28,7 +34,24 @@ export type MensajeAlWorker =
    */
   | { tipo: "derivar-llave"; frase: string; sal: string }
   | { tipo: "transformar"; politica: Politica }
-  | { tipo: "construir-archivo" };
+  | { tipo: "construir-archivo" }
+  /**
+   * Sella la bóveda del tratamiento que se acaba de hacer. La frase de paso entra y **no vuelve a
+   * salir**, igual que la de la llave: se deriva aquí, se usa aquí y muere con el worker.
+   */
+  | { tipo: "sellar-boveda"; frase: string }
+  /**
+   * Abre un `.velo`. El `File` viaja **entero al worker** y ningún componente lo toca: una bóveda
+   * contiene los valores ORIGINALES del usuario, que es exactamente el contenido que no puede
+   * pasar por la página. La defensa es estructural — el gate de privacidad veta `.arrayBuffer()`
+   * fuera de `src/workers/`, así que solo aquí se pueden sacar sus bytes.
+   */
+  | { tipo: "abrir-boveda"; archivo: File; frase: string }
+  /** El archivo que devolvió el tercero. Se parsea, **no se diagnostica**: es otro flujo. */
+  | { tipo: "analizar-devuelto"; archivo: File }
+  | { tipo: "restaurar" }
+  | { tipo: "construir-restaurado" }
+  | { tipo: "construir-informe-del-regreso"; fecha: string };
 
 /** Etapas del trabajo, en el orden en que ocurren. La UI las nombra tal cual. */
 export type EtapaDelWorker =
@@ -39,7 +62,59 @@ export type EtapaDelWorker =
   | "derivando-llave"
   | "transformando"
   | "midiendo-el-despues"
-  | "escribiendo";
+  | "escribiendo"
+  | "sellando-boveda"
+  | "abriendo-boveda"
+  | "restaurando";
+
+/**
+ * Lo que la página sabe de una bóveda abierta. **Ni un par de la correspondencia cruza** — eso son
+ * los valores originales del usuario, el material más sensible que Velo llega a tener. Cruzan
+ * conteos, nombres de columna y huellas.
+ */
+export interface ResumenDeBoveda {
+  /** SHA-256 de la serialización en claro. La identidad que el usuario reconoce. */
+  readonly huella: string;
+  /** Huella de la llave HMAC con la que se hizo. Permite decir «esta bóveda es de otra llave». */
+  readonly huellaDeLlave: string;
+  readonly hashDePolitica: string;
+  readonly columnas: readonly string[];
+  readonly pares: number;
+  /** Seudónimos con más de un original. La cifra que hay que decir ANTES de restaurar. */
+  readonly colisiones: number;
+}
+
+/**
+ * El resultado de la restauración **sin su tabla**.
+ *
+ * Se copian los campos UNO A UNO en vez de con un `Omit`, igual que con el reparto de Mondrian en
+ * el S2: así la frontera es literal, y el día que `Restauracion` gane un campo nuevo no cruza
+ * solo — hay que escribirlo aquí y mirarlo.
+ */
+export interface ResumenDelRegreso {
+  readonly columnas: readonly ColumnaRestaurada[];
+  readonly reconocimiento: ReconocimientoDeBoveda;
+  readonly sinAparecer: readonly string[];
+  readonly fueraDeAlcance: readonly string[];
+  readonly totales: CeldasDeColumna;
+  readonly proporcionRestaurada: number | null;
+  readonly salvedades: readonly SalvedadDelRegreso[];
+  readonly esTitular: boolean;
+  readonly filas: number;
+}
+
+/** Por qué no se pudo abrir un `.velo`. Cada uno necesita su propio mensaje en pantalla. */
+export type MotivoDeBoveda =
+  | "no-es-una-boveda"
+  | "version-distinta"
+  | "frase-incorrecta"
+  | "costo-inaceptable"
+  | "contenido-invalido"
+  | "lectura-fallida";
+
+/** Para qué es el archivo que el worker acaba de construir. El asa es la misma; el destino no. */
+export type PropositoDelArchivo =
+  "anonimizado" | "boveda" | "restaurado" | "informe-del-regreso";
 
 export type MotivoDeError =
   | "formato-no-soportado"
@@ -49,7 +124,10 @@ export type MotivoDeError =
   | "lectura-fallida"
   | "sin-tabla"
   | "sin-llave"
-  | "transformacion-fallida";
+  | "transformacion-fallida"
+  | "sin-boveda"
+  | "sin-devuelto"
+  | "restauracion-fallida";
 
 export interface Informe {
   archivo: {
@@ -143,5 +221,23 @@ export type MensajeDelWorker =
    * navegador resuelve al guardarlo. La página hace `createObjectURL` y jamás lo lee — ver
    * `decisions/005-la-frontera-y-la-descarga.md`, y el test que lo verifica.
    */
-  | { tipo: "archivo"; blob: Blob; nombre: string; bytes: number }
+  | {
+      tipo: "archivo";
+      blob: Blob;
+      nombre: string;
+      bytes: number;
+      proposito: PropositoDelArchivo;
+    }
+  | { tipo: "boveda-abierta"; resumen: ResumenDeBoveda }
+  | { tipo: "boveda-rechazada"; motivo: MotivoDeBoveda; detalle: string }
+  /** El archivo devuelto, ya parseado. Viajan metadatos y conteos; ninguna celda. */
+  | {
+      tipo: "devuelto-listo";
+      nombre: string;
+      bytes: number;
+      filas: number;
+      columnas: number;
+      sha256: string;
+    }
+  | { tipo: "restaurado"; resumen: ResumenDelRegreso }
   | { tipo: "error"; motivo: MotivoDeError };

@@ -11,9 +11,11 @@
 // pantalla borra la frase de su propio estado: no porque alguien vaya a leerla, sino porque no hay
 // ninguna razón para que siga ahí.
 //
-// El «derivando» tarda alrededor de un segundo a propósito (PBKDF2, 600.000 iteraciones, mínimo de
-// OWASP) y la pantalla lo explica en vez de disimularlo con un spinner genérico: ese segundo es lo
-// que encarece cada intento de quien quiera adivinar la frase.
+// Sobre el «derivando»: **la protección es el número de vueltas, no los segundos**, y esta pantalla
+// lo decía al revés hasta que el S3 lo midió. PBKDF2 con 600.000 iteraciones (mínimo de OWASP) tarda
+// 36 ms en Chromium sobre un portátil moderno y bastante más en un teléfono de gama baja: prometer
+// «alrededor de un segundo» era prometer una espera que en la mitad de los equipos no ocurre. El
+// costo deliberado es real; el tiempo no es una propiedad que se pueda anunciar.
 
 import { useId, useState } from "react";
 
@@ -147,9 +149,9 @@ export function LlaveDelProyecto({
         </Boton>
         {derivando ? (
           <p role="status" className="text-tinta-suave text-[0.875rem]">
-            Tarda alrededor de un segundo, y ese segundo es la protección:{" "}
-            {numero(ITERACIONES_PBKDF2)} vueltas de PBKDF2 encarecen por igual
-            cada intento de adivinarla.
+            {numero(ITERACIONES_PBKDF2)} vueltas de PBKDF2, que es lo que
+            encarece por igual cada intento de adivinarla. En un equipo rápido
+            es un instante; en un teléfono, un momento.
           </p>
         ) : null}
       </div>

@@ -206,8 +206,10 @@ antes de escribirla:
   más la tenga.
 - **Si se filtra, los seudónimos se vuelven enlazables.** Trátala como una contraseña.
 
-Derivarla tarda alrededor de un segundo, **y ese segundo es la protección**: son 600.000 vueltas de
-PBKDF2 (el mínimo que recomienda OWASP), que encarecen por igual cada intento de adivinarla. Guarda
+Derivarla cuesta 600.000 vueltas de PBKDF2 (el mínimo que recomienda OWASP), **y ese costo es la
+protección**: encarece por igual cada intento de adivinarla. Cuánto tarda depende del equipo — en un
+portátil moderno es un instante, en un teléfono de gama baja se nota—; lo que se garantiza es el
+número de vueltas, no los segundos. Guarda
 la frase **y la sal** que Velo te enseña: sin las dos, los seudónimos del mes que viene no cuadran.
 
 #### Antes y después
