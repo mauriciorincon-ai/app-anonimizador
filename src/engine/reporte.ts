@@ -18,6 +18,11 @@
 
 import type { BalanceDelTratamiento, Salvedad } from "./balance";
 import type { Diagnostico, HallazgoDeColumna } from "./clasificador";
+import type {
+  ColumnaRestaurada,
+  Restauracion,
+  SalvedadDelRegreso,
+} from "./restaurar";
 import type { AdvisorDeQis, RiesgoExacto } from "./riesgo";
 import type { Utilidad } from "./utilidad";
 import type { CategoriaLey1581 } from "./validadores/tipos";
@@ -570,6 +575,213 @@ cortesía: cada una nombra algo que la cifra no cubre.</p>`
       : ""
   }
 <p>Generado por <b>Velo</b> — la aduana de datos. El análisis ocurrió íntegramente dentro del
+navegador de quien cargó el archivo: no hubo servidor, ni carga, ni copia.</p>
+</footer>
+</div>
+</body>
+</html>
+`;
+}
+
+// ── El informe del regreso (S3) ───────────────────────────────────────────────────────────────
+//
+// Documento aparte del diagnóstico, y no una sección más, porque habla de **otro archivo**: el que
+// devolvió el tercero, no el que entró a Velo. Mezclarlos obligaría a un lector a distinguir de qué
+// archivo habla cada cifra, que es justo la confusión que este repo lleva tres sprints evitando.
+//
+// Reutiliza los estilos, el sello, el escapado y el formato de cifras del reporte del S2. Lo que NO
+// reutiliza es el criterio: el orden del documento lo decide `restauracion.salvedades`, que llega
+// ordenado desde el motor.
+
+export interface DatosDelInformeDeRegreso {
+  /** El archivo que devolvió el tercero. */
+  archivo: { nombre: string; bytes: number; sha256: string };
+  restauracion: Restauracion;
+  /** Identidad de la bóveda usada: SHA-256 de su serialización en claro. */
+  huellaDeBoveda: string;
+  /** Hash de la política que produjo la bóveda. Ata el regreso a un tratamiento concreto. */
+  hashDePolitica: string;
+  /** Fecha ya formateada por quien llama. Inyectada para que el informe sea reproducible. */
+  fecha: string;
+}
+
+function itemDeSalvedadDelRegreso(salvedad: SalvedadDelRegreso): string {
+  const cuerpo = (() => {
+    switch (salvedad.tipo) {
+      case "celdas-ambiguas":
+        return `<b>${numero(salvedad.cuantas)}</b> ${
+          salvedad.cuantas === 1 ? "celda volvió" : "celdas volvieron"
+        } <b>sin resolver</b> (${porcentaje(salvedad.proporcion)} de las que tenían contenido). Su
+seudónimo corresponde a <b>más de un valor original</b>: conservar el formato reduce el espacio
+disponible y dos valores distintos chocaron en el mismo seudónimo. Velo <b>no eligió por ti</b> —
+esas celdas conservan el seudónimo, para que se puedan resolver a mano. Escribir uno de los dos
+candidatos habría devuelto el dato de otra persona sin que nada lo indicara.`;
+      case "boveda-no-corresponde":
+        return `<b>Ninguna columna de la bóveda apareció en este archivo.</b> O la bóveda es de otro
+tratamiento, o el archivo devuelto no es el que salió de Velo. No se restauró nada, y eso es lo
+correcto: restaurar a medias sin decirlo sería peor que no restaurar.`;
+      case "columnas-sin-aparecer":
+        return `La bóveda guarda ${
+          salvedad.columnas.length === 1
+            ? "una columna que no apareció"
+            : "columnas que no aparecieron"
+        } en el archivo devuelto: ${salvedad.columnas
+          .map((c) => `<code>${escapar(c)}</code>`)
+          .join(" · ")}. El tercero
+${salvedad.columnas.length === 1 ? "la borró" : "las borró"} o
+${salvedad.columnas.length === 1 ? "la cambió" : "las cambió"} tanto que ya no se
+${salvedad.columnas.length === 1 ? "reconoce" : "reconocen"}. <b>El porcentaje de abajo no
+${salvedad.columnas.length === 1 ? "la cuenta" : "las cuenta"}</b>: describe solo lo que sí volvió.`;
+      case "columna-a-medias":
+        return `<code>${escapar(salvedad.columna)}</code> tiene valores de la bóveda, pero solo el
+<b>${porcentaje(salvedad.proporcion)}</b> de los suyos — por debajo del mínimo para darla por
+reconocida, así que salió <b>intacta</b>. Si esperabas que volviera, revisa cuánto la editó el
+tercero.`;
+      case "celdas-desconocidas":
+        return `<b>${numero(salvedad.cuantas)}</b> ${
+          salvedad.cuantas === 1 ? "celda no estaba" : "celdas no estaban"
+        } en la bóveda
+(${porcentaje(salvedad.proporcion)} de las que tenían contenido): el tercero
+${salvedad.cuantas === 1 ? "la escribió o la cambió" : "las escribió o las cambió"}. Salieron tal
+como ${salvedad.cuantas === 1 ? "él la dejó" : "él las dejó"} — su trabajo no se toca.`;
+    }
+  })();
+  return `<li class="s-${salvedad.gravedad}">${cuerpo}</li>`;
+}
+
+function filaDeColumnaRestaurada(columna: ColumnaRestaurada): string {
+  const { celdas } = columna;
+  return `<tr>
+<td><code>${escapar(columna.columna)}</code></td>
+<td>${
+    columna.deLaBoveda === null
+      ? `<span class="alerta">No reconocida</span> <small>${numero(columna.coincidencias)} de ${numero(
+          columna.distintos,
+        )} valores</small>`
+      : `<code>${escapar(columna.deLaBoveda)}</code> <small>${porcentaje(
+          columna.proporcionReconocida,
+        )}</small>`
+  }</td>
+<td>${numero(celdas.restauradas)}</td>
+<td class="${celdas.ambiguas > 0 ? "alerta" : ""}">${numero(celdas.ambiguas)}</td>
+<td>${numero(celdas.desconocidas)}</td>
+</tr>`;
+}
+
+export function nombreDelInforme(nombreDelArchivo: string): string {
+  const base = nombreDelArchivo
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^\p{L}\p{N}._-]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return `velo-regreso-${base || "archivo"}.html`;
+}
+
+export function construirInformeDeRestauracion(
+  datos: DatosDelInformeDeRegreso,
+): string {
+  const { archivo, restauracion, huellaDeBoveda, hashDePolitica, fecha } =
+    datos;
+  const { totales, salvedades, proporcionRestaurada, esTitular } = restauracion;
+  const conContenido =
+    totales.restauradas + totales.ambiguas + totales.desconocidas;
+
+  const bloqueDeSalvedades = salvedades.length
+    ? `<ul class="salvedades limpia">${salvedades.map(itemDeSalvedadDelRegreso).join("")}</ul>`
+    : `<p class="por-que">Todas las celdas que la bóveda cubría volvieron a su valor original, sin
+ambigüedades y sin celdas cambiadas por el tercero.</p>`;
+
+  // La cifra va DESPUÉS de las salvedades, siempre. No es una preferencia de maquetación: el
+  // porcentaje solo es la frase que este documento no puede permitirse.
+  const cifra = (() => {
+    if (proporcionRestaurada === null) {
+      return `<p>No hubo ninguna celda que restaurar, así que no hay porcentaje que dar. Lo que
+importa es lo de arriba.</p>`;
+    }
+    if (esTitular) {
+      return `<p class="cifrota"><b class="reduccion">${porcentaje(proporcionRestaurada)}</b></p>
+<p>de las celdas con contenido volvieron a su valor original:
+${numero(totales.restauradas)} de ${numero(conContenido)}.</p>`;
+    }
+    return `<p>Volvieron a su valor original <b>${numero(totales.restauradas)}</b> de
+${numero(conContenido)} celdas con contenido — el
+<b class="reduccion">${porcentaje(proporcionRestaurada)}</b>. <b class="alerta">Esa cifra no
+describe un archivo recuperado del todo</b> mientras siga en pie lo de arriba.</p>`;
+  })();
+
+  return `<!doctype html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El regreso de ${escapar(archivo.nombre)} — Velo</title>
+<style>${ESTILOS}</style>
+</head>
+<body>
+<div class="hoja">
+<p class="sello">${SELLO}Nada salió de ese navegador</p>
+<p class="etiqueta" style="margin-top:18px">Informe de restauración</p>
+<h1>${escapar(archivo.nombre)}</h1>
+<p style="color:var(--tinta-suave);margin:4px 0 0">${numero(restauracion.tabla.filas)} filas ·
+${numero(restauracion.columnas.length)} columnas · ${megabytes(archivo.bytes)} · ${escapar(fecha)}</p>
+
+<section>
+<p class="etiqueta">Qué hay que saber antes de la cifra</p>
+<h2>Qué volvió, y qué no</h2>
+${bloqueDeSalvedades}
+${cifra}
+<dl class="datos" style="margin-top:16px">
+<div><dt>Celdas restauradas</dt><dd>${numero(totales.restauradas)}</dd></div>
+<div><dt>Celdas ambiguas</dt><dd class="${totales.ambiguas > 0 ? "alerta" : ""}">${numero(
+    totales.ambiguas,
+  )}</dd></div>
+<div><dt>Celdas que cambió el tercero</dt><dd>${numero(totales.desconocidas)}</dd></div>
+<div><dt>Columnas reconocidas</dt><dd>${numero(
+    restauracion.columnas.filter((c) => c.deLaBoveda !== null).length,
+  )} de ${numero(restauracion.columnas.length)}</dd></div>
+</dl>
+</section>
+
+<section>
+<p class="etiqueta">Identidad</p>
+<h2>Este informe habla de un archivo y una bóveda concretos</h2>
+<p style="margin:0 0 6px">SHA-256 del archivo devuelto, tal como llegó:</p>
+<p class="huella">${escapar(archivo.sha256)}</p>
+<p style="margin:14px 0 6px">Huella de la bóveda usada:</p>
+<p class="huella">${escapar(huellaDeBoveda)}</p>
+<p style="margin:14px 0 6px">Identidad del tratamiento que la produjo:</p>
+<p class="huella">${escapar(hashDePolitica)}</p>
+</section>
+
+<section>
+<p class="etiqueta">Columna por columna</p>
+<h2>De dónde salió cada una</h2>
+<table>
+<thead><tr><th>Columna</th><th>Correspondencia</th><th>Restauradas</th><th>Ambiguas</th><th>Cambiadas</th></tr></thead>
+<tbody>${restauracion.columnas.map(filaDeColumnaRestaurada).join("")}</tbody>
+</table>
+</section>
+
+<footer>
+${
+  totales.ambiguas > 0
+    ? `<p><b class="alerta">Sobre las ${numero(totales.ambiguas)} celdas ambiguas.</b> Se repite aquí
+a propósito: este documento se lee fuera de la pantalla que lo generó, y el porcentaje de arriba se
+puede citar solo. Esas celdas <b>no volvieron</b>: su seudónimo correspondía a más de un valor
+original y Velo conservó el seudónimo en vez de elegir. Cualquier cifra de este informe que se cite
+sin ellas dice más de lo que ocurrió.</p>`
+    : ""
+}
+<p><b>Qué lleva este documento y qué no.</b> Lleva nombres de columna, cifras agregadas y huellas.
+<b>No lleva ninguna celda del archivo</b>: ni seudónimos, ni valores restaurados.</p>
+<p><b>Cómo se restauró.</b> Por <b>valor</b>, nunca por posición: cada valor se buscó en la
+correspondencia de su columna, así que reordenar filas, añadir columnas o borrarlas no afecta el
+resultado. Las columnas se reconocieron por su <b>contenido</b>, no por su nombre — el tercero pudo
+renombrarlas.</p>
+<p><b>Qué NO afirma Velo.</b> Que una celda se haya restaurado significa que su seudónimo estaba en
+la bóveda con un único original. No significa que el valor sea correcto hoy: si el dato cambió en el
+mundo real desde que se anonimizó, vuelve como estaba entonces.</p>
+<p>Generado por <b>Velo</b> — la aduana de datos. La restauración ocurrió íntegramente dentro del
 navegador de quien cargó el archivo: no hubo servidor, ni carga, ni copia.</p>
 </footer>
 </div>

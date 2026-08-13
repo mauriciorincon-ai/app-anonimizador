@@ -94,6 +94,10 @@ export interface ColumnaRestaurada {
   readonly columna: string;
   /** Columna de la bóveda que la explica. `null` cuando no se reconoció ninguna. */
   readonly deLaBoveda: string | null;
+  /** Valores distintos de la columna que estaban en la correspondencia mejor puntuada. */
+  readonly coincidencias: number;
+  /** Valores distintos NO vacíos de la columna. Es el denominador de la proporción. */
+  readonly distintos: number;
   /**
    * Proporción de valores distintos no vacíos que salieron de la correspondencia elegida (0 a 1).
    *
@@ -105,6 +109,64 @@ export interface ColumnaRestaurada {
 }
 
 export type ReconocimientoDeBoveda = "completo" | "parcial" | "ninguno";
+
+/**
+ * Algo que hay que decir en la MISMA línea que el porcentaje de restauración.
+ *
+ * Misma mecánica que las salvedades del balance del S2, y por la misma razón: **«restauradas
+ * 445.806 de 446.006 (99,96 %)» es cierto y engañoso** si no dice que 200 celdas volvieron con el
+ * valor de otra persona posible. La regla no vive en la pantalla —donde tres vistas son tres
+ * ocasiones de olvidarla—, vive en el tipo: la proporción viaja con sus salvedades ya ordenadas y
+ * con `esTitular` decidido.
+ *
+ * `gravedad` separa lo que **desmiente** la lectura «el archivo volvió» de lo que la **matiza**.
+ */
+export type SalvedadDelRegreso = {
+  readonly gravedad: "descalifica" | "matiza";
+} & (
+  | {
+      /** Celdas cuyo seudónimo tiene dos originales. Encabeza siempre: es la que puede hacer daño. */
+      readonly tipo: "celdas-ambiguas";
+      readonly cuantas: number;
+      readonly proporcion: number;
+    }
+  | {
+      /** Ninguna columna de la bóveda apareció: esta bóveda no es de este archivo. */
+      readonly tipo: "boveda-no-corresponde";
+    }
+  | {
+      /** Columnas de la bóveda que no aparecieron. Lo que no volvió no entra al porcentaje. */
+      readonly tipo: "columnas-sin-aparecer";
+      readonly columnas: readonly string[];
+    }
+  | {
+      /**
+       * Una columna con valores de la bóveda que no llegó al umbral. No se restauró, y decirlo
+       * con su proporción es lo que separa un «no» accionable de un «no» a secas.
+       */
+      readonly tipo: "columna-a-medias";
+      readonly columna: string;
+      readonly proporcion: number;
+    }
+  | {
+      /** Celdas que el tercero cambió. No es culpa de nadie, pero el porcentaje no las cubre. */
+      readonly tipo: "celdas-desconocidas";
+      readonly cuantas: number;
+      readonly proporcion: number;
+    }
+);
+
+/**
+ * El orden es la decisión, no el adorno. La ambigüedad va primera **siempre**: es la única
+ * categoría en la que el archivo puede salir con el dato de la persona equivocada.
+ */
+const ORDEN: Record<SalvedadDelRegreso["tipo"], number> = {
+  "celdas-ambiguas": 0,
+  "boveda-no-corresponde": 1,
+  "columnas-sin-aparecer": 2,
+  "columna-a-medias": 3,
+  "celdas-desconocidas": 4,
+};
 
 export interface Restauracion {
   /** El archivo devuelto con los originales puestos donde se pudo. */
@@ -125,6 +187,18 @@ export interface Restauracion {
   /** Columnas del archivo devuelto que la bóveda no explica. Salen intactas. */
   readonly fueraDeAlcance: readonly string[];
   readonly totales: CeldasDeColumna;
+  /**
+   * Celdas restauradas sobre el total de celdas con contenido **de las columnas reconocidas**.
+   *
+   * `null` cuando no había ninguna: no se puede restaurar lo que no existía, y presentar ese 0/0
+   * como «0 %» (alarmante) o «100 %» (tranquilizador) sería inventar la cifra en una u otra
+   * dirección. Es la misma regla que `reduccion` en el balance del S2.
+   */
+  readonly proporcionRestaurada: number | null;
+  /** Ordenadas: lo que descalifica primero. Nunca hay que ordenarlas otra vez. */
+  readonly salvedades: readonly SalvedadDelRegreso[];
+  /** ¿El porcentaje puede ir solo, de titular? Solo si nada lo descalifica. */
+  readonly esTitular: boolean;
 }
 
 interface Candidata {
@@ -216,6 +290,8 @@ export function restaurar(tabla: TablaColumnar, boveda: Boveda): Restauracion {
       informe.push({
         columna: columna.nombre,
         deLaBoveda: null,
+        coincidencias: candidata?.coincidencias ?? 0,
+        distintos: columna.valores.length - 1,
         proporcionReconocida: candidata?.proporcion ?? 0,
         celdas: { restauradas: 0, ambiguas: 0, desconocidas: 0 },
       });
@@ -264,6 +340,8 @@ export function restaurar(tabla: TablaColumnar, boveda: Boveda): Restauracion {
     informe.push({
       columna: columna.nombre,
       deLaBoveda: candidata.correspondencia.columna,
+      coincidencias: candidata.coincidencias,
+      distintos: columna.valores.length - 1,
       proporcionReconocida: candidata.proporcion,
       celdas,
     });
@@ -273,17 +351,73 @@ export function restaurar(tabla: TablaColumnar, boveda: Boveda): Restauracion {
     .map((c) => c.columna)
     .filter((nombre) => !usadas.has(nombre));
 
+  const reconocimiento: ReconocimientoDeBoveda =
+    usadas.size === 0
+      ? "ninguno"
+      : sinAparecer.length === 0
+        ? "completo"
+        : "parcial";
+
+  const conContenido = restauradas + ambiguas + desconocidas;
+  const proporcionRestaurada =
+    conContenido === 0 ? null : restauradas / conContenido;
+
+  const salvedades: SalvedadDelRegreso[] = [];
+  if (ambiguas > 0) {
+    salvedades.push({
+      gravedad: "descalifica",
+      tipo: "celdas-ambiguas",
+      cuantas: ambiguas,
+      proporcion: ambiguas / conContenido,
+    });
+  }
+  if (reconocimiento === "ninguno" && boveda.columnas.length > 0) {
+    salvedades.push({ gravedad: "descalifica", tipo: "boveda-no-corresponde" });
+  }
+  if (sinAparecer.length > 0 && reconocimiento !== "ninguno") {
+    // Descalifica: lo que no volvió no entra al denominador, así que el porcentaje describe menos
+    // archivo del que el lector cree. Es la composición engañosa de siempre.
+    salvedades.push({
+      gravedad: "descalifica",
+      tipo: "columnas-sin-aparecer",
+      columnas: sinAparecer,
+    });
+  }
+  for (const columna of informe) {
+    // El piso es el MISMO que el del reconocimiento, y no un número nuevo: con dos coincidencias
+    // el azar ya está descartado (2×10⁻⁷), así que si no se restauró fue por el umbral y merece
+    // decirse. Por debajo de dos, mencionarlo sería ruido.
+    if (
+      columna.deLaBoveda === null &&
+      columna.coincidencias >= MINIMO_DE_COINCIDENCIAS
+    ) {
+      salvedades.push({
+        gravedad: "matiza",
+        tipo: "columna-a-medias",
+        columna: columna.columna,
+        proporcion: columna.proporcionReconocida,
+      });
+    }
+  }
+  if (desconocidas > 0) {
+    salvedades.push({
+      gravedad: "matiza",
+      tipo: "celdas-desconocidas",
+      cuantas: desconocidas,
+      proporcion: desconocidas / conContenido,
+    });
+  }
+  salvedades.sort((a, b) => ORDEN[a.tipo] - ORDEN[b.tipo]);
+
   return {
     tabla: { columnas, filas: tabla.filas },
     columnas: informe,
-    reconocimiento:
-      usadas.size === 0
-        ? "ninguno"
-        : sinAparecer.length === 0
-          ? "completo"
-          : "parcial",
+    reconocimiento,
     sinAparecer,
     fueraDeAlcance,
     totales: { restauradas, ambiguas, desconocidas },
+    proporcionRestaurada,
+    salvedades,
+    esTitular: !salvedades.some((s) => s.gravedad === "descalifica"),
   };
 }

@@ -512,3 +512,80 @@ los 100 seudónimos colisionados afectan a sus **200** originales, y 445.806 + 2
 `pnpm test`: **606 verdes, 1 saltada**. Typecheck y lint limpios.
 
 ---
+
+## Fase 4 — El informe de restauración
+
+### La regla de honestidad vive en el tipo, no en la pantalla
+
+`Restauracion` gana tres campos que viajan **juntos y ordenados**, copiando la mecánica que el S2
+dejó probada en `balance.ts`:
+
+- `proporcionRestaurada`, **`null`** cuando no había ninguna celda que restaurar. Presentar ese 0/0
+  como «0 %» (alarmante) o «100 %» (tranquilizador) sería inventar la cifra en una u otra dirección.
+  Es la misma regla que `reduccion` en el balance.
+- `salvedades`, ya ordenadas por `ORDEN`. La ambigüedad ocupa el puesto 0 **siempre**: es la única
+  categoría en la que el archivo puede salir con el dato de la persona equivocada.
+- `esTitular`, decidido por el motor. Existe como campo y no como cálculo de cada vista porque tres
+  pantallas que lo recalculen son tres ocasiones de olvidarlo.
+
+Las cinco salvedades, con su gravedad razonada:
+
+| Salvedad | Gravedad | Por qué |
+|---|---|---|
+| `celdas-ambiguas` | **descalifica** | pueden traer el valor de otra persona |
+| `boveda-no-corresponde` | **descalifica** | no se restauró nada |
+| `columnas-sin-aparecer` | **descalifica** | lo que no volvió **no entra al denominador**, así que el porcentaje describe menos archivo del que el lector cree |
+| `columna-a-medias` | matiza | tenía valores de la bóveda y no llegó al umbral |
+| `celdas-desconocidas` | matiza | el tercero las cambió; su trabajo no se toca |
+
+El piso de `columna-a-medias` **reutiliza `MINIMO_DE_COINCIDENCIAS`** en vez de estrenar un número:
+con dos coincidencias el azar ya está descartado (2×10⁻⁷), así que si no se restauró fue por el
+umbral y merece decirse. Por debajo de dos, mencionarlo sería ruido.
+
+### El test de la fase es de COMPOSICIÓN, no de cifra
+
+Lo que se verifica es el **orden del documento**, que es donde vive el defecto que este patrón caza:
+
+```ts
+const ambiguedad = html.indexOf("sin resolver");
+const cifra = html.indexOf("celdas con contenido");
+expect(ambiguedad).toBeLessThan(cifra);
+```
+
+Y las tres preguntas del patrón, cada una con su test:
+
+1. **¿Qué deja fuera la cifra, y está dicho donde se lee?** → las salvedades van arriba, y con
+   ambigüedad presente el porcentaje **no se presenta como titular** (sin `<p class="cifrota">`).
+2. **¿El titular usa el mismo concepto que el cálculo?** → «restauradas» excluye ambiguas, y la
+   salvedad dice explícitamente que **Velo no eligió por ti**.
+3. **¿Sobrevive fuera de contexto?** → el pie **repite** la ambigüedad, con la frase «cualquier
+   cifra de este informe que se cite sin ellas dice más de lo que ocurrió».
+
+### Dos supuestos míos que los tests desmintieron
+
+- **`cifrota` está en el CSS embebido**, así que `not.toContain("cifrota")` daba siempre verdadero:
+  el test no probaba nada. Se afirma sobre la etiqueta `<p class="cifrota">`.
+- **El nombre de archivo esperado me lo inventé** (`velo-regreso-.._.._etc_passwd.html`). El real es
+  otro; se alinearon los casos con los que el S2 ya tenía probados para `nombreDelReporte`.
+
+### El singular y el plural son copy, no ramas
+
+La cobertura de ramas de `reporte.ts` cayó a 71,5 % con el informe nuevo. No se subió con tests de
+relleno: cada rama sin cubrir era una frase que alguien va a leer, y **«1 celdas volvieron sin
+resolver»** no es un hueco de cobertura — es un documento que se entrega a un tercero con falta de
+ortografía. Cinco tests de copy después, 83,1 %.
+
+### Verificación de la Fase 4
+
+| Criterio del plan | Resultado |
+|---|---|
+| Test de composición sobre el orden del documento | ✅ la ambigüedad precede a la cifra |
+| El informe lo repite, porque se lee fuera de contexto | ✅ con su test sobre el `<footer>` |
+| Salvedades ordenadas en el TIPO, `esTitular` en el motor | ✅ mecánica del S2 reutilizada |
+| Autocontenido, escapado, determinista | ✅ mismos barridos que el reporte del S2 |
+| Ni una celda del archivo en el documento | ✅ ni seudónimos ni valores restaurados |
+| Cobertura | ✅ `restaurar.ts` **100 / 100** · `reporte.ts` 96,1 / 83,1 |
+
+`pnpm test`: **626 verdes, 1 saltada**. Typecheck y lint limpios.
+
+---
