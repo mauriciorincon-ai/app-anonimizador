@@ -22,7 +22,7 @@ Lo que Velo sigue sin hacer: **no elige por ti**. Cuando un seudónimo correspon
 —aritmética, no accidente: conservar el formato reduce el espacio— esa celda vuelve **sin resolver**,
 con el seudónimo intacto, y el número se dice **antes** de restaurar.
 
-9 commits · 39 archivos · +7.084 / −201 líneas · **cero dependencias nuevas**.
+10 commits · 40 archivos · +7.251 / −201 líneas · **cero dependencias nuevas**.
 
 ---
 
