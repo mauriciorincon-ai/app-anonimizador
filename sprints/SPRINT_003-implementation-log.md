@@ -430,3 +430,85 @@ worker arme la bóveda con la identidad de la sesión. Hoy lo leen sus tests. Va
 `salDeLlave` de la Fase 1, para que la auditoría los encuentre declarados y no huérfanos.
 
 ---
+
+## Fase 3 — El motor de restauración
+
+`src/engine/restaurar.ts`, puro y determinista. Y un movimiento previo: `reconstruirColumna` pasó de
+`tecnicas/index.ts` a `columnar.ts`, que es donde le toca — es una operación de la representación, y
+ahora la usan los dos motores que la recorren. Re-deduplicar hace falta en las dos direcciones y por
+razones simétricas: transformar **junta** valores (40 edades → 5 rangos) y restaurar los **separa**
+(un seudónimo colisionado vuelve a dos originales).
+
+### El umbral, y la corrección de su propia justificación
+
+El primer comentario que escribí decía que el umbral es lo que impide devolver el dato de otra
+persona. **Es falso, y se corrigió antes de commitear.** Eso lo impiden otras dos cosas: la búsqueda
+es **exacta** —cada valor está en la correspondencia o no está— y cada columna se restaura con **una
+sola** correspondencia, la de mejor puntaje, así que un seudónimo que exista también en otra columna
+de la bóveda no puede contaminar esta. Hay un test dedicado a ese caso incómodo.
+
+Lo que el umbral decide de verdad es **si Velo toca la columna**, y ahí sí hay asimetría:
+
+- **Reconocer de menos:** una columna muy editada se queda sin restaurar. El usuario lo VE, con su
+  proporción al lado, y puede actuar.
+- **Reconocer de más:** una columna que no salió de Velo —notas, referencias— tiene un par de
+  valores que coinciden **por azar** con seudónimos, y esas celdas se reemplazan por cédulas de
+  gente que no tiene nada que ver. No devuelve el original equivocado: le mete datos personales al
+  trabajo del tercero donde no los había.
+
+`UMBRAL_DE_RECONOCIMIENTO = 0,5` con `≥`, y `MINIMO_DE_COINCIDENCIAS = 2` con su aritmética: con
+446.000 seudónimos de cédula sobre 10⁹, la probabilidad de que un valor cualquiera coincida por azar
+es 4,5×10⁻⁴; exigir dos la lleva a 2×10⁻⁷. **El precio se declara**: una columna con un único valor
+distinto sale con proporción 1 y sin restaurar. Tiene su test, para que sea una decisión y no una
+sorpresa.
+
+Y la proporción **viaja aunque la columna no se reconozca**: «no la restauramos, reconocimos el
+31 %» es accionable; «no reconocida» a secas, no.
+
+### Las cuatro categorías, y la celda que no se inventa
+
+| Categoría | Qué le pasa a la celda |
+|---|---|
+| `restaurada` | vuelve su original |
+| `ambigua` | **se queda el seudónimo** — escribir uno de los dos originales sería devolver el dato de otro, y borrarla destruiría la pista para resolverlo a mano |
+| `desconocida` | el tercero la cambió: se deja tal cual |
+| fuera de alcance | la columna entera sale intacta |
+
+La celda **vacía no es ninguna de las cuatro**: no se cuenta como desconocida. Contarla inflaría
+justo la cifra que la Fase 4 tiene que poner al lado del porcentaje. Tiene su test.
+
+`reconocimiento` (`completo` · `parcial` · `ninguno`) lo decide **el motor, no la pantalla** — la
+misma lección que el S2 aprendió con las salvedades del balance: una clasificación que vive en el
+tipo no se puede pintar de dos maneras en dos sitios.
+
+### La medición, otra vez antes de la UI
+
+El reconocimiento por contenido puntúa **cada** columna del archivo devuelto contra **cada** columna
+de la bóveda, y ese producto no estaba medido en ningún sitio. Se añadió al mismo harness del peor
+caso:
+
+```
+  restaurar (2 columnas)             117 ms
+  celdas restauradas                 445806
+  celdas ambiguas                    200
+```
+
+**117 ms sobre 446.006 filas.** Y la aritmética cierra exacta, que es la mejor señal de que el motor
+está bien: 446.006 valores distintos − 100 colisiones = 445.906 pares en la bóveda; al restaurar,
+los 100 seudónimos colisionados afectan a sus **200** originales, y 445.806 + 200 = 446.006.
+
+### Verificación de la Fase 3
+
+| Criterio del plan | Resultado |
+|---|---|
+| Caso completo: filas reordenadas + columna añadida + columna borrada + valores cambiados | ✅ y con la columna **renombrada** encima |
+| Respeta el trabajo del tercero | ✅ sus columnas salen intactas, y el valor que él cambió se conserva |
+| Bóveda que no corresponde se declara | ✅ `reconocimiento: "ninguno"`, sin tocar una celda |
+| Celdas ambiguas contadas | ✅ y el seudónimo se queda en su sitio |
+| Dos restauraciones byte-idénticas; otra bóveda, otro resultado | ✅ |
+| Desempate fijado entre correspondencias iguales | ✅ por nombre de columna, punto de código |
+| Cobertura >80 % | ✅ `restaurar.ts` **100 / 100** · `columnar.ts` **100 / 100** |
+
+`pnpm test`: **606 verdes, 1 saltada**. Typecheck y lint limpios.
+
+---

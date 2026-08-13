@@ -27,6 +27,8 @@ import {
   paresDeBoveda,
   serializarBoveda,
 } from "@/engine/boveda";
+import { ConstructorColumnar } from "@/engine/columnar";
+import { restaurar } from "@/engine/restaurar";
 import { seudonimizarConFormato } from "@/engine/tecnicas/seudonimo";
 import { abrirBoveda, sellarBoveda } from "@/lib/boveda-archivo";
 
@@ -133,6 +135,32 @@ describe.skipIf(!process.env.MEDIR_BOVEDA)(
       await cronometrar("deserializarBoveda a solas", () =>
         deserializarBoveda(claro),
       );
+
+      // El regreso, sobre el mismo peor caso. El reconocimiento por contenido puntúa CADA columna
+      // del archivo devuelto contra CADA columna de la bóveda, así que su costo crece con el
+      // producto de las dos — y esa multiplicación no estaba medida en ningún sitio.
+      const devuelto = (() => {
+        const constructor = new ConstructorColumnar(
+          [COLUMNA, "resultado_del_tercero"],
+          FILAS,
+        );
+        for (let i = seudonimos.valores.length - 1; i >= 0; i--) {
+          // Al revés a propósito: el tercero reordena, y restaurar es por valor.
+          constructor.agregarFila([seudonimos.valores[i], "procesado"]);
+        }
+        return constructor.finalizar();
+      })();
+
+      const vuelta = await cronometrar("restaurar (2 columnas)", () =>
+        restaurar(devuelto, boveda),
+      );
+      console.log(
+        `  celdas restauradas                 ${vuelta.totales.restauradas}`,
+      );
+      console.log(
+        `  celdas ambiguas                    ${vuelta.totales.ambiguas}`,
+      );
+      expect(vuelta.reconocimiento).toBe("completo");
 
       // Cuánto ahorraría comprimir antes de cifrar. Se mide para poder DECIDIRLO con un número:
       // el texto en claro son dígitos repetitivos y comprime mucho, pero comprimir añade un paso

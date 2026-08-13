@@ -15,7 +15,7 @@
 // generaliza. Sigue en blanco, y el conteo de no-vacíos lo refleja.
 
 import {
-  CODIGO_VACIO,
+  reconstruirColumna,
   type ColumnaColumnar,
   type TablaColumnar,
 } from "../columnar";
@@ -72,42 +72,6 @@ export interface TablaTransformada {
    * material; la bóveda se arma donde vive la identidad.
    */
   readonly correspondencias: readonly EntradaDeBoveda[];
-}
-
-/**
- * Rehace la columna con los valores nuevos, deduplicando.
- *
- * `valoresNuevos` viene en paralelo al diccionario viejo, así que el mapeo viejo→nuevo es directo
- * y las filas solo pagan una lectura de índice: nunca se recorre el texto por fila.
- */
-function reconstruirColumna(
-  original: ColumnaColumnar,
-  valoresNuevos: readonly string[],
-): ColumnaColumnar {
-  const indice = new Map<string, number>([["", CODIGO_VACIO]]);
-  const valores: string[] = [""];
-  const viejoANuevo = new Uint32Array(valoresNuevos.length);
-
-  for (let v = 0; v < valoresNuevos.length; v++) {
-    const nuevo = valoresNuevos[v];
-    let codigo = indice.get(nuevo);
-    if (codigo === undefined) {
-      codigo = valores.length;
-      valores.push(nuevo);
-      indice.set(nuevo, codigo);
-    }
-    viejoANuevo[v] = codigo;
-  }
-
-  const codigos = new Uint32Array(original.codigos.length);
-  let noVacios = 0;
-  for (let f = 0; f < codigos.length; f++) {
-    const codigo = viejoANuevo[original.codigos[f]];
-    codigos[f] = codigo;
-    if (codigo !== CODIGO_VACIO) noVacios++;
-  }
-
-  return { nombre: original.nombre, codigos, valores, noVacios };
 }
 
 /** Las técnicas que no necesitan llave son puras y síncronas: un mapa sobre el diccionario. */

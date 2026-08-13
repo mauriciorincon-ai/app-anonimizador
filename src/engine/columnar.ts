@@ -124,6 +124,51 @@ export class ConstructorColumnar {
   }
 }
 
+/**
+ * Rehace la columna con los valores nuevos, deduplicando.
+ *
+ * `valoresNuevos` viene en paralelo al diccionario viejo, así que el mapeo viejo→nuevo es directo y
+ * las filas solo pagan una lectura de índice: nunca se recorre el texto por fila.
+ *
+ * **Re-deduplicar no es cosmético.** Transformar junta valores —40 edades distintas caen en 5
+ * rangos— y si el diccionario conservara las 40 entradas, la cardinalidad de la columna mentiría. De
+ * la cardinalidad salen las clases de equivalencia, o sea el riesgo. Restaurar hace el camino
+ * contrario y necesita lo mismo por la razón simétrica: un seudónimo colisionado que vuelve a dos
+ * originales **separa** valores que estaban juntos.
+ *
+ * Vive aquí, y no en `tecnicas/`, porque es una operación de la representación y la usan los dos
+ * motores que la recorren: el de transformación (S2) y el de restauración (S3).
+ */
+export function reconstruirColumna(
+  original: ColumnaColumnar,
+  valoresNuevos: readonly string[],
+): ColumnaColumnar {
+  const indice = new Map<string, number>([["", CODIGO_VACIO]]);
+  const valores: string[] = [""];
+  const viejoANuevo = new Uint32Array(valoresNuevos.length);
+
+  for (let v = 0; v < valoresNuevos.length; v++) {
+    const nuevo = valoresNuevos[v];
+    let codigo = indice.get(nuevo);
+    if (codigo === undefined) {
+      codigo = valores.length;
+      valores.push(nuevo);
+      indice.set(nuevo, codigo);
+    }
+    viejoANuevo[v] = codigo;
+  }
+
+  const codigos = new Uint32Array(original.codigos.length);
+  let noVacios = 0;
+  for (let f = 0; f < codigos.length; f++) {
+    const codigo = viejoANuevo[original.codigos[f]];
+    codigos[f] = codigo;
+    if (codigo !== CODIGO_VACIO) noVacios++;
+  }
+
+  return { nombre: original.nombre, codigos, valores, noVacios };
+}
+
 /** Valor de una celda por (columna, fila). */
 export function valorEn(columna: ColumnaColumnar, fila: number): string {
   return columna.valores[columna.codigos[fila]];
