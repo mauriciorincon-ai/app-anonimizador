@@ -91,6 +91,31 @@ gate.
 
 ---
 
+## Revisión de diseño (checklist `diseno-ui` § 4)
+
+Corrida sobre las pantallas que tocó el sprint: `/regreso` entera, el paso 4 del taller, el eje
+reversible del editor y la sección nueva de la portada.
+
+| Ítem                                                            | Estado                                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fiel a `design-system.md`: componentes canon, tokens respetados | ⚠️ con una excepción declarada: `min-h-[30rem]` en `/regreso` es un valor crudo. **No es decoración: es el arreglo de un CLS de 0,107 medido**, y va documentado con su número en el propio JSX. El resto usa `Panel`, `clasesDeBoton`, `etiqueta` y los tokens de tinta/borde. |
+| Checklist entero por **cada tema**                              | ✅ claro y oscuro, en móvil y escritorio.                                                                                                                                                                                                                                       |
+| Jerarquía: qué importa se ve en <3 s                            | ✅ pasos numerados 1–4, una acción principal por panel.                                                                                                                                                                                                                         |
+| **Los 5 estados diseñados**                                     | ✅ el vacío **no es un gris**: «Ningún archivo elegido todavía». Bóveda: sin/abriendo/abierta/rechazada **con motivo específico por fallo**. Devuelto: sin/analizando/listo/error. Restauración: sin-hacer/restaurando/hecha/fallo.                                             |
+| Densidad y ritmo de espaciado                                   | ✅ mismo ritmo que el taller. Nota honesta: la reserva de alto deja aire bajo el primer panel cuando la pantalla está vacía — es el precio del CLS 0 y se acepta a sabiendas.                                                                                                   |
+| Motion sutil y desactivable                                     | ✅ `prefers-reduced-motion` con e2e de **visibilidad real**, no de existencia.                                                                                                                                                                                                  |
+| Microcopy en español llano                                      | ✅ cero inglés residual; los errores dicen **qué hacer**, no «archivo inválido».                                                                                                                                                                                                |
+| Cero anti-patrones del § 2                                      | ✅ sin gradientes, sin emojis como iconografía, sin grid de cards, sin hero centrado, sin sombras pesadas. El acento sigue gastándose con avaricia: un solo botón principal por panel.                                                                                          |
+| Responsive real **360–420 y ≥1024**                             | ✅ y **es donde el sprint encontró un defecto**: a 412 px dos opciones distintas del desplegable truncaban al mismo texto. Renombradas. Verificado además a **360 px**, el extremo bajo del rango, sin desborde horizontal en ninguna de las dos pantallas nuevas.              |
+| **El usuario aprobó la preview visualmente**                    | ⏳ **diferido con el gate ⭐**, según `gate_estrella: diferido`. El visto bueno de EXPERIENCIA viaja al acumulado del S4.                                                                                                                                                       |
+
+**La aprobación de DIRECCIÓN visual no aplica como indiferible aquí**: el `design-system.md` nació en
+el S1 y esta no es la primera UI de la app. Lo que sí se hizo, por la lección del S1, fue **enseñar
+la decisión visual en el momento de tomarla**: la sección nueva de la portada se mostró al usuario
+con sus capturas antes de darla por buena, sin gastar el ⭐.
+
+---
+
 ## `/audita-sprint` — hallazgos y pagos
 
 Dos fases, con las **tres preguntas del patrón** `la-composicion-de-verdades-puede-mentir` sobre cada
