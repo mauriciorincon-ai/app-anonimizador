@@ -118,17 +118,19 @@ const RESUMEN_DE_BOVEDA: ResumenDeBoveda = {
   colisiones: 100,
 };
 
-const RESUMEN_DEL_REGRESO = {
+// Anotado y NO `as unknown as`: el cast era lo que dejaba al fixture declarar campos que el contrato
+// ya no tiene —así llegaron `sinAparecer` y `fueraDeAlcance` a sobrevivir sin lector hasta la
+// auditoría—. Con la anotación directa, TypeScript contextualiza `"completo"` como su literal Y
+// rechaza cualquier campo de más.
+const RESUMEN_DEL_REGRESO: ResumenDelRegreso = {
   columnas: [],
   reconocimiento: "completo",
-  sinAparecer: [],
-  fueraDeAlcance: [],
   totales: { restauradas: 445_806, ambiguas: 200, desconocidas: 0 },
   proporcionRestaurada: 0.9995,
   salvedades: [],
   esTitular: false,
   filas: 446_006,
-} as unknown as ResumenDelRegreso;
+};
 
 function archivoDe(nombre: string): File {
   return new File(["contenido"], nombre, { type: "text/csv" });
@@ -191,6 +193,29 @@ describe("lo que cruza del worker a la página", () => {
       "huella",
       "huellaDeLlave",
       "pares",
+    ]);
+  });
+
+  // La misma guardia para el otro resumen, que es la que faltaba: la auditoría encontró
+  // `sinAparecer` y `fueraDeAlcance` cruzando la frontera sin que nadie los leyera, y un campo sin
+  // lector no lo caza el typecheck —compila perfectamente—. Lo caza esta lista. Cambiarla obliga a
+  // mirar el campo nuevo y preguntarse quién lo consume, que es justo lo que §5 pide.
+  it("del regreso solo vienen conteos, y cada campo tiene su lector", () => {
+    conTodoCargado();
+    act(() =>
+      WorkerDeMentira.ultimo!.responde({
+        tipo: "restaurado",
+        resumen: RESUMEN_DEL_REGRESO,
+      }),
+    );
+    expect(Object.keys(RESUMEN_DEL_REGRESO).sort()).toEqual([
+      "columnas",
+      "esTitular",
+      "filas",
+      "proporcionRestaurada",
+      "reconocimiento",
+      "salvedades",
+      "totales",
     ]);
   });
 

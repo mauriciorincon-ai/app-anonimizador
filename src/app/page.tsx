@@ -8,8 +8,10 @@
 // decidir, no antes.
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { clasesDeBoton } from "@/components/boton";
 import { Sello } from "@/components/sello";
 import { ZonaDeCarga } from "@/components/zona-de-carga";
 import { analizar, descartar, useSesion } from "@/lib/sesion";
@@ -59,9 +61,9 @@ export default function Aduana() {
       </h1>
       <p className="text-tinta-suave mt-4 text-lg leading-relaxed text-pretty">
         Antes de mandar un archivo a una IA, a una herramienta en la nube o al
-        computador de un tercero, Velo te dice qué datos personales lleva dentro,
-        a cuántas personas alcanza a señalar con el dedo, y te lo devuelve
-        anonimizado.
+        computador de un tercero, Velo te dice qué datos personales lleva
+        dentro, a cuántas personas alcanza a señalar con el dedo, y te lo
+        devuelve anonimizado.
       </p>
 
       <div className="mt-10">
@@ -97,13 +99,38 @@ export default function Aduana() {
         </ol>
       </section>
 
-      <p className="border-borde text-tinta-tenue mt-10 border-t pt-6 text-[0.8125rem] leading-relaxed">
-        Velo <strong className="font-medium">diagnostica y transforma</strong>:
-        te muestra lo que hay, lo que arriesga, y te devuelve el archivo tratado.
-        Lo que todavía no hace es <strong className="font-medium">la vuelta</strong>{" "}
-        — un seudónimo de hoy no se puede revertir, porque la bóveda que guarda la
-        correspondencia llega después. Hasta entonces, Velo reduce el riesgo y lo
-        mide; no declara ningún archivo anónimo.
+      {/* El regreso va en bloque aparte y NO como quinto paso de la rejilla, por dos razones que
+          apuntan al mismo sitio. La de forma: la rejilla es de cuatro y un quinto ítem quedaría
+          colgado solo en la fila. La de fondo, que es la que manda: los pasos 1 a 4 ocurren de una
+          sentada y **este ocurre semanas después, en otra sesión, con otro archivo**. Ponerlo en la
+          misma fila diría que es el siguiente clic, y no lo es. Aquí vive además el ÚNICO enlace a
+          `/regreso` desde la puerta de entrada: quien vuelve tres semanas después aterriza en esta
+          pantalla sin nada cargado, y sin este enlace no tendría dónde hacer clic. */}
+      <section
+        aria-labelledby="el-regreso"
+        className="border-borde mt-10 border-t pt-6"
+      >
+        <h2 id="el-regreso" className="etiqueta">
+          Y semanas después
+        </h2>
+        <p className="text-tinta-suave mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-pretty">
+          Cuando el tercero te devuelva el archivo trabajado, Velo{" "}
+          <strong className="text-tinta font-medium">
+            pone los valores originales de vuelta
+          </strong>{" "}
+          y respeta lo que hicieron encima. Para eso guardas la bóveda cifrada
+          al anonimizar: sin ella el seudónimo sigue siendo irreversible —que es
+          justo lo que lo hace seguro de entregar—; con ella, y solo con ella,
+          vuelve.
+        </p>
+        <Link href="/regreso" className={`${clasesDeBoton("discreto")} mt-4`}>
+          Ya tengo mi bóveda y el archivo devuelto
+        </Link>
+      </section>
+
+      <p className="text-tinta-tenue mt-10 text-[0.8125rem] leading-relaxed">
+        Velo reduce el riesgo de reidentificación y lo mide; no declara ningún
+        archivo anónimo.
       </p>
     </main>
   );

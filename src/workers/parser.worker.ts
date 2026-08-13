@@ -583,8 +583,6 @@ function restaurarDevuelto(): void {
       resumen: {
         columnas: resultado.columnas,
         reconocimiento: resultado.reconocimiento,
-        sinAparecer: resultado.sinAparecer,
-        fueraDeAlcance: resultado.fueraDeAlcance,
         totales: resultado.totales,
         proporcionRestaurada: resultado.proporcionRestaurada,
         salvedades: resultado.salvedades,

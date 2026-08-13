@@ -56,8 +56,15 @@ export const EXTENSION_DE_BOVEDA = ".velo";
  *
  * **No es la llave HMAC del proyecto**, y son dos cosas distintas a propósito: la HMAC decide los
  * seudónimos y una filtración suya los vuelve enlazables; esta solo abre el archivo. Comparten el
- * mismo PBKDF2 de 600.000 iteraciones (OWASP) y la misma propiedad de tardar del orden de un
- * segundo — que es lo que compra, encarecer cada intento de adivinar la frase.
+ * mismo PBKDF2 de 600.000 iteraciones, el mínimo que OWASP recomienda para SHA-256.
+ *
+ * **Lo que ese costo compra, dicho con el número medido y no con el de la intuición:** 600.000
+ * iteraciones son **~36 ms en Chromium** (`tests/medicion/cripto-en-el-navegador.mjs`), no «del
+ * orden de un segundo» como decía este comentario antes de medirlo. Treinta y seis milisegundos por
+ * intento no protegen una frase corta —quien robe el `.velo` prueba un diccionario entero en
+ * minutos—; lo que hacen es multiplicar por 600.000 el costo de cada intento frente a derivar la
+ * llave directo de la frase. La defensa real es la longitud de la frase, y por eso la UI exige un
+ * mínimo y lo dice. El parámetro viaja en la cabecera justamente para poder subirlo (ver abajo).
  *
  * `extractable: false`: ni el propio código puede volver a sacar sus bytes.
  */

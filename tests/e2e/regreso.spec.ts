@@ -246,6 +246,30 @@ test("el círculo completo: anonimizar, entregar, y recuperar en OTRA sesión", 
   await contextoB.close();
 });
 
+// El caso real del producto: alguien que anonimizó hace tres semanas vuelve a Velo con su bóveda y
+// el archivo que le devolvieron. **Aterriza en la portada, sin nada cargado.** Hasta la auditoría de
+// este sprint el único enlace a `/regreso` vivía dentro del taller, después de sellar una bóveda en
+// esa misma sesión — así que el usuario del caso real no tenía dónde hacer clic, y los e2e no lo
+// notaban porque todos entraban con `goto("/regreso")`. Este entra como entra una persona.
+test("se llega al regreso desde la portada, sin haber cargado nada", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByRole("link", { name: "Ya tengo mi bóveda y el archivo devuelto" })
+    .click();
+  await page.waitForURL("**/regreso");
+  await expect(
+    page.getByRole("heading", { name: /Recupera lo que/ }),
+  ).toBeVisible();
+
+  // Y la portada ya no niega la vuelta: la frase caducada de la AC10 no puede volver por descuido.
+  await page.goBack();
+  await expect(page.locator("main")).not.toContainText(
+    /todavía no hace es la vuelta/i,
+  );
+});
+
 test("una bóveda que no es de este archivo se dice, y no se restaura nada", async ({
   page,
 }) => {
@@ -254,9 +278,12 @@ test("una bóveda que no es de este archivo se dice, y no se restaura nada", asy
   await page.getByLabel("Elegir el archivo de bóveda").setInputFiles(CLINICO);
   await page.getByLabel("Frase de paso de la bóveda").fill(FRASE_DE_BOVEDA);
   await page.getByRole("button", { name: "Abrir la bóveda" }).click();
-  await expect(alertaDelRegreso(page)).toContainText(/no es una bóveda de Velo/i, {
-    timeout: 60_000,
-  });
+  await expect(alertaDelRegreso(page)).toContainText(
+    /no es una bóveda de Velo/i,
+    {
+      timeout: 60_000,
+    },
+  );
 });
 
 test("la frase incorrecta lo dice, sin dar pistas", async ({ page }) => {

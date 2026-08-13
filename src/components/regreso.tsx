@@ -34,7 +34,11 @@ import {
   useRegreso,
   type EstadoDelRegreso,
 } from "@/lib/regreso";
-import type { MotivoDeBoveda, ResumenDelRegreso } from "@/workers/contrato";
+import type {
+  MotivoDeBoveda,
+  MotivoDeError,
+  ResumenDelRegreso,
+} from "@/workers/contrato";
 
 const MINIMO = 12;
 
@@ -52,6 +56,29 @@ const FALLOS_DE_BOVEDA: Record<MotivoDeBoveda, string> = {
     "La bóveda se abrió, pero su contenido no tiene la forma que Velo espera.",
   "lectura-fallida": "No se pudo leer el archivo.",
 };
+
+/**
+ * Cada fallo del archivo devuelto con su frase, por el mismo motivo que los de la bóveda.
+ *
+ * Hasta la auditoría de este sprint el estado guardaba el motivo y la pantalla pintaba siempre
+ * «comprueba que sea un CSV» — cierto para uno de los casos y desorientador para el resto: a quien
+ * suelta un archivo vacío se le decía que revisara el formato, que es lo único que NO tenía mal.
+ *
+ * El caso de Excel se dice aquí y no se soporta a medias: `.xlsx` es un zip y PapaParse lo lee como
+ * texto binario, así que el fallo llega como archivo ilegible o vacío según el caso. Guiar a CSV es
+ * la respuesta honesta —la misma que el S1 dio para la entrada— y no cuesta código nuevo.
+ */
+const FALLOS_DEL_DEVUELTO: Partial<Record<MotivoDeError, string>> = {
+  "archivo-vacio":
+    "Ese archivo no tiene filas que restaurar. Comprueba que sea el que te devolvieron y que no esté vacío.",
+  "formato-no-soportado":
+    "Velo no sabe leer ese formato aquí. El archivo devuelto tiene que ser CSV: si te lo devolvieron en Excel, ábrelo y guárdalo como CSV.",
+  "lectura-fallida":
+    "No se pudo leer ese archivo. Tiene que ser un CSV: si te lo devolvieron en Excel, ábrelo y guárdalo como CSV.",
+};
+
+const FALLO_DEL_DEVUELTO_POR_DEFECTO =
+  "No se pudo usar ese archivo. Tiene que ser el CSV que te devolvió el tercero.";
 
 export function Regreso() {
   const estado = useRegreso();
@@ -297,9 +324,12 @@ function PanelDelDevuelto({ estado }: { estado: EstadoDelRegreso }) {
       ) : null}
 
       {devuelto.fase === "error" ? (
-        <p role="alert" className="text-alerta mt-4 text-[0.875rem]">
-          No se pudo leer ese archivo. Comprueba que sea un CSV y vuelve a
-          intentarlo.
+        <p
+          role="alert"
+          className="text-alerta mt-4 text-[0.875rem] leading-relaxed"
+        >
+          {FALLOS_DEL_DEVUELTO[devuelto.motivo] ??
+            FALLO_DEL_DEVUELTO_POR_DEFECTO}
         </p>
       ) : null}
     </Panel>

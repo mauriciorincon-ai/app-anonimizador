@@ -94,8 +94,11 @@ export interface ResumenDeBoveda {
 export interface ResumenDelRegreso {
   readonly columnas: readonly ColumnaRestaurada[];
   readonly reconocimiento: ReconocimientoDeBoveda;
-  readonly sinAparecer: readonly string[];
-  readonly fueraDeAlcance: readonly string[];
+  // `sinAparecer` y `fueraDeAlcance` de `Restauracion` NO cruzan, y su ausencia es el hallazgo M1
+  // de la auditoría de este sprint: cruzaban, y no los leía nadie. Lo que la pantalla y el informe
+  // necesitan ya viaja mejor dicho — las columnas que faltan van en la salvedad
+  // `columnas-sin-aparecer`, con su explicación, y las de fuera de alcance salen de `columnas`,
+  // marcadas una a una. Un campo del contrato nace con su lector o no nace.
   readonly totales: CeldasDeColumna;
   readonly proporcionRestaurada: number | null;
   readonly salvedades: readonly SalvedadDelRegreso[];

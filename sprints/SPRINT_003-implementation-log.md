@@ -668,3 +668,78 @@ runner. `layout.tsx` no se ha tocado en todo el sprint y el rerun pasó limpio. 
 vuelve: es infraestructura, no código.
 
 ---
+
+## Cierre — la auditoría (`/audita-sprint`)
+
+Fase 1 en solo lectura sobre el sprint entero; Fase 2 con los pagos que el usuario aprobó. Las
+cinco fases habían pasado su gate, así que lo que la auditoría encontró es lo que un gate de fase
+**no** puede ver: nadie que revise la Fase 5 mira la portada del S1.
+
+### Lo que se pagó
+
+| # | Hallazgo | Pago |
+|---|---|---|
+| **A1** | `src/app/page.tsx` decía «lo que todavía no hace es **la vuelta**» — falso desde este sprint, en la primera pantalla del producto | sección propia «Y semanas después», con la reversibilidad dicha con precisión |
+| **A2** | `docs/MANUAL-DE-USO.md:22-28` decía «todavía no desanonimiza» **mientras sus secciones 5 y 6 explicaban cómo hacerlo**: el documento se contradecía a sí mismo | apertura reescrita, con enlaces a las dos secciones |
+| **A3** | `/regreso` no se alcanzaba desde la UI en una sesión nueva | enlace en la portada + e2e que entra por clic |
+| **M1** | `sinAparecer` y `fueraDeAlcance` cruzaban la frontera sin lector | fuera del contrato, y aserción de forma exacta que lo impide repetir |
+| **M2** | el motivo del error del archivo devuelto se guardaba y no se leía | tabla de motivos, con la guía a CSV para el Excel devuelto |
+| **M3** | `boveda-archivo.ts` decía «del orden de un segundo» **doce líneas después** de decir que 5M son ~300 ms | el número medido, y qué compra de verdad |
+
+### A3, el hallazgo que importa
+
+El único enlace a `/regreso` vivía en el paso 4 del taller, que solo existe **después de sellar una
+bóveda en esa misma sesión**. El caso real del producto es el contrario: alguien vuelve tres semanas
+después, en otra máquina quizá, y aterriza en la portada sin nada cargado.
+
+Los e2e no lo veían porque **todos** entraban con `goto("/regreso")` — incluido el que prueba «otra
+sesión», que cierra el contexto y abre uno nuevo pero sigue navegando por URL. La prueba de que la
+bóveda es portable era correcta; la de que la función es *alcanzable* no existía. CLAUDE.md pide
+«≥1 e2e por feature core que llega POR LA UI» y el round-trip lo cumplía: lo que no llegaba por la
+UI era la puerta.
+
+A1 y A3 se agravaban entre sí, y esa es la lección: quien volvía leía en la portada que la vuelta no
+existe, y no tenía dónde hacer clic para desmentirlo.
+
+### Por qué §4 falló teniendo su sección
+
+La Fase 2 corrió §4 y dejó su inventario (arriba, «§4 — las frases que caducan»): tres frases, las
+tres pagadas en la Fase 5. El inventario se armó **buscando la palabra «irreversible»**. Las dos
+frases vivas nunca la usan — dicen «no se puede **revertir**» y «el **camino de vuelta**».
+
+§4 no falló por no correrse. Falló por cómo se buscó. La búsqueda que sí las saca es por **promesa
+aplazada**: `todavía no`, `aún no`, `llega después`, `por ahora`, `mientras tanto`. Corriéndola
+aparecieron las dos en un segundo — y una tercera de propina en `GUIA-DE-PRUEBA.html:176`, que dice
+que Velo «todavía no transforma»: **caducada desde el S2**, o sea que esto lleva dos sprints
+filtrando. Se paga sola al escribir la guía v3.
+
+**Para el S4: §4 se busca por promesa aplazada, no por la palabra de la feature.**
+
+### Deuda declarada (Bajo, con pago asignado)
+
+- `esDeLaMismaLlave` (`engine/boveda.ts`) está exportada y probada, **sin llamador de producción**:
+  en `/regreso` no hay llave HMAC cargada contra la cual comparar, y lo que el usuario necesita
+  saber —«esta bóveda no es de este archivo»— ya lo dice `reconocimiento: "ninguno"`. Se decide en
+  el S4: se usa o se borra.
+- `deserializarBoveda` no valida el tipo de cada elemento de `seudonimos`/`originales`. Declarado a
+  propósito por tamaño (480k pares) y el contenido llega **autenticado por GCM**, así que no es
+  vector externo. Sin pago asignado; se revisa si el formato gana versión.
+
+### Verificación de la Fase 2 de la auditoría
+
+| Criterio | Resultado |
+|---|---|
+| `pnpm typecheck` · `pnpm lint` | ✅ limpios |
+| `pnpm test` | ✅ **641 verdes, 1 saltada** (+1: la guardia de forma del resumen del regreso) |
+| `CI=1 pnpm test:e2e` | ✅ **88 passed, 2 skipped, cero flaky** (+2: el enlace de la portada, en los dos proyectos) |
+| Lighthouse, los dos asserts | ✅ `/` **0,94** · `/transformar` 0,93 · `/regreso` 0,92 · a11y/BP/SEO 1,00 |
+| Ninguna promesa aplazada viva | ✅ el grep de `todavía no / aún no / llega después / por ahora` no devuelve producto ni manual |
+
+`/` bajó de 0,95 a 0,94 por la sección nueva. Se anota porque el número se mueve, no porque
+preocupe: el gate está en 0,90.
+
+**Nota de shell:** el comando de Lighthouse del CI (`lhci collect $URLS`) corre en bash, que separa
+`$URLS` en palabras. En zsh **no**, y las tres rutas llegan como una sola URL con `%20` — Lighthouse
+responde 404 y `assert` dice «0 URLs» sin fallar. Para correrlo a mano aquí hay que pasar los
+`--url=` explícitos o usar `${=URLS}`. No es un fallo del CI; es la trampa de «verificar con un
+comando *parecido*» al del CI, en su versión más silenciosa: el que no falla.

@@ -19,13 +19,17 @@ Eso tiene una consecuencia que conviene saber de antemano: **si recargas la pág
 desaparece**. No es un error. Es la misma razón por la que tus datos no se filtran: nunca se
 guardaron en ningún sitio. Volver a soltar el archivo tarda lo mismo que la primera vez.
 
-Y una advertencia sobre el alcance: **Velo ya diagnostica y transforma, pero todavía no
-desanonimiza**. Puedes enmascarar, seudonimizar y generalizar, y llevarte el archivo tratado con su
-reporte; lo que aún no existe es el camino de vuelta —la bóveda que guarda la correspondencia y te
-devuelve los datos originales cuando el tercero termina—. Eso llega después.
+Y algo sobre el alcance, porque cambió: **Velo diagnostica, transforma y ahora también devuelve**.
+Puedes enmascarar, seudonimizar y generalizar, llevarte el archivo tratado con su reporte, y cuando
+el tercero te lo devuelva trabajado, recuperar los valores originales. Ese camino de vuelta es la
+[bóveda](#5-la-bóveda-para-poder-deshacerlo) y
+[el regreso](#6-el-regreso-recuperar-lo-que-entregaste), y tienen su sección cada uno más abajo.
 
-Mientras tanto, **un seudónimo no se puede revertir**. Si necesitas volver a cruzar el archivo
-tratado con el original, guarda tú la correspondencia, o espera a la bóveda.
+Dicho con precisión, porque la diferencia importa: **un seudónimo sigue siendo irreversible por sí
+solo**. Quien reciba el archivo tratado no puede deshacerlo —eso es lo que lo hace seguro de
+entregar—. Lo que lo deshace es la bóveda, un archivo cifrado aparte que solo tienes tú y que solo
+se abre con tu frase de paso. Si no marcaste ninguna columna como reversible al transformar, no hay
+bóveda y no hay vuelta: eso se decide antes, no después.
 
 ---
 
@@ -317,12 +321,12 @@ Velo busca cada valor en la correspondencia de su columna. Y reconoce las column
 
 **Las cuatro cosas que le pueden pasar a una celda**, y Velo las cuenta todas:
 
-| | Qué pasó | Qué sale en el archivo |
-|---|---|---|
-| **Restaurada** | su seudónimo estaba en la bóveda con un único original | el valor original |
-| **Ambigua** | su seudónimo corresponde a **dos** originales | **el seudónimo, intacto** |
-| **La cambió el tercero** | el valor no está en la bóveda | tal como él la dejó |
-| **Fuera de alcance** | su columna no estaba en la bóveda | la columna entera, intacta |
+|                          | Qué pasó                                               | Qué sale en el archivo     |
+| ------------------------ | ------------------------------------------------------ | -------------------------- |
+| **Restaurada**           | su seudónimo estaba en la bóveda con un único original | el valor original          |
+| **Ambigua**              | su seudónimo corresponde a **dos** originales          | **el seudónimo, intacto**  |
+| **La cambió el tercero** | el valor no está en la bóveda                          | tal como él la dejó        |
+| **Fuera de alcance**     | su columna no estaba en la bóveda                      | la columna entera, intacta |
 
 > **Sobre las ambiguas.** Un seudónimo con formato —cédula, NIT— tiene que caber en muchos menos
 > valores que un hash completo, así que a veces dos valores distintos reciben el mismo. Velo **no
