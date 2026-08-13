@@ -589,3 +589,82 @@ ortografía. Cinco tests de copy después, 83,1 %.
 `pnpm test`: **626 verdes, 1 saltada**. Typecheck y lint limpios.
 
 ---
+
+## Fase 5 — UI e integración
+
+### La arquitectura: el regreso tiene su propio worker
+
+`src/lib/regreso.ts` vive aparte de `sesion.ts`, y no por tamaño. La sesión del S1 está construida
+alrededor de UN archivo con UN diagnóstico; el regreso es otro flujo —otro archivo, sin diagnóstico,
+con una bóveda— y meterlo en aquella máquina de estados habría roto el diagnóstico para ganar una
+carpeta menos. Es **otra instancia del mismo `parser.worker.ts`**: se reutiliza el parser (leer un
+CSV es leer un CSV) y no el pipeline de diagnóstico. Que sea otra instancia es lo que permite
+restaurar en una pestaña donde nunca se cargó un original — que es el caso real.
+
+`asaDeArchivo` se **exporta** en vez de duplicarse: la propiedad del ADR-005 es que exista **un solo
+sitio** en toda la app donde un `Blob` del usuario deja de ser alcanzable. Dos implementaciones
+serían dos sitios que auditar, y una de las dos acabaría divergiendo.
+
+### Lo que la medición obligó a corregir en el producto
+
+**El copy de la llave decía «alrededor de un segundo».** Son 36 ms. Corregido en el panel, en el
+manual y en la guía, con la formulación honesta: **la garantía es el número de iteraciones, no los
+segundos** — la misma frase sería falsa en un portátil y cierta en un teléfono.
+
+**`/regreso` sacó 0,90, clavado en el umbral del gate.** Y la causa no era el peso:
+
+```
+              LCP     TBT    CLS     peso
+/transformar  3.2 s   30ms   0       341 KiB
+/regreso      3.2 s   10ms   0.107   357 KiB   ← perf 0,90
+```
+
+**CLS 0,107** contra el 0 de `/transformar` y el tope de 0,1 del presupuesto. El contenido diferido
+sustituía a «Abriendo…» y empujaba el pie de la página hacia abajo. Reservar el alto del primer
+panel lo dejó en **0,92 con CLS ~0**. Un salto de contenido no es una métrica: es la pantalla
+bailándole a alguien que ya estaba leyendo.
+
+(De paso, el primer intento —mover el encabezado fuera del `dynamic`— **no** arregló nada, porque el
+LCP ya era igual al de `/transformar`. Se dejó igual porque es correcto por sí mismo: lo que se ve
+primero se sirve primero. Pero el diagnóstico solo llegó al mirar los audits uno por uno.)
+
+### La pasada de capturas encontró lo que ningún test ve
+
+Con el eje reversible, el desplegable pasó a tener **tres** opciones que empiezan por «Seudónimo».
+En 412 px la celda deja ver unos 19 caracteres de un `<select>` cerrado, así que:
+
+```
+«Seudónimo con forma de cédula»  →  «Seudónimo con forma…»
+«Seudónimo con forma de NIT»     →  «Seudónimo con forma…»
+```
+
+**Indistinguibles.** El usuario no podía saber cuál había elegido sin volver a abrir el menú. Ningún
+test lo ve: el DOM tiene el texto completo y axe no mide anchos. Renombradas a «Seudónimo (hex)»,
+«Seudónimo de cédula» y «Seudónimo de NIT», que caben enteras. La razón queda escrita junto a las
+opciones para que nadie las alargue sin saber por qué son cortas.
+
+**Observación para el gate visual del S4** (no se toca aquí): el `disabled:opacity-55` del sistema
+de botones se lee poco en tema oscuro — el botón de la bóveda con la frase vacía parece pulsable.
+Es el tratamiento heredado y consistente de todo el producto, así que cambiarlo es una decisión del
+design system, no de este sprint. Va al S4 con su captura.
+
+### Verificación de la Fase 5
+
+| Criterio del plan | Resultado |
+|---|---|
+| Round-trip completo por la UI | ✅ y **en otra sesión de navegador**: contexto cerrado, contexto nuevo |
+| Con el archivo maltratado por el tercero | ✅ filas al revés + columna añadida + columna borrada + valor corregido a mano |
+| e2e de garantía de red extendido | ✅ cubre sellar, abrir la bóveda y restaurar |
+| Los dos contrapesos | ✅ `reduced-motion` con visibilidad real + pasada de capturas con hallazgo |
+| axe limpio en ambos temas | ✅ `/regreso` en reposo y con error de bóveda |
+| Carga diferida desde que nace | ✅ y medida: 0,92 con CLS ~0 |
+| §4 — frases caducadas | ✅ README, manual y etiqueta del editor |
+
+`pnpm test`: **640 verdes, 1 saltada**. `CI=1 pnpm test:e2e`: **86 passed, 2 skipped, cero flaky**.
+
+**Nota sobre el CI:** una corrida falló en `quality` con `Can't resolve
+'@vercel/turbopack-next/internal/font/google/font'` — la descarga de fuentes de `next/font` desde el
+runner. `layout.tsx` no se ha tocado en todo el sprint y el rerun pasó limpio. Se registra por si
+vuelve: es infraestructura, no código.
+
+---

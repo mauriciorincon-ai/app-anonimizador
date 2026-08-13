@@ -32,9 +32,17 @@ de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
 
 ## Qué hace hoy
 
-**Sprints 001–002 · El diagnóstico y el disfraz.** Velo lee, mide **y transforma**. Lo que todavía
-no hace es la vuelta: un seudónimo de hoy es irreversible, porque la bóveda llega en el S3.
+**Sprints 001–003 · El diagnóstico, el disfraz y el regreso.** Velo lee, mide, **transforma y
+devuelve**. El círculo está cerrado: entregas sin entregar, y recuperas.
 
+Sobre la reversibilidad, dicho con precisión: un seudónimo **sigue siendo irreversible por sí
+mismo** — es un HMAC, no un cifrado. Lo que el S3 añade es que puedes pedirle a Velo que guarde la
+correspondencia en una **bóveda cifrada aparte**, un archivo que tú custodias. Sin esa bóveda y su
+frase de paso, el seudónimo no vuelve; con ella, sí.
+
+- **El regreso**: cargas la bóveda y el archivo que te devolvieron, y los valores originales
+  vuelven. Por **valor**, no por posición: sobrevive a que el tercero reordene filas, añada
+  columnas, borre otras y corrija valores a mano — y su trabajo se respeta.
 - **Carga** de CSV (sin tope) y Excel (hasta 150 MB, medido) con arrastre y con teclado.
 - **Detección por columna** con validadores que **citan su fuente oficial en el código**: NIT con el
   mod 11 de la DIAN, tarjetas con Luhn (ISO/IEC 7812-1), IBAN con el 97-10 (ISO 13616), celulares y

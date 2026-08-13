@@ -41,7 +41,16 @@ import {
 } from "@/engine/politicas-de-fabrica";
 import { numero } from "@/lib/formato";
 
-/** Las opciones del desplegable, en el orden en que se ofrecen: de conservar a suprimir. */
+/**
+ * Las opciones del desplegable, en el orden en que se ofrecen: de conservar a suprimir.
+ *
+ * **Los textos son cortos por una razón encontrada en la pasada de capturas del S3, no por gusto.**
+ * En 412 px la celda deja unos 19 caracteres visibles en un `<select>` cerrado, y las tres opciones
+ * de seudónimo empezaban por la misma palabra: «Seudónimo con forma de cédula» y «Seudónimo con
+ * forma de NIT» se truncaban las dos en «Seudónimo con forma…» y quedaban **indistinguibles**. El
+ * usuario no podía saber cuál había elegido sin volver a abrir el menú. Ningún test lo ve: el DOM
+ * tiene el texto completo, y axe no mide anchos.
+ */
 const OPCIONES: readonly { valor: string; texto: string; tecnica: Tecnica }[] =
   [
     {
@@ -58,17 +67,17 @@ const OPCIONES: readonly { valor: string; texto: string; tecnica: Tecnica }[] =
       // Ya no dice «irreversible»: desde el S3 la vuelta es una casilla aparte, y el nombre de la
       // técnica no puede prometer lo contrario de lo que la fila de al lado permite (§4).
       valor: "seudonimizar",
-      texto: "Seudónimo (hexadecimal)",
+      texto: "Seudónimo (hex)",
       tecnica: { tipo: "seudonimizar", longitud: 16 },
     },
     {
       valor: "seudonimizar-cedula",
-      texto: "Seudónimo con forma de cédula",
+      texto: "Seudónimo de cédula",
       tecnica: { tipo: "seudonimizar-con-formato", formato: "cedula" },
     },
     {
       valor: "seudonimizar-nit",
-      texto: "Seudónimo con forma de NIT",
+      texto: "Seudónimo de NIT",
       tecnica: { tipo: "seudonimizar-con-formato", formato: "nit" },
     },
     {
