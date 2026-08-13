@@ -68,6 +68,36 @@ for (const tema of ["light", "dark"] as const) {
       expect(resumir(violations)).toEqual([]);
     });
 
+    test("el regreso en reposo pasa axe", async ({ page }) => {
+      // Estado de partida de la ruta nueva: dos zonas de archivo, un campo de contraseña y sus
+      // etiquetas. Es la pantalla que un usuario abre semanas después, sin nada cargado.
+      await page.goto("/regreso");
+      await page
+        .getByRole("heading", { name: /Recupera lo que entregaste/ })
+        .waitFor();
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
+
+    test("el regreso con un error de bóveda pasa axe", async ({ page }) => {
+      // El estado que más fácil se rompe: un `role="alert"` mal puesto o un color de alerta sin
+      // contraste solo se ve aquí, y solo en uno de los dos temas.
+      await page.goto("/regreso");
+      await page
+        .getByLabel("Elegir el archivo de bóveda")
+        .setInputFiles(CLINICO);
+      await page
+        .getByLabel("Frase de paso de la bóveda")
+        .fill("una frase larga de prueba");
+      await page.getByRole("button", { name: "Abrir la bóveda" }).click();
+      await page
+        .locator("main")
+        .getByRole("alert")
+        .waitFor({ timeout: 60_000 });
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
+
     test("el taller con el editor y la llave pasa axe", async ({ page }) => {
       // La pantalla con más controles del producto: 24 desplegables, un campo de contraseña, un
       // número y dos botones de archivo. Es donde un `label` suelto o un contraste flojo se

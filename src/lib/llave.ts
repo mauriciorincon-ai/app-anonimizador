@@ -23,10 +23,23 @@
  * Fuente: **OWASP Password Storage Cheat Sheet** — mínimo 600.000 para PBKDF2-HMAC-SHA256.
  * https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
  *
- * Tarda del orden de un segundo, y **eso es lo que compra**: encarece por igual cada intento de
- * quien quiera adivinar la frase de paso. La UI lo dice en vez de disimularlo con un spinner
- * genérico. (Argon2id sería preferible según el mismo documento, pero en navegador exige WASM;
- * PBKDF2 es nativo y no añade dependencias a auditar. Camino de salida declarado en el brief.)
+ * **La garantía es el número de iteraciones, no los segundos** — y esta línea decía otra cosa hasta
+ * que el S3 la midió. Antes afirmaba «tarda del orden de un segundo, y eso es lo que compra». Medido
+ * en Chromium sobre esta máquina: **36 ms** con 600.000 iteraciones (61 ms con un millón, 121 ms con
+ * dos; `tests/medicion/cripto-en-el-navegador.mjs` lo vuelve a sacar). En un teléfono de gama baja
+ * será bastante más, y esa variación de un orden de magnitud entre dispositivos es justamente por
+ * qué el estándar se expresa en iteraciones: el tiempo no es una propiedad que se pueda prometer.
+ *
+ * Lo que sí compra el costo: encarece por igual cada intento de quien quiera adivinar la frase.
+ *
+ * **Y desde el S2 este número es una constante de compatibilidad, no un parámetro.** Subirlo
+ * cambiaría la llave derivada de la misma frase y la misma sal, o sea **cambiaría todos los
+ * seudónimos** — que es exactamente romper la consistencia referencial (C9) que el producto promete
+ * entre archivos de meses distintos. Endurecerlo exige una versión de llave y una migración, no una
+ * edición de esta línea.
+ *
+ * (Argon2id sería preferible según el mismo documento, pero en navegador exige WASM; PBKDF2 es
+ * nativo y no añade dependencias a auditar. Camino de salida declarado en el brief.)
  */
 export const ITERACIONES_PBKDF2 = 600_000;
 
@@ -59,11 +72,23 @@ function deHex(hex: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-/** Sal nueva. Es lo único aleatorio de todo el pipeline, y por eso vive fuera del motor. */
-export function generarSal(): string {
-  const bytes = new Uint8Array(BYTES_DE_SAL);
+/**
+ * Bytes aleatorios de verdad. **Es el único sitio de todo `src/` donde nace azar**, y por eso vive
+ * en `lib/` y no en `engine/`: el gate de determinismo veta `crypto.getRandomValues` en el motor.
+ *
+ * Lo usan la sal de aquí abajo y —desde el S3— la sal y el **IV** de la bóveda cifrada
+ * (`lib/boveda-archivo.ts`). Tenerlo en una sola función significa que auditar el azar del producto
+ * es leer tres líneas.
+ */
+export function bytesAleatorios(cuantos: number): Uint8Array<ArrayBuffer> {
+  const bytes = new Uint8Array(cuantos);
   crypto.getRandomValues(bytes);
-  return aHex(bytes);
+  return bytes;
+}
+
+/** Sal nueva, en hexadecimal. */
+export function generarSal(): string {
+  return aHex(bytesAleatorios(BYTES_DE_SAL));
 }
 
 /** Texto de la huella: HMAC de una constante conocida. No revela la llave. */

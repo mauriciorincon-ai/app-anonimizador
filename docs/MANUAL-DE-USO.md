@@ -19,13 +19,17 @@ Eso tiene una consecuencia que conviene saber de antemano: **si recargas la pág
 desaparece**. No es un error. Es la misma razón por la que tus datos no se filtran: nunca se
 guardaron en ningún sitio. Volver a soltar el archivo tarda lo mismo que la primera vez.
 
-Y una advertencia sobre el alcance: **Velo ya diagnostica y transforma, pero todavía no
-desanonimiza**. Puedes enmascarar, seudonimizar y generalizar, y llevarte el archivo tratado con su
-reporte; lo que aún no existe es el camino de vuelta —la bóveda que guarda la correspondencia y te
-devuelve los datos originales cuando el tercero termina—. Eso llega después.
+Y algo sobre el alcance, porque cambió: **Velo diagnostica, transforma y ahora también devuelve**.
+Puedes enmascarar, seudonimizar y generalizar, llevarte el archivo tratado con su reporte, y cuando
+el tercero te lo devuelva trabajado, recuperar los valores originales. Ese camino de vuelta es la
+[bóveda](#5-la-bóveda-para-poder-deshacerlo) y
+[el regreso](#6-el-regreso-recuperar-lo-que-entregaste), y tienen su sección cada uno más abajo.
 
-Mientras tanto, **un seudónimo no se puede revertir**. Si necesitas volver a cruzar el archivo
-tratado con el original, guarda tú la correspondencia, o espera a la bóveda.
+Dicho con precisión, porque la diferencia importa: **un seudónimo sigue siendo irreversible por sí
+solo**. Quien reciba el archivo tratado no puede deshacerlo —eso es lo que lo hace seguro de
+entregar—. Lo que lo deshace es la bóveda, un archivo cifrado aparte que solo tienes tú y que solo
+se abre con tu frase de paso. Si no marcaste ninguna columna como reversible al transformar, no hay
+bóveda y no hay vuelta: eso se decide antes, no después.
 
 ---
 
@@ -206,8 +210,10 @@ antes de escribirla:
   más la tenga.
 - **Si se filtra, los seudónimos se vuelven enlazables.** Trátala como una contraseña.
 
-Derivarla tarda alrededor de un segundo, **y ese segundo es la protección**: son 600.000 vueltas de
-PBKDF2 (el mínimo que recomienda OWASP), que encarecen por igual cada intento de adivinarla. Guarda
+Derivarla cuesta 600.000 vueltas de PBKDF2 (el mínimo que recomienda OWASP), **y ese costo es la
+protección**: encarece por igual cada intento de adivinarla. Cuánto tarda depende del equipo — en un
+portátil moderno es un instante, en un teléfono de gama baja se nota—; lo que se garantiza es el
+número de vueltas, no los segundos. Guarda
 la frase **y la sal** que Velo te enseña: sin las dos, los seudónimos del mes que viene no cuadran.
 
 #### Antes y después
@@ -268,6 +274,71 @@ documento al lado, puede leer qué se hizo y con qué criterio.
 
 ---
 
+### 5. La bóveda: para poder deshacerlo
+
+Un seudónimo, por sí solo, **no vuelve**: es un HMAC, no un cifrado, y ningún algoritmo lo revierte.
+La vuelta la da una tabla que diga qué seudónimo salió de qué valor — y eso es la **bóveda**.
+
+**Cómo se pide.** En el paso 1, debajo de la técnica de cada columna que sea un seudónimo, aparece
+la casilla **«Poder deshacerlo con una bóveda»**. Márcala en las columnas que quieras poder
+recuperar. Solo los seudónimos la admiten, y no es una limitación de esta versión: enmascarar
+(`103***89`) y generalizar (`30-39`) **destruyen** información, así que no hay tabla que lo deshaga
+— los dígitos que faltan ya no existen en ninguna parte. La pantalla te dice cuáles no van a volver.
+
+**Cómo se guarda.** Al transformar aparece el paso 4. Escribes una frase de paso —**puede y debería
+ser distinta de la del proyecto**— y Velo prepara un archivo `.velo` cifrado que te descargas.
+
+Tres cosas sobre ese archivo, y las tres importan:
+
+- **Lleva tus datos originales.** Es el archivo más sensible que sale de Velo: una tabla de
+  identificadores sin nada alrededor. Guárdalo donde guardarías el original.
+- **Nunca junto al anonimizado.** Si los dos viajan en el mismo correo, quien reciba el correo tiene
+  el archivo sin anonimizar. La bóveda es tuya; el anonimizado es lo que entregas.
+- **Sin la frase no hay recuperación.** Ni Velo, ni nadie. Es la contrapartida de que nadie más pueda
+  abrirla. Apúntala en tu gestor de contraseñas antes de cerrar la pestaña.
+
+Va cifrada con AES-GCM y una llave derivada de tu frase con 600.000 vueltas de PBKDF2. En el disco
+no hay un solo valor original legible.
+
+---
+
+### 6. El regreso: recuperar lo que entregaste
+
+Cuando el consultor, la empresa o la IA te devuelvan el archivo trabajado, entra a **`/regreso`** (el
+enlace está en el paso 4, y la ruta funciona sola: no necesitas tener nada cargado).
+
+1. **Carga la bóveda** y escribe su frase. Velo te enseña su huella, cuántas correspondencias trae y
+   qué columnas puede devolver.
+2. **Carga el archivo devuelto.** Puede venir con las filas en otro orden, con columnas nuevas del
+   tercero, sin las que él borró y con valores corregidos a mano: nada de eso estorba.
+3. **Lee el aviso antes de confirmar.** Si la bóveda tiene seudónimos ambiguos, Velo te dice cuántos
+   **antes** de que pulses, no después.
+4. **Restaura** y llévate el archivo restaurado y su informe.
+
+**Por qué sobrevive a que el tercero trabaje.** La restauración es **por valor, jamás por posición**:
+Velo busca cada valor en la correspondencia de su columna. Y reconoce las columnas por su
+**contenido**, no por su nombre — si el tercero renombró `cedula` a `ID_PACIENTE`, se reconoce igual.
+
+**Las cuatro cosas que le pueden pasar a una celda**, y Velo las cuenta todas:
+
+|                          | Qué pasó                                               | Qué sale en el archivo     |
+| ------------------------ | ------------------------------------------------------ | -------------------------- |
+| **Restaurada**           | su seudónimo estaba en la bóveda con un único original | el valor original          |
+| **Ambigua**              | su seudónimo corresponde a **dos** originales          | **el seudónimo, intacto**  |
+| **La cambió el tercero** | el valor no está en la bóveda                          | tal como él la dejó        |
+| **Fuera de alcance**     | su columna no estaba en la bóveda                      | la columna entera, intacta |
+
+> **Sobre las ambiguas.** Un seudónimo con formato —cédula, NIT— tiene que caber en muchos menos
+> valores que un hash completo, así que a veces dos valores distintos reciben el mismo. Velo **no
+> elige por ti**: deja el seudónimo puesto, te dice cuántas celdas son y las declara en el informe.
+> Escribir uno de los dos candidatos te devolvería el dato de otra persona sin que nada lo indicara.
+
+**El informe del regreso** dice qué volvió y qué no, con las salvedades **antes** del porcentaje —
+igual que el reporte del tratamiento. No lleva ninguna celda: solo nombres de columna, cifras y
+huellas. El archivo restaurado sí lleva tus datos: trátalo como el original, porque lo es.
+
+---
+
 ## Lo que Velo NO afirma
 
 Esta sección es tan parte del producto como las otras.
@@ -322,7 +393,6 @@ segundos sin que la pestaña se congele, porque el trabajo pesado ocurre en un h
 
 ## Lo que viene
 
-**La vuelta.** Hoy los seudónimos son irreversibles a propósito: sin bóveda no hay camino de
-regreso. Lo que falta es la otra mitad del viaje — una bóveda cifrada con tu llave que permita
-**devolver los datos a su forma original** cuando el tercero te entregue el resultado procesado.
-Ese ida y vuelta es la razón de ser de Velo, y llega en el siguiente sprint.
+**El certificado.** Un documento firmado que declare, para una entrega concreta, qué se le hizo al
+archivo y con qué política — pensado para adjuntarlo a un contrato o a una auditoría. Y la bitácora
+de tratamientos, para que una organización pueda enseñar el historial de lo que entregó.

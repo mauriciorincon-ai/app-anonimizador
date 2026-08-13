@@ -15,14 +15,16 @@
 // generaliza. Sigue en blanco, y el conteo de no-vacíos lo refleja.
 
 import {
-  CODIGO_VACIO,
+  reconstruirColumna,
   type ColumnaColumnar,
   type TablaColumnar,
 } from "../columnar";
 import { enmascarar } from "../mascara";
 import { anonimizarConMondrian, type ResultadoDeMondrian } from "../mondrian";
+import type { EntradaDeBoveda } from "../boveda";
 import {
   columnasDeMondrian,
+  esReversible,
   requiereLlave,
   tecnicaDe,
   type Politica,
@@ -55,42 +57,21 @@ export interface TablaTransformada {
   readonly pendientesDeMondrian: readonly string[];
   /** El reparto, cuando la política pidió k. `null` cuando no había nada que repartir. */
   readonly mondrian: ResultadoDeMondrian | null;
-}
-
-/**
- * Rehace la columna con los valores nuevos, deduplicando.
- *
- * `valoresNuevos` viene en paralelo al diccionario viejo, así que el mapeo viejo→nuevo es directo
- * y las filas solo pagan una lectura de índice: nunca se recorre el texto por fila.
- */
-function reconstruirColumna(
-  original: ColumnaColumnar,
-  valoresNuevos: readonly string[],
-): ColumnaColumnar {
-  const indice = new Map<string, number>([["", CODIGO_VACIO]]);
-  const valores: string[] = [""];
-  const viejoANuevo = new Uint32Array(valoresNuevos.length);
-
-  for (let v = 0; v < valoresNuevos.length; v++) {
-    const nuevo = valoresNuevos[v];
-    let codigo = indice.get(nuevo);
-    if (codigo === undefined) {
-      codigo = valores.length;
-      valores.push(nuevo);
-      indice.set(nuevo, codigo);
-    }
-    viejoANuevo[v] = codigo;
-  }
-
-  const codigos = new Uint32Array(original.codigos.length);
-  let noVacios = 0;
-  for (let f = 0; f < codigos.length; f++) {
-    const codigo = viejoANuevo[original.codigos[f]];
-    codigos[f] = codigo;
-    if (codigo !== CODIGO_VACIO) noVacios++;
-  }
-
-  return { nombre: original.nombre, codigos, valores, noVacios };
+  /**
+   * El material de la bóveda: una entrada por columna **reversible**, con su diccionario original y
+   * los seudónimos que salieron de él, en paralelo.
+   *
+   * **Sale gratis, y eso es un hallazgo de la Fase 2, no una casualidad.** El plan preveía extender
+   * `ResultadoDeSeudonimo` para que registrara la correspondencia; no hizo falta tocar ese contrato
+   * —ni sus tres consumidores— porque aquí ya están los dos diccionarios en paralelo: el de entrada
+   * es `columna.valores` y el de salida es lo que devuelve la técnica. La correspondencia son esas
+   * dos listas, que es exactamente la forma que `construirBoveda` recibe.
+   *
+   * Va sin identidad a propósito. La huella de la llave, su sal y el hash de la política son hechos
+   * de la **sesión**, no de la transformación, y quien los tiene es el worker. El motor entrega el
+   * material; la bóveda se arma donde vive la identidad.
+   */
+  readonly correspondencias: readonly EntradaDeBoveda[];
 }
 
 /** Las técnicas que no necesitan llave son puras y síncronas: un mapa sobre el diccionario. */
@@ -137,6 +118,7 @@ export async function aplicarPolitica(
   const columnas: ColumnaColumnar[] = [];
   const suprimidas: string[] = [];
   const colisiones: ColisionEnColumna[] = [];
+  const correspondencias: EntradaDeBoveda[] = [];
 
   for (const columna of tabla.columnas) {
     const tecnica = tecnicaDe(politica, columna.nombre);
@@ -182,6 +164,15 @@ export async function aplicarPolitica(
         cuantas: resultado.colisiones,
       });
     }
+    // ANTES de reconstruir: `columna.valores` es todavía el diccionario original, que es la mitad
+    // izquierda de la correspondencia. Después de reconstruir ya no existe.
+    if (esReversible(tecnica)) {
+      correspondencias.push({
+        columna: columna.nombre,
+        originales: columna.valores,
+        seudonimos: resultado.valores,
+      });
+    }
     columnas.push(reconstruirColumna(columna, resultado.valores));
   }
 
@@ -205,5 +196,6 @@ export async function aplicarPolitica(
     colisiones,
     pendientesDeMondrian: mondrian === null ? paraMondrian : [],
     mondrian,
+    correspondencias,
   };
 }

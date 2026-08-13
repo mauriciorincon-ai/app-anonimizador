@@ -21,6 +21,7 @@ import {
   descartar,
   invalidarTransformacion,
   prepararArchivo,
+  sellarLaBoveda,
   transformar,
   useSesion,
   useTaller,
@@ -151,7 +152,13 @@ function archivoListo(
   nombre = "tabla-velo.csv",
 ): void {
   const blob = new Blob(["a,b\n1,2\n"], { type: "text/csv" });
-  worker.responde({ tipo: "archivo", blob, nombre, bytes: blob.size });
+  worker.responde({
+    tipo: "archivo",
+    blob,
+    nombre,
+    bytes: blob.size,
+    proposito: "anonimizado",
+  });
 }
 
 // ── Los tests ─────────────────────────────────────────────────────────────────────────────────
@@ -340,7 +347,7 @@ describe("el progreso, que es de dos dueños", () => {
 });
 
 describe("sin worker no hay taller", () => {
-  it("las tres órdenes del taller no hacen nada antes de cargar un archivo", () => {
+  it("las órdenes del taller no hacen nada antes de cargar un archivo", () => {
     // No es defensa contra un bug: es que las pantallas del taller comparten ruta con la aduana, y
     // una recarga de `/transformar` sin archivo llega aquí con el worker en null.
     render(<Sonda />);
@@ -348,13 +355,18 @@ describe("sin worker no hay taller", () => {
       derivarLlaveDelProyecto("frase");
       transformar(POLITICA);
       prepararArchivo();
+      sellarLaBoveda("frase de la boveda");
     });
     expect(WorkerDeMentira.ultimo).toBeNull();
+    // La forma COMPLETA, a propósito: un campo nuevo en el taller tiene que pasar por aquí y ser
+    // mirado. Es lo que cazó la bóveda del S3 al añadir sus dos.
     expect(taller).toEqual({
       llave: { fase: "sin-llave" },
       transformacion: { fase: "sin-hacer" },
       etapa: null,
       archivo: null,
+      boveda: { fase: "sin-sellar" },
+      archivoDeBoveda: null,
     });
   });
 });

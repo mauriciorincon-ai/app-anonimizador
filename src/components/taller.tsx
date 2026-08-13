@@ -17,12 +17,14 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import { BalanceEnPantalla } from "@/components/balance-en-pantalla";
+import { BovedaDelTratamiento } from "@/components/boveda-del-tratamiento";
 import { clasesDeBoton, Boton } from "@/components/boton";
 import { DescargaDelArchivo } from "@/components/descarga-del-archivo";
 import { EditorDePolitica } from "@/components/editor-de-politica";
 import { LlaveDelProyecto } from "@/components/llave-del-proyecto";
 import { VistaPrevia } from "@/components/vista-previa";
 import {
+  esReversible,
   requiereLlave,
   VERSION_DE_POLITICA,
   type Politica,
@@ -32,6 +34,7 @@ import {
   derivarLlaveDelProyecto,
   invalidarTransformacion,
   prepararArchivo,
+  sellarLaBoveda,
   transformar,
   useTaller,
 } from "@/lib/sesion";
@@ -73,6 +76,9 @@ export function Taller({ informe }: { informe: Informe }) {
   const taller = useTaller();
   const router = useRouter();
   const [politica, setPolitica] = useState<Politica>(POLITICA_VACIA);
+  const columnasReversibles = politica.reglas
+    .filter((regla) => esReversible(regla.tecnica))
+    .map((regla) => regla.columna);
 
   const pideLlave = requiereLlave(politica);
   const llaveLista = taller.llave.fase === "lista";
@@ -192,6 +198,16 @@ export function Taller({ informe }: { informe: Informe }) {
                 suprimidas: hecha.suprimidas,
               }}
             />
+            {/* Solo si la política pidió columnas reversibles. Ofrecer una bóveda cuando no hay
+                correspondencia que guardar prometería una vuelta que no existe. */}
+            {columnasReversibles.length > 0 ? (
+              <BovedaDelTratamiento
+                boveda={taller.boveda}
+                archivo={taller.archivoDeBoveda}
+                columnas={columnasReversibles}
+                onSellar={sellarLaBoveda}
+              />
+            ) : null}
           </>
         ) : null}
       </div>

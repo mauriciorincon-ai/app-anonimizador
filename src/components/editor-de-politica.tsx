@@ -25,8 +25,10 @@ import { Boton } from "@/components/boton";
 import { Panel } from "@/components/panel";
 import type { HallazgoDeColumna } from "@/engine/clasificador";
 import {
+  esReversible,
   exportarPolitica,
   importarPolitica,
+  requiereBoveda,
   tecnicaDe,
   type Politica,
   type Tecnica,
@@ -39,7 +41,16 @@ import {
 } from "@/engine/politicas-de-fabrica";
 import { numero } from "@/lib/formato";
 
-/** Las opciones del desplegable, en el orden en que se ofrecen: de conservar a suprimir. */
+/**
+ * Las opciones del desplegable, en el orden en que se ofrecen: de conservar a suprimir.
+ *
+ * **Los textos son cortos por una razón encontrada en la pasada de capturas del S3, no por gusto.**
+ * En 412 px la celda deja unos 19 caracteres visibles en un `<select>` cerrado, y las tres opciones
+ * de seudónimo empezaban por la misma palabra: «Seudónimo con forma de cédula» y «Seudónimo con
+ * forma de NIT» se truncaban las dos en «Seudónimo con forma…» y quedaban **indistinguibles**. El
+ * usuario no podía saber cuál había elegido sin volver a abrir el menú. Ningún test lo ve: el DOM
+ * tiene el texto completo, y axe no mide anchos.
+ */
 const OPCIONES: readonly { valor: string; texto: string; tecnica: Tecnica }[] =
   [
     {
@@ -53,18 +64,20 @@ const OPCIONES: readonly { valor: string; texto: string; tecnica: Tecnica }[] =
       tecnica: { tipo: "enmascarar" },
     },
     {
+      // Ya no dice «irreversible»: desde el S3 la vuelta es una casilla aparte, y el nombre de la
+      // técnica no puede prometer lo contrario de lo que la fila de al lado permite (§4).
       valor: "seudonimizar",
-      texto: "Seudónimo irreversible",
+      texto: "Seudónimo (hex)",
       tecnica: { tipo: "seudonimizar", longitud: 16 },
     },
     {
       valor: "seudonimizar-cedula",
-      texto: "Seudónimo con forma de cédula",
+      texto: "Seudónimo de cédula",
       tecnica: { tipo: "seudonimizar-con-formato", formato: "cedula" },
     },
     {
       valor: "seudonimizar-nit",
-      texto: "Seudónimo con forma de NIT",
+      texto: "Seudónimo de NIT",
       tecnica: { tipo: "seudonimizar-con-formato", formato: "nit" },
     },
     {
@@ -167,6 +180,32 @@ export function EditorDePolitica({
     });
   }
 
+  /**
+   * El eje reversible, columna por columna. Se guarda `true` o se quita: `reversible: false` y el
+   * campo ausente son la misma política, y `normalizarPolitica` los unifica para que no tengan dos
+   * hashes distintos.
+   */
+  function cambiarReversible(nombre: string, reversible: boolean): void {
+    const tecnica = tecnicaDe(politica, nombre);
+    if (
+      tecnica.tipo !== "seudonimizar" &&
+      tecnica.tipo !== "seudonimizar-con-formato"
+    ) {
+      return;
+    }
+    onCambio({
+      ...politica,
+      origen: origenTrasEditar(politica.origen),
+      reglas: [
+        ...politica.reglas.filter((r) => r.columna !== nombre),
+        {
+          columna: nombre,
+          tecnica: { ...tecnica, reversible: reversible || undefined },
+        },
+      ],
+    });
+  }
+
   function aplicarFabrica(fabrica: PoliticaDeFabrica): void {
     onCambio(
       construirPolitica(
@@ -209,6 +248,22 @@ export function EditorDePolitica({
   const conMondrian = politica.reglas.some(
     (r) => r.tecnica.tipo === "generalizar-automatico",
   );
+  const conVuelta = requiereBoveda(politica);
+  /**
+   * Lo que NO va a poder volver, aunque se guarde la bóveda.
+   *
+   * Se dice aquí, en la pantalla donde se elige, y no solo en el informe del regreso — que llega
+   * cuando ya no hay nada que decidir. Enmascarar y generalizar **destruyen**: `103***89` y `30-39`
+   * no vuelven ni con bóveda ni con nada, porque los dígitos que faltan no existen en ningún sitio.
+   */
+  const sinVuelta = politica.reglas
+    .filter(
+      (r) =>
+        r.tecnica.tipo === "enmascarar" ||
+        r.tecnica.tipo === "suprimir" ||
+        r.tecnica.tipo.startsWith("generalizar"),
+    )
+    .map((r) => r.columna);
 
   return (
     <Panel
@@ -319,12 +374,44 @@ export function EditorDePolitica({
                       </option>
                     ))}
                   </select>
+                  <CasillaDeVuelta
+                    columna={columna.nombre}
+                    tecnica={tecnicaDe(politica, columna.nombre)}
+                    onCambio={cambiarReversible}
+                  />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {conVuelta ? (
+        <div className="border-borde mt-4 border-t pt-4">
+          <p className="text-tinta text-[0.875rem] leading-relaxed">
+            Con al menos una columna reversible, al transformar vas a poder{" "}
+            <strong className="font-medium">guardar una bóveda</strong>: un
+            archivo cifrado con la correspondencia, para recuperar los
+            originales cuando te devuelvan el trabajo.
+          </p>
+          {sinVuelta.length > 0 ? (
+            <p className="text-tinta-tenue mt-2 text-[0.8125rem] leading-relaxed">
+              Lo que <strong className="font-medium">no</strong> va a volver,
+              tengas o no la bóveda:{" "}
+              {sinVuelta.map((nombre, i) => (
+                <span key={nombre}>
+                  {i > 0 ? " · " : ""}
+                  <code className="font-mono">{nombre}</code>
+                </span>
+              ))}
+              . Enmascarar, generalizar y quitar una columna{" "}
+              <strong className="font-medium">destruyen</strong> información: no
+              hay tabla que lo deshaga porque los datos que faltan ya no existen
+              en ninguna parte.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {conMondrian ? (
         <div className="border-borde mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
@@ -370,6 +457,45 @@ export function EditorDePolitica({
         </div>
       ) : null}
     </Panel>
+  );
+}
+
+/**
+ * La casilla de «poder deshacerlo», solo donde tiene sentido.
+ *
+ * Va DEBAJO del desplegable y no en una tercera columna: en 412 px la tercera columna ya empujaba
+ * el desplegable fuera de la pantalla en el S2, y eso se encontró en la pasada de capturas, no en
+ * un test. Aquí no aparece si la técnica no admite vuelta, así que no ocupa sitio de más.
+ */
+function CasillaDeVuelta({
+  columna,
+  tecnica,
+  onCambio,
+}: {
+  columna: string;
+  tecnica: Tecnica;
+  onCambio: (columna: string, reversible: boolean) => void;
+}) {
+  const admiteVuelta =
+    tecnica.tipo === "seudonimizar" ||
+    tecnica.tipo === "seudonimizar-con-formato";
+  if (!admiteVuelta) return null;
+  return (
+    <label className="text-tinta-suave mt-1.5 flex max-w-[18rem] items-start gap-2 text-[0.8125rem] leading-snug">
+      <input
+        type="checkbox"
+        checked={esReversible(tecnica)}
+        className="accent-acento mt-0.5 size-4 shrink-0"
+        onChange={(evento) => onCambio(columna, evento.target.checked)}
+      />
+      <span>
+        Poder deshacerlo con una bóveda
+        <span className="text-tinta-tenue block">
+          Guarda la correspondencia en un archivo cifrado. Sin la bóveda, el
+          seudónimo sigue sin vuelta.
+        </span>
+      </span>
+    </label>
   );
 }
 
