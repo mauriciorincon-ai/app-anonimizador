@@ -218,3 +218,76 @@ falla) no se parece nada a la causa (el test se aborta a sí mismo).
 **Nota sobre el tipo:** hacer `sha256DeSalida` y `nombreDeSalida` obligatorios rompió **once** sitios
 de test a la vez. Se anota como señal, no como molestia: si hubieran sido opcionales, el certificado
 habría podido construirse sin huella de salida y nadie se habría enterado.
+
+---
+
+## Fase 2 — La bitácora
+
+### El sobre cifrado se extrajo, y los tests de la bóveda son la prueba
+
+La bitácora necesitaba **exactamente** el formato del `.velo` con otro contenido dentro. Se extrajo
+`lib/archivo-cifrado.ts` en vez de duplicarlo, y la razón no es «no te repitas»: **una equivocación
+en cripto duplicada son dos equivocaciones que se arreglan por separado, y la segunda se olvida.**
+Subir las iteraciones, endurecer la derivación o corregir un fallo del modo tiene ahora un solo
+sitio y dos archivos que se benefician.
+
+**La prueba de que la extracción no cambió conducta: los 28 tests de la bóveda pasaron sin
+tocarse.** Ni una aserción, ni un fixture. Si hubiera hecho falta editarlos, el refactor no habría
+sido un refactor.
+
+Lo que NO se comparte, y por qué se separa:
+
+| | Bóveda | Bitácora |
+|---|---|---|
+| Palabra mágica | `VELO` | `VLOG` |
+| Extensión | `.velo` | `.velolog` |
+
+La palabra mágica es la **defensa** —abrir una donde se esperaba la otra se rechaza **sin descifrar
+nada**—; la extensión es la **cortesía**, porque el selector filtra y la equivocación se evita antes
+de ocurrir. Se separan porque es **el error más probable del usuario**: dos archivos cifrados de la
+misma app, guardados el mismo día. Contestarle «frase incorrecta» lo mandaría a probar frases media
+hora. Tiene su test.
+
+### Zod aquí, a mano en la bóveda — y no es incoherencia
+
+La bóveda valida a mano porque puede traer **480.000 pares** y pasarlos por un esquema significa una
+validación por cadena sobre la única estructura del producto que llega a medio millón de entradas.
+Una bitácora son decenas o cientos de entradas de diez campos: exactamente el terreno donde
+`politica.ts` ya usa Zod. **Copiar la validación a mano aquí habría sido heredar el precio sin
+heredar el motivo.**
+
+### La entrada guarda las dos puntas, no la reducción
+
+La decisión menos obvia del tipo, y viene de la lección más cara del ciclo. «Bajó del 30 % al 2 %»
+es cierta y puede ser engañosa; el balance del S2 tuvo que aprender a viajar con sus salvedades. Una
+bitácora que guardara la reducción **compuesta** repetiría el error **justo donde más dura**: un
+registro que se lee meses después, sin la pantalla al lado.
+
+Así que la entrada guarda `unicosAntes` y `unicosDespues` por separado —dos hechos, no una
+conclusión— y arrastra el `esTitular` que el balance ya había decidido, en vez de re-decidirlo con
+menos información y meses de retraso.
+
+### «No reescribe las anteriores» — lo que no puede significar
+
+No puede significar bytes: AES-GCM exige IV único, así que el archivo entero cambia cada vez, por
+diseño. Quien lea la DoD esperando un `append` al final del archivo se encontraría otra cosa, y por
+eso queda escrito en el ADR.
+
+Significa lo que importa y lo que se prueba: **la serialización EN CLARO de las N entradas previas
+es byte-idéntica tras añadir la N+1.** Con su test hermano —que `anadirEntrada` no mute—, sin el
+cual el primero podría estar comparando un objeto consigo mismo.
+
+→ **ADR-007 · La bitácora: archivo propio, aparte de la bóveda.**
+
+### Verificación de la Fase 2
+
+| Criterio del plan | Resultado |
+|---|---|
+| Tres entradas sobreviven crear → cifrar → cerrar → abrir, en orden | ✅ |
+| Añadir no reescribe las anteriores | ✅ probado en claro, más el test de no-mutación |
+| El archivo en disco no lleva un nombre en claro | ✅ barrido de bytes: ni nombres, ni hashes, ni la palabra `entradas` |
+| Frase incorrecta con su mensaje | ✅ y distinguida de «se descifró pero no es una bitácora» |
+| Cobertura >80 % | ✅ `lib` en 95,4 % · `engine` en 98,9 % |
+
+`pnpm typecheck` y `pnpm lint` limpios. `pnpm test`: **676 verdes, 1 saltada** (+25).
+`CI=1 pnpm test:e2e`: **94 passed, 2 skipped, cero flaky**.
