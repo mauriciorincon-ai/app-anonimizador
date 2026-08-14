@@ -20,9 +20,9 @@ desaparece**. No es un error. Es la misma razón por la que tus datos no se filt
 guardaron en ningún sitio. Volver a soltar el archivo tarda lo mismo que la primera vez.
 
 Y algo sobre el alcance, porque cambió: **Velo diagnostica, transforma y ahora también devuelve**.
-Puedes enmascarar, seudonimizar y generalizar, llevarte el archivo tratado con su reporte, y cuando
-el tercero te lo devuelva trabajado, recuperar los valores originales. Ese camino de vuelta es la
-[bóveda](#5-la-bóveda-para-poder-deshacerlo) y
+Puedes enmascarar, seudonimizar y generalizar, llevarte el archivo tratado con su certificado, y
+cuando el tercero te lo devuelva trabajado, recuperar los valores originales. Ese camino de vuelta
+es la [bóveda](#5-la-bóveda-para-poder-deshacerlo) y
 [el regreso](#6-el-regreso-recuperar-lo-que-entregaste), y tienen su sección cada uno más abajo.
 
 Dicho con precisión, porque la diferencia importa: **un seudónimo sigue siendo irreversible por sí
@@ -250,27 +250,34 @@ Lo que puede aparecer ahí:
 el asunto de un correo.
 
 Esos ocho caracteres **no son un número de serie**: son el principio del SHA-256 de la política que
-aplicaste. Dos archivos que lo compartan recibieron exactamente el mismo tratamiento — y el reporte
-lleva el hash completo, para que puedas comprobarlo.
+aplicaste. Dos archivos que lo compartan recibieron exactamente el mismo tratamiento — y el
+certificado lleva el hash completo, para que puedas comprobarlo.
 
 Es un CSV separado por comas, con salto de línea `\n` y **sin BOM**. Si Excel en Windows te pregunta
 por la codificación, es **UTF-8**. (Velo no genera `.xlsx`: un `.xlsx` es un zip y sus entradas
 llevan fecha, así que dos archivos iguales no saldrían idénticos byte por byte — y esa igualdad es
 justo lo que Velo promete.)
 
-#### El reporte del tratamiento
+#### El certificado del tratamiento
 
 El taller también entrega un documento, y no es el mismo del diagnóstico: además de lo que hay en la
 tabla, dice **qué se le hizo** — el balance con sus advertencias, la utilidad que se perdió y el hash
-completo de la política. Como todo reporte de Velo, puedes **verlo antes de descargarlo**.
+completo de la política. Como todo documento de Velo, puedes **verlo antes de descargarlo**.
+
+**Aparece después del archivo, no antes.** El certificado lleva la huella del archivo tratado, y esa
+huella no existe hasta que el archivo existe. Mientras tanto, en su sitio verás una nota que lo dice.
 
 Mándalo con el archivo. Un CSV anonimizado que llega solo obliga a quien lo recibe a creerte; con el
-documento al lado, puede leer qué se hizo y con qué criterio.
+certificado al lado, puede **comprobarlo**.
 
-> **Una advertencia que el propio documento repite:** la huella SHA-256 que lleva es la del archivo
-> que **entró** a Velo, no la del que descargas. El archivo tratado es otro archivo y tiene otra
-> huella. Si quien lo recibe corre `sha256sum` sobre el anonimizado y no le cuadra, no es que el
-> reporte esté mal: es que esa huella identifica el original.
+> **Lleva las dos huellas, y por eso sirve.** Una es la del archivo que **entró** a Velo; la otra, la
+> del que **descargas**. Quien reciba tu archivo puede recalcular esa segunda huella con un comando
+> —el propio certificado se lo explica, con la orden exacta para macOS, Linux y Windows— y comprobar
+> que el documento habla de **esa copia y no de otra**. Si no cuadra, el archivo no es el que el
+> certificado describe.
+>
+> Lo que un certificado **no** es: una firma digital. Prueba que el documento y el archivo se
+> corresponden, no quién los produjo.
 
 ---
 
@@ -334,7 +341,7 @@ Velo busca cada valor en la correspondencia de su columna. Y reconoce las column
 > Escribir uno de los dos candidatos te devolvería el dato de otra persona sin que nada lo indicara.
 
 **El informe del regreso** dice qué volvió y qué no, con las salvedades **antes** del porcentaje —
-igual que el reporte del tratamiento. No lleva ninguna celda: solo nombres de columna, cifras y
+igual que el certificado del tratamiento. No lleva ninguna celda: solo nombres de columna, cifras y
 huellas. El archivo restaurado sí lleva tus datos: trátalo como el original, porque lo es.
 
 ---
@@ -393,6 +400,8 @@ segundos sin que la pestaña se congele, porque el trabajo pesado ocurre en un h
 
 ## Lo que viene
 
-**El certificado.** Un documento firmado que declare, para una entrega concreta, qué se le hizo al
-archivo y con qué política — pensado para adjuntarlo a un contrato o a una auditoría. Y la bitácora
-de tratamientos, para que una organización pueda enseñar el historial de lo que entregó.
+**La bitácora de tratamientos**, para que puedas enseñar el historial de lo que has entregado:
+qué archivo, cuándo y con qué política, en un archivo cifrado con su propia frase de paso.
+
+_(El certificado ya no está aquí: se entrega desde el taller, junto al archivo tratado. Se explica
+más arriba, en «El certificado del tratamiento».)_

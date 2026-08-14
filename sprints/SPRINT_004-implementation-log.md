@@ -203,14 +203,14 @@ falla) no se parece nada a la causa (el test se aborta a sí mismo).
 
 ### Verificación de la Fase 1
 
-| Criterio del plan | Resultado |
-|---|---|
-| Dos huellas distintas y correctas | ✅ y comprobadas contra `node:crypto`, no contra sí mismas |
-| Recalcular a mano coincide con la de salida | ✅ e2e con el archivo real descargado |
-| Ni una celda del archivo en el documento | ✅ barrido con una cédula del fixture |
-| Dos generaciones con la misma fecha, byte-idénticas | ✅ el test del S2 sigue verde sin tocarlo |
-| Se abre sin internet | ✅ sin `http`, sin `<script>`, sin `<link>`, sin `url(` |
-| Cobertura >80 % | ✅ |
+| Criterio del plan                                   | Resultado                                                  |
+| --------------------------------------------------- | ---------------------------------------------------------- |
+| Dos huellas distintas y correctas                   | ✅ y comprobadas contra `node:crypto`, no contra sí mismas |
+| Recalcular a mano coincide con la de salida         | ✅ e2e con el archivo real descargado                      |
+| Ni una celda del archivo en el documento            | ✅ barrido con una cédula del fixture                      |
+| Dos generaciones con la misma fecha, byte-idénticas | ✅ el test del S2 sigue verde sin tocarlo                  |
+| Se abre sin internet                                | ✅ sin `http`, sin `<script>`, sin `<link>`, sin `url(`    |
+| Cobertura >80 %                                     | ✅                                                         |
 
 `pnpm typecheck` y `pnpm lint` limpios. `pnpm test`: **651 verdes, 1 saltada**.
 `CI=1 pnpm test:e2e`: **94 passed, 2 skipped, cero flaky**.
@@ -237,10 +237,10 @@ sido un refactor.
 
 Lo que NO se comparte, y por qué se separa:
 
-| | Bóveda | Bitácora |
-|---|---|---|
-| Palabra mágica | `VELO` | `VLOG` |
-| Extensión | `.velo` | `.velolog` |
+|                | Bóveda  | Bitácora   |
+| -------------- | ------- | ---------- |
+| Palabra mágica | `VELO`  | `VLOG`     |
+| Extensión      | `.velo` | `.velolog` |
 
 La palabra mágica es la **defensa** —abrir una donde se esperaba la otra se rechaza **sin descifrar
 nada**—; la extensión es la **cortesía**, porque el selector filtra y la equivocación se evita antes
@@ -281,13 +281,167 @@ cual el primero podría estar comparando un objeto consigo mismo.
 
 ### Verificación de la Fase 2
 
-| Criterio del plan | Resultado |
-|---|---|
-| Tres entradas sobreviven crear → cifrar → cerrar → abrir, en orden | ✅ |
-| Añadir no reescribe las anteriores | ✅ probado en claro, más el test de no-mutación |
-| El archivo en disco no lleva un nombre en claro | ✅ barrido de bytes: ni nombres, ni hashes, ni la palabra `entradas` |
-| Frase incorrecta con su mensaje | ✅ y distinguida de «se descifró pero no es una bitácora» |
-| Cobertura >80 % | ✅ `lib` en 95,4 % · `engine` en 98,9 % |
+| Criterio del plan                                                  | Resultado                                                            |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Tres entradas sobreviven crear → cifrar → cerrar → abrir, en orden | ✅                                                                   |
+| Añadir no reescribe las anteriores                                 | ✅ probado en claro, más el test de no-mutación                      |
+| El archivo en disco no lleva un nombre en claro                    | ✅ barrido de bytes: ni nombres, ni hashes, ni la palabra `entradas` |
+| Frase incorrecta con su mensaje                                    | ✅ y distinguida de «se descifró pero no es una bitácora»            |
+| Cobertura >80 %                                                    | ✅ `lib` en 95,4 % · `engine` en 98,9 %                              |
 
 `pnpm typecheck` y `pnpm lint` limpios. `pnpm test`: **676 verdes, 1 saltada** (+25).
 `CI=1 pnpm test:e2e`: **94 passed, 2 skipped, cero flaky**.
+
+---
+
+## Fase 3 — Los estimadores
+
+`src/engine/riesgo-estimado.ts` + `tests/unit/riesgo-estimado.test.ts` + **ADR-008**.
+
+La fase más delicada del ciclo, y por una razón concreta: aquí una fórmula mal copiada **no
+revienta**. Devuelve un número plausible, del orden de magnitud correcto, que pasa cualquier
+aserción de «hay una cifra entre 0 y 1». Así que la fase empezó donde el plan mandaba —en la
+fuente— y no en el editor.
+
+### Lo que se verificó antes de escribir una línea
+
+| Qué                              | Cómo se verificó                                                                                                                                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Modelo de Benedetti–Franconi** | Citado **textualmente** desde Rinott & Shlomo (2007), arXiv:0708.0980 §2.2: «In the Argus model it is assumed that `F_k \| f_k ~ f_k + NB(f_k, π_k)`». Coincide con el modelo del que derivé las formas cerradas. |
+| **Método de Zayatz**             | Descargado el informe original del Census Bureau (CENSUS/SRD/RR-91/08) y leído entero.                                                                                                                            |
+
+**Y el primer hallazgo llegó ahí:** yo recordaba «Zayatz = hipergeométrica sobre `P(F=1|f=1)`».
+El informe trae **dos** métodos propios y ninguno es exactamente eso. El §II usa submuestreo —habría
+necesitado azar, que el gate de determinismo veta en `engine/`—; el §III usa la distribución de
+tamaños de las clases de equivalencia, que es justo lo que `riesgo.ts` calcula desde el S1. Se
+implementó el §III. **Si hubiera codificado de memoria, habría escrito otra cosa y le habría puesto
+la cita de Zayatz encima.**
+
+### La trampa numérica, y por qué está documentada en el código
+
+De la definición se llega, integrando por partes, a la recursión que traen los manuales:
+
+```
+r_1 = (p/q)·ln(1/p)        r_f = (p/q)·( 1/(f−1) − r_{f−1} )
+```
+
+Amplifica el error por `p/q` en cada paso. Contrastada contra la suma directa de la binomial
+negativa:
+
+| p    | f   | recursión clásica | verdadero     |
+| ---- | --- | ----------------- | ------------- |
+| 0,99 | 5   | 0,198331**4862**  | 0,198331**0** |
+| 0,90 | 50  | **−3,7×10³¹**     | 0,018035      |
+
+El segundo caso es aparatoso y lo caza cualquiera. **El primero es el peligroso**: correcto hasta el
+quinto decimal, falso en el sexto, y silencioso. Es exactamente el defecto que esta fase tenía que
+no cometer.
+
+El motor usa **dos caminos, cada uno donde es estable**, y un test los compara contra la suma
+directa en todo el dominio:
+
+- **p < ½** → la recursión ascendente, que ahí _contrae_ el error. Medida hasta clases de 500.000:
+  error relativo máximo **8,5×10⁻¹⁴**.
+- **p ≥ ½** → el desarrollo en (1−x) del integral, que da una serie de **términos todos positivos**
+  —sin cancelación posible— con razón acotada por `q < ½`. Converge en 52 términos en el peor caso.
+  Error relativo máximo **6,2×10⁻¹⁶**.
+
+Hay un test que **reproduce el fallo de la recursión ingenua**. No protege un comportamiento:
+protege una decisión, para que quien venga a «simplificar» el motor vea lo que costaría.
+
+### Lo que la fuente publicó, y ahora es un test
+
+La Tabla 4 del informe de Zayatz publica `Prob(1_s|C_p)` para C = 1..20 con N = 56.372 y n = 9.383.
+Las 20 coinciden dentro de **0,001**. La tolerancia es una unidad del último decimal impreso y no
+menos, porque **el redondeo de la tabla no es autoconsistente**: C = 1 publica 0,167 para 0,16645 y
+C = 12 publica 0,269 para 0,26960. Son tablas calculadas a mano en 1991, y coincidir con las veinte
+es la afirmación más fuerte que la fuente permite.
+
+### La propiedad más bonita del módulo
+
+**En censo, el estimado cae encima del exacto.** Si el usuario declara que su archivo _es_ la
+población (N = n), Benedetti–Franconi devuelve `1/f` y Zayatz devuelve que todos los únicos
+muestrales son poblacionales — es decir, exactamente `riesgoProsecutor` del S1.
+
+No está programado como excepción: sale solo de que con p = 1 la binomial negativa es degenerada.
+Los tests lo comparan contra `riesgoProsecutor` de verdad, no contra una constante.
+
+### Un supuesto de la fuente que cambió cómo se testea
+
+Zayatz declara **una sola** suposición sobre los datos: que sean **reales**, y advierte que el método
+puede no funcionar «on simulated data sets with odd equivalence class structures».
+
+Los fixtures de este repo son sintéticos **por regla dura** (repo público, jamás un dato real). O
+sea: la fuente dice con todas las letras que este estimador **no se puede verificar comparándolo con
+la verdad de un fixture generado**. El instrumento habitual del repo —correr sobre el kit de prueba
+y mirar si cuadra— aquí _no vale_, y no por pereza sino por doctrina de la fuente.
+
+Así que se verifica de cuatro maneras que no dependen del fixture: contra una **implementación
+independiente** escrita en el propio test (suma directa y binomiales exactos, sin compartir una línea
+con el motor), contra los **valores publicados**, contra los **límites** del modelo, y contra las
+**invariantes** de la derivación (`θ ≤ 1` por construcción, `r_f ≤ 1/f` siempre).
+
+### Cuándo Velo se niega — y con qué autoridad
+
+`FRACCION_MINIMA_ZAYATZ = 0.1` **no es un número a ojo**: sale de la evaluación del propio informe.
+Su Tabla 6 sobreestima siempre y cada vez más al bajar la fracción (46,754 % contra 39,073 % reales
+con 0,1); su Tabla 8, con 1/100, llega a errar **por un factor de 10**.
+
+Consecuencia aceptada y declarada en el ADR: **muchos archivos reales no verán esta segunda cifra**,
+porque un archivo suele ser una fracción pequeña de su población. Benedetti–Franconi sí contesta
+ahí, y esa asimetría —un estimador habla y el otro calla— es información sobre los datos, no un
+defecto que haya que uniformar.
+
+### La regla dura, puesta donde no se puede olvidar
+
+El estimado no se compone con el exacto, y eso **vive en el tipo**: las cifras estimadas no son
+`number` sino `CifraEstimada` —valor más intervalo—, así que `exacto.riesgoPromedio +
+estimado.maximo` **no compila**. Lo fija un test con `@ts-expect-error`, el mismo instrumento que la
+Fase 0 usó para el contrato del worker.
+
+Y el intervalo tiene una variante `no-derivable` **con su razón**, que se usa de verdad: `promedio`
+no lleva banda porque es la **esperanza** del modelo. Fijada la fracción, su valor es el que es; lo
+que puede fallar es el modelo entero, y el error de un modelo no cabe en un intervalo de confianza.
+Dibujar una habría sido más tranquilizador y falso.
+
+→ **ADR-008 · El estimado no se compone con el exacto, y a veces no hay estimado.**
+
+### Desviación del plan (menor, declarada)
+
+El plan no pedía ADR en esta fase. Se escribió igual: el umbral del 10 % es una decisión de producto
+**visible para el usuario** —le niega una cifra— y va a ser preguntada. Un umbral sin ADR se lee como
+un número arbitrario.
+
+### Deuda del ciclo cobrada aquí (§4, por estructura)
+
+El barrido de promesas aplazadas de esta fase encontró que **la Fase 1 dejó el manual mintiendo**, y
+es literalmente el patrón `un-gate-de-fase-no-ve-lo-que-la-fase-no-toca`: la Fase 1 construyó el
+certificado y **no miró `docs/MANUAL-DE-USO.md`**.
+
+Tres cosas falsas, ya pagadas:
+
+1. `## Lo que viene` prometía **el certificado**, que existe y es alcanzable por la UI desde la
+   Fase 1 (`taller.tsx:198`, con su e2e).
+2. La sección del taller se llamaba «El reporte del tratamiento» y el producto dice «certificado».
+3. Lo peor: un `>` citaba la **disculpa que la Fase 1 borró del propio documento** — «la huella no
+   es la del archivo que descargas; si no cuadra, no es que el reporte esté mal». Hoy el certificado
+   lleva **las dos huellas** y esa segunda **sí tiene que cuadrar**. El manual le estaba enseñando al
+   usuario a ignorar justo la comprobación que el sprint construyó.
+
+Lo que **no** caducó todavía y sigue en pie a propósito: la línea del §2 que dice que las cifras
+exactas «en versiones futuras convivirán con estimadores de población». Los estimadores existen en el
+motor, pero **el usuario no los ve hasta la Fase 4**. Pagarla ahora sería adelantar una verdad que la
+pantalla no sostiene. Queda agendada para la Fase 4.
+
+### Verificación de la Fase 3
+
+| Criterio del plan                                         | Resultado                                                             |
+| --------------------------------------------------------- | --------------------------------------------------------------------- |
+| Los dos estimadores citan su fuente                       | ✅ en el código, y verificada contra el original                      |
+| Pasan sus tests de límites                                | ✅ censo → exacto · fracción → 0 → riesgo → 0 · monotonía en f y en p |
+| Sin población declarada: «no calculable» **con su razón** | ✅ y nunca un cero                                                    |
+| Ningún tipo permite sumar exacto con estimado             | ✅ `@ts-expect-error`                                                 |
+| Cobertura >80 %                                           | ✅ **98,1 % sentencias · 100 % líneas** en el archivo nuevo           |
+
+`pnpm typecheck` y `pnpm lint` limpios. `pnpm test`: **709 verdes, 1 saltada** (+33).
+Cobertura global: `engine` **98,77 %** · statements 97,95 % · branches 93,32 %.
