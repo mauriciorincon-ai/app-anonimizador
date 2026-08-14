@@ -1,7 +1,7 @@
 # Manual de uso — Velo
 
 > _Velo para entregar. Desvelo para recuperar._
-> Actualizado en el Sprint 002 · 11 de agosto de 2026
+> Actualizado en el Sprint 004 · 13 de agosto de 2026
 
 Velo es la **aduana de tus datos**: lo que revisa tu tabla antes de que salga hacia una IA, una
 herramienta en la nube o el computador de un tercero. Este manual cubre todo lo que Velo sabe
@@ -19,11 +19,13 @@ Eso tiene una consecuencia que conviene saber de antemano: **si recargas la pág
 desaparece**. No es un error. Es la misma razón por la que tus datos no se filtran: nunca se
 guardaron en ningún sitio. Volver a soltar el archivo tarda lo mismo que la primera vez.
 
-Y algo sobre el alcance, porque cambió: **Velo diagnostica, transforma y ahora también devuelve**.
-Puedes enmascarar, seudonimizar y generalizar, llevarte el archivo tratado con su certificado, y
-cuando el tercero te lo devuelva trabajado, recuperar los valores originales. Ese camino de vuelta
-es la [bóveda](#5-la-bóveda-para-poder-deshacerlo) y
-[el regreso](#6-el-regreso-recuperar-lo-que-entregaste), y tienen su sección cada uno más abajo.
+Y algo sobre el alcance, porque cambió: **Velo diagnostica, transforma, devuelve y deja
+constancia**. Puedes enmascarar, seudonimizar y generalizar, llevarte el archivo tratado con su
+certificado, y cuando el tercero te lo devuelva trabajado, recuperar los valores originales. Ese
+camino de vuelta es la [bóveda](#5-la-bóveda-para-poder-deshacerlo) y
+[el regreso](#6-el-regreso-recuperar-lo-que-entregaste). Y lo que hiciste queda anotado en
+[la bitácora](#7-la-bitácora-acordarte-dentro-de-seis-meses), para dentro de seis meses. Cada uno
+tiene su sección más abajo.
 
 Dicho con precisión, porque la diferencia importa: **un seudónimo sigue siendo irreversible por sí
 solo**. Quien reciba el archivo tratado no puede deshacerlo —eso es lo que lo hace seguro de
@@ -74,9 +76,10 @@ señalar con el dedo.
 | **Grupos distintos**        | Cuántas combinaciones diferentes de valores hay.                        |
 
 **Todas estas cifras son exactas.** No son una estimación ni una proyección: se contaron registro
-por registro sobre tu archivo completo. El panel lo dice con todas sus letras («Cifra exacta») y
-esa marca importa, porque en versiones futuras convivirán con estimadores de población, que sí
-llevarán la palabra «estimado» pegada al número.
+por registro sobre tu archivo completo. El panel lo dice con todas sus letras («Cifra exacta»), y
+esa marca importa porque en el taller conviven con **cifras estimadas** —las del riesgo poblacional,
+más abajo—, que llevan la palabra «estimado» pegada al número. Nunca se suman ni se promedian entre
+sí: hablan de cosas distintas.
 
 El modelo que Velo usa se llama **prosecutor**: supone que quien ataca ya sabe que la persona está
 en tu tabla y solo busca cuál de las filas es. Es el escenario más adverso de los que se estudian,
@@ -279,6 +282,41 @@ certificado al lado, puede **comprobarlo**.
 > Lo que un certificado **no** es: una firma digital. Prueba que el documento y el archivo se
 > corresponden, no quién los produjo.
 
+#### El riesgo estimado: y en la población entera, ¿cuánto?
+
+Debajo del balance hay un segundo panel, y la diferencia entre los dos es lo más importante que
+tiene que quedar claro:
+
+|                 | El balance                     | El riesgo estimado                      |
+| --------------- | ------------------------------ | --------------------------------------- |
+| De qué habla    | **tu archivo**                 | la **población** de la que salió        |
+| Cómo se obtiene | contando registro por registro | con un modelo estadístico y un supuesto |
+| Cómo va marcado | «Cifra exacta»                 | «Cifra estimada», con su modelo al lado |
+
+**Nunca se juntan.** No hay un «riesgo total» que promedie los dos, ni aparecen con la misma
+tipografía. Sumar una cifra exacta con una estimada da un número que no es ninguna de las dos cosas.
+
+**Es opcional y hay que declarar la población.** Velo solo ve tu archivo: no puede saber si esas
+2.000 filas son de un municipio de 40.000 habitantes o de un país entero, y **no se lo inventa**. Sin
+ese dato la estimación no aparece, y el riesgo exacto no depende de él.
+
+Cuando lo declaras salen dos cifras, cada una con su fuente citada:
+
+- **Si alguien intenta emparejar una fila con una persona, ¿qué probabilidad tiene de acertar?**
+  (Benedetti–Franconi, 1998 — el estimador de μ-ARGUS.)
+- **De tus registros únicos, ¿cuántos lo serían también en la población?** (Zayatz, 1991, del
+  U.S. Census Bureau.)
+
+**Y a veces Velo se niega a darte la segunda**, con esta explicación: si tu archivo es menos del
+10 % de la población que declaraste, ese método deja de servir — en la evaluación del propio informe
+de Zayatz, con una muestra del 1 % las estimaciones llegan a errar por un factor de 10. Preferimos
+no dar la cifra a darla débil. La primera sigue contestando: los dos modelos no valen en el mismo
+terreno, y esa diferencia es información.
+
+Un detalle que sale solo de las matemáticas y conviene saber: **si declaras que tu archivo es la
+población entera, las cifras estimadas caen exactamente encima de las exactas.** No es una excepción
+programada; es que ahí ya no hay nada que estimar.
+
 ---
 
 ### 5. La bóveda: para poder deshacerlo
@@ -346,6 +384,50 @@ huellas. El archivo restaurado sí lleva tus datos: trátalo como el original, p
 
 ---
 
+### 7. La bitácora: acordarte dentro de seis meses
+
+El certificado prueba **un** tratamiento ante quien lo recibe. La bitácora contesta otra pregunta, y
+es tuya para ti: **«¿qué he hecho yo con mis archivos?»** — meses después, cuando alguien te
+pregunte qué entregaste, cuándo y con qué criterio.
+
+**Cómo se anota.** Al final del taller, después de generar el archivo, aparece **«Anotar en mi
+bitácora»**. Te lleva a la bitácora con la anotación lista: eliges una frase de paso y Velo te
+entrega el archivo cifrado. Si ya tenías una, la abres primero ahí mismo y la anotación **se añade
+al final**, sin tocar las anteriores.
+
+**Qué queda anotado:** el nombre del archivo, la fecha, las técnicas que aplicaste —**sin decir a
+qué columnas**—, el hash de la política, las dos huellas, y la proporción de registros únicos antes
+y después.
+
+> **Las dos proporciones, y no la resta entre ellas.** Es deliberado. «Bajó del 30 % al 2 %» es
+> cierta y puede engañar, y una bitácora se lee meses después sin ninguna pantalla al lado que la
+> matice. Si aquella medición llevaba salvedades que la descalificaban, la entrada también lo dice.
+
+**Va cifrada, y la razón importa:** un nombre de archivo cuenta de qué va su contenido antes de que
+nadie lo abra. `pacientes-oncologia-2026.csv` ya dice demasiado. Una bitácora es una lista de esos
+nombres con sus fechas — el resumen de a qué te dedicas y sobre quién trabajas — así que en claro no
+puede estar.
+
+**Es un archivo aparte de la bóveda,** con **su propia frase de paso**. Termina en `.velolog` y no
+en `.velo`. Tres razones: existe aunque el tratamiento no tenga columnas reversibles; la bóveda es
+por trabajo y la bitácora crece durante meses; y mezclarlas haría que perder una fuera perder las
+dos.
+
+> **Son tres secretos con tres alcances distintos** —la frase del proyecto, la de la bóveda y la de
+> la bitácora— y **no conviene que sean la misma**: reusarlas convierte la filtración de una en la
+> filtración de todo. Velo no las comparte ni las rellena entre sí.
+>
+> Y como con la bóveda: **perder la frase de la bitácora es perder la bitácora.** No hay
+> recuperación, y decirlo antes es parte del trato.
+
+**Cuando abras la que ya tienes**, la verás de la anotación más reciente a la más antigua; cada una
+se despliega con un clic. Si te equivocas de archivo y abres la bóveda, Velo te lo dice —«esa es la
+bóveda»— en vez de mandarte a probar frases.
+
+Medido: **2.000 anotaciones se abren y se pintan sin una sola tarea larga** en el hilo principal.
+
+---
+
 ## Lo que Velo NO afirma
 
 Esta sección es tan parte del producto como las otras.
@@ -400,8 +482,9 @@ segundos sin que la pestaña se congele, porque el trabajo pesado ocurre en un h
 
 ## Lo que viene
 
-**La bitácora de tratamientos**, para que puedas enseñar el historial de lo que has entregado:
-qué archivo, cuándo y con qué política, en un archivo cifrado con su propia frase de paso.
+**Nada de lo que este manual describía como futuro sigue pendiente.** El certificado, la bitácora y
+el riesgo estimado —las tres cosas que aquí se prometieron— están arriba, cada una con su sección.
 
-_(El certificado ya no está aquí: se entrega desde el taller, junto al archivo tratado. Se explica
-más arriba, en «El certificado del tratamiento».)_
+Lo que Velo **no** hace, y no está previsto para el corto plazo, vive en «Lo que Velo NO afirma» y
+en los topes declarados: no lee bases de datos ni JSON ni PDF, no genera `.xlsx` de salida, y no
+usa —ni usará— inteligencia artificial generativa en ninguna parte del producto.

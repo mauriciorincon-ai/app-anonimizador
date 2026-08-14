@@ -17,6 +17,13 @@ import Papa from "papaparse";
 
 import { balanceDelTratamiento } from "@/engine/balance";
 import {
+  anadirEntrada,
+  bitacoraVacia,
+  huellaDeBitacora,
+  type Bitacora,
+  type EntradaDeBitacora,
+} from "@/engine/bitacora";
+import {
   colisionesDeBoveda,
   construirBoveda,
   huellaDeBoveda,
@@ -35,10 +42,20 @@ import {
   nombreDelInforme,
 } from "@/engine/reporte";
 import { restaurar, type Restauracion } from "@/engine/restaurar";
-import { evaluarRiesgo } from "@/engine/riesgo";
+import {
+  clasesDeEquivalencia,
+  evaluarRiesgo,
+  type ClasesDeEquivalencia,
+} from "@/engine/riesgo";
+import { estimarRiesgo } from "@/engine/riesgo-estimado";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
 import { formatoDeArchivo } from "@/lib/archivo";
+import {
+  abrirBitacora,
+  sellarBitacora,
+  NOMBRE_DE_BITACORA,
+} from "@/lib/bitacora-archivo";
 import {
   abrirBoveda,
   sellarBoveda,
@@ -268,6 +285,8 @@ function heapUsadoMb(): number | null {
 let llave: CryptoKey | null = null;
 /** La tabla ya transformada, para poder escribir el archivo sin rehacer el trabajo. */
 let transformada: TablaColumnar | null = null;
+/** Las clases de equivalencia del DESPUÉS, para estimar sin recorrer el archivo otra vez. */
+let clasesDespues: ClasesDeEquivalencia | null = null;
 let hashDeLaPolitica = "";
 /** El material de la bóveda: pares (original, seudónimo) de las columnas reversibles. */
 let correspondencias: readonly EntradaDeBoveda[] = [];
@@ -341,6 +360,19 @@ async function transformar(politica: Politica): Promise<void> {
     );
 
     transformada = resultado.tabla;
+    // Las clases del DESPUÉS se guardan aquí porque el estimador poblacional las necesita y el
+    // usuario puede declarar su población varias veces —tanteando la cifra— sin que valga la pena
+    // recorrer el archivo entero en cada intento. Son los mismos cuasi-identificadores con los que
+    // `balanceDelTratamiento` midió `despues`: si fueran otros, el estimado y el exacto estarían
+    // hablando de tablas distintas.
+    clasesDespues = clasesDeEquivalencia(
+      qis
+        .map((nombre) =>
+          resultado.tabla.columnas.find((c) => c.nombre === nombre),
+        )
+        .filter((c) => c !== undefined),
+      resultado.tabla.filas,
+    );
     hashDeLaPolitica = hashDePolitica(politica);
     // El material de la bóveda se guarda AQUÍ, del lado de la frontera donde están los originales.
     // Sellarlo es un mensaje aparte porque exige la frase de paso del usuario, que se pide después.
@@ -513,6 +545,111 @@ async function abrir(archivo: File, frase: string): Promise<void> {
   });
 }
 
+/**
+ * Estima el riesgo poblacional del archivo que va a salir.
+ *
+ * `poblacion` puede ser `null` —el caso normal, porque el usuario no siempre la sabe— y entonces el
+ * motor devuelve su «no calculable» con la razón. **No se inventa un valor por defecto**: sin
+ * fracción de muestreo no hay estimador poblacional que valga, y suponerla sería la mentira que
+ * `engine/riesgo-estimado.ts` existe para no cometer.
+ */
+function estimar(poblacion: number | null): void {
+  if (!transformada || !clasesDespues) {
+    enviar({ tipo: "error", motivo: "sin-tabla" });
+    return;
+  }
+  enviar({
+    tipo: "riesgo-estimado",
+    estimacion: estimarRiesgo({
+      clases: clasesDespues,
+      filas: transformada.filas,
+      poblacion,
+    }),
+  });
+}
+
+// ── La bitácora ───────────────────────────────────────────────────────────────────────────────
+//
+// La bitácora abierta vive aquí, como la bóveda y la llave, y muere con el worker. La frase de paso
+// NO se guarda: entra con cada mensaje y se va con él.
+
+let bitacoraActual: Bitacora | null = null;
+
+function anunciarBitacora(bitacora: Bitacora): void {
+  enviar({
+    tipo: "bitacora-abierta",
+    contenido: {
+      version: bitacora.version,
+      entradas: bitacora.entradas,
+      huella: huellaDeBitacora(bitacora),
+    },
+  });
+}
+
+async function abrirLaBitacora(archivo: File, frase: string): Promise<void> {
+  avisar("abriendo-bitacora", 0, 0, archivo.size);
+  let bytes: Uint8Array;
+  try {
+    // Igual que la bóveda: `arrayBuffer()` solo puede llamarse dentro de este directorio.
+    bytes = new Uint8Array(await archivo.arrayBuffer());
+  } catch {
+    enviar({
+      tipo: "bitacora-rechazada",
+      motivo: "lectura-fallida",
+      detalle: "No se pudo leer el archivo.",
+    });
+    return;
+  }
+
+  const resultado = await abrirBitacora(bytes, frase);
+  if (!resultado.ok) {
+    enviar({
+      tipo: "bitacora-rechazada",
+      motivo: resultado.motivo,
+      detalle: resultado.detalle,
+    });
+    return;
+  }
+
+  bitacoraActual = resultado.bitacora;
+  anunciarBitacora(resultado.bitacora);
+}
+
+/**
+ * Sella la bitácora, con una entrada nueva al final si viene alguna.
+ *
+ * Si no hay ninguna abierta, empieza una — es el caso de la primera vez, y no necesita una pantalla
+ * aparte: una bitácora nueva es una bitácora vacía a la que se le añade la primera entrada.
+ */
+async function sellarLaBitacora(
+  frase: string,
+  entrada: EntradaDeBitacora | null,
+): Promise<void> {
+  const base = bitacoraActual ?? bitacoraVacia();
+  const bitacora = entrada ? anadirEntrada(base, entrada) : base;
+  if (bitacora.entradas.length === 0) {
+    enviar({ tipo: "error", motivo: "sin-bitacora" });
+    return;
+  }
+
+  avisar("sellando-bitacora", bitacora.entradas.length, 0, 0);
+  try {
+    const bytes = await sellarBitacora(bitacora, frase);
+    bitacoraActual = bitacora;
+    const blob = new Blob([bytes], { type: "application/octet-stream" });
+    enviar({
+      tipo: "archivo",
+      blob,
+      nombre: NOMBRE_DE_BITACORA,
+      bytes: blob.size,
+      proposito: "bitacora",
+    });
+    anunciarBitacora(bitacora);
+  } catch {
+    enviar({ tipo: "error", motivo: "sin-bitacora" });
+  }
+}
+
 /** Parsea el archivo devuelto. Sin clasificar y sin medir riesgo: es otro flujo. */
 async function analizarDevuelto(archivo: File): Promise<void> {
   try {
@@ -672,4 +809,9 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
   if (mensaje?.tipo === "construir-restaurado") construirRestaurado();
   if (mensaje?.tipo === "construir-informe-del-regreso")
     construirInformeDelRegreso(mensaje.fecha);
+  if (mensaje?.tipo === "estimar-riesgo") estimar(mensaje.poblacion);
+  if (mensaje?.tipo === "abrir-bitacora")
+    void abrirLaBitacora(mensaje.archivo, mensaje.frase);
+  if (mensaje?.tipo === "sellar-bitacora")
+    void sellarLaBitacora(mensaje.frase, mensaje.entrada);
 });

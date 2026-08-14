@@ -32,8 +32,9 @@ de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
 
 ## Qué hace hoy
 
-**Sprints 001–003 · El diagnóstico, el disfraz y el regreso.** Velo lee, mide, **transforma y
-devuelve**. El círculo está cerrado: entregas sin entregar, y recuperas.
+**Sprints 001–004 · El diagnóstico, el disfraz, el regreso y el cierre.** Velo lee, mide,
+**transforma, devuelve** y ahora **deja constancia**. El círculo está cerrado —entregas sin
+entregar, y recuperas— y además queda por escrito.
 
 Sobre la reversibilidad, dicho con precisión: un seudónimo **sigue siendo irreversible por sí
 mismo** — es un HMAC, no un cifrado. Lo que el S3 añade es que puedes pedirle a Velo que guarde la
@@ -58,6 +59,16 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   del análisis, con su motivo.
 - **Reporte HTML autocontenido** con la huella SHA-256 del archivo, para que quien lo reciba pueda
   comprobar que habla de esa copia exacta.
+- **Certificado de tratamiento** con **las dos huellas** —la del archivo que entró y la del que
+  sale— y las órdenes exactas para recalcularlas en macOS, Linux y Windows. Con la segunda, quien
+  recibe el archivo puede **comprobar** que el documento habla de su copia, en vez de creerlo.
+- **Bitácora cifrada** (`.velolog`): qué trataste, cuándo, con qué política y con qué riesgo antes y
+  después. Archivo propio, aparte de la bóveda, con su propia frase de paso — va cifrada porque el
+  nombre de un archivo ya cuenta de qué va su contenido.
+- **Riesgo poblacional estimado**, etiquetado como estimado y **jamás compuesto con el exacto**: el
+  riesgo individual de Benedetti–Franconi (1998) y los únicos poblacionales de Zayatz (1991), cada
+  uno citando su fuente en el código, con su modelo y su supuesto en la misma línea que la cifra. Si
+  la muestra no da para estimar, **lo dice** en vez de devolver un número débil.
 - **Política por columna** —o **Habeas Data** / **HIPAA Safe Harbor** de un clic, cada una citando su
   fuente— que se exporta e importa como archivo y lleva su propio **hash SHA-256** como identidad.
 - **Cuatro familias de técnicas**: enmascarar, seudonimizar (HMAC-SHA256 con llave derivada por
@@ -68,7 +79,7 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
 - **Balance antes/después** con una regla dura: si algo quedó sin tratar, **eso se lee antes que
   cualquier porcentaje de reducción**, y la cifra pierde el tratamiento de titular.
 - **Archivo CSV anonimizado** escrito por el navegador —nunca por un servidor— y su **reporte del
-  tratamiento**, que declara qué se le hizo y que su huella es la del archivo que *entró*.
+  tratamiento**, que declara qué se le hizo y que su huella es la del archivo que _entró_.
 
 Rendimiento medido: **500.000 filas × 24 columnas (130 MB) en unos 5 segundos** para el diagnóstico
 y **~1,4 s** para el reparto de Mondrian sobre 8 cuasi-identificadores, con **cero tareas largas** en

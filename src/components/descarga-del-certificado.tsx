@@ -107,7 +107,7 @@ export function DescargaDelCertificado({
   if (tratamiento !== undefined && !puedeCertificar) {
     return (
       <Panel
-        etiqueta="Paso 6 · el certificado"
+        etiqueta="Paso 7 · el certificado"
         titulo="Primero el archivo, después su certificado"
       >
         <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">

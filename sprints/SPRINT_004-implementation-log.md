@@ -445,3 +445,102 @@ pantalla no sostiene. Queda agendada para la Fase 4.
 
 `pnpm typecheck` y `pnpm lint` limpios. `pnpm test`: **709 verdes, 1 saltada** (+33).
 Cobertura global: `engine` **98,77 %** · statements 97,95 % · branches 93,32 %.
+
+---
+
+## Fase 4 — UI e integración
+
+La fase más ancha del sprint: dos pantallas nuevas, una ruta nueva y el estimado dentro del taller.
+
+### La bitácora: dónde se escribe y dónde se lee
+
+La decisión de diseño que gobierna todo lo demás: **el taller sabe QUÉ anotar, `/bitacora` sabe
+CÓMO guardarlo.** El taller tiene el balance, las dos huellas y el hash de la política; la bitácora
+es un archivo cifrado con su propia frase, y pedir esa frase en el taller habría metido un **cuarto
+secreto** en la pantalla que ya gestiona la llave del proyecto y la de la bóveda.
+
+Así que el taller deja la anotación montada en `lib/bitacora.ts` y navega. Estado propio y worker
+propio, copiando el patrón que el S3 dejó probado con `lib/regreso.ts` — no se tocó `sesion.ts`,
+que está construida alrededor de un archivo con un diagnóstico.
+
+**La frase se pide también cuando la bitácora ya está abierta.** Podría guardarse tras abrirla y
+ahorrarle al usuario escribirla otra vez; no se hace. Una frase retenida «por comodidad» es una
+frase que vive en memoria toda la sesión, y la regla del S2 y el S3 es que entra y no se queda.
+
+### Un permiso nuevo en la frontera, y por qué no la contradice
+
+**Las entradas de la bitácora cruzan enteras a la página.** Es la primera estructura de Velo cuyo
+contenido no se recorta, y conviene decir por qué no rompe la regla: lo que el worker guarda para sí
+son los **datos de otras personas** —celdas, valores originales, correspondencias de la bóveda—. Una
+bitácora no tiene nada de eso: son los apuntes del propio usuario sobre su propio trabajo, y la
+pantalla que pidió abrirlos existe para enseñárselos. Nombres de archivo ya cruzaban desde el S1.
+
+Lo que sigue sin cruzar es la **frase de paso**.
+
+### El estimado: panel aparte, y eso es la regla
+
+`RiesgoEstimadoEnPantalla` no está dentro del balance, y la separación no es maquetación. El balance
+es todo exacto; colgarle un campo estimado habría hecho que la primera pantalla distraída los pintara
+juntos. Van por caminos distintos —`estimacion` vive aparte de `balance` en el estado— y se pintan en
+paneles distintos. Un tratamiento nuevo **invalida** la estimación anterior: describía otra tabla.
+
+Y hay un test que mira lo que ningún test de cifras ve: **que ninguna cifra estimada use la
+tipografía del titular exacto**. Dos números correctos con la misma letra ya se leen como si fueran
+de la misma clase — la composición prohibida en su forma más silenciosa, porque nadie sumó nada.
+
+### La pasada de capturas encontró tres cosas
+
+Se corrió en los dos temas, leyendo las imágenes. No es un trámite: **los tres defectos eran
+invisibles para los 724 tests**.
+
+1. **El intervalo salía al revés.** Se pintaba `hasta` y luego `desde`, así que en porcentajes el
+   rango se leía descendente («entre 9 % y 2 %») como si fuera una errata. Ahora va `desde` primero,
+   que queda ascendente con los dos formatos: «entre 2 % y 9 %» y «entre 1 en 36 y 1 en 1».
+2. **La nota decía «lo de arriba» y se pintaba abajo.** `Panel` coloca la nota en el pie, así que la
+   frase que separa los dos planos aterrizaba DEBAJO de las cifras estimadas y parecía estar
+   hablando de ellas — diciendo justo lo contrario de lo que quería decir. Se nombran los dos
+   paneles por lo que son.
+3. **`cerrarBitacora` era un exportado sin llamador**, que es lo que la §5 existe para impedir — y
+   además hacía falta de verdad: sin él no había forma de abrir otra bitácora sin recargar.
+
+### Alcanzabilidad, por el patrón que nació del propio S3
+
+`/bitacora` **se alcanza desde la portada**, en su propio bloque («Y meses después»), y su e2e
+**entra por clic desde `/`**. El S3 construyó el regreso entero con una suite que entraba siempre
+por `goto("/regreso")`: la prueba de que la función existía era sólida y la de que era alcanzable no
+existía.
+
+### Verificación de la Fase 4
+
+| Criterio del plan                                               | Resultado                                                                                                                  |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| El círculo del certificado, por la UI                           | ✅ ya cubierto en la Fase 1, sin regresión                                                                                 |
+| La bitácora registra y recupera **en otra sesión de navegador** | ✅ contexto nuevo, sin memoria                                                                                             |
+| Alcanzable desde la portada, e2e que entra por clic             | ✅                                                                                                                         |
+| El estimado con modelo y supuesto en la misma línea             | ✅ con test que mira el bloque, no la página                                                                               |
+| axe limpio en dos temas × dos tamaños                           | ✅ + dos escenarios nuevos (bitácora en reposo y en error)                                                                 |
+| Lighthouse ≥90 en las **cinco** rutas                           | ✅ `/` 93 · `/diagnostico` 92 · `/transformar` 95 · `/regreso` 93 · **`/bitacora` 93** — a11y, best-practices y SEO en 100 |
+| Bitácora con muchas entradas: long-tasks = 0                    | ✅ **2.000 entradas → 0 tareas largas, total 0 ms**                                                                        |
+| e2e de red extendido a bitácora y estimado                      | ✅ test propio, con `.velolog` sellado y reabierto                                                                         |
+| `prefers-reduced-motion`                                        | ✅                                                                                                                         |
+| Pasada de capturas                                              | ✅ dos temas, tres defectos hallados y pagados                                                                             |
+
+`pnpm typecheck` y `pnpm lint` limpios. `pnpm test`: **724 verdes, 1 saltada** (+15).
+`CI=1 pnpm test:e2e`: **117 passed, 3 skipped, cero flaky** (+23).
+
+**El tope de la bitácora queda medido y NO hace falta declararlo** (la pregunta que el ADR-007 dejó
+abierta): 2.000 anotaciones —el doble de un uso intenso sostenido— se abren y se pintan sin una sola
+tarea larga.
+
+### Promesas aplazadas pagadas aquí
+
+- `README.md § Qué hace hoy` decía «**Sprints 001–003**». Era la forma que la Fase 0 marcó como la
+  más traicionera —la enumeración con fecha implícita, que _no promete nada y se queda quieta
+  mientras el producto avanza_—. Ahora dice 001–004 y lista las tres funciones nuevas.
+- `MANUAL-DE-USO.md § riesgo de reidentificación`: «en versiones futuras convivirán con estimadores
+  de población» — dejada viva a propósito en la Fase 3 porque el usuario no los veía todavía. Ya los
+  ve, y ya está pagada.
+- `MANUAL-DE-USO.md § Lo que viene` prometía la bitácora. **Ya no queda ninguna promesa viva en el
+  manual**, y la sección lo dice con esas palabras.
+- El manual gana dos secciones nuevas (el riesgo estimado y la bitácora) y su cabecera deja de decir
+  «Sprint 002».

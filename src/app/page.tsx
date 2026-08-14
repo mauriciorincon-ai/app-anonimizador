@@ -128,6 +128,33 @@ export default function Aduana() {
         </Link>
       </section>
 
+      {/* La bitácora tiene el mismo problema de alcance que el regreso, y por eso está aquí y no
+          escondida detrás de un tratamiento: se consulta MESES después, cuando alguien pregunta qué
+          entregaste, y quien llega a preguntárselo abre la portada sin nada cargado. El S3 aprendió
+          esto por las malas —la función existía, la prueba de que era ALCANZABLE no existía— y ese
+          es el patrón que este sprint tenía delante: lo que ninguna fase mire, no lo mira nadie. */}
+      <section
+        aria-labelledby="la-bitacora"
+        className="border-borde mt-8 border-t pt-6"
+      >
+        <h2 id="la-bitacora" className="etiqueta">
+          Y meses después
+        </h2>
+        <p className="text-tinta-suave mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-pretty">
+          Cuando alguien te pregunte{" "}
+          <strong className="text-tinta font-medium">
+            qué entregaste y con qué criterio
+          </strong>
+          , la respuesta está en tu bitácora: un archivo cifrado, tuyo, que
+          recuerda cada tratamiento con su fecha, su política y sus dos huellas.
+          Va cifrada porque el nombre de un archivo ya cuenta de qué va su
+          contenido.
+        </p>
+        <Link href="/bitacora" className={`${clasesDeBoton("discreto")} mt-4`}>
+          Abrir mi bitácora
+        </Link>
+      </section>
+
       <p className="text-tinta-tenue mt-10 text-[0.8125rem] leading-relaxed">
         Velo reduce el riesgo de reidentificación y lo mide; no declara ningún
         archivo anónimo.

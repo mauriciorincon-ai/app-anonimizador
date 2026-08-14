@@ -36,7 +36,7 @@ export function DescargaDelArchivo({
 }) {
   return (
     <Panel
-      etiqueta="Paso 5 · la entrega"
+      etiqueta="Paso 6 · la entrega"
       titulo="Llévate el archivo"
       nota={
         <>

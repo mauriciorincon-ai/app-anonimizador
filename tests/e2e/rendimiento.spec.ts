@@ -11,7 +11,12 @@
 
 import { expect, test } from "@playwright/test";
 
-import { nombreDeFixture } from "./global-setup";
+import {
+  BITACORA_GRANDE,
+  ENTRADAS_DE_LA_BITACORA_GRANDE,
+  FRASE_DE_LA_BITACORA_GRANDE,
+  nombreDeFixture,
+} from "./global-setup";
 
 /** Techo del LCP observado. Holgado contra la medición real (~0,4 s), estricto contra una regresión. */
 const LCP_MAXIMO_MS = 1_500;
@@ -94,10 +99,80 @@ test.describe("el archivo grande", () => {
     const total = tareas.reduce((suma, duracion) => suma + duracion, 0);
     const peor = tareas.length ? Math.max(...tareas) : 0;
 
-    expect(
-      total,
-      `tareas largas: ${tareas.length}, total ${total} ms, peor ${peor} ms`,
-    ).toBeLessThan(PRESUPUESTO_DE_TAREAS_LARGAS_MS);
+    // La cifra se ANOTA, no solo se comprueba. Un gate que solo habla cuando falla obliga a
+    // provocar un fallo para saber por cuánto se pasa — y el summary del sprint tiene que poder
+    // citar el número medido, no «pasó».
+    const medicion = `${tareas.length} tareas largas · total ${total} ms · peor ${peor} ms`;
+    info.annotations.push({ type: "bitácora de 2.000 entradas", description: medicion });
+
+    expect(total, medicion).toBeLessThan(PRESUPUESTO_DE_TAREAS_LARGAS_MS);
+    expect(peor).toBeLessThan(TAREA_LARGA_MAXIMA_MS);
+  });
+});
+
+test.describe("la bitácora que ha crecido", () => {
+  test("2.000 entradas se abren y se pintan sin congelar el hilo principal", async ({
+    page,
+  }, info) => {
+    // El ADR-007 dejó abierta una pregunta: «la bitácora crece sin techo declarado; se mide en la
+    // fase 4 y si hace falta se declara el tope con su número». Esto es esa medición.
+    //
+    // Lo que se mide NO es el descifrado —eso ocurre en el worker, como todo lo pesado— sino lo
+    // que pasa **en el hilo principal** cuando llegan 2.000 entradas y hay que pintarlas. Es la
+    // superficie nueva: la bóveda nunca enseñó sus pares, y esta pantalla sí enseña sus entradas.
+    test.skip(
+      info.project.name !== "desktop-chromium",
+      "la medición del hilo principal no cambia por viewport (declarado en el summary)",
+    );
+    test.setTimeout(180_000);
+
+    await page.goto("/bitacora", { waitUntil: "load" });
+    await page
+      .getByRole("heading", { name: "Abre la bitácora que guardaste" })
+      .waitFor({ timeout: 60_000 });
+
+    await page.evaluate(() => {
+      const global = window as unknown as { __tareas: number[] };
+      global.__tareas = [];
+      new PerformanceObserver((lista) => {
+        for (const entrada of lista.getEntries()) {
+          global.__tareas.push(Math.round(entrada.duration));
+        }
+      }).observe({ entryTypes: ["longtask"] });
+    });
+
+    await page
+      .getByLabel("Archivo de bitácora")
+      .setInputFiles(BITACORA_GRANDE);
+    await page.getByLabel("Frase de paso").fill(FRASE_DE_LA_BITACORA_GRANDE);
+    await page.getByRole("button", { name: "Abrir la bitácora" }).click();
+
+    // La interfaz responde mientras el worker deriva la llave: el estado se ve.
+    await expect(page.getByRole("status")).toBeVisible();
+
+    await expect(
+      page.getByRole("heading", {
+        name: `${ENTRADAS_DE_LA_BITACORA_GRANDE.toLocaleString("es-CO")} tratamientos anotados`,
+      }),
+    ).toBeVisible({ timeout: 120_000 });
+
+    // Y se puede USAR: desplegar una entrada cualquiera sigue siendo instantáneo.
+    await page.getByRole("button", { name: /estudio-01999/ }).click();
+    await expect(page.getByText(/Huella de salida/).first()).toBeVisible();
+
+    const tareas = await page.evaluate(
+      () => (window as unknown as { __tareas: number[] }).__tareas,
+    );
+    const total = tareas.reduce((suma, duracion) => suma + duracion, 0);
+    const peor = tareas.length ? Math.max(...tareas) : 0;
+
+    // La cifra se ANOTA, no solo se comprueba. Un gate que solo habla cuando falla obliga a
+    // provocar un fallo para saber por cuánto se pasa — y el summary del sprint tiene que poder
+    // citar el número medido, no «pasó».
+    const medicion = `${tareas.length} tareas largas · total ${total} ms · peor ${peor} ms`;
+    info.annotations.push({ type: "bitácora de 2.000 entradas", description: medicion });
+
+    expect(total, medicion).toBeLessThan(PRESUPUESTO_DE_TAREAS_LARGAS_MS);
     expect(peor).toBeLessThan(TAREA_LARGA_MAXIMA_MS);
   });
 });

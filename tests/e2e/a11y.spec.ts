@@ -137,5 +137,63 @@ for (const tema of ["light", "dark"] as const) {
       const { violations } = await new AxeBuilder({ page }).analyze();
       expect(resumir(violations)).toEqual([]);
     });
+
+    test("el taller con el riesgo estimado pasa axe", async ({ page }) => {
+      // El panel del estimado tiene un campo numérico, un botón y texto largo con las salvedades
+      // del modelo: es la superficie de formulario nueva del S4 dentro del taller.
+      await page.goto("/");
+      await page.setInputFiles("#archivo", CLINICO);
+      await page.waitForURL("**/diagnostico");
+      await page
+        .getByRole("link", { name: "Transformar este archivo" })
+        .click();
+      await page.waitForURL("**/transformar");
+      await page
+        .getByLabel("Técnica para la columna latitud")
+        .selectOption("suprimir");
+      await page
+        .getByRole("button", { name: "Transformar", exact: true })
+        .click();
+      await page
+        .getByRole("heading", { name: "Qué cambió, y qué sigue igual" })
+        .waitFor({ timeout: 60_000 });
+      await page
+        .getByLabel("¿De cuántas personas salió este archivo? (opcional)")
+        .fill("20000");
+      await page.getByRole("button", { name: "Estimar" }).click();
+      await page
+        .getByText(/Cifra estimada/)
+        .first()
+        .waitFor({ timeout: 60_000 });
+
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
+
+    test("la bitácora en reposo pasa axe", async ({ page }) => {
+      await page.goto("/bitacora");
+      await page
+        .getByRole("heading", { name: "Abre la bitácora que guardaste" })
+        .waitFor({ timeout: 60_000 });
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
+
+    test("la bitácora con un error de apertura pasa axe", async ({ page }) => {
+      // El estado de error es el que más fácil se queda sin revisar, y el que peor contrasta.
+      await page.goto("/bitacora");
+      await page
+        .getByLabel("Archivo de bitácora")
+        .setInputFiles(CLINICO, { timeout: 60_000 });
+      await page.getByLabel("Frase de paso").fill("una frase cualquiera");
+      await page.getByRole("button", { name: "Abrir la bitácora" }).click();
+      await page
+        .locator("main")
+        .getByRole("alert")
+        .waitFor({ timeout: 60_000 });
+
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
   });
 }

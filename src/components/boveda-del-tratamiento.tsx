@@ -47,7 +47,7 @@ export function BovedaDelTratamiento({
   if (archivo) {
     return (
       <Panel
-        etiqueta="Paso 4 · la bóveda"
+        etiqueta="Paso 9 · la bóveda"
         titulo="Guarda la bóveda, o no habrá regreso"
         nota={
           <>
@@ -97,7 +97,7 @@ export function BovedaDelTratamiento({
 
   return (
     <Panel
-      etiqueta="Paso 4 · la bóveda"
+      etiqueta="Paso 9 · la bóveda"
       titulo="La correspondencia para poder deshacerlo"
       nota={
         <>

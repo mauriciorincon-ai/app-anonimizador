@@ -15,19 +15,8 @@
 
 import { Panel } from "@/components/panel";
 import { numero } from "@/lib/formato";
+import { nombreDeTecnica } from "@/lib/tecnicas-en-palabras";
 import type { MuestraDeTransformacion } from "@/workers/contrato";
-
-const NOMBRE_DE_TECNICA: Record<string, string> = {
-  conservar: "sin cambios",
-  suprimir: "quitada",
-  enmascarar: "enmascarada",
-  seudonimizar: "seudónimo",
-  "seudonimizar-con-formato": "seudónimo con formato",
-  "generalizar-rango": "agrupada en rangos",
-  "generalizar-fecha": "fecha recortada",
-  "generalizar-prefijo": "recortada",
-  "generalizar-automatico": "generalizada hasta el k",
-};
 
 export function VistaPrevia({
   muestras,
@@ -92,7 +81,7 @@ export function VistaPrevia({
                 >
                   {muestra.nombre}
                   <span className="text-tinta-tenue block font-sans text-[0.75rem]">
-                    {NOMBRE_DE_TECNICA[muestra.tecnica] ?? muestra.tecnica}
+                    {nombreDeTecnica(muestra.tecnica)}
                   </span>
                 </th>
                 <td className="py-2 pr-3">

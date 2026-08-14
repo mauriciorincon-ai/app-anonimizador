@@ -1,15 +1,33 @@
+"use client";
+
+import dynamic from "next/dynamic";
+
 // P8 — `/bitacora`: la memoria de lo que has tratado.
 //
-// **Esto es un andamio de la Fase 0 y lo dice en pantalla.** La ruta nace vacía a propósito, por la
-// lección que el S2 y el S3 pagaron dos veces: una ruta que entra al gate de Lighthouse el día del
-// PR llega tarde para arreglarla. `/transformar` cayó a 0,88 por llevar el motor en el bundle y
-// `/regreso` a 0,90 por un salto de contenido de 0,107 — los dos números aparecieron cuando ya
-// había pantalla que rehacer. Aquí el número de partida se conoce antes de escribir una línea de
-// producto, y la Fase 4 construye sabiendo cuánto margen tiene.
+// **El encabezado se pinta aquí y NO dentro del componente diferido.** Es la lección que el S3 midió
+// en `/regreso`: con la página entera detrás del `dynamic`, el elemento más grande de la pantalla
+// —el título— no existe hasta que llega el chunk, así que el LCP lo marca la red y no el render.
+// Aquella ruta sacó 0,90 clavada en el umbral por eso mismo.
 //
-// El contenido de verdad —abrir una bitácora cifrada, leer sus entradas, añadir la del tratamiento
-// recién hecho— llega en la Fase 4. Mientras tanto la pantalla no finge: no hay controles muertos
-// ni un esqueleto gris que insinúe una función que todavía no existe.
+// La ruta nació vacía en la Fase 0 de este sprint, con su número de partida medido antes de escribir
+// una línea de producto — para no repetir el arreglo a última hora que costaron `/transformar` (0,88
+// por llevar el motor en el bundle) y `/regreso` (0,90 por el LCP diferido).
+//
+// El `min-h` de abajo tampoco es maquetación defensiva: reserva el alto del primer panel para que el
+// intercambio de «Abriendo…» por el contenido real no empuje el pie de la página. En `/regreso` ese
+// salto se cobró como **CLS 0,107** contra un tope de 0,1.
+
+const Bitacora = dynamic(
+  () => import("@/components/bitacora").then((m) => m.Bitacora),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-tinta-suave" role="status">
+        Abriendo…
+      </p>
+    ),
+  },
+);
 
 export default function PaginaDeBitacora() {
   return (
@@ -19,11 +37,14 @@ export default function PaginaDeBitacora() {
         Qué has tratado, y cuándo
       </h1>
       <p className="text-tinta-suave mt-3 max-w-prose leading-relaxed text-pretty">
-        En construcción. Aquí vivirá tu bitácora: un archivo cifrado, tuyo, que
-        recuerda qué archivos anonimizaste, con qué política y con qué riesgo
-        resultante. Como la bóveda, se guarda donde tú decidas — no en este
-        navegador.
+        Tu historial de tratamientos, en un archivo cifrado que guardas tú: qué
+        anonimizaste, cuándo, con qué política y con qué riesgo resultante. Va
+        cifrado porque el nombre de un archivo ya cuenta de qué va su contenido.
+        Como la bóveda, vive donde tú decidas — no en este navegador.
       </p>
+      <div className="mt-8 min-h-[30rem]">
+        <Bitacora />
+      </div>
     </main>
   );
 }

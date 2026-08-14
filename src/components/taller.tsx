@@ -22,6 +22,7 @@ import { clasesDeBoton, Boton } from "@/components/boton";
 import { DescargaDelArchivo } from "@/components/descarga-del-archivo";
 import { EditorDePolitica } from "@/components/editor-de-politica";
 import { LlaveDelProyecto } from "@/components/llave-del-proyecto";
+import { RiesgoEstimadoEnPantalla } from "@/components/riesgo-estimado-en-pantalla";
 import { VistaPrevia } from "@/components/vista-previa";
 import {
   esReversible,
@@ -33,6 +34,7 @@ import { numero } from "@/lib/formato";
 import {
   derivarLlaveDelProyecto,
   invalidarTransformacion,
+  pedirEstimacion,
   prepararArchivo,
   sellarLaBoveda,
   transformar,
@@ -52,6 +54,13 @@ const DescargaDelCertificado = dynamic(
     import("@/components/descarga-del-certificado").then(
       (m) => m.DescargaDelCertificado,
     ),
+  { ssr: false },
+);
+
+/** Mismo motivo: solo aparece tras transformar, y arrastra el estado propio de la bitácora. */
+const AnotarEnBitacora = dynamic(
+  () =>
+    import("@/components/anotar-en-bitacora").then((m) => m.AnotarEnBitacora),
   { ssr: false },
 );
 
@@ -177,6 +186,14 @@ export function Taller({ informe }: { informe: Informe }) {
               filas={informe.diagnostico.filas}
             />
             <BalanceEnPantalla balance={hecha.balance} />
+            {/* Panel APARTE, y nunca dentro del balance: lo de arriba es exacto y esto es
+                estimado. La regla del sprint es que no se compongan, y dos cifras en el mismo
+                panel se componen aunque nadie las sume. */}
+            <RiesgoEstimadoEnPantalla
+              estimacion={taller.estimacion}
+              poblacion={taller.poblacionDeclarada}
+              onDeclarar={pedirEstimacion}
+            />
             <DescargaDelArchivo
               archivo={taller.archivo}
               preparando={taller.etapa === "escribiendo"}
@@ -206,6 +223,33 @@ export function Taller({ informe }: { informe: Informe }) {
                 suprimidas: hecha.suprimidas,
               }}
             />
+            {/* Anotar exige lo mismo que certificar: que el archivo exista, porque una entrada sin
+                la huella de salida no se podría atar nunca al certificado que la acompaña. Se pinta
+                solo entonces, en vez de ofrecer un paso que todavía no puede completarse. */}
+            {taller.huellaDeSalida ? (
+              <AnotarEnBitacora
+                entrada={{
+                  archivo: informe.archivo.nombre,
+                  hashDePolitica: hecha.hashDePolitica,
+                  // Las técnicas SIN los nombres de columna: qué se hizo, no a qué. Se guardan las
+                  // claves y no las etiquetas, porque un registro se lee con otra versión de Velo.
+                  // Orden estable por cómo aparecen las columnas, que ya es determinista.
+                  tecnicas: [
+                    ...new Set(
+                      hecha.muestras
+                        .filter((m) => !m.omitida)
+                        .map((m) => m.tecnica),
+                    ),
+                  ],
+                  filas: informe.diagnostico.filas,
+                  unicosAntes: hecha.balance.antes.proporcionUnicos,
+                  unicosDespues: hecha.balance.despues.proporcionUnicos,
+                  esTitular: hecha.balance.esTitular,
+                  huellaDeEntrada: informe.archivo.sha256,
+                  huellaDeSalida: taller.huellaDeSalida,
+                }}
+              />
+            ) : null}
             {/* Solo si la política pidió columnas reversibles. Ofrecer una bóveda cuando no hay
                 correspondencia que guardar prometería una vuelta que no existe. */}
             {columnasReversibles.length > 0 ? (

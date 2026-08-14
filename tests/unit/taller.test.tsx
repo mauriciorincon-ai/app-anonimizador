@@ -20,6 +20,7 @@ import {
   derivarLlaveDelProyecto,
   descartar,
   invalidarTransformacion,
+  pedirEstimacion,
   prepararArchivo,
   sellarLaBoveda,
   transformar,
@@ -409,10 +410,12 @@ describe("sin worker no hay taller", () => {
       transformar(POLITICA);
       prepararArchivo();
       sellarLaBoveda("frase de la boveda");
+      pedirEstimacion(1000);
     });
     expect(WorkerDeMentira.ultimo).toBeNull();
     // La forma COMPLETA, a propósito: un campo nuevo en el taller tiene que pasar por aquí y ser
-    // mirado. Cazó los dos de la bóveda en el S3 y la huella de salida en el S4.
+    // mirado. Cazó los dos de la bóveda en el S3, la huella de salida en el S4 y ahora los dos de
+    // la estimación.
     expect(taller).toEqual({
       llave: { fase: "sin-llave" },
       transformacion: { fase: "sin-hacer" },
@@ -421,6 +424,10 @@ describe("sin worker no hay taller", () => {
       huellaDeSalida: null,
       boveda: { fase: "sin-sellar" },
       archivoDeBoveda: null,
+      estimacion: null,
+      // Sin worker, `pedirEstimacion` sale antes de tocar el estado: si publicara la población
+      // primero, la pantalla enseñaría un dato declarado que nadie va a poder usar.
+      poblacionDeclarada: null,
     });
   });
 });

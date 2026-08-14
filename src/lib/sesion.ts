@@ -14,6 +14,7 @@
 import { useSyncExternalStore } from "react";
 
 import type { Politica } from "@/engine/politica";
+import type { RiesgoEstimado } from "@/engine/riesgo-estimado";
 import { excedeElTope, excelGrande, formatoDeArchivo } from "@/lib/archivo";
 import { generarSal } from "@/lib/llave";
 import type {
@@ -93,6 +94,17 @@ export interface EstadoDelTaller {
   readonly boveda: EstadoDeBoveda;
   /** El `.velo` listo para guardar, también como asa. */
   readonly archivoDeBoveda: AsaDeArchivo | null;
+  /**
+   * El veredicto de los estimadores poblacionales, o `null` mientras nadie los ha pedido.
+   *
+   * **Vive aparte del balance y no dentro de él**, y esa separación es la regla de honestidad del
+   * S4 puesta en el estado: `BalanceDelTratamiento` es todo exacto —se contó registro por registro—
+   * y colgarle un campo estimado habría hecho que la primera pantalla distraída los pintara juntos.
+   * Son dos planos, viajan por caminos distintos y se pintan en paneles distintos.
+   */
+  readonly estimacion: RiesgoEstimado | null;
+  /** La población que el usuario declaró, para que la pantalla la recuerde entre intentos. */
+  readonly poblacionDeclarada: number | null;
 }
 
 /**
@@ -142,6 +154,8 @@ const TALLER_VACIO: EstadoDelTaller = {
   huellaDeSalida: null,
   boveda: { fase: "sin-sellar" },
   archivoDeBoveda: null,
+  estimacion: null,
+  poblacionDeclarada: null,
 };
 
 let estadoActual: EstadoDeSesion = VACIO;
@@ -272,6 +286,19 @@ export function sellarLaBoveda(frase: string): void {
   worker.postMessage({ tipo: "sellar-boveda", frase });
 }
 
+/**
+ * Pide la estimación poblacional con la población que el usuario declaró.
+ *
+ * `null` es una petición legítima —«ya no quiero declararla»— y el motor contesta con su «no
+ * calculable» razonado, que es lo que la pantalla enseña. No se filtra aquí: quien decide si una
+ * entrada permite estimar es el motor, que tiene los criterios y sus fuentes.
+ */
+export function pedirEstimacion(poblacion: number | null): void {
+  if (!worker) return;
+  publicarTaller({ poblacionDeclarada: poblacion });
+  worker.postMessage({ tipo: "estimar-riesgo", poblacion });
+}
+
 export function prepararArchivo(): void {
   if (!worker) return;
   publicarTaller({ etapa: "escribiendo" });
@@ -374,8 +401,16 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
   if (mensaje.tipo === "transformado") {
     publicarTaller({
       transformacion: { fase: "hecha", resultado: mensaje.resultado },
+      // Un tratamiento nuevo invalida la estimación del anterior: describía otra tabla. Dejarla
+      // en pantalla sería la composición prohibida en su forma más tonta —una cifra correcta
+      // sobre un archivo que ya no existe.
+      estimacion: null,
       etapa: null,
     });
+    return;
+  }
+  if (mensaje.tipo === "riesgo-estimado") {
+    publicarTaller({ estimacion: mensaje.estimacion });
     return;
   }
   if (mensaje.tipo === "archivo") {
