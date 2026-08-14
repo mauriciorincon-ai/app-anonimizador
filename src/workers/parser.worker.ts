@@ -346,34 +346,21 @@ async function transformar(politica: Politica): Promise<void> {
     // Sellarlo es un mensaje aparte porque exige la frase de paso del usuario, que se pide después.
     correspondencias = resultado.correspondencias;
 
-    // `mondrian` viaja SIN su tabla: `ResultadoDeMondrian` la lleva dentro, y reenviarlo entero
-    // habría mandado el archivo a la página sin que se notara en pantalla. Se copian los campos
-    // UNO A UNO en vez de con un `Omit`: así la frontera es literal, y el día que el reparto gane
-    // un campo nuevo no cruza solo — hay que escribirlo aquí y mirarlo.
-    const m = resultado.mondrian;
-    const mondrian = m
-      ? {
-          kObjetivo: m.kObjetivo,
-          kAlcanzado: m.kAlcanzado,
-          alcanzado: m.alcanzado,
-          motivo: m.motivo,
-          dimensiones: m.dimensiones,
-          sinCortes: m.sinCortes,
-          particiones: m.particiones,
-        }
-      : null;
-
+    // Aquí vivía la proyección campo a campo del reparto de Mondrian, para que su tabla —el archivo
+    // entero— no cruzara la frontera dentro de `ResultadoDeMondrian`. **Ya no hace falta porque el
+    // reparto no cruza en absoluto** (deuda B2, pagada arriba): lo consume `balanceDelTratamiento`
+    // en este mismo lado. La defensa más barata contra que un dato cruce sigue siendo que no cruce.
     enviar({
       tipo: "transformado",
+      // Las cuatro estructuras crudas —`mondrian`, `diversidad`, `colisiones` y
+      // `pendientesDeMondrian`— **ya no cruzan** (deuda B2, pagada en el S4). Se consumen arriba,
+      // en `balanceDelTratamiento`, y lo que la pantalla necesita es la conclusión: las salvedades
+      // del balance, ya ordenadas y con su gravedad decidida.
       resultado: {
         hashDePolitica: hashDeLaPolitica,
         balance,
         utilidad: medirUtilidad(original, resultado.tabla),
-        mondrian,
-        diversidad,
         suprimidas: resultado.suprimidas,
-        colisiones: resultado.colisiones,
-        pendientesDeMondrian: resultado.pendientesDeMondrian,
         muestras,
         ms: Math.round(performance.now() - inicio),
       },

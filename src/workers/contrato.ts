@@ -9,8 +9,6 @@
 
 import type { BalanceDelTratamiento } from "@/engine/balance";
 import type { Diagnostico } from "@/engine/clasificador";
-import type { MedidaDeDiversidad } from "@/engine/diversidad";
-import type { ResultadoDeMondrian } from "@/engine/mondrian";
 import type { Politica } from "@/engine/politica";
 import type {
   CeldasDeColumna,
@@ -19,7 +17,6 @@ import type {
   SalvedadDelRegreso,
 } from "@/engine/restaurar";
 import type { AdvisorDeQis, RiesgoExacto } from "@/engine/riesgo";
-import type { ColisionEnColumna } from "@/engine/tecnicas";
 import type { Utilidad } from "@/engine/utilidad";
 
 export type FormatoDeArchivo = "csv" | "excel";
@@ -159,16 +156,6 @@ export interface Informe {
 }
 
 /**
- * El reparto de Mondrian **sin su tabla**.
- *
- * `ResultadoDeMondrian` lleva dentro la `TablaColumnar` generalizada — o sea, el archivo entero.
- * Reenviarlo tal cual por `postMessage` habría tirado la frontera por la ventana en el sprint que
- * la pone a prueba, y el defecto sería invisible: la pantalla se vería idéntica. El `Omit` es el
- * gate en forma de tipo, y `tests/unit/privacidad.test.ts` lo comprueba también sobre el objeto.
- */
-export type ResumenDeMondrian = Omit<ResultadoDeMondrian, "tabla">;
-
-/**
  * Una columna en la vista previa, con la regla de exposición que la gobierna.
  *
  * `antes` va SIEMPRE enmascarado: es el dato crudo del usuario y la regla del S1 no se relaja
@@ -194,16 +181,26 @@ export interface MuestraDeTransformacion {
   readonly suprimida: boolean;
 }
 
+/**
+ * Lo que la página sabe de un tratamiento.
+ *
+ * **Aquí se pagó la deuda B2 del S2 (S4, fase 0), y la forma del pago importa más que el pago.**
+ * Cruzaban además `mondrian`, `diversidad`, `colisiones` y `pendientesDeMondrian` — las cuatro
+ * estructuras crudas que `balanceDelTratamiento` consume **dentro del worker** para producir
+ * `balance.salvedades`. O sea: la frontera llevaba la materia prima **y** la conclusión sacada de
+ * ella, y ningún componente leía la materia prima. Verificado antes de borrar: cero lectores en
+ * `components/`, `app/` y `lib/`.
+ *
+ * La regla que queda, y que `tests/unit/taller.test.tsx` sostiene con una lista literal de claves:
+ * **un campo del contrato nace con su lector o no nace.** Si un consumidor futuro —el certificado
+ * del S4, por ejemplo— necesita una de las cuatro, vuelve con quien la lea, no «por si acaso».
+ */
 export interface ResultadoDeTransformacion {
   /** Identidad del tratamiento: mismo hash ⇒ mismo trato. */
   readonly hashDePolitica: string;
   readonly balance: BalanceDelTratamiento;
   readonly utilidad: Utilidad;
-  readonly mondrian: ResumenDeMondrian | null;
-  readonly diversidad: readonly MedidaDeDiversidad[];
   readonly suprimidas: readonly string[];
-  readonly colisiones: readonly ColisionEnColumna[];
-  readonly pendientesDeMondrian: readonly string[];
   readonly muestras: readonly MuestraDeTransformacion[];
   readonly ms: number;
 }

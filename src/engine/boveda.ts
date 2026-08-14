@@ -314,7 +314,15 @@ export function colisionesDeBoveda(boveda: Boveda): number {
   );
 }
 
-/** ¿Esta bóveda salió de esta llave? Se compara por huella, lo único observable de una llave. */
-export function esDeLaMismaLlave(boveda: Boveda, huella: string): boolean {
-  return boveda.huellaDeLlave === huella;
-}
+// Aquí vivió `esDeLaMismaLlave(boveda, huella)`, borrada en el S4 como pago de deuda del ciclo.
+//
+// Se escribió en el S3 para el estado «esta bóveda es de otra llave», y **nunca tuvo un llamador**:
+// en `/regreso` no hay llave HMAC cargada contra la cual comparar —el regreso ocurre semanas
+// después, en otra sesión, sin proyecto abierto—, así que la función no tenía segundo operando.
+// La pregunta que el usuario sí necesita respondida, «esta bóveda no es de este archivo», la
+// contesta `restaurar()` con `reconocimiento: "ninguno"`, mirando el contenido en vez de la
+// etiqueta — y esa respuesta es mejor, porque una bóveda de la misma llave y otro archivo también
+// falla, y la comparación de huellas la habría dado por buena.
+//
+// `huellaDeLlave` **sigue en la bóveda y sigue enseñándose**: sirve para que una persona reconozca
+// de qué proyecto es. Lo que no existe es la comparación automática que nadie pedía.
