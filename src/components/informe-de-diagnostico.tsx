@@ -9,7 +9,7 @@
 //   3. **El consejero**, que es qué hacer con ella.
 
 import { PanelDelAdvisor } from "@/components/advisor-de-qis";
-import { DescargaDelReporte } from "@/components/descarga-del-reporte";
+import { DescargaDelCertificado } from "@/components/descarga-del-certificado";
 import { InsigniaDeCategoria } from "@/components/insignias";
 import { Panel } from "@/components/panel";
 import { PanelDeRiesgo } from "@/components/panel-de-riesgo";
@@ -117,7 +117,7 @@ export function InformeDeDiagnostico({ informe }: { informe: Informe }) {
 
       <PanelDelAdvisor advisor={advisor} filas={diagnostico.filas} />
 
-      <DescargaDelReporte informe={informe} />
+      <DescargaDelCertificado informe={informe} />
     </div>
   );
 }

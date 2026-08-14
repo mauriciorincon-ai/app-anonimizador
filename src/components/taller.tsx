@@ -41,16 +41,16 @@ import {
 import type { Informe, MotivoDeError } from "@/workers/contrato";
 
 /**
- * El reporte se carga cuando hace falta, no al abrir el taller.
+ * El certificado se carga cuando hace falta, no al abrir el taller.
  *
- * `DescargaDelReporte` arrastra `@/engine/reporte` entero —la plantilla del documento, con su CSS y
- * su texto— y aquí solo aparece **después** de transformar. Mismo patrón que SheetJS en el worker:
- * lo que solo se usa en una rama, se carga en esa rama.
+ * `DescargaDelCertificado` arrastra `@/engine/reporte` entero —la plantilla del documento, con su
+ * CSS y su texto— y aquí solo aparece **después** de transformar. Mismo patrón que SheetJS en el
+ * worker: lo que solo se usa en una rama, se carga en esa rama.
  */
-const DescargaDelReporte = dynamic(
+const DescargaDelCertificado = dynamic(
   () =>
-    import("@/components/descarga-del-reporte").then(
-      (m) => m.DescargaDelReporte,
+    import("@/components/descarga-del-certificado").then(
+      (m) => m.DescargaDelCertificado,
     ),
   { ssr: false },
 );
@@ -188,9 +188,17 @@ export function Taller({ informe }: { informe: Informe }) {
             {/* El archivo no puede salir solo. Un CSV anonimizado sin un documento que diga qué se
                 le hizo obliga a quien lo recibe a creer; y el reporte del diagnóstico, que describe
                 el archivo ORIGINAL, mandado junto al tratado es la mentira por composición de este
-                sprint a nivel de artefacto. Hallazgo A2 de la auditoría. */}
-            <DescargaDelReporte
+                sprint a nivel de artefacto. Hallazgo A2 de la auditoría del S2.
+
+                El S4 cierra la otra mitad: el documento ya no describe el tratamiento, lo
+                **certifica**, porque lleva la huella del archivo que sale. Y eso obliga a que
+                dependa de `taller.archivo` — la huella no existe hasta que el archivo existe. No es
+                una dependencia incómoda: es la verdad del artefacto, y por eso el paso lo dice en
+                vez de enseñar un botón muerto. */}
+            <DescargaDelCertificado
               informe={informe}
+              archivo={taller.archivo}
+              huellaDeSalida={taller.huellaDeSalida}
               tratamiento={{
                 balance: hecha.balance,
                 utilidad: hecha.utilidad,

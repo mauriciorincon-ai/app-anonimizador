@@ -387,6 +387,21 @@ function construirArchivo(): void {
   // El CSV se acumula en trozos y no en una sola cadena: 500.000 filas × 24 columnas son ~130 MB
   // de texto, y concatenarlos en un solo string obligaría a tener dos copias vivas al duplicar el
   // buffer. `Blob` acepta la lista y la junta él, una sola vez.
+  // **La huella de SALIDA se calcula AQUÍ, sobre los mismos trozos que forman el `Blob`** — es lo
+  // que convierte el documento del S2 en un certificado verificable (S4).
+  //
+  // Tres cosas que hacen que esto sea correcto y no una conveniencia:
+  //
+  //   1. **Son exactamente los bytes del archivo.** `new Blob([...cadenas])` codifica cada cadena
+  //      como UTF-8, así que hashear `TextEncoder().encode(trozo)` en el mismo orden da el mismo
+  //      flujo de bytes que el navegador va a escribir en el disco. No es una aproximación.
+  //   2. **No hay segunda pasada.** Volver a leer el `Blob` para hashearlo costaría recorrer otra
+  //      vez los ~130 MB del peor caso; aquí el costo es el del hash y nada más.
+  //   3. **Los bytes no cruzan.** A la página va la huella —64 hex—, igual que ya cruza la del
+  //      archivo de entrada desde el S1. La frontera del ADR-005 no se toca: el `Blob` sigue
+  //      saliendo como asa opaca.
+  const huellaDeSalida = new Sha256();
+  const codificador = new TextEncoder();
   const trozos: string[] = [];
   let acumulado = "";
   let filas = 0;
@@ -394,10 +409,14 @@ function construirArchivo(): void {
     acumulado += fila;
     if (++filas % FILAS_POR_TROZO === 0) {
       trozos.push(acumulado);
+      huellaDeSalida.actualizar(codificador.encode(acumulado));
       acumulado = "";
     }
   }
-  if (acumulado) trozos.push(acumulado);
+  if (acumulado) {
+    trozos.push(acumulado);
+    huellaDeSalida.actualizar(codificador.encode(acumulado));
+  }
 
   const blob = new Blob(trozos, { type: "text/csv;charset=utf-8" });
   enviar({
@@ -406,6 +425,7 @@ function construirArchivo(): void {
     nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica),
     bytes: blob.size,
     proposito: "anonimizado",
+    sha256: huellaDeSalida.terminar(),
   });
 }
 

@@ -412,12 +412,13 @@ describe("sin worker no hay taller", () => {
     });
     expect(WorkerDeMentira.ultimo).toBeNull();
     // La forma COMPLETA, a propósito: un campo nuevo en el taller tiene que pasar por aquí y ser
-    // mirado. Es lo que cazó la bóveda del S3 al añadir sus dos.
+    // mirado. Cazó los dos de la bóveda en el S3 y la huella de salida en el S4.
     expect(taller).toEqual({
       llave: { fase: "sin-llave" },
       transformacion: { fase: "sin-hacer" },
       etapa: null,
       archivo: null,
+      huellaDeSalida: null,
       boveda: { fase: "sin-sellar" },
       archivoDeBoveda: null,
     });

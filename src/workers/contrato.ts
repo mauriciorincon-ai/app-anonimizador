@@ -227,6 +227,20 @@ export type MensajeDelWorker =
       nombre: string;
       bytes: number;
       proposito: PropositoDelArchivo;
+      /**
+       * SHA-256 del archivo que se acaba de construir.
+       *
+       * **Opcional a propósito, y presente solo cuando `proposito` es `"anonimizado"`** — que es el
+       * único caso con lector: el certificado del S4, que necesita las dos huellas para que un
+       * tercero pueda comprobar que el documento habla de la copia que tiene en la mano.
+       *
+       * Podría calcularse para los cuatro propósitos casi gratis, y por eso conviene decir por qué
+       * no se hace: la regla §5 de este repo es que **un campo del contrato nace con su lector o no
+       * nace**, y en la fase 0 de este mismo sprint se borraron cuatro campos que cruzaban la
+       * frontera sin que nadie los leyera. Añadir tres huellas «por simetría» sería reabrir esa
+       * deuda el mismo día de pagarla.
+       */
+      sha256?: string;
     }
   | { tipo: "boveda-abierta"; resumen: ResumenDeBoveda }
   | { tipo: "boveda-rechazada"; motivo: MotivoDeBoveda; detalle: string }

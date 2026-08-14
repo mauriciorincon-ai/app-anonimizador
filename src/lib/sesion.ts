@@ -77,6 +77,19 @@ export interface EstadoDelTaller {
   readonly etapa: EtapaDelWorker | null;
   /** El archivo listo para guardar, como asa opaca. Ver `AsaDeArchivo`. */
   readonly archivo: AsaDeArchivo | null;
+  /**
+   * SHA-256 del archivo anonimizado, calculado en el worker sobre los bytes que forman el `Blob`.
+   *
+   * **Viaja aparte del asa, y no dentro de ella, porque no es lo mismo.** `AsaDeArchivo` es la
+   * referencia opaca del ADR-005 —nombre, tamaño y una URL— y su contrato es justamente que no se
+   * puede mirar lo que hay dentro. La huella sí es contenido: es lo que permite comprobar que el
+   * archivo es ese. Meterla en el asa habría confundido las dos ideas.
+   *
+   * `null` hasta que el archivo existe, y por eso **el certificado no puede ofrecerse antes**: sin
+   * archivo generado no hay huella de salida, y sin huella de salida el certificado sería otra vez
+   * el documento del S2 disculpándose por no tenerla.
+   */
+  readonly huellaDeSalida: string | null;
   readonly boveda: EstadoDeBoveda;
   /** El `.velo` listo para guardar, también como asa. */
   readonly archivoDeBoveda: AsaDeArchivo | null;
@@ -126,6 +139,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   transformacion: { fase: "sin-hacer" },
   etapa: null,
   archivo: null,
+  huellaDeSalida: null,
   boveda: { fase: "sin-sellar" },
   archivoDeBoveda: null,
 };
@@ -207,6 +221,7 @@ export function invalidarTransformacion(): void {
   publicarTaller({
     transformacion: { fase: "sin-hacer" },
     archivo: null,
+    huellaDeSalida: null,
     etapa: null,
     // La bóveda también caduca: describe la correspondencia de una política que ya no es la que
     // está en pantalla. Dejarla sería ofrecer la vuelta de un tratamiento que no se hizo.
@@ -235,6 +250,7 @@ export function transformar(politica: Politica): void {
   publicarTaller({
     transformacion: { fase: "transformando" },
     archivo: null,
+    huellaDeSalida: null,
     etapa: "transformando",
   });
   worker.postMessage({ tipo: "transformar", politica });
@@ -375,6 +391,10 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
     }
     publicarTaller({
       archivo: asaDeArchivo(mensaje.blob, mensaje.nombre),
+      // `?? null` y no un `!`: el contrato declara la huella opcional porque solo el archivo
+      // anonimizado la trae, y este camino es justamente ese. Afirmarlo con `!` sería fiarse de una
+      // correspondencia que el tipo no garantiza.
+      huellaDeSalida: mensaje.sha256 ?? null,
       etapa: null,
     });
     return;

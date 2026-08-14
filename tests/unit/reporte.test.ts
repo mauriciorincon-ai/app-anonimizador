@@ -23,6 +23,19 @@ import { medirUtilidad } from "@/engine/utilidad";
 
 const FECHA = "9 de agosto de 2026, 7:42 p. m.";
 
+/**
+ * Lo que el S4 añadió al tratamiento: la identidad del archivo que SALE.
+ *
+ * Se declara una vez y se esparce en cada fixture porque no es lo que estos tests miden — miden el
+ * documento— pero **sí es lo que convierte el documento en un certificado**, y el tipo ya no deja
+ * construir un tratamiento sin ella. Que romper el tipo haya roto once tests es la señal de que la
+ * huella de salida no era opcional de verdad.
+ */
+const SALIDA = {
+  sha256DeSalida: "f".repeat(64),
+  nombreDeSalida: "velo-anonimizado-abc12345.csv",
+} as const;
+
 function datosDe(perfil: string, filas = 400): DatosDelReporte {
   const todas = [
     ...generarFilas({
@@ -282,6 +295,7 @@ async function reporteConTratamiento(politica: Politica) {
       utilidad: medirUtilidad(tabla, transformada.tabla),
       hashDePolitica: hashDePolitica(politica),
       suprimidas: transformada.suprimidas,
+      ...SALIDA,
     }),
     datos: {
       ...datosDe("clinico", filas),
@@ -290,6 +304,7 @@ async function reporteConTratamiento(politica: Politica) {
         utilidad: medirUtilidad(tabla, transformada.tabla),
         hashDePolitica: hashDePolitica(politica),
         suprimidas: transformada.suprimidas,
+        ...SALIDA,
       },
     } satisfies DatosDelReporte,
   };
@@ -307,7 +322,8 @@ const CON_CEDULA_INTACTA: Politica = {
 
 describe("la advertencia va ANTES que el porcentaje, en el orden del documento", () => {
   it("con una cédula sin tratar, la salvedad precede a la cifra de reducción", async () => {
-    const { seccion, balance } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    const { seccion, balance } =
+      await reporteConTratamiento(CON_CEDULA_INTACTA);
 
     // El instrumento mide algo real: hay una reducción grande que podría lucirse (del 100 % de
     // registros únicos al 21 %). Si no la hubiera, el test pasaría sin haber probado nada.
@@ -346,7 +362,9 @@ describe("la advertencia va ANTES que el porcentaje, en el orden del documento",
       html.indexOf("Riesgo de reidentificación"),
     );
     expect(html).toContain("el archivo ORIGINAL");
-    expect(html).toContain("Diagnóstico y tratamiento de datos personales");
+    // El S4 renombró la etiqueta: el documento dejó de «describir el tratamiento» y pasó a
+    // certificarlo, porque ya lleva la huella del archivo que sale.
+    expect(html).toContain("Certificado de tratamiento de datos personales");
   });
 
   it("sin tratamiento, el reporte sigue siendo el diagnóstico del S1, sin balance", () => {
@@ -410,6 +428,7 @@ describe("el complemento: cuando nada la descalifica, la cifra SÍ es titular", 
     ),
     hashDePolitica: "a".repeat(64),
     suprimidas: [],
+    ...SALIDA,
   });
 
   it("emite el titular grande con su cifra", () => {
@@ -497,6 +516,7 @@ describe("cada salvedad se escribe, y dice lo suyo", () => {
     ),
     hashDePolitica: "b".repeat(64),
     suprimidas: ["telefono"],
+    ...SALIDA,
   });
 
   it("nombra las columnas intactas y cuenta los que siguen solos", () => {
@@ -560,6 +580,7 @@ describe("cada salvedad se escribe, y dice lo suyo", () => {
       ),
       hashDePolitica: "c".repeat(64),
       suprimidas: [],
+      ...SALIDA,
     });
 
     expect(sinRiesgoPrevio).toContain("no hay reducción que medir");
@@ -585,20 +606,60 @@ describe("cada salvedad se escribe, y dice lo suyo", () => {
 // corresponde, o peor, que alguien lo cambió.
 
 describe("A2 — el reporte del tratamiento se lee fuera de contexto", () => {
-  it("declara que la huella es la del archivo que entró, no la del que se entrega", async () => {
+  // Este test cambió de bando en el S4, y por eso vale la pena leerlo dos veces.
+  //
+  // En el S2 custodiaba una **disculpa**: el documento llevaba una sola huella —la del archivo que
+  // entró— y un párrafo explicando que no era la del archivo entregado. Era honesto, y por eso
+  // mismo era la prueba de que faltaba algo: un documento que tiene que explicar lo que NO puede
+  // demostrar está señalando su propio agujero.
+  //
+  // Ahora custodia el cierre: las dos huellas están, son distintas, y el párrafo que se disculpaba
+  // no puede volver. **Que la frase vieja esté prohibida es tan importante como que la nueva
+  // exista** — si alguien reintrodujera la de antes junto a las dos huellas, el documento se
+  // contradiría a sí mismo, que es exactamente el A2 que la auditoría del S3 encontró en el manual.
+  it("lleva las DOS huellas, y ya no se disculpa por la que faltaba", async () => {
     const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
     const html = construirReporte(datos);
 
     expect(html).toContain("que ENTRÓ a Velo");
-    expect(html).toContain("Esta huella no es la del archivo que se entrega");
-    // Y remite a lo que sí identifica el archivo entregado: el hash de la política.
-    expect(html).toContain("velo-anonimizado-");
+    expect(html).toContain("el que se entrega");
+    // Las dos huellas, completas y distintas entre sí.
+    expect(html).toContain(datos.archivo.sha256);
+    expect(html).toContain(SALIDA.sha256DeSalida);
+    expect(datos.archivo.sha256).not.toBe(SALIDA.sha256DeSalida);
+    // Y el nombre del archivo de salida, que es lo que hace copiable el comando de verificación.
+    expect(html).toContain(SALIDA.nombreDeSalida);
+
+    // La disculpa del S2 no puede sobrevivir al hecho que la volvió innecesaria.
+    expect(html).not.toContain(
+      "Esta huella no es la del archivo que se entrega",
+    );
+  });
+
+  it("explica cómo comprobar la huella, con el comando de cada sistema", async () => {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    const html = construirReporte(datos);
+
+    // Una huella que el lector no sabe comprobar no prueba nada. Los tres comandos van con el
+    // nombre del archivo ya puesto: quien lo recibe copia y pega, no traduce.
+    expect(html).toContain(`shasum -a 256 ${SALIDA.nombreDeSalida}`);
+    expect(html).toContain(`sha256sum ${SALIDA.nombreDeSalida}`);
+    expect(html).toContain(
+      `certutil -hashfile ${SALIDA.nombreDeSalida} SHA256`,
+    );
+    // Y las dos mitades que se suelen omitir: qué significa que NO coincida, y qué NO demuestra.
+    expect(html).toContain("Si NO coincide");
+    expect(html).toContain("no es una firma digital");
   });
 
   it("sin tratamiento conserva la frase del S1, que ahí sí es cierta", () => {
     const html = construirReporte(datosDe("clinico", 600));
     expect(html).toContain("corresponde a su copia");
-    expect(html).not.toContain("Esta huella no es la del archivo que se entrega");
+    expect(html).not.toContain(
+      "Esta huella no es la del archivo que se entrega",
+    );
+    // Y no promete una verificación de dos archivos cuando solo hay uno.
+    expect(html).not.toContain("Cómo comprobar esto tú mismo");
   });
 
   it("el hash de la política viaja completo en el documento", async () => {

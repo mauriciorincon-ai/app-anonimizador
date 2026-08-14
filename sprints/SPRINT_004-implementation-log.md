@@ -122,3 +122,99 @@ que el S3 se ganó.
 | B2 pagada                             | ✅ cuatro campos fuera, con guardia de compilación                     |
 | `esDeLaMismaLlave` pagada             | ✅ borrada, con su razón escrita en el hueco que dejó                  |
 | Inventario §4 con su calendario       | ✅ dos barridas, dos hallazgos, ambos con fase asignada                |
+
+---
+
+## Fase 1 — El certificado
+
+### Desviación del plan
+
+El plan aprobado decía **`src/engine/certificado.ts`**, archivo nuevo. **No se creó**, y el
+certificado evolucionó dentro de `engine/reporte.ts`. La razón salió de leer el código, no de la
+comodidad:
+
+`construirReporte` sirve **dos** documentos —el diagnóstico del S1 y el del tratamiento— y comparten
+la envoltura entera: `ESTILOS`, `SELLO`, `escapar`, el formato de cifras, la tabla columna por
+columna, la sección de riesgo, la del advisor y el pie. Todo eso es **privado del módulo**. Un
+archivo aparte obligaba a una de dos cosas: **exportar diez internos** (convertir en API pública lo
+que hoy se puede cambiar sin miedo) o **duplicar la envoltura** — y dos documentos con dos
+envolturas es exactamente cómo empiezan a decir cosas distintas. Este repo lleva dos sprints
+persiguiendo documentos que se contradicen entre sí; crear el tercero a propósito habría sido raro.
+
+Lo que sí ganó identidad propia: `DatosDelTratamiento` con las dos huellas, `seccionDeVerificacion`,
+`nombreDelCertificado` y el componente `descarga-del-certificado.tsx`. El documento se llama
+certificado donde el usuario lo lee.
+
+### El párrafo que se disculpaba, sustituido por la cosa
+
+El hallazgo más bonito de la fase estaba escrito en el código desde el S2. El documento llevaba
+esto:
+
+> **Esta huella no es la del archivo que se entrega.** Es la del original… El archivo tratado es
+> otro archivo y tiene otra huella.
+
+Sincero, y **por eso mismo era la prueba de que faltaba algo**: un documento que tiene que explicar
+lo que no puede demostrar está señalando su propio agujero. El S4 no añade la huella al lado de la
+disculpa — **la sustituye**. Y el test que custodiaba aquella frase ahora custodia que no pueda
+volver: si alguien la reintrodujera junto a las dos huellas, el documento se contradiría a sí mismo,
+que es el A2 que la auditoría del S3 encontró en el manual.
+
+### La huella de salida, y la afirmación que había que probar
+
+Se calcula **mientras se arman los trozos** del CSV, no releyendo el `Blob`: el peor caso son ~130
+MB y una segunda pasada costaría recorrerlos otra vez. A la página cruza la huella —64 hex—, igual
+que ya cruzaba la del archivo de entrada desde el S1; **el `Blob` sigue saliendo como asa opaca y el
+ADR-005 no se toca**.
+
+Ese atajo descansa en una afirmación sobre codificación que es **fácil de escribir en un comentario
+y difícil de verificar leyendo**: que `TextEncoder().encode(trozo)`, trozo a trozo, da exactamente
+los bytes que el navegador escribe en el disco. Si fuera falsa, el certificado declararía una huella
+que no coincide — y el defecto sería **invisible en pantalla**: el documento se vería perfecto y solo
+fallaría cuando alguien lo comprobara, que es justo lo que promete que se puede hacer.
+
+`tests/unit/huella-de-salida.test.ts` la prueba con lo que rompe las suposiciones: acentos y `ñ` (dos
+bytes), emojis y banderas (cuatro bytes y pares sustitutos), cortes en sitios incómodos, trozos
+vacíos, y la comprobación contra un `Blob` de verdad. Más la otra dirección —un byte distinto cambia
+la huella— sin la cual una implementación que devolviera una constante pasaría todo lo demás.
+
+### El estado que el sprint estrena
+
+**El certificado no puede existir antes que el archivo.** No es una limitación incómoda: es la
+verdad del artefacto —sin archivo no hay huella de salida— y por eso el paso 6 lo dice con esas
+palabras en vez de enseñar un botón muerto:
+
+> El certificado lleva la huella SHA-256 del archivo tratado, y esa huella no existe hasta que el
+> archivo existe.
+
+### Lo que se verifica desde fuera de Velo
+
+`tests/e2e/certificado.spec.ts` hace lo que hará un auditor: descarga el CSV y el certificado y
+calcula el SHA-256 con **`node:crypto`**, que no comparte una línea con `lib/sha256.ts`. Si el motor
+de hash de Velo tuviera un defecto, un test que lo verificara con ese mismo motor pasaría tan
+tranquilo.
+
+### Un test que falló por su instrumento, no por su sujeto
+
+El primer intento de «el certificado no llama a nadie» abría el HTML con `page.route("**/*")` y la
+red interceptada. Falla siempre: el patrón **aborta también la navegación `file://` del propio
+documento**. Se cambió por la comprobación sobre el texto, que es más directa y no tiene esa trampa
+— el patrón que el S2 ya había dejado probado para el reporte. Se anota porque el síntoma (`goto`
+falla) no se parece nada a la causa (el test se aborta a sí mismo).
+
+### Verificación de la Fase 1
+
+| Criterio del plan | Resultado |
+|---|---|
+| Dos huellas distintas y correctas | ✅ y comprobadas contra `node:crypto`, no contra sí mismas |
+| Recalcular a mano coincide con la de salida | ✅ e2e con el archivo real descargado |
+| Ni una celda del archivo en el documento | ✅ barrido con una cédula del fixture |
+| Dos generaciones con la misma fecha, byte-idénticas | ✅ el test del S2 sigue verde sin tocarlo |
+| Se abre sin internet | ✅ sin `http`, sin `<script>`, sin `<link>`, sin `url(` |
+| Cobertura >80 % | ✅ |
+
+`pnpm typecheck` y `pnpm lint` limpios. `pnpm test`: **651 verdes, 1 saltada**.
+`CI=1 pnpm test:e2e`: **94 passed, 2 skipped, cero flaky**.
+
+**Nota sobre el tipo:** hacer `sha256DeSalida` y `nombreDeSalida` obligatorios rompió **once** sitios
+de test a la vez. Se anota como señal, no como molestia: si hubieran sido opcionales, el certificado
+habría podido construirse sin huella de salida y nadie se habría enterado.

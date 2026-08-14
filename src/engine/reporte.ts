@@ -33,6 +33,18 @@ export interface DatosDelTratamiento {
   /** Identidad de la política aplicada: mismo hash ⇒ mismo tratamiento. */
   hashDePolitica: string;
   suprimidas: readonly string[];
+  /**
+   * SHA-256 del archivo que SALE, calculado en el worker sobre los bytes del `Blob`.
+   *
+   * **Es lo que convierte este documento de una declaración en un certificado** (S4). Hasta el S3
+   * el documento llevaba una sola huella —la del archivo que entró— y un párrafo explicando que no
+   * era la del archivo entregado; sincero, y por eso mismo la prueba de que faltaba algo. Con las
+   * dos, quien reciba el archivo tratado puede recalcular su huella y comprobar **que este
+   * documento habla de la copia que tiene en la mano**, no de otra parecida.
+   */
+  sha256DeSalida: string;
+  /** Nombre del archivo tratado. Va en el comando de verificación, para poder copiarlo y pegarlo. */
+  nombreDeSalida: string;
 }
 
 export interface DatosDelReporte {
@@ -473,14 +485,67 @@ ${
 </section>`;
 }
 
+/**
+ * «Cómo verificar este certificado» — la sección sin la cual la huella de salida es un adorno.
+ *
+ * **Una huella que el lector no sabe comprobar no prueba nada**, y quien recibe un archivo tratado
+ * no tiene por qué saber qué es SHA-256 ni abrir una terminal a menudo. Así que el documento trae
+ * el comando literal, con el nombre del archivo ya puesto, para los tres sistemas — y dice qué
+ * significa que coincida **y qué significa que no**, que es la mitad que se suele omitir.
+ *
+ * Va **después** del tratamiento y antes del detalle por columna: primero qué se hizo, luego cómo
+ * comprobarlo, y solo entonces la letra pequeña.
+ */
+function seccionDeVerificacion(tratamiento: DatosDelTratamiento): string {
+  const nombre = escapar(tratamiento.nombreDeSalida);
+  return `
+<section>
+<p class="etiqueta">Cómo comprobar esto tú mismo</p>
+<h2>No hace falta creerle a este documento</h2>
+<p style="margin:0 0 10px">Abre una terminal en la carpeta donde está el archivo tratado y corre la
+línea que corresponda a tu sistema. Devuelve una cadena larga de letras y números:</p>
+<table>
+<thead><tr><th>Sistema</th><th>Comando</th></tr></thead>
+<tbody>
+<tr><td>macOS</td><td><code>shasum -a 256 ${nombre}</code></td></tr>
+<tr><td>Linux</td><td><code>sha256sum ${nombre}</code></td></tr>
+<tr><td>Windows</td><td><code>certutil -hashfile ${nombre} SHA256</code></td></tr>
+</tbody>
+</table>
+<p style="margin:12px 0 0"><b>Si esa cadena es igual a la huella de salida de arriba</b>, el archivo
+que tienes es exactamente el que produjo este tratamiento: ni una coma cambiada desde entonces.</p>
+<p class="por-que"><b>Si NO coincide, este certificado no habla de tu copia.</b> Puede ser inocente
+—el archivo se abrió y se volvió a guardar en Excel, que reescribe el CSV— o puede no serlo. En
+cualquier caso, lo que este documento afirma no está probado sobre lo que tienes en la mano, y eso
+es justamente lo que la huella sirve para detectar.</p>
+<p class="por-que"><b>Qué NO demuestra.</b> Que las dos huellas cuadren prueba que los archivos son
+los que dice el documento. No prueba quién los produjo: Velo no firma con una identidad, y este
+certificado no es una firma digital ni un sello de tiempo. Prueba integridad y correspondencia, que
+es lo que necesita un auditor para saber de qué copia se está hablando.</p>
+</section>`;
+}
+
 /** Nombre sugerido para el archivo descargado. Sin caracteres que peleen con un sistema de archivos. */
 export function nombreDelReporte(nombreDelArchivo: string): string {
+  return `velo-diagnostico-${baseDelNombre(nombreDelArchivo)}.html`;
+}
+
+/**
+ * Nombre del certificado. Distinto del diagnóstico a propósito: son dos documentos con dos
+ * autoridades distintas, y acabar con dos `velo-diagnostico-…` en la misma carpeta sería obligar a
+ * abrirlos para saber cuál es cuál.
+ */
+export function nombreDelCertificado(nombreDelArchivo: string): string {
+  return `velo-certificado-${baseDelNombre(nombreDelArchivo)}.html`;
+}
+
+function baseDelNombre(nombreDelArchivo: string): string {
   const base = nombreDelArchivo
     .replace(/\.[^.]+$/, "")
     .replace(/[^\p{L}\p{N}._-]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
-  return `velo-diagnostico-${base || "archivo"}.html`;
+  return base || "archivo";
 }
 
 export function construirReporte(datos: DatosDelReporte): string {
@@ -493,7 +558,7 @@ export function construirReporte(datos: DatosDelReporte): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${hayTratamiento ? "Tratamiento" : "Diagnóstico"} de ${escapar(archivo.nombre)} — Velo</title>
+<title>${hayTratamiento ? "Certificado" : "Diagnóstico"} de ${escapar(archivo.nombre)} — Velo</title>
 <style>${ESTILOS}</style>
 </head>
 <body>
@@ -501,7 +566,7 @@ export function construirReporte(datos: DatosDelReporte): string {
 <p class="sello">${SELLO}Nada salió de ese navegador</p>
 <p class="etiqueta" style="margin-top:18px">${
     hayTratamiento
-      ? "Diagnóstico y tratamiento de datos personales"
+      ? "Certificado de tratamiento de datos personales"
       : "Diagnóstico de datos personales"
   }</p>
 <h1>${escapar(archivo.nombre)}</h1>
@@ -509,20 +574,23 @@ export function construirReporte(datos: DatosDelReporte): string {
 ${numero(diagnostico.columnas.length)} columnas · ${megabytes(archivo.bytes)} · ${escapar(fecha)}</p>
 
 <section>
-<p class="etiqueta">Identidad del archivo</p>
-<h2>Este reporte habla de un archivo concreto</h2>
+<p class="etiqueta">Identidad de los archivos</p>
+<h2>Este ${hayTratamiento ? "certificado" : "reporte"} habla de ${
+    hayTratamiento ? "dos archivos concretos" : "un archivo concreto"
+  }</h2>
 <p style="margin:0 0 6px">SHA-256 del archivo ${
     hayTratamiento ? "que ENTRÓ a Velo" : "analizado"
   }:</p>
 <p class="huella">${escapar(archivo.sha256)}</p>
 ${
-  hayTratamiento
-    ? `<p class="por-que"><b>Esta huella no es la del archivo que se entrega.</b> Es la del original,
-la copia sobre la que se midió todo lo de abajo. El archivo tratado es otro archivo y tiene otra
-huella; se reconoce por el hash de la política que lleva en el nombre
-(<code>velo-anonimizado-…</code>), y ese hash está en la sección siguiente. Quien reciba los dos
-puede comprobar con <code>sha256sum</code> (Linux), <code>shasum -a 256</code> (macOS) o
-<code>Get-FileHash</code> (Windows) que el original es el que dice este documento.</p>`
+  tratamiento
+    ? `<p style="margin:14px 0 6px">SHA-256 del archivo que SALIÓ —el tratado, el que se entrega—,
+<code>${escapar(tratamiento.nombreDeSalida)}</code>:</p>
+<p class="huella">${escapar(tratamiento.sha256DeSalida)}</p>
+<p class="por-que"><b>Son dos archivos distintos y por eso son dos huellas distintas.</b> La de
+arriba identifica el original, la copia sobre la que se midió todo lo de abajo; la de aquí
+identifica lo que se entrega. Tener las dos es lo que hace que este documento se pueda
+<b>comprobar</b> en vez de solo creer.</p>`
     : `<p class="por-que">Quien reciba este documento puede comprobar que corresponde a su copia
 ejecutando <code>sha256sum</code> (Linux), <code>shasum -a 256</code> (macOS) o
 <code>Get-FileHash</code> (Windows) sobre el archivo y comparando el texto de arriba.</p>`
@@ -549,6 +617,8 @@ ${seccionDeRiesgo(riesgo, resumen["identificador-directo"], hayTratamiento)}
 </section>
 
 ${tratamiento ? seccionDeUtilidad(tratamiento.utilidad) : ""}
+
+${tratamiento ? seccionDeVerificacion(tratamiento) : ""}
 
 ${seccionDelAdvisor(advisor, diagnostico.filas)}
 
