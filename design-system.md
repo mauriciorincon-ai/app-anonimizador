@@ -3,6 +3,16 @@
 > Fuente de verdad visual de la app. Nace en el Sprint 001 y **toda pantalla posterior lo obedece**:
 > se extiende por ADR, nunca se contradice en silencio. Los tokens viven implementados en
 > `src/app/globals.css`; aquí se explica **por qué** son esos y no otros.
+>
+> **Al día con el ciclo H1 completo (S001–S004, 2026-08-15): las cinco pantallas.** Los §1 y §2
+> —personalidad y tokens— llegaron intactos desde el S1 y no ha hecho falta tocarlos en cuatro
+> sprints, que es la mejor noticia que puede dar un sistema de diseño. Lo que sí creció es el
+> inventario de componentes (§3), los estados por pantalla (§4) y **la regla de cómo se presenta un
+> número (§5), que es la que carga con la promesa del producto**.
+>
+> _Este documento se quedó congelado en el S1 durante los sprints 002, 003 y 004, y lo cazó la
+> auditoría final del ciclo: ninguna fase lo tenía asignado. Si añades una pantalla y no vuelves
+> aquí, el siguiente en leerlo creerá que la app tiene una menos._
 
 ---
 
@@ -164,16 +174,29 @@ progreso conserva su cambio de ancho (es información, no decoración) pero pier
 
 ## 3. Componentes canon
 
-Construidos a mano sobre los tokens. **No hay shadcn/ui sin personalizar en esta app**: los cuatro
-componentes que el S1 necesita son demasiado propios para heredar un default.
+Construidos a mano sobre los tokens. **No hay shadcn/ui sin personalizar en esta app**: son
+demasiado propios para heredar un default.
 
-| Componente        | Archivo                        | Uso permitido                                                                                       |
-| ----------------- | ------------------------------ | --------------------------------------------------------------------------------------------------- |
-| **Sello**         | `components/sello.tsx`         | Encabezado de toda pantalla y pie del informe. Nunca decorativo suelto.                             |
-| **Zona de carga** | `components/zona-de-carga.tsx` | Solo en `/`. Arrastre **y** `<input type="file">` real y accesible.                                 |
-| **Insignia**      | `components/insignias.tsx`     | Categoría de la Ley 1581 y nivel de certeza. Color + texto, siempre los dos.                        |
-| **Panel**         | `components/panel.tsx`         | Contenedor de sección con título y nota al pie opcional.                                            |
-| **Botón**         | `components/boton.tsx`         | Variantes `principal` (acento sólido) y `discreto` (borde). Una sola acción principal por pantalla. |
+**Las cinco primitivas.** Son las únicas que se pueden usar en cualquier pantalla, y las únicas que
+un componente nuevo puede dar por hechas.
+
+| Componente        | Archivo                        | Uso permitido                                                                                                                    |
+| ----------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Sello**         | `components/sello.tsx`         | Encabezado de toda pantalla y pie del informe. Nunca decorativo suelto.                                                          |
+| **Zona de carga** | `components/zona-de-carga.tsx` | Solo en `/`. Arrastre **y** `<input type="file">` real y accesible.                                                              |
+| **Insignia**      | `components/insignias.tsx`     | Categoría de la Ley 1581 y nivel de certeza. Color + texto, siempre los dos.                                                     |
+| **Panel**         | `components/panel.tsx`         | Contenedor de sección con título y nota al pie opcional. **La nota se pinta en el PIE** — nunca escribas en ella «lo de arriba». |
+| **Botón**         | `components/boton.tsx`         | Variantes `principal` (acento sólido) y `discreto` (borde). Una sola acción principal por pantalla.                              |
+
+**Los compuestos son de su pantalla y no se reutilizan fuera de ella.** Cada uno conoce su dominio;
+sacarlo de contexto obliga a generalizarlo y ahí es donde se pierde la voz de la app.
+
+| Pantalla       | Compuestos                                                                                                                                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/diagnostico` | `tabla-de-columnas` · `panel-de-riesgo` · `advisor-de-qis` · `informe-de-diagnostico`                                                                                                                                                   |
+| `/transformar` | `taller` · `editor-de-politica` · `llave-del-proyecto` · `vista-previa` · `balance-en-pantalla` · `riesgo-estimado-en-pantalla` · `boveda-del-tratamiento` · `descarga-del-archivo` · `descarga-del-certificado` · `anotar-en-bitacora` |
+| `/regreso`     | `regreso`                                                                                                                                                                                                                               |
+| `/bitacora`    | `bitacora`                                                                                                                                                                                                                              |
 
 **Foco visible, sin excepción**: `outline: 2px solid var(--acento); outline-offset: 2px`. Nunca
 `outline: none` sin reemplazo — y el reemplazo tiene que medir ≥3:1 contra lo que lo rodea.
@@ -184,10 +207,13 @@ componentes que el S1 necesita son demasiado propios para heredar un default.
 
 El estado vacío es la primera impresión de Velo, no un hueco por llenar.
 
-| Pantalla       | Vacío                                                                                                                        | Cargando                                                                                         | Error                                                                                              | Éxito / contenido                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `/`            | La aduana en reposo: promesa, «cómo funciona» en 3 pasos, zona de arrastre. **Es la pantalla principal, no un placeholder.** | Progreso **real** del worker con fase nombrada («leyendo», «clasificando», «midiendo el riesgo») | Formato no soportado · archivo vacío · Excel por encima del tope, con la salida (guardar como CSV) | Navega a `/diagnostico`                                                                    |
-| `/diagnostico` | **Sin datos cargados** (recarga directa): «No quedó nada, y es a propósito» + volver a la aduana                             | — (el trabajo ya ocurrió)                                                                        | —                                                                                                  | Con hallazgos · **sin hallazgos** («no encontramos datos personales» ≠ «está anonimizado») |
+| Pantalla       | Vacío                                                                                                                                                                                                                          | Cargando                                                                                                                 | Error                                                                                               | Éxito / contenido                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `/`            | La aduana en reposo: promesa, «cómo funciona» en 4 pasos, zona de arrastre, y los dos bloques de vuelta —«Y semanas después» (el regreso) y «Y meses después» (la bitácora)—. **Es la pantalla principal, no un placeholder.** | Progreso **real** del worker con fase nombrada («leyendo», «clasificando», «midiendo el riesgo»)                         | Formato no soportado · archivo vacío · Excel por encima del tope, con la salida (guardar como CSV)  | Navega a `/diagnostico`                                                                    |
+| `/diagnostico` | **Sin datos cargados** (recarga directa): «No quedó nada, y es a propósito» + volver a la aduana                                                                                                                               | — (el trabajo ya ocurrió)                                                                                                | —                                                                                                   | Con hallazgos · **sin hallazgos** («no encontramos datos personales» ≠ «está anonimizado») |
+| `/transformar` | Sin archivo: mismo «no quedó nada» que el diagnóstico. Con archivo y sin política elegida, el taller espera sin regañar.                                                                                                       | Transformando, con el balance aún sin pintar; **preparando el archivo**, que es la etapa que produce la huella de salida | Política que pide seudónimos sin llave · técnica imposible para el tipo de columna                  | Balance antes/después · estimación aparte · archivo + certificado · bóveda · anotación     |
+| `/regreso`     | Sin bóveda ni archivo devuelto: las dos casillas vacías y qué es cada una                                                                                                                                                      | Descifrando la bóveda · restaurando por valor                                                                            | Frase incorrecta · bóveda que no es de este archivo · Excel devuelto (dice: guárdalo como CSV)      | Archivo restaurado + su resumen, con las colisiones declaradas antes de restaurar          |
+| `/bitacora`    | **Sin archivo**: «abre la bitácora que guardaste», o empieza la primera. Es la pantalla a la que se llega meses después.                                                                                                       | Descifrando · cifrando                                                                                                   | Frase incorrecta · archivo dañado · **la bóveda soltada donde va la bitácora** (dice dónde se abre) | Entradas en orden, plegadas, con sus dos huellas                                           |
 
 **Microcopy**: español llano de Colombia, sin jerga legal innecesaria y sin inglés residual. Los
 errores dicen **qué hacer**, no qué falló. Y las tres frases prohibidas de la regla dura nº4
@@ -202,11 +228,24 @@ Velo es un instrumento de medición; la tipografía tiene que distinguir lo que 
 supone.
 
 1. **Lo exacto se presenta desnudo**: la cifra, grande, y debajo qué se contó. Sin adjetivos.
-2. **Lo estimado llevará siempre la palabra «estimado» adjunta a la cifra** (llega en el S2). Nunca
-   en una nota al pie que se pueda perder: pegada al número.
-3. **Todo número enseña su denominador.** «412 registros únicos» sin «de 3.000» no es información,
+2. **Lo estimado lleva la palabra «estimado» pegada a la cifra**, nunca en una nota al pie que se
+   pueda perder — y **con su modelo y su supuesto en la misma línea**: una estimación sin su
+   supuesto es una afirmación. Vive en `riesgo-estimado-en-pantalla.tsx`, y la regla está además en
+   el tipo (`CifraEstimada`), no solo en la pantalla.
+3. **Una cifra estimada JAMÁS usa la tipografía del titular exacto** — y los dos no comparten panel.
+   Es la regla más fácil de romper de todo el sistema, porque romperla no requiere escribir nada
+   falso: basta con darles el mismo tamaño. Dos números correctos con la misma letra se leen como
+   si fueran de la misma clase, y ahí el conjunto miente aunque cada dato sea cierto. **El titular
+   grande es siempre del exacto**; hay un test que barre la pantalla y falla si una cifra estimada
+   usa esa tipografía.
+4. **Lo exacto y lo estimado no se componen nunca.** Ni suma, ni promedio, ni «riesgo total». Uno
+   habla de _tu archivo_, el otro de _la población de la que salió_; la tercera cifra que saldría
+   de mezclarlos no es verdad de ninguno de los dos.
+5. **Todo número enseña su denominador.** «412 registros únicos» sin «de 3.000» no es información,
    es alarma.
-4. **Los topes se declaran donde se aplican.** Si el advisor miró 6 columnas y no 24, lo dice en el
+6. **Cuando no se puede calcular, se dice por qué** — con la razón entera, no con un guion ni con
+   un cero. Un cero se lee como una medición; la ausencia de medición no es cero.
+7. **Los topes se declaran donde se aplican.** Si el advisor miró 6 columnas y no 24, lo dice en el
    panel, no en la documentación.
 
 ---

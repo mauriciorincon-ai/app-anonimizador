@@ -799,3 +799,77 @@ bloqueada, que producción ni la lleva, y que **el bloqueo ES la prueba**; y el 
 para pedir lo contrario: que se reporte cualquier externa que **no** aparezca bloqueada.
 
 Sin correr la última milla, ese susto lo habría descubierto el usuario a mitad de sus 90 minutos.
+
+---
+
+## `/audita-sprint` — la auditoría final del sprint (y del ciclo)
+
+Dos fases. La Fase 1 con el patrón `un-gate-de-fase-no-ve-lo-que-la-fase-no-toca` como lente
+principal, porque este es el último sprint: **lo que ninguna fase miró, ya no lo mira nadie.**
+
+### Cobertura de alcance
+
+Los diez criterios de aceptación de la orden: **ocho Completo**, uno **No implementado**
+(`/design-sync`, skill reservada a invocación del usuario — desviación ya declarada en la Fase 5) y
+uno **Parcial** (el §9, «frases caducadas por promesa aplazada» — de ahí salieron dos de los tres
+Alto). El gate ⭐ queda **pendiente por decisión del usuario**.
+
+### Los tres Alto, y dónde estaban
+
+**Los tres, fuera del código del sprint.** Es la tercera auditoría final seguida que encuentra ahí
+sus hallazgos principales; ya no es casualidad.
+
+| # | Hallazgo | Pago |
+| --- | --- | --- |
+| **A1** | **`design-system.md` congelado en el S1.** Cero menciones de `taller`, `transformar`, `regreso`, `certificado`, `política`. Declaraba **5 componentes canon** —y su propio texto decía «los cuatro que el S1 necesita», contradiciéndose— cuando en `src/components/` hay **21**. Y la línea 205 prometía que lo estimado «llega en el S2»: **la única promesa aplazada viva de todo el repo**. | §3 rehecho separando **las cinco primitivas** de los **compuestos por pantalla** (16, cada uno con su archivo verificado); §4 gana las tres pantallas que le faltaban y corrige «cómo funciona en 3 pasos», que hoy son 4 más dos bloques; §5 pasa de 4 reglas a 7. |
+| **A2** | **`CLAUDE.md` decía que la app está en el Sprint 001** y que «en S1 NO se transforma nada». Sin tocar desde el estampado. | Sustituido por el estado as-built del H1: cuatro sprints, cinco rutas, 14 funcionalidades, con el puntero al BLUEPRINT. |
+| **A3** | **Ningún test abría un archivo cifrado _golden_.** El S4 refactorizó la cripto del S3 a `lib/archivo-cifrado.ts`; la cabecera no cambió —leída byte a byte del diff— pero **nada lo comprobaba**. | `tests/unit/formato-de-archivo-cifrado.test.ts`, con un `.velo` y un `.velolog` sellados el 2026-08-15 y guardados en base64. |
+
+**Por qué A1 es el más grave de los tres, aunque no toque código.** `/design-sync` —entregable de
+cierre de ciclo— habría publicado como *«design system consolidado»* un documento que describe **1
+de 5 pantallas**; el gate ⭐ pide juzgar el sistema entero contra él; y `/deploy-check` §7 exige
+«fidelidad a design-system.md». Además, **la regla de diseño que este sprint inventó no estaba
+escrita en ninguna parte**: *ninguna cifra estimada usa la tipografía del titular exacto* vivía en
+un comentario y un test. Ahora es la regla §5.3, con su razón.
+
+Lo bueno que también dijo el hallazgo: **los §1 y §2 —personalidad y tokens— llegaron intactos
+desde el S1**. Cada token que el código usa está declarado, cuatro sprints después. Lo que envejeció
+fue el inventario, no los cimientos.
+
+**A2 tiene la consecuencia más larga:** `CLAUDE.md` se auto-carga en **cada** sesión de este repo.
+Sin este pago, la primera sesión del H2 habría arrancado leyendo que Velo no transforma.
+
+### El test golden, y la prueba de que sirve
+
+Un test de regresión que no falle cuando debe no prueba nada. Se comprobó **rompiendo el formato a
+propósito** —la sal de 16 bytes a 15 en `archivo-cifrado.ts`— y midiendo quién se entera:
+
+| | Resultado con la cabecera rota |
+| --- | --- |
+| `formato-de-archivo-cifrado.test.ts` (nuevo) | **2 tests en rojo** ✅ |
+| `boveda.test.ts` — los 28 de ida y vuelta | **28 en verde** ❌ |
+
+Ese contraste **es** el hallazgo: sellar y abrir con el mismo código no puede detectar un cambio de
+formato, porque el cambio se aplica a los dos lados a la vez. El archivo del test lo dice donde hará
+falta leerlo: *si este test se pone rojo, la pregunta no es «cómo arreglo el test», es «acabo de
+romper todos los archivos de los usuarios, ¿lo hago a propósito?»* — y si la respuesta es sí, el
+camino es subir `VERSION_DEL_ARCHIVO` y escribir la migración.
+
+### Lo que se revisó y salió limpio
+
+**La regla más dura del sprint se sostiene en los tres sitios donde podía romperse:** el certificado
+lleva solo cifras exactas y lo dice (*«por registro — no estimadas»*), la entrada de bitácora guarda
+`unicosAntes`/`unicosDespues` exactos, y la pantalla los separa en paneles con tipografía distinta y
+un test que lo vigila. **El estimado no se compone con el exacto en ningún sitio.**
+
+Además: cero `any` y cero `@ts-ignore` nuevos · `pnpm audit` sin vulnerabilidades · `engine/` al
+**98,77 %** · el estimador **memoizado por tamaño distinto de clase** (nada de O(n·f) en 500k) · el
+e2e del certificado comprueba que la cédula del fixture **no** aparece en el documento.
+
+### Deuda declarada, con pago asignado
+
+| Sev. | Deuda | Pago |
+| --- | --- | --- |
+| **Medio** | `src/lib/bitacora.ts` al **25,49 %** de sentencias y **0 % de ramas**. El umbral pasa porque se mide sobre el agregado de `lib` (87,02 %); los hermanos están al 85–92 %. Cero ramas = ninguna ruta de error del store tiene test unitario, y las rutas de error de la bitácora son justo lo que el usuario encuentra meses después. Cubierto por e2e, así que es hueco de prueba, no de comportamiento. | Primer sprint del H2 |
+| **Bajo** | `layout.tsx` metadata no nombra el certificado ni la bitácora. No es falsa, está incompleta — y es lo que ve un buscador o un enlace compartido. | Primer sprint del H2 |
+| **Bajo** | `next/font` con dependencia de red en tiempo de build (2 casos, heredado del S3). | Primer sprint del H2, con `next/font/local` |
