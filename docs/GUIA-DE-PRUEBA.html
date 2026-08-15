@@ -1,1088 +1,2635 @@
 <!doctype html>
 <html lang="es-CO">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Guía de prueba — Velo</title>
-<!--
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Guía de prueba — Velo</title>
+    <!--
   GUÍA DE PRUEBA VIVA Y ACUMULATIVA de Velo (app-anonimizador).
   Entregable estándar de todo sprint con UI. Autocontenida: cero CDNs, cero fetch, se abre con
   doble clic sin internet. Acumulativa: cada sprint HEREDA enteras las pruebas del anterior con su
   chip de origen; comprimirlas borraría la regresión. El NS de localStorage se versiona por sprint.
   Los colores están alineados con design-system.md de esta app («bóveda serena»).
 -->
-<style>
-  :root {
-    --fondo: #fbf9f4; --superficie: #f2eee5; --borde: #e2dccf;
-    --tinta: #1a211d; --tinta-suave: #4f5a55;
-    --acento: #0d6b57; --acento-suave: #e4f0eb;
-    --alerta: #9e3222; --alerta-suave: #f8e9e5;
-    --ok: #0d6b57; --pendiente: #7c5209; --pendiente-suave: #f6eedb;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --fondo: #0f1411; --superficie: #171d19; --borde: #2a322d;
-      --tinta: #ede8dc; --tinta-suave: #aab3ad;
-      --acento: #5cc7a6; --acento-suave: #12312a;
-      --alerta: #ef8e78; --alerta-suave: #35201b;
-      --ok: #5cc7a6; --pendiente: #dda945; --pendiente-suave: #322816;
-    }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--fondo); color: var(--tinta);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.55; }
-  .pagina { max-width: 680px; margin: 0 auto; padding: 24px 18px 80px; }
-  h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; font-size: 2rem;
-    line-height: 1.15; margin: 8px 0 4px; text-wrap: balance; }
-  h2 { font-family: Georgia, serif; font-weight: 600; font-size: 1.35rem; margin: 0; text-wrap: balance; }
-  .eyebrow { font-family: ui-monospace, Menlo, monospace; font-size: 0.68rem;
-    letter-spacing: 0.09em; text-transform: uppercase; color: var(--tinta-suave); }
-  p { margin: 0.5em 0; }
-  .suave { color: var(--tinta-suave); }
-  .chica { font-size: 0.875rem; }
-  code { font-family: ui-monospace, Menlo, monospace; font-size: 0.85em;
-    background: var(--superficie); padding: 1px 5px; border-radius: 4px; }
-  pre { background: var(--superficie); border: 1px solid var(--borde); border-radius: 8px;
-    padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; }
+    <style>
+      :root {
+        --fondo: #fbf9f4;
+        --superficie: #f2eee5;
+        --borde: #e2dccf;
+        --tinta: #1a211d;
+        --tinta-suave: #4f5a55;
+        --acento: #0d6b57;
+        --acento-suave: #e4f0eb;
+        --alerta: #9e3222;
+        --alerta-suave: #f8e9e5;
+        --ok: #0d6b57;
+        --pendiente: #7c5209;
+        --pendiente-suave: #f6eedb;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fondo: #0f1411;
+          --superficie: #171d19;
+          --borde: #2a322d;
+          --tinta: #ede8dc;
+          --tinta-suave: #aab3ad;
+          --acento: #5cc7a6;
+          --acento-suave: #12312a;
+          --alerta: #ef8e78;
+          --alerta-suave: #35201b;
+          --ok: #5cc7a6;
+          --pendiente: #dda945;
+          --pendiente-suave: #322816;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--fondo);
+        color: var(--tinta);
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        font-size: 16px;
+        line-height: 1.55;
+      }
+      .pagina {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 24px 18px 80px;
+      }
+      h1 {
+        font-family: Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: 2rem;
+        line-height: 1.15;
+        margin: 8px 0 4px;
+        text-wrap: balance;
+      }
+      h2 {
+        font-family: Georgia, serif;
+        font-weight: 600;
+        font-size: 1.35rem;
+        margin: 0;
+        text-wrap: balance;
+      }
+      .eyebrow {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.68rem;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--tinta-suave);
+      }
+      p {
+        margin: 0.5em 0;
+      }
+      .suave {
+        color: var(--tinta-suave);
+      }
+      .chica {
+        font-size: 0.875rem;
+      }
+      code {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.85em;
+        background: var(--superficie);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      pre {
+        background: var(--superficie);
+        border: 1px solid var(--borde);
+        border-radius: 8px;
+        padding: 10px 12px;
+        overflow-x: auto;
+        font-size: 0.8rem;
+      }
 
-  .url-caja { background: var(--superficie); border: 1px solid var(--borde);
-    border-radius: 10px; padding: 12px 14px; margin: 16px 0; overflow-wrap: anywhere; }
+      .url-caja {
+        background: var(--superficie);
+        border: 1px solid var(--borde);
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin: 16px 0;
+        overflow-wrap: anywhere;
+      }
 
-  .progreso { position: sticky; top: 0; z-index: 5; background: var(--fondo);
-    padding: 10px 0 8px; border-bottom: 1px solid var(--borde); margin-bottom: 18px; }
-  .progreso-fila { display: flex; align-items: center; gap: 12px; }
-  .barra { flex: 1; height: 8px; background: var(--superficie); border-radius: 99px; overflow: hidden; }
-  .barra > div { height: 100%; width: 0%; background: var(--ok); transition: width 0.2s ease; }
-  .num { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--tinta-suave); }
+      .progreso {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: var(--fondo);
+        padding: 10px 0 8px;
+        border-bottom: 1px solid var(--borde);
+        margin-bottom: 18px;
+      }
+      .progreso-fila {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .barra {
+        flex: 1;
+        height: 8px;
+        background: var(--superficie);
+        border-radius: 99px;
+        overflow: hidden;
+      }
+      .barra > div {
+        height: 100%;
+        width: 0%;
+        background: var(--ok);
+        transition: width 0.2s ease;
+      }
+      .num {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.8rem;
+        color: var(--tinta-suave);
+      }
 
-  .filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .filtros button { font: inherit; font-size: 0.82rem; padding: 5px 12px; border-radius: 99px;
-    border: 1px solid var(--borde); background: var(--superficie); color: var(--tinta); cursor: pointer; }
-  .filtros button.activo { background: var(--acento); border-color: var(--acento); color: var(--fondo); }
+      .filtros {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .filtros button {
+        font: inherit;
+        font-size: 0.82rem;
+        padding: 5px 12px;
+        border-radius: 99px;
+        border: 1px solid var(--borde);
+        background: var(--superficie);
+        color: var(--tinta);
+        cursor: pointer;
+      }
+      .filtros button.activo {
+        background: var(--acento);
+        border-color: var(--acento);
+        color: var(--fondo);
+      }
 
-  .bloque { background: var(--superficie); border: 1px solid var(--borde);
-    border-radius: 14px; padding: 18px; margin: 0 0 18px; }
-  .bloque-cabeza { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-  .letra { display: grid; place-items: center; width: 28px; height: 28px; flex: none;
-    background: var(--acento); color: var(--fondo); border-radius: 8px;
-    font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem; }
-  .meta-bloque { margin: 2px 0 12px; }
+      .bloque {
+        background: var(--superficie);
+        border: 1px solid var(--borde);
+        border-radius: 14px;
+        padding: 18px;
+        margin: 0 0 18px;
+      }
+      .bloque-cabeza {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+      .letra {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        flex: none;
+        background: var(--acento);
+        color: var(--fondo);
+        border-radius: 8px;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.85rem;
+      }
+      .meta-bloque {
+        margin: 2px 0 12px;
+      }
 
-  ul.pasos { list-style: none; margin: 0; padding: 0; }
-  ul.pasos li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0;
-    border-top: 1px solid var(--borde); }
-  ul.pasos li:first-child { border-top: 0; }
-  ul.pasos li[hidden] { display: none; }
-  ul.pasos input[type="checkbox"] { margin: 4px 0 0; width: 20px; height: 20px; flex: none;
-    accent-color: var(--ok); cursor: pointer; }
-  ul.pasos label { cursor: pointer; }
+      ul.pasos {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      ul.pasos li {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 8px 0;
+        border-top: 1px solid var(--borde);
+      }
+      ul.pasos li:first-child {
+        border-top: 0;
+      }
+      ul.pasos li[hidden] {
+        display: none;
+      }
+      ul.pasos input[type="checkbox"] {
+        margin: 4px 0 0;
+        width: 20px;
+        height: 20px;
+        flex: none;
+        accent-color: var(--ok);
+        cursor: pointer;
+      }
+      ul.pasos label {
+        cursor: pointer;
+      }
 
-  .origen { display: inline-block; font-family: ui-monospace, Menlo, monospace; font-size: 0.65rem;
-    letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 8px; border-radius: 99px;
-    border: 1px solid; white-space: nowrap; vertical-align: 2px; margin-left: 6px; }
-  .origen-nuevo { color: var(--acento); border-color: var(--acento); background: var(--acento-suave); }
-  .origen-mejorado { color: var(--pendiente); border-color: var(--pendiente); background: var(--pendiente-suave); }
-  .origen-heredada { color: var(--tinta-suave); border-color: var(--borde); }
-  .minimo { font-size: 0.75rem; white-space: nowrap; margin-left: 4px; }
+      .origen {
+        display: inline-block;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.65rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 1px 8px;
+        border-radius: 99px;
+        border: 1px solid;
+        white-space: nowrap;
+        vertical-align: 2px;
+        margin-left: 6px;
+      }
+      .origen-nuevo {
+        color: var(--acento);
+        border-color: var(--acento);
+        background: var(--acento-suave);
+      }
+      .origen-mejorado {
+        color: var(--pendiente);
+        border-color: var(--pendiente);
+        background: var(--pendiente-suave);
+      }
+      .origen-heredada {
+        color: var(--tinta-suave);
+        border-color: var(--borde);
+      }
+      .minimo {
+        font-size: 0.75rem;
+        white-space: nowrap;
+        margin-left: 4px;
+      }
 
-  .tabla-scroll { overflow-x: auto; margin: 14px 0 0; }
-  table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
-  th, td { text-align: left; padding: 7px 10px; border: 1px solid var(--borde); vertical-align: top; }
-  th { background: var(--acento-suave); font-weight: 600; }
-  td.valor { color: var(--ok); }
+      /* MODO RECORRIDO — solo con el filtro ⭐ activo.
+     El gate del ciclo son 26 pruebas repartidas por 20 bloques que nacieron en cuatro sprints
+     distintos. Sin esto se leen como cuatro listas pegadas: el mismo chip de origen que sirve para
+     la regresión («Heredada · S1») sugiere un orden que NO es el del recorrido. En modo recorrido
+     cada prueba visible recibe su número de PARADA y la ruta donde ocurre, así que el orden a la
+     vista es el único que importa mientras se corre el gate: el del camino. */
+      #recorrido {
+        display: none;
+      }
+      body.modo-recorrido #recorrido {
+        display: block;
+      }
+      #recorrido {
+        background: var(--acento-suave);
+        border: 1px solid var(--acento);
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin: 0 0 18px;
+        font-size: 0.9rem;
+      }
+      #recorrido p {
+        margin: 0.35em 0;
+      }
+      .parada {
+        display: none;
+      }
+      body.modo-recorrido .parada {
+        display: block;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--acento);
+        margin-bottom: 2px;
+      }
+      body.modo-recorrido .origen {
+        opacity: 0.55;
+      }
 
-  .reportame { margin-top: 14px; background: var(--alerta-suave); border-left: 3px solid var(--alerta);
-    border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 0.9rem; }
-  .diferido { background: var(--pendiente-suave); border-left: 3px solid var(--pendiente);
-    border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 0.9rem; margin-top: 14px; }
-  .kit { background: var(--acento-suave); border-left: 3px solid var(--acento);
-    border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 0.9rem; margin-top: 14px; }
-  footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--borde); }
-  footer details { margin-top: 10px; }
-  footer summary { cursor: pointer; }
-</style>
-</head>
-<body>
-<div class="pagina">
-  <header>
-    <p class="eyebrow">Velo · Guía de prueba viva y acumulativa · Sprint 003 · 12 de agosto de 2026</p>
-    <h1>Guía de prueba</h1>
-    <p class="suave">Todas las pruebas vigentes de Velo: las <strong>82 de los sprints 001 y
-      002</strong> —que ahora son regresión— más las que trae el Sprint 003, el sprint en que Velo
-      cierra el círculo y <strong>devuelve</strong> lo que entregaste. Cada línea lleva su origen.
-      Las casillas se guardan solas en este navegador, y el guardado se versiona por sprint: nada de
-      lo que marcaste antes aparece marcado aquí, porque una regresión sin correr no está probada.</p>
-    <p class="chica"><strong>Gate mínimo ⭐ del CICLO: 22 pruebas · ~70 min.</strong> El gate ⭐ de
-      los tres sprints se <strong>difiere</strong> al cierre del ciclo por decisión del método: se
-      prueba una vez, al final, y el filtro ⭐ de abajo muestra el <strong>acumulado</strong> —las 8
-      del S1, las 6 del S2 y las 8 del S3—, no solo lo nuevo. Es lo único que ninguna automatización
-      puede verificar: juicio humano sobre el diseño y el lenguaje, y las comprobaciones que solo
-      valen si las haces tú con tus propias herramientas (la huella SHA-256, el reporte abierto sin
-      internet, el archivo tratado abierto en tu hoja de cálculo, y ahora <strong>el archivo devuelto
-      que maltratas tú mismo</strong>). Todo lo demás lo respalda la CI —<strong>641 pruebas
-      unitarias, 88 e2e</strong>, axe en dos temas y dos tamaños, Lighthouse ≥90 en las 4 categorías
-      de las tres rutas— y se corre en pases completos.</p>
-    <p class="chica"><strong>Este sprint estrena una prueba que solo puedes hacer tú:</strong> el
-      round-trip real. Anonimizas, guardas la bóveda, <strong>haces de tercero</strong> —abres el
-      archivo en tu hoja de cálculo, lo reordenas, le añades una columna, le borras otra, le cambias
-      valores a mano— y vuelves. La CI lo prueba con un archivo que maltrata un script; tú lo vas a
-      maltratar como lo maltrataría una persona, que no es lo mismo.</p>
-    <div class="url-caja">
-      <p class="eyebrow" style="margin:0 0 6px">URL de prueba</p>
-      <code>https://app-anonimizador-git-sprint-003-el-regreso-mauricio-rincon.vercel.app</code>
-      <p class="chica suave" style="margin:8px 0 0">Dirección estable de la rama: no cambia aunque
-        se suban correcciones. Si pide login de Vercel: Settings → Deployment Protection →
-        Vercel Authentication → Disabled.</p>
-      <p class="chica suave" style="margin:8px 0 0"><strong>Cada bloque abre con "Empieza en:"</strong> —
-        la ruta exacta (sobre esta URL) donde arranca su primera prueba. Navega ahí antes de
-        empezar el bloque.</p>
-    </div>
-    <div class="kit">
-      <p><strong>Kit de prueba — ni un dato real, nunca.</strong> Todos los archivos de prueba se
-      generan con el generador sintético del repo (<code>docs/kit-de-prueba/generador.mjs</code>).
-      Con la misma semilla producen el mismo archivo, byte por byte. Genera los tres que usa esta
-      guía antes de empezar:</p>
-      <pre>node docs/kit-de-prueba/generador.mjs --filas 3000   --seed 42 --perfil clinico        --salida tmp/clinico-3000.csv
+      .tabla-scroll {
+        overflow-x: auto;
+        margin: 14px 0 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.875rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 7px 10px;
+        border: 1px solid var(--borde);
+        vertical-align: top;
+      }
+      th {
+        background: var(--acento-suave);
+        font-weight: 600;
+      }
+      td.valor {
+        color: var(--ok);
+      }
+
+      .reportame {
+        margin-top: 14px;
+        background: var(--alerta-suave);
+        border-left: 3px solid var(--alerta);
+        border-radius: 0 8px 8px 0;
+        padding: 10px 12px;
+        font-size: 0.9rem;
+      }
+      .diferido {
+        background: var(--pendiente-suave);
+        border-left: 3px solid var(--pendiente);
+        border-radius: 0 8px 8px 0;
+        padding: 10px 12px;
+        font-size: 0.9rem;
+        margin-top: 14px;
+      }
+      .kit {
+        background: var(--acento-suave);
+        border-left: 3px solid var(--acento);
+        border-radius: 0 8px 8px 0;
+        padding: 10px 12px;
+        font-size: 0.9rem;
+        margin-top: 14px;
+      }
+      footer {
+        margin-top: 28px;
+        padding-top: 16px;
+        border-top: 1px solid var(--borde);
+      }
+      footer details {
+        margin-top: 10px;
+      }
+      footer summary {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="pagina">
+      <header>
+        <p class="eyebrow">
+          Velo · Guía de prueba viva y acumulativa · Sprint 004 · 15 de agosto
+          de 2026
+        </p>
+        <h1>Guía de prueba</h1>
+        <p class="suave">
+          Todas las pruebas vigentes de Velo: las
+          <strong>114 de los sprints 001 a 003</strong> —que ahora son
+          regresión— más las que trae el Sprint 004, el sprint que
+          <strong>cierra el ciclo H1</strong> y entrega lo que hace el trabajo
+          defendible: el certificado con sus dos huellas, la bitácora cifrada y
+          el riesgo estimado. Cada línea lleva su origen. Las casillas se
+          guardan solas en este navegador, y el guardado se versiona por sprint:
+          nada de lo que marcaste antes aparece marcado aquí, porque una
+          regresión sin correr no está probada.
+        </p>
+        <p class="chica">
+          <strong>Gate mínimo ⭐ del CICLO H1: 26 pruebas · ~90 min.</strong>
+          Este es <strong>el gate, y se corre ahora</strong>: los cuatro sprints
+          difirieron su ⭐ al cierre del ciclo, y el ciclo cierra aquí. No se
+          difiere otra vez. El filtro ⭐ de abajo muestra el
+          <strong>acumulado completo</strong> —8 del S1, 6 del S2, 8 del S3 y 4
+          del S4— presentado como <strong>un solo recorrido numerado</strong>,
+          no como cuatro listas pegadas. Es lo único que ninguna automatización
+          puede verificar: juicio humano sobre el diseño y el lenguaje, y las
+          comprobaciones que solo valen si las haces tú con tus propias
+          herramientas (recalcular la huella SHA-256 con tu propio comando, el
+          documento abierto sin internet, el archivo tratado abierto en tu hoja
+          de cálculo, el archivo devuelto que maltratas tú mismo, y ahora
+          <strong>cerrar el navegador entero</strong> para comprobar que la
+          bitácora sobrevive). Todo lo demás lo respalda la CI —<strong
+            >724 pruebas unitarias, 117 e2e</strong
+          >, axe en dos temas y dos tamaños, Lighthouse ≥90 en las 4 categorías
+          de las <strong>cinco rutas</strong>— y se corre en pases completos.
+        </p>
+        <p class="chica">
+          <strong
+            >Este sprint estrena dos pruebas que solo puedes hacer tú.</strong
+          >
+          La primera:
+          <strong
+            >verificar el certificado como lo haría quien lo recibe</strong
+          >
+          — recalculas el SHA-256 del archivo con el comando que el propio
+          documento te da y lo comparas con la huella declarada. La CI compara
+          dos cadenas; tú compruebas que las instrucciones que le damos a un
+          tercero <em>funcionan de verdad en tu computador</em>, que es otra
+          cosa. La segunda: <strong>cerrar el navegador entero</strong> y volver
+          meses después —o su equivalente de un minuto— para abrir la bitácora.
+          Ningún test automático puede cerrar el navegador que lo está
+          ejecutando.
+        </p>
+        <div class="url-caja">
+          <p class="eyebrow" style="margin: 0 0 6px">URL de prueba</p>
+          <code
+            >https://app-anonimizador-git-sprint-004-el-cierre-mauricio-rincon.vercel.app</code
+          >
+          <p class="chica suave" style="margin: 8px 0 0">
+            Dirección estable de la rama: no cambia aunque se suban
+            correcciones.
+            <strong
+              >Comprobada desde afuera y sin sesión antes de entregarte esta
+              guía</strong
+            >
+            (la app y las cinco rutas responden sin pedir login). Si aun así te
+            pidiera login de Vercel: Settings → Deployment Protection → Vercel
+            Authentication → Disabled.
+          </p>
+          <p class="chica suave" style="margin: 8px 0 0">
+            <strong>Cada bloque abre con "Empieza en:"</strong> — la ruta exacta
+            (sobre esta URL) donde arranca su primera prueba. Navega ahí antes
+            de empezar el bloque.
+          </p>
+        </div>
+        <div class="kit">
+          <p>
+            <strong>Kit de prueba — ni un dato real, nunca.</strong> Todos los
+            archivos de prueba se generan con el generador sintético del repo
+            (<code>docs/kit-de-prueba/generador.mjs</code>). Con la misma
+            semilla producen el mismo archivo, byte por byte. Genera los seis
+            que usa esta guía antes de empezar:
+          </p>
+          <pre>
+node docs/kit-de-prueba/generador.mjs --filas 3000   --seed 42 --perfil clinico        --salida tmp/clinico-3000.csv
 node docs/kit-de-prueba/generador.mjs --filas 1200   --seed 7  --perfil sin-personales --salida tmp/limpio.csv
 node docs/kit-de-prueba/generador.mjs --filas 1000   --seed 42 --perfil clinico --formato xlsx --salida tmp/clinico.xlsx
 node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil clinico        --salida tmp/clinico-500k.csv
 node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil mediana-repetida --salida tmp/mediana.csv
 node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colisiones-de-formato --salida tmp/colisiones.csv</pre>
-      <p class="chica suave" style="margin:6px 0 0">El de 500.000 filas pesa unos 130 MB y tarda un
-      par de segundos. El último, <code>colisiones.csv</code>, trae <strong>choques de formato a
-      propósito</strong>: dos NIT distintos que acaban con el mismo seudónimo. Existe para que
-      puedas ver con tus ojos lo que Velo hace cuando una celda no tiene una respuesta sino dos.
-      <strong>Nunca uses un archivo real de una persona</strong> para probar: este repo es público y
-      el kit existe justo para eso.</p>
+          <p class="chica suave" style="margin: 6px 0 0">
+            El de 500.000 filas pesa unos 130 MB y tarda un par de segundos. El
+            último, <code>colisiones.csv</code>, trae
+            <strong>choques de formato a propósito</strong>: dos NIT distintos
+            que acaban con el mismo seudónimo. Existe para que puedas ver con
+            tus ojos lo que Velo hace cuando una celda no tiene una respuesta
+            sino dos.
+            <strong>Nunca uses un archivo real de una persona</strong> para
+            probar: este repo es público y el kit existe justo para eso.
+          </p>
+        </div>
+      </header>
+
+      <div class="progreso">
+        <div class="progreso-fila">
+          <div class="barra"><div id="barra-avance"></div></div>
+          <span class="num" id="contador">0/0</span>
+        </div>
+        <div
+          class="filtros"
+          role="group"
+          aria-label="Filtrar pruebas por origen"
+        >
+          <button type="button" data-filtro="todo" class="activo">Todo</button>
+          <button type="button" data-filtro="cambios">
+            Lo que cambió en S4
+          </button>
+          <button type="button" data-filtro="minimo">
+            Gate mínimo ⭐ del ciclo
+          </button>
+        </div>
+      </div>
+
+      <div id="recorrido">
+        <p>
+          <strong
+            >El recorrido del ciclo H1 —
+            <span id="recorrido-total">26</span> paradas · ~90 min.</strong
+          >
+          Un solo camino, en el orden en que se hace: la aduana → el diagnóstico
+          → el taller → el regreso → la bitácora, y al final el juicio del
+          conjunto.
+        </p>
+        <p class="chica suave">
+          Cada parada lleva su número y el bloque al que pertenece; el bloque
+          dice, justo encima, <strong>dónde empieza</strong>. El chip de origen
+          («Heredada · S1», «Nuevo · S4») sigue ahí porque hace falta para la
+          regresión, pero <strong>no es el orden del recorrido</strong>: una
+          prueba del S1 y una del S4 pueden ser paradas consecutivas si se hacen
+          en la misma pantalla. Sigue los números, no los sprints.
+        </p>
+        <p class="chica suave">
+          Puedes parar donde quieras: lo marcado se guarda solo. Si algo te
+          obliga a releer una frase, <strong>eso es un hallazgo</strong> —
+          anótalo aunque la casilla pase.
+        </p>
+      </div>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">A</span>
+          <h2>La aduana en reposo</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~2 min · la primera
+          impresión y la promesa que sostiene el producto.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="a1" /><label for="a1"
+              >Abre la página. Se ve el título
+              <strong>«Mira tu tabla como la vería un extraño»</strong>, el
+              recuadro para traer la tabla y, justo debajo, el sello verde
+              <strong>«Nada sale de este navegador»</strong>.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="a2" /><label for="a2"
+              >Arriba a la derecha, el sello aparece también en el encabezado,
+              en pequeño. <strong>Está en todas las pantallas</strong> y nunca
+              cambia de color ni se anima.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="a3" /><label for="a3"
+              >Más abajo, «Cómo funciona» en <strong>cuatro pasos</strong>, y
+              después una sección aparte, <strong>«Y semanas después»</strong>,
+              que cuenta el regreso y lleva el botón
+              <strong>«Ya tengo mi bóveda y el archivo devuelto»</strong>.
+              <strong>Lee esa sección entera:</strong> tiene que decir que sin
+              la bóveda el seudónimo sigue siendo irreversible, y que con ella
+              vuelve. Si en cualquier punto de esta página se lee que Velo
+              <em>todavía no</em> hace la vuelta, es un error.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="a4" /><label for="a4"
+              ><strong>Léelo como si no supieras nada de la app.</strong>
+              ¿Entiendes en menos de 30 segundos qué hace Velo y por qué
+              deberías confiarle un archivo? Si alguna frase te obliga a
+              releerla, anótala.
+              <span class="origen origen-heredada">Heredada · S1</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="a5" /><label for="a5"
+              >Arrastra un archivo por encima del recuadro
+              <strong>sin soltarlo</strong>: el borde se pone verde y el texto
+              cambia a <strong>«Suéltalo aquí»</strong>. Sácalo y vuelve a «Trae
+              tu tabla».
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> cualquier frase que prometa
+            «anonimato garantizado», «100 % seguro» o «imposible de
+            reidentificar» — están prohibidas por diseño. También si el sello no
+            aparece en alguna pantalla.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">B</span>
+          <h2>Cargar y ver el progreso</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~3 min · las dos vías de
+          carga y el progreso honesto.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="b1" /><label for="b1"
+              >Suelta <code>tmp/clinico-3000.csv</code> sobre el recuadro. Verás
+              pasar las etapas (<strong>tomando la huella</strong> →
+              <strong>leyendo</strong> →
+              <strong>reconociendo columnas</strong> →
+              <strong>midiendo el riesgo</strong>) y luego el diagnóstico.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="b2" /><label for="b2"
+              >Vuelve a <code>/</code> con «Analizar otro archivo». Ahora
+              <strong>sin ratón</strong>: pulsa Tab hasta que el botón «Elegir
+              archivo» quede resaltado y pulsa Enter. Se abre el diálogo del
+              sistema y puedes elegir el archivo con el teclado.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="b3" /><label for="b3"
+              >Con el archivo de 500.000 filas, mira la barra:
+              <strong>avanza de verdad</strong> y muestra el porcentaje y las
+              filas leídas. En las etapas que no tienen medida (reconocer, medir
+              riesgo) <strong>no hay barra</strong>, solo el nombre de la etapa.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+        </ul>
+        <div class="tabla-scroll">
+          <table>
+            <tr>
+              <th>Qué mirar</th>
+              <th>Comportamiento correcto</th>
+            </tr>
+            <tr>
+              <td>Barra de progreso</td>
+              <td class="valor">
+                Solo aparece cuando hay una medida real; nunca una barra que se
+                llena sola
+              </td>
+            </tr>
+            <tr>
+              <td>Foco del teclado</td>
+              <td class="valor">
+                El anillo de foco se ve claramente sobre el botón «Elegir
+                archivo»
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> una barra que se queda quieta en
+            un número, o que aparece sin que haya nada que medir.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">C</span>
+          <h2>El diagnóstico: qué hay y por qué</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> (carga
+          <code>tmp/clinico-3000.csv</code>) · ~5 min · la tabla columna por
+          columna.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="c1" /><label for="c1"
+              >Arriba: el nombre del archivo,
+              <strong>3.000 filas · 24 columnas</strong>, el tiempo que tardó y
+              la <strong>huella SHA-256</strong> completa.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="c2" /><label for="c2"
+              >En la tabla, busca <code>nit_empresa</code>: dice
+              <strong>«NIT con dígito de verificación»</strong>,
+              <strong>Confirmado</strong>, y cita la fuente (<em
+                >DIAN, Orden Administrativa 4 de 1989</em
+              >). Ese «Confirmado» significa que Velo
+              <strong>recalculó el dígito</strong> y cuadra.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="c3" /><label for="c3"
+              >Busca <code>cedula_titular</code>: dice
+              <strong>«Por su forma»</strong>, no «Confirmado». Es correcto:
+              <strong
+                >la cédula colombiana no tiene dígito de verificación
+                público</strong
+              >, así que solo se puede comprobar la forma, y Velo no finge más
+              certeza de la que tiene.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="c4" /><label for="c4"
+              >Busca <code>diagnostico</code> y <code>grupo_etnico</code>:
+              categoría <strong>«Dato sensible · art. 5»</strong>, certeza
+              <strong>«Sin confirmar»</strong> y
+              <strong>«sin muestra»</strong> en la última columna. Ningún
+              cálculo puede confirmar que un código es un diagnóstico; solo el
+              nombre de la columna lo sugiere.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="c5" /><label for="c5"
+              >Ninguna muestra de la última columna es un valor completo: todas
+              se ven como <code>103***89</code>.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="c6" /><label for="c6"
+              ><strong>Las columnas-trampa.</strong>
+              <code>referencia_pago</code> parece una tarjeta (pasa el algoritmo
+              de Luhn a propósito) y Velo la deja como
+              <strong>«No personal»</strong>: es correcto.
+              <code>codigo_interno</code>, en cambio, sí se marca como cédula —
+              es una <strong>limitación declarada</strong>: tiene exactamente la
+              misma forma y no existe checksum que las separe.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="c7" /><label for="c7"
+              ><strong>Juicio de producto:</strong> lee la columna «Qué
+              encontramos» de tres filas cualesquiera. ¿El «por qué» te
+              convence, o tendrías que creerle a Velo? Si algo se lee como una
+              afirmación sin respaldo, anótalo.
+              <span class="origen origen-heredada">Heredada · S1</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="c8" /><label for="c8"
+              >Carga ahora <code>tmp/limpio.csv</code>: aparece el panel
+              <strong>«Velo no reconoció datos personales aquí»</strong>, y su
+              nota aclara que eso <strong>no es lo mismo</strong> que decir que
+              el archivo es anónimo.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+        </ul>
+        <div class="kit">
+          <p>
+            <strong>Kit de prueba:</strong>
+            <code>tmp/clinico-3000.csv</code> (perfil clínico, 24 columnas con
+            trampas incluidas) y <code>tmp/limpio.csv</code> (perfil
+            <code>sin-personales</code>). Ambos del generador, con semilla.
+          </p>
+        </div>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> una muestra que enseñe un valor
+            completo, una columna sensible con muestra visible, o un
+            «Confirmado» en una columna que no tiene algoritmo oficial.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">D</span>
+          <h2>El riesgo y el consejero de cruces</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/diagnostico</code> (con
+          <code>tmp/clinico-3000.csv</code> cargado) · ~4 min · la mitad exacta
+          del producto.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="d1" /><label for="d1"
+              >El panel de riesgo abre con una cifra grande de porcentaje y,
+              debajo, <strong>su denominador</strong>
+              («N de 3.000 registros»). Ningún número aparece suelto.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="d2" /><label for="d2"
+              >Aparecen los cuatro datos:
+              <strong>grupo más pequeño (k)</strong>, riesgo del más expuesto,
+              riesgo promedio y grupos distintos — cada uno con su explicación
+              de una línea.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="d3" /><label for="d3"
+              >Está la marca <strong>«Cifra exacta»</strong> y la lista de
+              <strong>columnas cruzadas</strong>. Esa marca importa: en el
+              próximo sprint llegan estimadores, y tendrán que decir «estimado».
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="d4" /><label for="d4"
+              >En el consejero,
+              <strong>«Estas no necesitan compañía»</strong> lista columnas que
+              ya dejan solo a casi todo el mundo, cada una con su porcentaje y
+              su cuenta.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="d5" /><label for="d5"
+              >Debajo, las combinaciones más delatoras con su
+              <strong>k real</strong>. Y al pie, el
+              <strong>alcance declarado</strong>: cuántas combinaciones se
+              evaluaron, sobre cuántas candidatas y con qué tope. Abre el
+              desplegable «columnas quedaron fuera, y por qué».
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="d6" /><label for="d6"
+              ><strong>Juicio de producto:</strong> ¿el consejero te dijo algo
+              que no sabías del archivo? Esa es la prueba de fuego de esta
+              pantalla: si solo confirma lo evidente, no está ganándose su
+              sitio.
+              <span class="origen origen-heredada">Heredada · S1</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+        </ul>
+        <div class="tabla-scroll">
+          <table>
+            <tr>
+              <th>Qué mirar</th>
+              <th>Comportamiento correcto</th>
+            </tr>
+            <tr>
+              <td>Cifras de riesgo</td>
+              <td class="valor">
+                Siempre con denominador y con la marca «exacta»
+              </td>
+            </tr>
+            <tr>
+              <td>Tope del consejero</td>
+              <td class="valor">
+                Declarado en pantalla, con las exclusiones y su motivo
+              </td>
+            </tr>
+            <tr>
+              <td>Color de la cifra</td>
+              <td class="valor">
+                Lacre apagado cuando el riesgo es alto — nunca rojo de semáforo
+                ni iconos de peligro
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> un tope aplicado sin declararlo,
+            o un número presentado sin decir sobre cuántos registros se calculó.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">E</span>
+          <h2>El reporte que te llevas</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/diagnostico</code> (con
+          <code>tmp/clinico-3000.csv</code> cargado) · ~5 min · el único
+          artefacto que sale del navegador.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="e1" /><label for="e1"
+              >El panel «Llévate el diagnóstico» dice
+              <strong>qué lleva y qué no lleva</strong> el reporte
+              <em>antes</em> de descargarlo.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="e2" /><label for="e2"
+              >Pulsa «Ver antes de descargar»: se abre el reporte completo
+              dentro de la página. Ciérralo con «Cerrar la vista».
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="e3" /><label for="e3"
+              >Descárgalo. El archivo se llama
+              <code>velo-diagnostico-clinico-3000.html</code>.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="e4" /><label for="e4"
+              ><strong>Apaga el wifi</strong> y abre el reporte descargado con
+              doble clic. <strong>Tiene que verse completo</strong>: tipografía,
+              colores, tablas y sello. Si algo se ve roto sin internet, el
+              reporte no es autocontenido y eso es un fallo de bloqueo.
+              <span class="origen origen-heredada">Heredada · S1</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="e5" /><label for="e5"
+              ><strong
+                >Comprueba la huella con tus propias herramientas.</strong
+              >
+              En la terminal, sobre el archivo que cargaste:
+              <code>shasum -a 256 tmp/clinico-3000.csv</code> (macOS) o
+              <code>sha256sum</code> (Linux). El texto tiene que ser
+              <strong>idéntico</strong> al del reporte y al que se ve en la
+              pantalla de diagnóstico.
+              <span class="origen origen-heredada">Heredada · S1</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="e6" /><label for="e6"
+              >En el reporte abierto: no hay ninguna fila de tu tabla, las
+              muestras van enmascaradas y el pie explica
+              <strong>qué NO afirma Velo</strong>.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+        </ul>
+        <div class="tabla-scroll">
+          <table>
+            <tr>
+              <th>Qué mirar</th>
+              <th>Valor correcto</th>
+            </tr>
+            <tr>
+              <td>SHA-256 del kit clínico (3.000 filas, semilla 42)</td>
+              <td class="valor">
+                <code>50ad2265…f988f1c</code> — y el mismo en pantalla, en el
+                reporte y en tu terminal
+              </td>
+            </tr>
+            <tr>
+              <td>Reporte sin internet</td>
+              <td class="valor">Se ve idéntico a la vista previa</td>
+            </tr>
+          </table>
+        </div>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> que el reporte se vea distinto
+            sin internet, o que la huella no coincida con la de tu terminal.
+            Cualquiera de las dos rompe la promesa central del producto.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">F</span>
+          <h2>Errores y límites</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~3 min · qué pasa cuando
+          algo no se puede hacer.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="f1" /><label for="f1"
+              >Suelta un archivo que no sea tabla (un <code>.txt</code> o una
+              imagen). Sale un aviso que dice
+              <strong>qué hacer</strong> («guárdalo como CSV»), no solo qué
+              falló. Y el nombre del archivo aparece para que sepas cuál fue.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="f2" /><label for="f2"
+              >Pulsa «Elegir otro archivo»: vuelve al estado inicial sin
+              recargar la página.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="f3" /><label for="f3"
+              >Con un diagnóstico en pantalla,
+              <strong>recarga la página</strong> (F5). Aparece
+              <strong>«No quedó nada, y es a propósito»</strong> con la
+              explicación y el botón para volver.
+              <strong>Esto es correcto</strong>: es la prueba visible de que
+              nada se guardó.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="f4" /><label for="f4"
+              >Entra directo a <code>/diagnostico</code> sin cargar nada: la
+              misma pantalla.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> un mensaje de error que muestre
+            texto técnico (nombres de librerías, contenido del archivo) o que no
+            diga qué hacer.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">G</span>
+          <h2>Excel</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~2 min · la otra vía de
+          lectura, con su tope declarado.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="g1" /><label for="g1"
+              >Suelta <code>tmp/clinico.xlsx</code>. Funciona igual que el CSV:
+              diagnóstico completo, con sus 1.000 filas y 24 columnas.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="g2" /><label for="g2"
+              >En la pantalla inicial se declara el tope:
+              <strong
+                >«el CSV no tiene tope de tamaño; el Excel sí, hasta 150
+                MB»</strong
+              >.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+        </ul>
+        <div class="kit">
+          <p>
+            <strong>Kit de prueba:</strong> <code>tmp/clinico.xlsx</code> —
+            mismo generador, <code>--formato xlsx</code>.
+          </p>
+        </div>
+        <div class="diferido">
+          <p>
+            <strong>Diferido:</strong> probar a mano un Excel de más de 150 MB
+            no es razonable (generarlo tarda y ocupa). El rechazo por tamaño
+            está cubierto por pruebas automáticas: un e2e fabrica un archivo de
+            160 MB en el navegador y comprueba que Velo lo rechaza
+            <em>sin abrirlo</em> y guía a CSV.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">H</span>
+          <h2>El archivo grande</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~3 min · 500.000 filas
+          sin congelar la pestaña.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="h1" /><label for="h1"
+              >Suelta <code>tmp/clinico-500k.csv</code> (unos 130 MB). Termina
+              en pocos segundos y el diagnóstico dice
+              <strong>500.000 filas · 24 columnas</strong>.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="h2" /><label for="h2"
+              ><strong>Mientras procesa</strong>, mueve el ratón, haz scroll y
+              selecciona texto. <strong>La pestaña responde</strong>: el cursor
+              no se traba, la barra avanza y el scroll es fluido. El presupuesto
+              de tareas largas ya lo verifica la CI; lo que solo puedes juzgar
+              tú es si <em>se siente</em> fluido.
+              <span class="origen origen-heredada">Heredada · S1</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="h3" /><label for="h3"
+              >Al terminar, el encabezado dice cuánto tardó en leer y en
+              analizar. Con este archivo suelen ser unos pocos segundos en
+              total.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> que la pestaña se congele, que
+            el navegador pida «esperar o cerrar la página», o que el proceso no
+            termine.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">I</span>
+          <h2>Diseño y accesibilidad</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~5 min · el gate visual
+          — lo firma tu ojo, no la CI.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="i1" /><label for="i1"
+              ><strong>Los dos temas.</strong> Cambia tu sistema a modo oscuro y
+              recorre las dos pantallas; luego a claro. Todo tiene que leerse
+              cómodo en ambos: nada de texto que desaparezca sobre su fondo,
+              ningún borde invisible.
+              <strong>La aprobación visual es tuya.</strong>
+              <span class="origen origen-heredada">Heredada · S1</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="i2" /><label for="i2"
+              >En un teléfono (o con la ventana a ~400 px de ancho): la página
+              <strong>no se desplaza en horizontal</strong>. La tabla de
+              columnas sí se desplaza, pero dentro de su propio marco y avisa de
+              ello.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="i3" /><label for="i3"
+              >Recorre la página entera con Tab:
+              <strong>el foco siempre se ve</strong> (anillo verde) y el orden
+              tiene sentido. La primera tabulación ofrece «Saltar al contenido».
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="i4" /><label for="i4"
+              >Activa en tu sistema «reducir movimiento» y recarga:
+              <strong>todo sigue visible</strong> (no desaparece nada),
+              simplemente ya no hay transiciones.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+        </ul>
+        <div class="tabla-scroll">
+          <table>
+            <tr>
+              <th>Qué mirar</th>
+              <th>Comportamiento correcto</th>
+            </tr>
+            <tr>
+              <td>Contraste</td>
+              <td class="valor">
+                Todo el texto se lee sin esfuerzo en claro y en oscuro
+              </td>
+            </tr>
+            <tr>
+              <td>Movimiento</td>
+              <td class="valor">
+                Sutil y breve; con «reducir movimiento» desaparece sin llevarse
+                el contenido
+              </td>
+            </tr>
+            <tr>
+              <td>Anti-patrones</td>
+              <td class="valor">
+                Sin emojis como iconos, sin gradientes decorativos, sin sombras
+                pesadas
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> cualquier pantalla donde el
+            contraste te obligue a acercarte, o donde el foco del teclado se
+            pierda.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">J</span>
+          <h2>La promesa, comprobada por ti</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~4 min · la regla dura
+          del producto, verificada a mano.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="j1" /><label for="j1"
+              >Abre las herramientas de desarrollo (F12) → pestaña
+              <strong>Red</strong>, y déjala abierta. Carga
+              <code>tmp/clinico-3000.csv</code> y recorre todo el flujo hasta
+              descargar el reporte.
+              <strong
+                >Ninguna petición sale del dominio de Velo y ninguna lleva
+                datos</strong
+              >
+              — solo se piden archivos de la propia aplicación.
+              <span class="origen origen-heredada">Heredada · S1</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="j2" /><label for="j2"
+              >En la misma pestaña de red, filtra por <em>Fetch/XHR</em>: no hay
+              ni un envío con cuerpo. Velo no tiene servidor al que mandar nada.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="j3" /><label for="j3"
+              >Corre el mismo archivo <strong>dos veces</strong> y compara: el
+              diagnóstico es idéntico —los mismos tipos, las mismas cifras, el
+              mismo orden en el consejero—. Eso es el determinismo, y es la
+              razón por la que este producto no necesita IA.
+              <span class="origen origen-heredada">Heredada · S1</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> una sola petición a un dominio
+            que no sea el de Velo durante el flujo con archivo cargado. Es fallo
+            de bloqueo absoluto.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">K</span>
+          <h2>El taller: la política</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> con
+          <code>tmp/clinico-3000.csv</code> · ~7 min · aquí Velo deja de mirar y
+          empieza a decidir.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="k1" /><label for="k1"
+              >Al final del diagnóstico hay
+              <strong>«Transformar este archivo»</strong>. Llévate contigo dos
+              datos de esta pantalla: el <strong>% de únicos</strong> y el
+              <strong>grupo más pequeño (k)</strong>. Los vas a comparar al
+              final.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="k2" /><label for="k2"
+              >El taller abre con <strong>una fila por columna</strong> y un
+              desplegable en cada una. Ábrelo con el teclado (Tab hasta él,
+              luego ↓): las opciones se leen de
+              <strong>conservar a suprimir</strong>.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="k3" /><label for="k3"
+              >Clic en <strong>«Habeas Data (Colombia)»</strong>. Toda la tabla
+              se llena de un golpe y aparece un aviso con
+              <strong>la fuente</strong> (Ley 1581 de 2012) y con cuántos puntos
+              reconoce Velo solo, cuántos por el nombre y
+              <strong>cuántos tienes que marcar tú</strong>.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="k4" /><label for="k4"
+              >Cambia <strong>una sola</strong> columna. El aviso cambia a
+              <strong>«Ya no es Habeas Data»</strong>. Es deliberado: la guía
+              oficial no respalda una decisión que no tomó.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="k5" /><label for="k5"
+              >Prueba <strong>HIPAA · Safe Harbor</strong> y compara el aviso
+              con el de Habeas Data: los dos dicen
+              <strong>«Velo resume esa fuente en N puntos»</strong> con N
+              distinto. Ninguno dice «los N identificadores que enumera la
+              fuente» — HIPAA enumera 18 y la Ley 1581 no enumera ninguno, y una
+              frase escrita para el primero sería falsa en el segundo.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="k6" /><label for="k6"
+              >Pon una columna en
+              <strong>«Generalizar hasta alcanzar el k»</strong>. Aparece la
+              casilla del grupo mínimo con <strong>5</strong>.
+              <strong>Exporta la política sin tocar nada más</strong>, ábrela
+              con un editor de texto y comprueba que dentro dice
+              <code>"kObjetivo": 5</code> — lo que ves en la pantalla tiene que
+              ser lo que hay en el archivo.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="k7" /><label for="k7"
+              >En ese mismo archivo exportado, cambia a mano
+              <code>"kObjetivo": 5</code> por <code>"kObjetivo": null</code>,
+              guárdalo e <strong>impórtalo</strong>. La casilla del k queda
+              <strong>vacía</strong> y aparece en rojo que esas columnas
+              <strong>saldrían intactas</strong>. Velo no se inventa un 5 que la
+              política no trae.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="k8" /><label for="k8"
+              >Importa cualquier archivo que <strong>no</strong> sea una
+              política (una foto, un CSV). El error dice
+              <strong>qué</strong> pasó, no «archivo inválido».
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="k9" /><label for="k9"
+              >Recarga la página estando en el taller: vuelves a
+              <strong>«No hay nada que transformar»</strong>. La política
+              tampoco se guardó — lleva los nombres de tus columnas, que son
+              datos tuyos.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+        </ul>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">L</span>
+          <h2>La llave</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/transformar</code> con Habeas Data
+          aplicado · ~4 min · lo único de Velo que, si se pierde, no vuelve.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="l1" /><label for="l1"
+              >El panel de la llave aparece
+              <strong>solo cuando la política pide seudónimos</strong>. Con una
+              política de puro enmascarado no está.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="l2" /><label for="l2"
+              >Escribe una frase <strong>corta</strong>: no deja derivar y
+              explica por qué. Escribe una larga y pulsa
+              <strong>«Derivar la llave»</strong>.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="l3" /><label for="l3"
+              ><strong>Juicio humano — la pausa de la llave.</strong> Derivar
+              cuesta 600.000 vueltas de PBKDF2 y la pantalla lo dice mientras
+              pasa. En un equipo rápido dura un instante; en un teléfono se
+              nota. ¿La espera se siente <strong>explicada</strong>, o se siente
+              rota? Es la única pausa de Velo, y si se lee como un cuelgue, el
+              argumento de seguridad se pierde justo donde debía ganarse.
+              <span class="origen origen-heredada">Heredada · S2</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="l4" /><label for="l4"
+              >Al terminar quedan <strong>la huella</strong> (12 caracteres) y
+              <strong>la sal</strong>. La frase que escribiste
+              <strong>ya no está en pantalla</strong>. Copia la sal: la
+              necesitas para repetir los mismos seudónimos el mes que viene.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+        </ul>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">M</span>
+          <h2>Antes y después</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/transformar</code>, tras pulsar
+          «Transformar» · ~5 min · la única pantalla que responde «¿qué recibe
+          el otro?».
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="m1" /><label for="m1"
+              >La columna
+              <strong>«Antes» va enmascarada siempre</strong>
+              (<code>103***89</code>), incluso ahora que estamos transformando:
+              sigue siendo tu dato.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="m2" /><label for="m2"
+              >La columna <strong>«Después» va completa</strong> donde el valor
+              cambió — un seudónimo, un rango, un año — porque eso ya no es el
+              dato de nadie.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="m3" /><label for="m3"
+              >Busca una columna generalizada donde
+              <strong
+                >algunas filas de la derecha estén enmascaradas y otras
+                no</strong
+              >
+              — pasa cuando la generalización deja intacto un valor que ya
+              estaba en su sitio. <strong>Es correcto:</strong> lo que no cambió
+              sigue siendo tu dato y se tapa. Si vieras un valor original
+              completo ahí, es un defecto.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="m4" /><label for="m4"
+              >Una columna <strong>sensible que no cambió</strong> dice «dato
+              sensible sin cambios: no se muestra» y no enseña ni un valor.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="m5" /><label for="m5"
+              >Arriba, el <strong>«N de M columnas cambian»</strong>. Cuenta a
+              mano las filas que muestran algo distinto en la derecha (o que
+              dicen «la columna no va en el archivo»): el número tiene que
+              cuadrar. No sale de las 6 filas que ves, sale del archivo entero.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+        </ul>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">N</span>
+          <h2>El balance, y dónde podía mentir</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/transformar</code>, debajo de la
+          vista previa · ~7 min · el bloque más importante del sprint.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="n1" /><label for="n1"
+              >Aplica Habeas Data completo y transforma. Compara con lo que
+              anotaste en <strong>K1</strong>: los <strong>únicos</strong> y el
+              <strong>grupo mínimo</strong> tienen que haber mejorado en la
+              dirección que dice la pantalla.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="n2" /><label for="n2"
+              ><strong>El caso prohibido.</strong> Pon la columna de la
+              <strong>cédula</strong> en «Dejar como está», deja el resto
+              tratado, y transforma. Arriba del todo aparece que
+              <strong>hay un identificador directo intacto</strong>, con su
+              nombre — y el porcentaje de reducción
+              <strong>deja de ser el titular</strong>: se lee pequeño, dentro de
+              una frase que dice que esa cifra no describe un archivo tratado.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="n3" /><label for="n3"
+              >Quita esa excepción y vuelve a transformar: la advertencia
+              desaparece y <strong>la cifra sí se luce</strong>. (Sin esta
+              comprobación, una pantalla que nunca luciera la cifra pasaría la
+              anterior.)
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="n4" /><label for="n4"
+              >Importa la política del paso <strong>K7</strong> —la que pide
+              reparto automático sin k— y transforma. Arriba aparece que esas
+              <strong>columnas salieron intactas</strong>, con sus nombres, y la
+              cifra vuelve a perder el titular. Comprueba en la vista previa
+              que, en efecto, no cambiaron.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="n5" /><label for="n5"
+              >Con el balance en pantalla,
+              <strong>cambia una columna cualquiera</strong> en el editor de
+              arriba: la vista previa, el balance y la descarga
+              <strong>desaparecen de golpe</strong>. Un balance calculado con la
+              política de hace tres clics tiene todas sus cifras bien y habla de
+              otro archivo.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="n6" /><label for="n6"
+              ><strong>Juicio humano — el peso relativo.</strong> Mira el
+              balance del paso N2 <strong>entero, de un vistazo</strong>, como
+              lo miraría alguien con prisa. ¿Qué pesa más: la advertencia o el
+              número? Si la primera impresión que te llevas es «reduje el riesgo
+              un 87 %» y no «tengo una cédula intacta», la jerarquía visual está
+              mintiendo aunque cada palabra sea cierta. Es la prueba central del
+              sprint y no hay automatización que la haga.
+              <span class="origen origen-heredada">Heredada · S2</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+        </ul>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">O</span>
+          <h2>El archivo y su documento</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/transformar</code>, al final · ~9
+          min · lo que sale de Velo y llega a otra persona.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="o1" /><label for="o1"
+              ><strong>Preparar el archivo</strong> y luego
+              <strong>Guardar</strong>: son dos pasos a propósito, porque
+              escribir el archivo cuesta un momento y Velo enseña su trabajo en
+              vez de fingir que fue instantáneo. El nombre es
+              <code>velo-anonimizado-<em>8 caracteres</em>.csv</code>.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="o2" /><label for="o2"
+              >La pantalla dice que esos ocho caracteres son
+              <strong>el principio del hash de la política</strong>. Transforma
+              <strong>dos veces con la misma política</strong>: el nombre es el
+              mismo. Cambia una regla: el nombre cambia.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="o3" /><label for="o3"
+              ><strong>Ábrelo en tu hoja de cálculo</strong> (Excel, Numbers,
+              LibreOffice). Comprueba tres cosas que ninguna prueba automática
+              vive para comprobar: que <strong>se abre sin pelear</strong>, que
+              las tildes se ven bien, y que
+              <strong>ninguna cédula del original aparece</strong> (busca una
+              que hayas visto en el diagnóstico). Es el archivo que le vas a
+              mandar a alguien.
+              <span class="origen origen-heredada">Heredada · S2</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="o4" /><label for="o4"
+              >Debajo está
+              <strong>«Llévate el reporte del tratamiento»</strong>.
+              <strong>Ver antes de descargar</strong>: el documento trae, además
+              del diagnóstico, <strong>qué se le hizo</strong> — el balance con
+              sus advertencias en el mismo orden que en pantalla, la utilidad
+              perdida y el <strong>hash completo</strong> de la política.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="o5" /><label for="o5"
+              >En ese documento, la sección de identidad avisa de que
+              <strong
+                >la huella SHA-256 NO es la del archivo que se entrega</strong
+              >, sino la del que entró. Compruébalo: corre
+              <code>shasum -a 256</code> sobre el CSV anonimizado y verás que
+              <strong>no coincide</strong> — y que el documento ya te lo había
+              advertido en vez de dejarte descubrirlo.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="o6" /><label for="o6"
+              >Más abajo, la sección de riesgo dice
+              <strong>«el archivo ORIGINAL»</strong> pegado a sus cifras. Sin
+              esa aclaración, quien lea el documento junto al archivo tratado
+              creería que esas cifras describen lo que tiene en la mano.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="o7" /><label for="o7"
+              ><strong>Apaga el wifi</strong> y abre el reporte del tratamiento
+              con doble clic. Se ve completo, con sus tipografías y sus colores.
+              Es la prueba de que el documento que le mandas a alguien no le
+              pide permiso a ningún servidor —ni delata a quién lo abre y
+              cuándo—, y solo vale si la haces tú, en tu computador, con la red
+              caída.
+              <span class="origen origen-heredada">Heredada · S2</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+        </ul>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">P</span>
+          <h2>El taller con 500.000 filas</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> con
+          <code>tmp/clinico-500k.csv</code> · ~6 min · el tope declarado del
+          producto, transformando.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="p1" /><label for="p1"
+              >Suelta el archivo de 500k, ve al taller, aplica
+              <strong>Habeas Data</strong>, deriva la llave y transforma. La
+              pantalla nombra la etapa mientras trabaja («aplicando la
+              política…», «midiendo el riesgo del archivo que sale…»).
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="p2" /><label for="p2"
+              ><strong>Juicio humano — ¿se siente fluido?</strong> Mientras
+              transforma y mientras escribe el archivo,
+              <strong>desplaza la página y pulsa botones</strong>. La CI mide
+              que el hilo principal no se bloquea; lo que no puede medir es si
+              la espera se siente controlada. Si en algún momento la página «no
+              responde», anótalo con el segundo exacto.
+              <span class="origen origen-heredada">Heredada · S2</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="p3" /><label for="p3"
+              >Guarda el archivo. Pesa del orden de 100 MB y lo escribió tu
+              navegador, no un servidor. Ábrelo (o mira su tamaño) y comprueba
+              que tiene las <strong>500.000 filas</strong>.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+        </ul>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">Q</span>
+          <h2>El taller: diseño y promesa</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/transformar</code> · ~4 min · la
+          tercera pantalla de Velo, con las reglas de las dos primeras.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="q1" /><label for="q1"
+              >El <strong>sello</strong> «nada sale de aquí» sigue presente y
+              sigue sin animarse. El tema oscuro se comporta igual que en las
+              otras dos pantallas.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="q2" /><label for="q2"
+              >Recorre el taller <strong>entero con el teclado</strong>, sin
+              tocar el ratón: los desplegables de todas las columnas, la casilla
+              del k, la frase de paso, los botones y el enlace de guardar. El
+              foco se ve siempre y no se queda atrapado en la tabla.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="q3" /><label for="q3"
+              >En un teléfono (o con el navegador a 412 px de ancho): la tabla
+              de la política cabe
+              <strong>sin desplazamiento horizontal</strong>, los desplegables
+              se abren <strong>completos</strong> —no recortados por el borde— y
+              las cuatro cifras del balance se leen como una fila.
+              <span class="origen origen-heredada">Heredada · S2</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="q4" /><label for="q4"
+              ><strong>Juicio humano — la secuencia.</strong> Mira el taller de
+              arriba abajo sin usarlo. Los pasos están numerados (1 la política,
+              2 la llave, 3 la vista previa…). ¿Se entiende
+              <strong>qué va antes de qué</strong> y por qué, sin que nadie te
+              lo explique? ¿Hay algún paso que aparezca cuando no lo esperas o
+              que no sepas si ya hiciste?
+              <span class="origen origen-heredada">Heredada · S2</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+        </ul>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">R</span>
+          <h2>El eje reversible: decidir qué podrá volver</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> con
+          <code>tmp/clinico-3000.csv</code>, y sigue al taller · ~6 min · la
+          decisión que hay que tomar <em>antes</em>, no después.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="r1" /><label for="r1"
+              >En el taller, pon <strong>Seudónimo</strong> en
+              <code>cedula_titular</code>. Debajo aparece una casilla nueva:
+              <strong>«poder deshacerlo después»</strong>.
+              <strong>Empieza desmarcada.</strong> Esa es la decisión correcta
+              por defecto: lo irreversible es lo seguro.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="r2" /><label for="r2"
+              >Con la casilla <strong>desmarcada</strong>, el texto dice que esa
+              columna <strong>no podrá volver</strong>. Márcala: el texto cambia
+              y avisa de que hará falta guardar una bóveda. Desmárcala otra vez
+              y vuelve al mensaje anterior.
+              <strong
+                >En ningún momento se lee una promesa de que el dato está «a
+                salvo» o «garantizado».</strong
+              >
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="r3" /><label for="r3"
+              >Prueba las tres opciones de seudónimo del desplegable —<strong
+                >«Seudónimo (hex)»</strong
+              >, <strong>«Seudónimo de cédula»</strong> y
+              <strong>«Seudónimo de NIT»</strong>—.
+              <strong
+                >En un teléfono (412 px) las tres se leen enteras y se
+                distinguen entre sí.</strong
+              >
+              Si dos se ven iguales por estar recortadas, es un fallo: esta
+              prueba existe porque pasó.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="r4" /><label for="r4"
+              >Pon una <strong>máscara</strong> o una
+              <strong>generalización</strong> en otra columna: ahí
+              <strong>no</strong> hay casilla de vuelta. Tiene sentido y la app
+              no lo explica de más: esas técnicas destruyen información, y
+              <code>103***89</code> no vuelve ni con bóveda.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="r5" /><label for="r5"
+              ><strong>Juicio humano — la decisión irreversible.</strong> Ponte
+              en el lugar de alguien que llega aquí por primera vez con un
+              archivo de verdad. ¿Entiende,
+              <strong>en el momento de marcar la casilla</strong>, que si no la
+              marca no habrá vuelta nunca? ¿Y que si la marca tendrá que guardar
+              un archivo más y no perderlo? Si tienes que subir a releer algo
+              para decidir, anótalo.
+              <span class="origen origen-heredada">Heredada · S3</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> cualquier sitio donde marcar la
+            casilla parezca la opción «buena» y no marcarla la «mala». No lo
+            son: son dos tratos distintos con precios distintos.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">S</span>
+          <h2>La bóveda: el archivo que hace posible la vuelta</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/transformar</code>, con la
+          política del bloque R y <code>cedula_titular</code>
+          <strong>marcada como reversible</strong> · ~8 min.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="s1" /><label for="s1"
+              >Deriva la llave y transforma. Aparece un
+              <strong>paso 4 nuevo</strong>: la bóveda. Antes de pedirte nada,
+              te dice <strong>cuántas correspondencias</strong> guarda.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="s2" /><label for="s2"
+              ><strong
+                >Lee los tres avisos del paso 4 antes de escribir nada.</strong
+              >
+              Tienen que decir, sin rodeos: que la frase
+              <strong>no se puede recuperar</strong>, que la bóveda es
+              <strong>tan sensible como el archivo original</strong>, y que
+              conviene guardarla <strong>aparte</strong> del archivo
+              anonimizado. ¿Los tres se entienden a la primera? ¿Alguno suena a
+              letra pequeña?
+              <span class="origen origen-heredada">Heredada · S3</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="s3" /><label for="s3"
+              >Escribe una frase de paso <strong>distinta</strong> a la de la
+              llave y pulsa cifrar. Tarda un momento y lo dice. Guarda el
+              archivo: termina en <strong><code>.velo</code></strong
+              >.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="s4" /><label for="s4"
+              ><strong>Compruébalo tú: la bóveda es ilegible.</strong> Abre el
+              <code>.velo</code> con un editor de texto o con
+              <code>strings</code>.
+              <strong
+                >No puede aparecer ni una sola cédula, ni un nombre de
+                columna.</strong
+              >
+              Es la prueba de que el archivo que vas a guardar en tu disco no
+              delata a nadie aunque alguien lo encuentre.
+              <span class="origen origen-heredada">Heredada · S3</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="s5" /><label for="s5"
+              >Guarda también el <strong>CSV anonimizado</strong>. Ahora tienes
+              los dos archivos que necesita el round-trip, y el paso 4 te ofrece
+              el enlace <strong>«Ir al regreso»</strong>.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="s6" /><label for="s6"
+              >Haz una política
+              <strong>sin ninguna columna reversible</strong> y transforma.
+              <strong>El paso de la bóveda no aparece</strong>: no hay nada que
+              guardar, y la app no te hace guardar un archivo vacío por
+              simetría.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> si en algún momento la frase de
+            paso de la bóveda se ve en pantalla después de enviarla, o si el
+            archivo <code>.velo</code> deja leer cualquier cosa reconocible.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">T</span>
+          <h2>El regreso: el círculo completo</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~12 min ·
+          <strong>la prueba que justifica el producto entero.</strong> Necesitas
+          el <code>.velo</code> y el CSV anonimizado del bloque S.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="t1" /><label for="t1"
+              ><strong>Llega como llegaría una persona.</strong> Cierra la
+              pestaña, abre una nueva y entra por la portada —<strong
+                >no escribas la dirección de <code>/regreso</code> a
+                mano</strong
+              >—. Baja hasta «Y semanas después» y pulsa
+              <strong>«Ya tengo mi bóveda y el archivo devuelto»</strong>. Si no
+              encuentras cómo llegar sin escribir la URL, es un fallo grave:
+              esta prueba existe porque la auditoría lo encontró.
+              <span class="origen origen-heredada">Heredada · S3</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="t2" /><label for="t2"
+              ><strong>Haz de tercero.</strong> Abre el CSV anonimizado en tu
+              hoja de cálculo y
+              <strong>maltrátalo como lo haría alguien que trabaja</strong>:
+              ordena por otra columna, añade una columna nueva («resultado», con
+              lo que quieras), borra una columna que no sea la reversible, y
+              cambia a mano tres o cuatro valores. Guárdalo como CSV.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="t3" /><label for="t3"
+              >En <code>/regreso</code>, carga el <code>.velo</code> con su
+              frase. Se abre y muestra su <strong>huella</strong>, la huella de
+              la llave, cuántas correspondencias tiene y
+              <strong>qué columnas puede devolver</strong>.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="t4" /><label for="t4"
+              >Carga el archivo que acabas de maltratar. Antes de que puedas
+              pulsar «Restaurar», el <strong>paso 3</strong> te dice si hay
+              valores que <strong>no van a poder volver</strong>, con su número.
+              <strong>El aviso va antes del botón, no después.</strong>
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="t5" /><label for="t5"
+              ><strong>Restaura, guarda y ábrelo en tu hoja de cálculo.</strong>
+              Comprueba las tres cosas a la vez: las cédulas
+              <strong>volvieron a ser las originales</strong>;
+              <strong>tu columna nueva sigue ahí</strong> con lo que escribiste;
+              y los valores que cambiaste a mano
+              <strong>siguen como los dejaste</strong>. Velo devolvió lo suyo y
+              no tocó lo tuyo.
+              <span class="origen origen-heredada">Heredada · S3</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="t6" /><label for="t6"
+              >Vuelve a cargar la bóveda y escribe la frase
+              <strong>mal</strong>. Lo dice claro, y dice también que el mismo
+              mensaje sale si el archivo se dañó.
+              <strong>No da pistas</strong> sobre en qué te equivocaste.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="t7" /><label for="t7"
+              >Pon un CSV cualquiera en el sitio de la bóveda: se rechaza al
+              instante con <strong>«no es una bóveda de Velo»</strong>, sin
+              pedirte esperar a que descifre nada.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="t8" /><label for="t8"
+              >Restaura usando un archivo devuelto que
+              <strong>no tenga nada que ver</strong> (por ejemplo
+              <code>tmp/limpio.csv</code>). Velo dice que
+              <strong>esta bóveda no corresponde a este archivo</strong> y
+              <strong>no restaura nada a medias en silencio</strong>.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="t9" /><label for="t9"
+              >Recarga <code>/regreso</code> con todo cargado.
+              <strong>No queda nada</strong>: ni la bóveda, ni el archivo, ni la
+              restauración. Es la misma promesa del S1, y aquí importa más.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> cualquier celda que vuelva con
+            un valor que <em>no</em> era el suyo, y cualquier cosa que el
+            tercero hubiera hecho y que Velo haya pisado.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">U</span>
+          <h2>Las celdas que no tienen una respuesta</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> con
+          <code>tmp/colisiones.csv</code> · ~8 min · el caso incómodo, provocado
+          a propósito.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="u1" /><label for="u1"
+              >Anonimiza <code>colisiones.csv</code> con
+              <code>nit_empresa</code> en <strong>«Seudónimo de NIT»</strong> y
+              <strong>reversible</strong>. Sella la bóveda y guárdala.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="u2" /><label for="u2"
+              >En <code>/regreso</code>, abre esa bóveda y carga el archivo
+              anonimizado tal cual.
+              <strong
+                >El paso 3 te dice, ANTES de restaurar, cuántos seudónimos
+                corresponden a más de un valor original.</strong
+              >
+              Lee esa frase con cuidado: ¿dice <em>seudónimos</em> o dice
+              <em>celdas</em>? Tiene que decir lo que de verdad cuenta, y
+              explicar por qué pasa (conservar el formato reduce el espacio y
+              dos valores chocan).
+              <span class="origen origen-heredada">Heredada · S3</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="u3" /><label for="u3"
+              >Restaura. En el resultado, la
+              <strong>ambigüedad aparece ARRIBA del porcentaje</strong>, no
+              debajo ni al lado. Y el porcentaje
+              <strong>no va solo de titular</strong>: viene con la frase de que
+              esa cifra no describe un archivo recuperado del todo.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="u4" /><label for="u4"
+              ><strong
+                >Abre el archivo restaurado y busca las celdas ambiguas.</strong
+              >
+              Tienen que seguir con el <strong>seudónimo</strong>, no con uno de
+              los dos originales ni vacías. Velo no eligió por ti — comprueba
+              que de verdad no lo hizo, porque es la diferencia entre una
+              herramienta y una que te devuelve el dato de otra persona sin
+              avisar.
+              <span class="origen origen-heredada">Heredada · S3</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="u5" /><label for="u5"
+              >Descarga el <strong>informe del regreso</strong> y ábrelo
+              <strong>sin internet</strong> (modo avión). Se ve completo. Busca
+              el pie: repite lo de las celdas ambiguas
+              <strong>otra vez</strong>, porque el documento se lee fuera de la
+              pantalla que lo generó y el porcentaje se puede citar solo.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="u6" /><label for="u6"
+              >En el informe, busca
+              <strong>cualquier celda del archivo</strong>: ni un seudónimo, ni
+              un valor restaurado. Nombres de columna, cifras y huellas — nada
+              más.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> cualquier cifra de restauración
+            que aparezca sin su salvedad al lado, en la pantalla o en el
+            informe. Es la regla que gobierna este producto.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">V</span>
+          <h2>El regreso: diseño, teclado y promesa</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/regreso</code> · ~5 min · la
+          cuarta pantalla, con las reglas de las tres primeras.
+        </p>
+        <ul class="pasos">
+          <li data-origen="heredado">
+            <input type="checkbox" id="v1" /><label for="v1"
+              >El <strong>sello</strong> «nada sale de aquí» está también aquí y
+              sigue sin animarse. El <strong>tema oscuro</strong> se comporta
+              igual que en las otras tres pantallas.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="v2" /><label for="v2"
+              >Recorre el regreso <strong>entero con el teclado</strong>: elegir
+              bóveda, frase, abrir, elegir archivo, restaurar, y los dos enlaces
+              de descarga. El foco se ve siempre y el orden es el de la lectura.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="v3" /><label for="v3"
+              >A <strong>412 px</strong> de ancho: no hay desplazamiento
+              horizontal, las huellas largas <strong>parten de línea</strong>
+              en vez de desbordar, y los botones se leen enteros.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="v4" /><label for="v4"
+              >Con <strong>movimiento reducido</strong> activado en el sistema:
+              la pantalla sigue <strong>visible y usable</strong>
+              —el cinturón apaga el movimiento, no el contenido—.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado">
+            <input type="checkbox" id="v5" /><label for="v5"
+              >Suelta un <strong>Excel</strong> como archivo devuelto. Se
+              rechaza y el mensaje <strong>te dice qué hacer</strong>: guardarlo
+              como CSV. No un «archivo inválido» a secas.
+              <span class="origen origen-heredada">Heredada · S3</span></label
+            >
+          </li>
+          <li data-origen="heredado" data-minimo>
+            <input type="checkbox" id="v6" /><label for="v6"
+              ><strong>Juicio humano — las cuatro pantallas juntas.</strong>
+              Recorre el ciclo entero de un tirón: aduana → diagnóstico → taller
+              → regreso. ¿Se siente <strong>la misma app</strong> en las cuatro?
+              ¿El regreso parece el final natural del viaje o un añadido pegado
+              al lado? Y la pregunta que importa: después de recorrerlo,
+              <strong>¿confiarías tu archivo a Velo?</strong> Si la respuesta
+              tiene un «pero», ese pero es lo que quiero oír.
+              <span class="origen origen-heredada">Heredada · S3</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> cualquier frase de estas cuatro
+            pantallas que prometa anonimato garantizado, seguridad absoluta o
+            imposibilidad de reidentificar. Velo reduce el riesgo y lo mide; no
+            promete magia.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">W</span>
+          <h2>El certificado: la evidencia que un tercero puede comprobar</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/transformar</code> · ~10 min · el
+          reporte del S2 ya no existe: se convirtió en esto.
+        </p>
+        <ul class="pasos">
+          <li data-origen="nuevo">
+            <input type="checkbox" id="w1" /><label for="w1"
+              >Trata <code>tmp/clinico-3000.csv</code> con cualquier política.
+              <strong>Antes</strong> de generar el archivo, mira el paso del
+              certificado: <strong>no es un botón gris</strong> — dice con
+              palabras que todavía no puede existir y por qué (le falta la
+              huella del archivo que aún no se ha creado). Pulsa «Preparar el
+              archivo» y el certificado aparece.
+              <span class="origen origen-nuevo">Nuevo · S4</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="w2" /><label for="w2"
+              >Descarga el certificado y ábrelo
+              <strong>con el wifi apagado</strong>. Se ve entero. Trae
+              <strong>dos huellas distintas</strong>, y cada una dice
+              <strong>de cuál archivo es</strong>: la del que entró y la del que
+              salió. Tiene además una sección que explica
+              <strong>cómo comprobarlas</strong>, con el comando literal para tu
+              sistema. No hay ni una fila de tu tabla en todo el documento.
+              <span class="origen origen-nuevo">Nuevo · S4</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="w3" /><label for="w3"
+              ><strong
+                >Haz de tercero: comprueba el certificado con tus propias
+                manos.</strong
+              >
+              Copia el comando que el documento te da, córrelo en tu terminal
+              sobre el <strong>CSV que descargaste</strong> y compara el
+              resultado con la <strong>huella de salida</strong>: tiene que
+              coincidir carácter por carácter. Repítelo con el archivo
+              <strong>original</strong> contra la huella de entrada. Esta es la
+              prueba que decide si el certificado sirve para algo: la CI compara
+              dos cadenas, pero solo tú puedes comprobar que
+              <strong
+                >las instrucciones que le damos a un desconocido funcionan de
+                verdad</strong
+              >. Si el comando falla, si sobra un paso o si el resultado no
+              coincide, el certificado no vale nada y quiero saberlo.
+              <span class="origen origen-nuevo">Nuevo · S4</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> si el documento no deja
+            clarísimo cuál huella es de cuál archivo. Confundirlas es peor que
+            no traerlas: haría creer que se comprobó algo que no se comprobó.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">X</span>
+          <h2>El riesgo estimado, y la línea que no se cruza</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/transformar</code> · ~10 min · la
+          única cifra que Velo prometía a medias, completada — sin mezclarla con
+          la exacta.
+        </p>
+        <ul class="pasos">
+          <li data-origen="nuevo">
+            <input type="checkbox" id="x1" /><label for="x1"
+              >Después de transformar, baja al paso
+              <strong>«Y en la población entera, ¿cuánto?»</strong>. Sin
+              escribir nada, los dos estimadores dicen
+              <strong>«No calculable»</strong>
+              <strong>con la razón entera</strong>, no con un guion ni con un
+              cero. El texto de ayuda dice que Velo no puede saber ese dato y
+              que <strong>no se lo inventa</strong>.
+              <span class="origen origen-nuevo">Nuevo · S4</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="x2" /><label for="x2"
+              >Escribe <code>20000</code> y pulsa «Estimar». Aparecen las dos
+              cifras, y cada una lleva <strong>en la misma línea</strong>: la
+              etiqueta <strong>«Cifra estimada»</strong>, el modelo que la
+              produjo, el supuesto del que depende y su fuente. Ahora escribe
+              <code>5000000</code>: <strong>uno de los dos se calla</strong> y
+              explica que el archivo es una fracción demasiado pequeña de esa
+              población. Velo prefiere no responder a responder flojo —
+              comprueba que lo dice así, y no con un número débil.
+              <span class="origen origen-nuevo">Nuevo · S4</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="x3" /><label for="x3"
+              ><strong
+                >Léelo como un lector, no como quien lo mandó construir.</strong
+              >
+              Con la pantalla entera delante —el balance arriba, la estimación
+              abajo— responde sin ayuda:
+              <strong
+                >¿cuáles de estos números son exactos y cuáles
+                estimados?</strong
+              >
+              ¿Sabrías decir de qué habla cada bloque: uno de
+              <em>tu archivo</em>, el otro de
+              <em>la población de la que salió</em>? Y la pregunta que de verdad
+              importa:
+              <strong
+                >¿te tienta en algún momento sumarlos, promediarlos o leerlos
+                como una sola cifra?</strong
+              >
+              Si la respuesta es sí —aunque sea por un segundo— el diseño está
+              fallando en lo único que este sprint no puede fallar, y es un
+              hallazgo aunque todo lo demás esté bien.
+              <span class="origen origen-nuevo">Nuevo · S4</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> cualquier sitio donde una cifra
+            estimada se lea con el mismo peso visual que una exacta, y cualquier
+            frase que invite a combinarlas. El riesgo exacto habla de tu
+            archivo; el estimado, de una población que Velo no tiene delante. No
+            se suman.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">Y</span>
+          <h2>La bitácora: acordarte dentro de seis meses</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/transformar</code>, y de ahí a
+          <code>/bitacora</code> · ~20 min · el archivo cifrado que recuerda lo
+          que hiciste.
+        </p>
+        <ul class="pasos">
+          <li data-origen="nuevo">
+            <input type="checkbox" id="y1" /><label for="y1"
+              >Al final del taller está
+              <strong>«Anótalo, para acordarte dentro de seis meses»</strong>.
+              Pulsa <strong>«Anotar en mi bitácora»</strong>: llegas a la
+              bitácora <strong>por clic</strong>, con la anotación ya montada y
+              esperando. Comprueba también que se llega desde la portada, en el
+              bloque <strong>«Y meses después»</strong>,
+              <strong>sin escribir la dirección a mano</strong>.
+              <span class="origen origen-nuevo">Nuevo · S4</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="y2" /><label for="y2"
+              >Guárdala con una frase de paso. Vuelve al taller y trata
+              <strong>otros dos archivos</strong> con técnicas distintas,
+              anotando cada uno. Las <strong>tres entradas</strong> quedan,
+              <strong>en orden</strong>, y cada una guarda qué trataste, cuándo,
+              con qué política, el riesgo antes y después, y
+              <strong>las dos huellas</strong> — las mismas que puedes cotejar
+              contra su certificado.
+              <span class="origen origen-nuevo">Nuevo · S4</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="y3" /><label for="y3"
+              ><strong>Cierra el navegador entero</strong> —no la pestaña: el
+              navegador— y vuelve a abrirlo. Entra a <code>/bitacora</code>,
+              carga tu archivo y escribe la frase:
+              <strong
+                >las tres entradas están, en el mismo orden, completas</strong
+              >. Ahora repite con una <strong>frase equivocada</strong>: se
+              rechaza, y el mensaje
+              <strong>te dice qué pudo haber pasado</strong> en vez de un
+              «error» a secas. Ninguna prueba automática puede cerrar el
+              navegador que la está ejecutando: esta solo existe si la haces tú,
+              y es la que decide si la promesa de «dentro de seis meses» es
+              real.
+              <span class="origen origen-nuevo">Nuevo · S4</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="y4" /><label for="y4"
+              >Abre el archivo de la bitácora con un
+              <strong>editor de texto</strong> (Bloc de notas, TextEdit). No se
+              entiende nada: <strong>ni un nombre de archivo legible</strong>.
+              Va cifrado porque el nombre de un archivo ya cuenta de qué va su
+              contenido. Y prueba el error más probable dentro de seis meses:
+              suelta la <strong>bóveda</strong> (<code>.velo</code>) donde va la
+              bitácora — el mensaje te dice que esa es la bóveda y
+              <strong>dónde se abre</strong>, en vez de dejarte adivinando.
+              <span class="origen origen-nuevo">Nuevo · S4</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> si en algún momento la pantalla
+            te deja creer que la frase de paso se puede recuperar. No se puede:
+            frase perdida = bitácora irrecuperable, y eso tiene que estar dicho
+            <strong>antes</strong> de cifrar, no después.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">Z</span>
+          <h2>El ciclo completo, de una sentada</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~15 min · la última
+          parada: el juicio sobre el conjunto, que es lo que se entrega.
+        </p>
+        <ul class="pasos">
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="z1" /><label for="z1"
+              ><strong
+                >Juicio humano — las cinco pantallas y el ciclo entero.</strong
+              >
+              Recorre de un tirón: aduana → diagnóstico → taller → entrega →
+              regreso → bitácora. Tres preguntas, y la tercera es la que cuenta.
+              <strong>(1)</strong> ¿Se siente <strong>la misma app</strong> en
+              las cinco, o la bitácora parece pegada al final?
+              <strong>(2)</strong> ¿Queda claro
+              <strong>qué te llevas</strong> de cada pantalla —el archivo, el
+              certificado, la bóveda, la bitácora— y para qué sirve cada cosa?
+              <strong>(3)</strong> Imagínate seis meses después, con alguien
+              preguntándote <em>«¿y esos datos cómo los entregaste?»</em>:
+              <strong>¿lo que Velo te dio alcanza para responder?</strong> Si
+              falta algo para esa respuesta, ese hueco es el hallazgo más
+              valioso de todo el gate.
+              <span class="origen origen-nuevo">Nuevo · S4</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> cualquier cambio de diseño de
+            base que veas necesario. Este es el cierre del ciclo H1 y es el
+            momento de decirlo: un cambio de fondo declarado aquí es trabajo
+            planeado; el mismo cambio callado es deuda escondida.
+          </p>
+        </div>
+      </section>
+
+      <footer>
+        <p class="chica suave">
+          Guía <strong>viva y acumulativa</strong>: contiene TODAS las pruebas
+          vigentes de la app con su origen visible; una prueba solo se elimina
+          cuando su feature dejó de existir (queda declarado abajo). Archivo
+          autocontenido — se abre sin internet, se versiona con el repo y se
+          puede compartir tal cual.
+        </p>
+        <details class="chica">
+          <summary>Historial de la guía</summary>
+          <ul>
+            <li>
+              <strong>S1 · 9 de agosto de 2026:</strong> primera versión.
+              Bloques A–J: la aduana, la carga y el progreso, el diagnóstico
+              columna por columna, el riesgo y el consejero, el reporte
+              exportable, errores y límites, Excel, el archivo de 500k, diseño y
+              accesibilidad, y la comprobación manual de la promesa de red.
+              Ninguna prueba eliminada (no había).
+            </li>
+            <li>
+              <strong>S2 · 11 de agosto de 2026:</strong> las 44 del S1 pasan a
+              <strong>regresión</strong> y se suman los bloques
+              <strong>K–Q</strong>: la política y las de fábrica, la llave, el
+              antes y después, el balance y su regla de honestidad, el archivo
+              con su documento, el taller a 500.000 filas y el diseño de la
+              pantalla nueva. <strong>Ninguna prueba eliminada.</strong> Cuatro
+              pruebas nacen de la <code>/audita-sprint</code> del sprint y se
+              reconocen porque comprueban algo que estuvo mal:
+              <strong>K7</strong> (la casilla del k no se inventa un 5),
+              <strong>M3</strong> (las filas intactas siguen enmascaradas dentro
+              de una columna que cambió), <strong>N4</strong> (las columnas que
+              salieron intactas se nombran) y <strong>O5</strong> (la huella del
+              reporte es la del archivo que entró).
+            </li>
+            <li>
+              <strong>S3 · 12 de agosto de 2026:</strong> las 82 del S1 y el S2
+              pasan a <strong>regresión</strong> y se suman los bloques
+              <strong>R–V</strong>: el eje reversible, la bóveda, el círculo
+              completo, las celdas que no tienen una respuesta, y el diseño de
+              la cuarta pantalla. <strong>Ninguna prueba eliminada.</strong> Una
+              prueba —<strong>A3</strong>— se <strong>corrigió</strong>: decía
+              que la portada anuncia que Velo «todavía no transforma», frase que
+              estaba <strong>caducada desde el S2</strong> y que esta guía
+              repitió un sprint entero sin que nadie la mirara. Dos nacen de la
+              <code>/audita-sprint</code> del sprint y se reconocen porque
+              comprueban algo que estuvo mal: <strong>T1</strong> (se llega al
+              regreso desde la portada, sin escribir la dirección a mano) y
+              <strong>V5</strong> (el Excel devuelto dice qué hacer, en vez de
+              un «archivo inválido»).
+            </li>
+            <li>
+              <strong>S4 · 15 de agosto de 2026:</strong> las 114 de los sprints
+              001–003 pasan a <strong>regresión</strong> y se suman los bloques
+              <strong>W–Z</strong>: el certificado con sus dos huellas, el
+              riesgo estimado y la línea que no se cruza, la bitácora cifrada, y
+              el juicio del ciclo completo.
+              <strong>Ninguna prueba eliminada</strong> — tampoco la del reporte
+              del S2, aunque el reporte <em>ya no existe como tal</em>: se
+              convirtió en el certificado, así que sus pruebas siguen siendo
+              válidas sobre el documento que lo sucedió. El gate ⭐ pasa de 22 a
+              <strong>26 pruebas</strong> y de ~70 a <strong>~90 min</strong>, y
+              <strong>deja de diferirse: este es el cierre del ciclo H1</strong
+              >. El filtro ⭐ estrena el <strong>modo recorrido</strong>: numera
+              las 26 paradas de corrido para que el acumulado de cuatro sprints
+              se lea como un solo camino y no como cuatro listas pegadas.
+            </li>
+          </ul>
+        </details>
+      </footer>
     </div>
-  </header>
 
-  <div class="progreso">
-    <div class="progreso-fila">
-      <div class="barra"><div id="barra-avance"></div></div>
-      <span class="num" id="contador">0/0</span>
-    </div>
-    <div class="filtros" role="group" aria-label="Filtrar pruebas por origen">
-      <button type="button" data-filtro="todo" class="activo">Todo</button>
-      <button type="button" data-filtro="cambios">Lo que cambió en S3</button>
-      <button type="button" data-filtro="minimo">Gate mínimo ⭐ del ciclo</button>
-    </div>
-  </div>
+    <script>
+      (function () {
+        // NS VERSIONADO POR SPRINT: al publicar la guía de un sprint nuevo se cambia s001 — así una
+        // regresión sin correr jamás aparece marcada como hecha por el sprint anterior.
+        // S2: s001 → s002. S3: s002 → s003. S4: s003 → s004. Las 114 heredadas vuelven a estar sin
+        // marcar, que es el punto.
+        var NS = "guia-anonimizador:s004:";
+        var casillas = Array.prototype.slice.call(
+          document.querySelectorAll('input[type="checkbox"]'),
+        );
+        var barra = document.getElementById("barra-avance");
+        var contador = document.getElementById("contador");
+        var botones = Array.prototype.slice.call(
+          document.querySelectorAll(".filtros button"),
+        );
+        var secciones = Array.prototype.slice.call(
+          document.querySelectorAll("section.bloque"),
+        );
 
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">A</span><h2>La aduana en reposo</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
-      ~2 min · la primera impresión y la promesa que sostiene el producto.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="a1"><label for="a1">Abre la página. Se ve
-        el título <strong>«Mira tu tabla como la vería un extraño»</strong>, el recuadro para traer
-        la tabla y, justo debajo, el sello verde <strong>«Nada sale de este navegador»</strong>.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="a2"><label for="a2">Arriba a la derecha,
-        el sello aparece también en el encabezado, en pequeño. <strong>Está en todas las
-        pantallas</strong> y nunca cambia de color ni se anima.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="mejorado"><input type="checkbox" id="a3"><label for="a3">Más abajo, «Cómo
-        funciona» en <strong>cuatro pasos</strong>, y después una sección aparte, <strong>«Y semanas
-        después»</strong>, que cuenta el regreso y lleva el botón <strong>«Ya tengo mi bóveda y el
-        archivo devuelto»</strong>. <strong>Lee esa sección entera:</strong> tiene que decir que sin
-        la bóveda el seudónimo sigue siendo irreversible, y que con ella vuelve. Si en cualquier
-        punto de esta página se lee que Velo <em>todavía no</em> hace la vuelta, es un error.
-        <span class="origen origen-mejorado">Corregida · S3</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="a4"><label for="a4"><strong>Léelo
-        como si no supieras nada de la app.</strong> ¿Entiendes en menos de 30 segundos qué hace
-        Velo y por qué deberías confiarle un archivo? Si alguna frase te obliga a releerla, anótala.
-        <span class="origen origen-heredada">Heredada · S1</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="a5"><label for="a5">Arrastra un archivo
-        por encima del recuadro <strong>sin soltarlo</strong>: el borde se pone verde y el texto
-        cambia a <strong>«Suéltalo aquí»</strong>. Sácalo y vuelve a «Trae tu tabla».
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-    </ul>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> cualquier frase que prometa
-      «anonimato garantizado», «100 % seguro» o «imposible de reidentificar» — están prohibidas por
-      diseño. También si el sello no aparece en alguna pantalla.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">B</span><h2>Cargar y ver el progreso</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
-      ~3 min · las dos vías de carga y el progreso honesto.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="b1"><label for="b1">Suelta
-        <code>tmp/clinico-3000.csv</code> sobre el recuadro. Verás pasar las etapas
-        (<strong>tomando la huella</strong> → <strong>leyendo</strong> → <strong>reconociendo
-        columnas</strong> → <strong>midiendo el riesgo</strong>) y luego el diagnóstico.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="b2"><label for="b2">Vuelve a <code>/</code>
-        con «Analizar otro archivo». Ahora <strong>sin ratón</strong>: pulsa Tab hasta que el botón
-        «Elegir archivo» quede resaltado y pulsa Enter. Se abre el diálogo del sistema y puedes
-        elegir el archivo con el teclado.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="b3"><label for="b3">Con el archivo de
-        500.000 filas, mira la barra: <strong>avanza de verdad</strong> y muestra el porcentaje y
-        las filas leídas. En las etapas que no tienen medida (reconocer, medir riesgo)
-        <strong>no hay barra</strong>, solo el nombre de la etapa.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-    </ul>
-    <div class="tabla-scroll"><table>
-      <tr><th>Qué mirar</th><th>Comportamiento correcto</th></tr>
-      <tr><td>Barra de progreso</td><td class="valor">Solo aparece cuando hay una medida real; nunca una barra que se llena sola</td></tr>
-      <tr><td>Foco del teclado</td><td class="valor">El anillo de foco se ve claramente sobre el botón «Elegir archivo»</td></tr>
-    </table></div>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> una barra que se queda quieta en
-      un número, o que aparece sin que haya nada que medir.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">C</span><h2>El diagnóstico: qué hay y por qué</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> (carga
-      <code>tmp/clinico-3000.csv</code>) · ~5 min · la tabla columna por columna.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="c1"><label for="c1">Arriba: el nombre del
-        archivo, <strong>3.000 filas · 24 columnas</strong>, el tiempo que tardó y la
-        <strong>huella SHA-256</strong> completa.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="c2"><label for="c2">En la tabla, busca
-        <code>nit_empresa</code>: dice <strong>«NIT con dígito de verificación»</strong>,
-        <strong>Confirmado</strong>, y cita la fuente (<em>DIAN, Orden Administrativa 4 de
-        1989</em>). Ese «Confirmado» significa que Velo <strong>recalculó el dígito</strong> y cuadra.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="c3"><label for="c3">Busca
-        <code>cedula_titular</code>: dice <strong>«Por su forma»</strong>, no «Confirmado». Es
-        correcto: <strong>la cédula colombiana no tiene dígito de verificación público</strong>, así
-        que solo se puede comprobar la forma, y Velo no finge más certeza de la que tiene.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="c4"><label for="c4">Busca
-        <code>diagnostico</code> y <code>grupo_etnico</code>: categoría
-        <strong>«Dato sensible · art. 5»</strong>, certeza <strong>«Sin confirmar»</strong> y
-        <strong>«sin muestra»</strong> en la última columna. Ningún cálculo puede confirmar que un
-        código es un diagnóstico; solo el nombre de la columna lo sugiere.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="c5"><label for="c5">Ninguna muestra de la
-        última columna es un valor completo: todas se ven como <code>103***89</code>.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="c6"><label for="c6"><strong>Las
-        columnas-trampa.</strong> <code>referencia_pago</code> parece una tarjeta (pasa el algoritmo
-        de Luhn a propósito) y Velo la deja como <strong>«No personal»</strong>: es correcto.
-        <code>codigo_interno</code>, en cambio, sí se marca como cédula — es una
-        <strong>limitación declarada</strong>: tiene exactamente la misma forma y no existe checksum
-        que las separe.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="c7"><label for="c7"><strong>Juicio
-        de producto:</strong> lee la columna «Qué encontramos» de tres filas cualesquiera. ¿El
-        «por qué» te convence, o tendrías que creerle a Velo? Si algo se lee como una afirmación sin
-        respaldo, anótalo.
-        <span class="origen origen-heredada">Heredada · S1</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="c8"><label for="c8">Carga ahora
-        <code>tmp/limpio.csv</code>: aparece el panel <strong>«Velo no reconoció datos personales
-        aquí»</strong>, y su nota aclara que eso <strong>no es lo mismo</strong> que decir que el
-        archivo es anónimo.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-    </ul>
-    <div class="kit"><p><strong>Kit de prueba:</strong> <code>tmp/clinico-3000.csv</code> (perfil
-      clínico, 24 columnas con trampas incluidas) y <code>tmp/limpio.csv</code> (perfil
-      <code>sin-personales</code>). Ambos del generador, con semilla.</p></div>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> una muestra que enseñe un valor
-      completo, una columna sensible con muestra visible, o un «Confirmado» en una columna que no
-      tiene algoritmo oficial.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">D</span><h2>El riesgo y el consejero de cruces</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/diagnostico</code>
-      (con <code>tmp/clinico-3000.csv</code> cargado) · ~4 min · la mitad exacta del producto.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="d1"><label for="d1">El panel de riesgo
-        abre con una cifra grande de porcentaje y, debajo, <strong>su denominador</strong>
-        («N de 3.000 registros»). Ningún número aparece suelto.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="d2"><label for="d2">Aparecen los cuatro
-        datos: <strong>grupo más pequeño (k)</strong>, riesgo del más expuesto, riesgo promedio y
-        grupos distintos — cada uno con su explicación de una línea.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="d3"><label for="d3">Está la marca
-        <strong>«Cifra exacta»</strong> y la lista de <strong>columnas cruzadas</strong>. Esa marca
-        importa: en el próximo sprint llegan estimadores, y tendrán que decir «estimado».
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="d4"><label for="d4">En el consejero,
-        <strong>«Estas no necesitan compañía»</strong> lista columnas que ya dejan solo a casi todo
-        el mundo, cada una con su porcentaje y su cuenta.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="d5"><label for="d5">Debajo, las
-        combinaciones más delatoras con su <strong>k real</strong>. Y al pie, el
-        <strong>alcance declarado</strong>: cuántas combinaciones se evaluaron, sobre cuántas
-        candidatas y con qué tope. Abre el desplegable «columnas quedaron fuera, y por qué».
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="d6"><label for="d6"><strong>Juicio
-        de producto:</strong> ¿el consejero te dijo algo que no sabías del archivo? Esa es la
-        prueba de fuego de esta pantalla: si solo confirma lo evidente, no está ganándose su sitio.
-        <span class="origen origen-heredada">Heredada · S1</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-    </ul>
-    <div class="tabla-scroll"><table>
-      <tr><th>Qué mirar</th><th>Comportamiento correcto</th></tr>
-      <tr><td>Cifras de riesgo</td><td class="valor">Siempre con denominador y con la marca «exacta»</td></tr>
-      <tr><td>Tope del consejero</td><td class="valor">Declarado en pantalla, con las exclusiones y su motivo</td></tr>
-      <tr><td>Color de la cifra</td><td class="valor">Lacre apagado cuando el riesgo es alto — nunca rojo de semáforo ni iconos de peligro</td></tr>
-    </table></div>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> un tope aplicado sin declararlo,
-      o un número presentado sin decir sobre cuántos registros se calculó.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">E</span><h2>El reporte que te llevas</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/diagnostico</code>
-      (con <code>tmp/clinico-3000.csv</code> cargado) · ~5 min · el único artefacto que sale del navegador.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="e1"><label for="e1">El panel «Llévate el
-        diagnóstico» dice <strong>qué lleva y qué no lleva</strong> el reporte <em>antes</em> de
-        descargarlo.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="e2"><label for="e2">Pulsa «Ver antes de
-        descargar»: se abre el reporte completo dentro de la página. Ciérralo con «Cerrar la vista».
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="e3"><label for="e3">Descárgalo. El archivo
-        se llama <code>velo-diagnostico-clinico-3000.html</code>.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="e4"><label for="e4"><strong>Apaga
-        el wifi</strong> y abre el reporte descargado con doble clic. <strong>Tiene que verse
-        completo</strong>: tipografía, colores, tablas y sello. Si algo se ve roto sin internet, el
-        reporte no es autocontenido y eso es un fallo de bloqueo.
-        <span class="origen origen-heredada">Heredada · S1</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="e5"><label for="e5"><strong>Comprueba
-        la huella con tus propias herramientas.</strong> En la terminal, sobre el archivo que
-        cargaste: <code>shasum -a 256 tmp/clinico-3000.csv</code> (macOS) o
-        <code>sha256sum</code> (Linux). El texto tiene que ser <strong>idéntico</strong> al del
-        reporte y al que se ve en la pantalla de diagnóstico.
-        <span class="origen origen-heredada">Heredada · S1</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="e6"><label for="e6">En el reporte abierto:
-        no hay ninguna fila de tu tabla, las muestras van enmascaradas y el pie explica
-        <strong>qué NO afirma Velo</strong>.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-    </ul>
-    <div class="tabla-scroll"><table>
-      <tr><th>Qué mirar</th><th>Valor correcto</th></tr>
-      <tr><td>SHA-256 del kit clínico (3.000 filas, semilla 42)</td><td class="valor"><code>50ad2265…f988f1c</code> — y el mismo en pantalla, en el reporte y en tu terminal</td></tr>
-      <tr><td>Reporte sin internet</td><td class="valor">Se ve idéntico a la vista previa</td></tr>
-    </table></div>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> que el reporte se vea distinto sin
-      internet, o que la huella no coincida con la de tu terminal. Cualquiera de las dos rompe la
-      promesa central del producto.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">F</span><h2>Errores y límites</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
-      ~3 min · qué pasa cuando algo no se puede hacer.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="f1"><label for="f1">Suelta un archivo que
-        no sea tabla (un <code>.txt</code> o una imagen). Sale un aviso que dice
-        <strong>qué hacer</strong> («guárdalo como CSV»), no solo qué falló. Y el nombre del archivo
-        aparece para que sepas cuál fue.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="f2"><label for="f2">Pulsa «Elegir otro
-        archivo»: vuelve al estado inicial sin recargar la página.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="f3"><label for="f3">Con un diagnóstico en
-        pantalla, <strong>recarga la página</strong> (F5). Aparece <strong>«No quedó nada, y es a
-        propósito»</strong> con la explicación y el botón para volver. <strong>Esto es correcto</strong>:
-        es la prueba visible de que nada se guardó.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="f4"><label for="f4">Entra directo a
-        <code>/diagnostico</code> sin cargar nada: la misma pantalla.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-    </ul>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> un mensaje de error que muestre
-      texto técnico (nombres de librerías, contenido del archivo) o que no diga qué hacer.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">G</span><h2>Excel</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
-      ~2 min · la otra vía de lectura, con su tope declarado.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="g1"><label for="g1">Suelta
-        <code>tmp/clinico.xlsx</code>. Funciona igual que el CSV: diagnóstico completo, con sus
-        1.000 filas y 24 columnas.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="g2"><label for="g2">En la pantalla inicial
-        se declara el tope: <strong>«el CSV no tiene tope de tamaño; el Excel sí, hasta 150 MB»</strong>.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-    </ul>
-    <div class="kit"><p><strong>Kit de prueba:</strong> <code>tmp/clinico.xlsx</code> — mismo
-      generador, <code>--formato xlsx</code>.</p></div>
-    <div class="diferido"><p><strong>Diferido:</strong> probar a mano un Excel de más de 150 MB no
-      es razonable (generarlo tarda y ocupa). El rechazo por tamaño está cubierto por pruebas
-      automáticas: un e2e fabrica un archivo de 160 MB en el navegador y comprueba que Velo lo
-      rechaza <em>sin abrirlo</em> y guía a CSV.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">H</span><h2>El archivo grande</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
-      ~3 min · 500.000 filas sin congelar la pestaña.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="h1"><label for="h1">Suelta
-        <code>tmp/clinico-500k.csv</code> (unos 130 MB). Termina en pocos segundos y el diagnóstico
-        dice <strong>500.000 filas · 24 columnas</strong>.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="h2"><label for="h2"><strong>Mientras
-        procesa</strong>, mueve el ratón, haz scroll y selecciona texto. <strong>La pestaña
-        responde</strong>: el cursor no se traba, la barra avanza y el scroll es fluido. El
-        presupuesto de tareas largas ya lo verifica la CI; lo que solo puedes juzgar tú es si
-        <em>se siente</em> fluido.
-        <span class="origen origen-heredada">Heredada · S1</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="h3"><label for="h3">Al terminar, el
-        encabezado dice cuánto tardó en leer y en analizar. Con este archivo suelen ser unos pocos
-        segundos en total.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-    </ul>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> que la pestaña se congele, que el
-      navegador pida «esperar o cerrar la página», o que el proceso no termine.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">I</span><h2>Diseño y accesibilidad</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
-      ~5 min · el gate visual — lo firma tu ojo, no la CI.</p>
-    <ul class="pasos">
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="i1"><label for="i1"><strong>Los
-        dos temas.</strong> Cambia tu sistema a modo oscuro y recorre las dos pantallas; luego a
-        claro. Todo tiene que leerse cómodo en ambos: nada de texto que desaparezca sobre su fondo,
-        ningún borde invisible. <strong>La aprobación visual es tuya.</strong>
-        <span class="origen origen-heredada">Heredada · S1</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="i2"><label for="i2">En un teléfono (o con
-        la ventana a ~400 px de ancho): la página <strong>no se desplaza en horizontal</strong>. La
-        tabla de columnas sí se desplaza, pero dentro de su propio marco y avisa de ello.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="i3"><label for="i3">Recorre la página
-        entera con Tab: <strong>el foco siempre se ve</strong> (anillo verde) y el orden tiene
-        sentido. La primera tabulación ofrece «Saltar al contenido».
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="i4"><label for="i4">Activa en tu sistema
-        «reducir movimiento» y recarga: <strong>todo sigue visible</strong> (no desaparece nada),
-        simplemente ya no hay transiciones.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-    </ul>
-    <div class="tabla-scroll"><table>
-      <tr><th>Qué mirar</th><th>Comportamiento correcto</th></tr>
-      <tr><td>Contraste</td><td class="valor">Todo el texto se lee sin esfuerzo en claro y en oscuro</td></tr>
-      <tr><td>Movimiento</td><td class="valor">Sutil y breve; con «reducir movimiento» desaparece sin llevarse el contenido</td></tr>
-      <tr><td>Anti-patrones</td><td class="valor">Sin emojis como iconos, sin gradientes decorativos, sin sombras pesadas</td></tr>
-    </table></div>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> cualquier pantalla donde el
-      contraste te obligue a acercarte, o donde el foco del teclado se pierda.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">J</span><h2>La promesa, comprobada por ti</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> ·
-      ~4 min · la regla dura del producto, verificada a mano.</p>
-    <ul class="pasos">
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="j1"><label for="j1">Abre las
-        herramientas de desarrollo (F12) → pestaña <strong>Red</strong>, y déjala abierta. Carga
-        <code>tmp/clinico-3000.csv</code> y recorre todo el flujo hasta descargar el reporte.
-        <strong>Ninguna petición sale del dominio de Velo y ninguna lleva datos</strong> — solo se
-        piden archivos de la propia aplicación.
-        <span class="origen origen-heredada">Heredada · S1</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="j2"><label for="j2">En la misma pestaña de
-        red, filtra por <em>Fetch/XHR</em>: no hay ni un envío con cuerpo. Velo no tiene servidor al
-        que mandar nada.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="j3"><label for="j3">Corre el mismo archivo
-        <strong>dos veces</strong> y compara: el diagnóstico es idéntico —los mismos tipos, las
-        mismas cifras, el mismo orden en el consejero—. Eso es el determinismo, y es la razón por la
-        que este producto no necesita IA.
-        <span class="origen origen-heredada">Heredada · S1</span></label></li>
-    </ul>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> una sola petición a un dominio que
-      no sea el de Velo durante el flujo con archivo cargado. Es fallo de bloqueo absoluto.</p></div>
-  </section>
-
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">K</span><h2>El taller: la política</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> con
-      <code>tmp/clinico-3000.csv</code> · ~7 min · aquí Velo deja de mirar y empieza a decidir.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="k1"><label for="k1">Al final del
-        diagnóstico hay <strong>«Transformar este archivo»</strong>. Llévate contigo dos datos de
-        esta pantalla: el <strong>% de únicos</strong> y el <strong>grupo más pequeño (k)</strong>.
-        Los vas a comparar al final.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="k2"><label for="k2">El taller abre con
-        <strong>una fila por columna</strong> y un desplegable en cada una. Ábrelo con el teclado
-        (Tab hasta él, luego ↓): las opciones se leen de <strong>conservar a suprimir</strong>.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="k3"><label for="k3">Clic en
-        <strong>«Habeas Data (Colombia)»</strong>. Toda la tabla se llena de un golpe y aparece
-        un aviso con <strong>la fuente</strong> (Ley 1581 de 2012) y con cuántos puntos reconoce
-        Velo solo, cuántos por el nombre y <strong>cuántos tienes que marcar tú</strong>.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="k4"><label for="k4">Cambia
-        <strong>una sola</strong> columna. El aviso cambia a <strong>«Ya no es Habeas
-        Data»</strong>. Es deliberado: la guía oficial no respalda una decisión que no tomó.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="k5"><label for="k5">Prueba
-        <strong>HIPAA · Safe Harbor</strong> y compara el aviso con el de Habeas Data: los dos
-        dicen <strong>«Velo resume esa fuente en N puntos»</strong> con N distinto. Ninguno dice
-        «los N identificadores que enumera la fuente» — HIPAA enumera 18 y la Ley 1581 no enumera
-        ninguno, y una frase escrita para el primero sería falsa en el segundo.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="k6"><label for="k6">Pon una columna en
-        <strong>«Generalizar hasta alcanzar el k»</strong>. Aparece la casilla del grupo mínimo con
-        <strong>5</strong>. <strong>Exporta la política sin tocar nada más</strong>, ábrela con un
-        editor de texto y comprueba que dentro dice <code>"kObjetivo": 5</code> — lo que ves en la
-        pantalla tiene que ser lo que hay en el archivo.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="k7"><label for="k7">En ese mismo archivo
-        exportado, cambia a mano <code>"kObjetivo": 5</code> por <code>"kObjetivo": null</code>,
-        guárdalo e <strong>impórtalo</strong>. La casilla del k queda <strong>vacía</strong> y
-        aparece en rojo que esas columnas <strong>saldrían intactas</strong>. Velo no se inventa un
-        5 que la política no trae.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="k8"><label for="k8">Importa cualquier
-        archivo que <strong>no</strong> sea una política (una foto, un CSV). El error dice
-        <strong>qué</strong> pasó, no «archivo inválido».
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="k9"><label for="k9">Recarga la página
-        estando en el taller: vuelves a <strong>«No hay nada que transformar»</strong>. La política
-        tampoco se guardó — lleva los nombres de tus columnas, que son datos tuyos.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-    </ul>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">L</span><h2>La llave</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/transformar</code> con
-      Habeas Data aplicado · ~4 min · lo único de Velo que, si se pierde, no vuelve.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="l1"><label for="l1">El panel de la llave
-        aparece <strong>solo cuando la política pide seudónimos</strong>. Con una política de puro
-        enmascarado no está.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="l2"><label for="l2">Escribe una frase
-        <strong>corta</strong>: no deja derivar y explica por qué. Escribe una larga y pulsa
-        <strong>«Derivar la llave»</strong>.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="l3"><label for="l3"><strong>Juicio
-        humano — la pausa de la llave.</strong> Derivar cuesta 600.000 vueltas de PBKDF2 y la
-        pantalla lo dice mientras pasa. En un equipo rápido dura un instante; en un teléfono se nota. ¿La espera se siente
-        <strong>explicada</strong>, o se siente rota? Es la única pausa de Velo, y si se lee como
-        un cuelgue, el argumento de seguridad se pierde justo donde debía ganarse.
-        <span class="origen origen-heredada">Heredada · S2</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="l4"><label for="l4">Al terminar quedan
-        <strong>la huella</strong> (12 caracteres) y <strong>la sal</strong>. La frase que
-        escribiste <strong>ya no está en pantalla</strong>. Copia la sal: la necesitas para repetir
-        los mismos seudónimos el mes que viene.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-    </ul>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">M</span><h2>Antes y después</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/transformar</code>, tras
-      pulsar «Transformar» · ~5 min · la única pantalla que responde «¿qué recibe el otro?».</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="m1"><label for="m1">La columna
-        <strong>«Antes» va enmascarada siempre</strong> (<code>103***89</code>), incluso ahora que
-        estamos transformando: sigue siendo tu dato.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="m2"><label for="m2">La columna
-        <strong>«Después» va completa</strong> donde el valor cambió — un seudónimo, un rango, un
-        año — porque eso ya no es el dato de nadie.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="m3"><label for="m3">Busca una columna
-        generalizada donde <strong>algunas filas de la derecha estén enmascaradas y otras no</strong>
-        — pasa cuando la generalización deja intacto un valor que ya estaba en su sitio. <strong>Es
-        correcto:</strong> lo que no cambió sigue siendo tu dato y se tapa. Si vieras un valor
-        original completo ahí, es un defecto.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="m4"><label for="m4">Una columna
-        <strong>sensible que no cambió</strong> dice «dato sensible sin cambios: no se muestra» y
-        no enseña ni un valor.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="m5"><label for="m5">Arriba, el
-        <strong>«N de M columnas cambian»</strong>. Cuenta a mano las filas que muestran algo
-        distinto en la derecha (o que dicen «la columna no va en el archivo»): el número tiene que
-        cuadrar. No sale de las 6 filas que ves, sale del archivo entero.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-    </ul>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">N</span><h2>El balance, y dónde podía mentir</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/transformar</code>, debajo
-      de la vista previa · ~7 min · el bloque más importante del sprint.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="n1"><label for="n1">Aplica Habeas Data
-        completo y transforma. Compara con lo que anotaste en <strong>K1</strong>: los
-        <strong>únicos</strong> y el <strong>grupo mínimo</strong> tienen que haber mejorado en la
-        dirección que dice la pantalla.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="n2"><label for="n2"><strong>El caso
-        prohibido.</strong> Pon la columna de la <strong>cédula</strong> en «Dejar como está», deja
-        el resto tratado, y transforma. Arriba del todo aparece que <strong>hay un identificador
-        directo intacto</strong>, con su nombre — y el porcentaje de reducción <strong>deja de ser
-        el titular</strong>: se lee pequeño, dentro de una frase que dice que esa cifra no describe
-        un archivo tratado.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="n3"><label for="n3">Quita esa excepción y
-        vuelve a transformar: la advertencia desaparece y <strong>la cifra sí se luce</strong>.
-        (Sin esta comprobación, una pantalla que nunca luciera la cifra pasaría la anterior.)
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="n4"><label for="n4">Importa la política
-        del paso <strong>K7</strong> —la que pide reparto automático sin k— y transforma. Arriba
-        aparece que esas <strong>columnas salieron intactas</strong>, con sus nombres, y la cifra
-        vuelve a perder el titular. Comprueba en la vista previa que, en efecto, no cambiaron.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="n5"><label for="n5">Con el balance en
-        pantalla, <strong>cambia una columna cualquiera</strong> en el editor de arriba: la vista
-        previa, el balance y la descarga <strong>desaparecen de golpe</strong>. Un balance
-        calculado con la política de hace tres clics tiene todas sus cifras bien y habla de otro
-        archivo.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="n6"><label for="n6"><strong>Juicio
-        humano — el peso relativo.</strong> Mira el balance del paso N2 <strong>entero, de un
-        vistazo</strong>, como lo miraría alguien con prisa. ¿Qué pesa más: la advertencia o el
-        número? Si la primera impresión que te llevas es «reduje el riesgo un 87 %» y no «tengo una
-        cédula intacta», la jerarquía visual está mintiendo aunque cada palabra sea cierta. Es la
-        prueba central del sprint y no hay automatización que la haga.
-        <span class="origen origen-heredada">Heredada · S2</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-    </ul>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">O</span><h2>El archivo y su documento</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/transformar</code>, al
-      final · ~9 min · lo que sale de Velo y llega a otra persona.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="o1"><label for="o1"><strong>Preparar el
-        archivo</strong> y luego <strong>Guardar</strong>: son dos pasos a propósito, porque
-        escribir el archivo cuesta un momento y Velo enseña su trabajo en vez de fingir que fue
-        instantáneo. El nombre es <code>velo-anonimizado-<em>8 caracteres</em>.csv</code>.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="o2"><label for="o2">La pantalla dice que
-        esos ocho caracteres son <strong>el principio del hash de la política</strong>. Transforma
-        <strong>dos veces con la misma política</strong>: el nombre es el mismo. Cambia una regla:
-        el nombre cambia.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="o3"><label for="o3"><strong>Ábrelo
-        en tu hoja de cálculo</strong> (Excel, Numbers, LibreOffice). Comprueba tres cosas que
-        ninguna prueba automática vive para comprobar: que <strong>se abre sin pelear</strong>, que
-        las tildes se ven bien, y que <strong>ninguna cédula del original aparece</strong> (busca
-        una que hayas visto en el diagnóstico). Es el archivo que le vas a mandar a alguien.
-        <span class="origen origen-heredada">Heredada · S2</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="o4"><label for="o4">Debajo está
-        <strong>«Llévate el reporte del tratamiento»</strong>. <strong>Ver antes de
-        descargar</strong>: el documento trae, además del diagnóstico, <strong>qué se le hizo</strong>
-        — el balance con sus advertencias en el mismo orden que en pantalla, la utilidad perdida y
-        el <strong>hash completo</strong> de la política.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="o5"><label for="o5">En ese documento, la
-        sección de identidad avisa de que <strong>la huella SHA-256 NO es la del archivo que se
-        entrega</strong>, sino la del que entró. Compruébalo: corre <code>shasum -a 256</code> sobre
-        el CSV anonimizado y verás que <strong>no coincide</strong> — y que el documento ya te lo
-        había advertido en vez de dejarte descubrirlo.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="o6"><label for="o6">Más abajo, la sección
-        de riesgo dice <strong>«el archivo ORIGINAL»</strong> pegado a sus cifras. Sin esa
-        aclaración, quien lea el documento junto al archivo tratado creería que esas cifras
-        describen lo que tiene en la mano.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="o7"><label for="o7"><strong>Apaga
-        el wifi</strong> y abre el reporte del tratamiento con doble clic. Se ve completo, con sus
-        tipografías y sus colores. Es la prueba de que el documento que le mandas a alguien no le
-        pide permiso a ningún servidor —ni delata a quién lo abre y cuándo—, y solo vale si la haces
-        tú, en tu computador, con la red caída.
-        <span class="origen origen-heredada">Heredada · S2</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-    </ul>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">P</span><h2>El taller con 500.000 filas</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> con
-      <code>tmp/clinico-500k.csv</code> · ~6 min · el tope declarado del producto, transformando.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="p1"><label for="p1">Suelta el archivo de
-        500k, ve al taller, aplica <strong>Habeas Data</strong>, deriva la llave y transforma. La
-        pantalla nombra la etapa mientras trabaja («aplicando la política…», «midiendo el riesgo del
-        archivo que sale…»).
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="p2"><label for="p2"><strong>Juicio
-        humano — ¿se siente fluido?</strong> Mientras transforma y mientras escribe el archivo,
-        <strong>desplaza la página y pulsa botones</strong>. La CI mide que el hilo principal no se
-        bloquea; lo que no puede medir es si la espera se siente controlada. Si en algún momento la
-        página «no responde», anótalo con el segundo exacto.
-        <span class="origen origen-heredada">Heredada · S2</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="p3"><label for="p3">Guarda el archivo.
-        Pesa del orden de 100 MB y lo escribió tu navegador, no un servidor. Ábrelo (o mira su
-        tamaño) y comprueba que tiene las <strong>500.000 filas</strong>.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-    </ul>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">Q</span><h2>El taller: diseño y promesa</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/transformar</code> ·
-      ~4 min · la tercera pantalla de Velo, con las reglas de las dos primeras.</p>
-    <ul class="pasos">
-      <li data-origen="heredado"><input type="checkbox" id="q1"><label for="q1">El
-        <strong>sello</strong> «nada sale de aquí» sigue presente y sigue sin animarse. El tema
-        oscuro se comporta igual que en las otras dos pantallas.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="q2"><label for="q2">Recorre el taller
-        <strong>entero con el teclado</strong>, sin tocar el ratón: los desplegables de todas las
-        columnas, la casilla del k, la frase de paso, los botones y el enlace de guardar. El foco se
-        ve siempre y no se queda atrapado en la tabla.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado"><input type="checkbox" id="q3"><label for="q3">En un teléfono (o con
-        el navegador a 412 px de ancho): la tabla de la política cabe <strong>sin desplazamiento
-        horizontal</strong>, los desplegables se abren <strong>completos</strong> —no recortados por
-        el borde— y las cuatro cifras del balance se leen como una fila.
-        <span class="origen origen-heredada">Heredada · S2</span></label></li>
-      <li data-origen="heredado" data-minimo><input type="checkbox" id="q4"><label for="q4"><strong>Juicio
-        humano — la secuencia.</strong> Mira el taller de arriba abajo sin usarlo. Los pasos están
-        numerados (1 la política, 2 la llave, 3 la vista previa…). ¿Se entiende <strong>qué va
-        antes de qué</strong> y por qué, sin que nadie te lo explique? ¿Hay algún paso que aparezca
-        cuando no lo esperas o que no sepas si ya hiciste?
-        <span class="origen origen-heredada">Heredada · S2</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-    </ul>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">R</span><h2>El eje reversible: decidir qué podrá volver</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> con
-      <code>tmp/clinico-3000.csv</code>, y sigue al taller · ~6 min · la decisión que hay que tomar
-      <em>antes</em>, no después.</p>
-    <ul class="pasos">
-      <li data-origen="nuevo"><input type="checkbox" id="r1"><label for="r1">En el taller, pon
-        <strong>Seudónimo</strong> en <code>cedula_titular</code>. Debajo aparece una casilla nueva:
-        <strong>«poder deshacerlo después»</strong>. <strong>Empieza desmarcada.</strong> Esa es la
-        decisión correcta por defecto: lo irreversible es lo seguro.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="r2"><label for="r2">Con la casilla
-        <strong>desmarcada</strong>, el texto dice que esa columna <strong>no podrá volver</strong>.
-        Márcala: el texto cambia y avisa de que hará falta guardar una bóveda. Desmárcala otra vez y
-        vuelve al mensaje anterior. <strong>En ningún momento se lee una promesa de que el dato está
-        «a salvo» o «garantizado».</strong>
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="r3"><label for="r3">Prueba las tres
-        opciones de seudónimo del desplegable —<strong>«Seudónimo (hex)»</strong>, <strong>«Seudónimo
-        de cédula»</strong> y <strong>«Seudónimo de NIT»</strong>—. <strong>En un teléfono (412 px)
-        las tres se leen enteras y se distinguen entre sí.</strong> Si dos se ven iguales por estar
-        recortadas, es un fallo: esta prueba existe porque pasó.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="r4"><label for="r4">Pon una
-        <strong>máscara</strong> o una <strong>generalización</strong> en otra columna: ahí
-        <strong>no</strong> hay casilla de vuelta. Tiene sentido y la app no lo explica de más: esas
-        técnicas destruyen información, y <code>103***89</code> no vuelve ni con bóveda.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo" data-minimo><input type="checkbox" id="r5"><label for="r5"><strong>Juicio
-        humano — la decisión irreversible.</strong> Ponte en el lugar de alguien que llega aquí por
-        primera vez con un archivo de verdad. ¿Entiende, <strong>en el momento de marcar la
-        casilla</strong>, que si no la marca no habrá vuelta nunca? ¿Y que si la marca tendrá que
-        guardar un archivo más y no perderlo? Si tienes que subir a releer algo para decidir, anótalo.
-        <span class="origen origen-nuevo">Nuevo · S3</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-    </ul>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> cualquier sitio donde marcar la
-      casilla parezca la opción «buena» y no marcarla la «mala». No lo son: son dos tratos
-      distintos con precios distintos.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">S</span><h2>La bóveda: el archivo que hace posible la vuelta</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/transformar</code>, con la
-      política del bloque R y <code>cedula_titular</code> <strong>marcada como reversible</strong> ·
-      ~8 min.</p>
-    <ul class="pasos">
-      <li data-origen="nuevo"><input type="checkbox" id="s1"><label for="s1">Deriva la llave y
-        transforma. Aparece un <strong>paso 4 nuevo</strong>: la bóveda. Antes de pedirte nada, te
-        dice <strong>cuántas correspondencias</strong> guarda.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo" data-minimo><input type="checkbox" id="s2"><label for="s2"><strong>Lee
-        los tres avisos del paso 4 antes de escribir nada.</strong> Tienen que decir, sin rodeos:
-        que la frase <strong>no se puede recuperar</strong>, que la bóveda es <strong>tan sensible
-        como el archivo original</strong>, y que conviene guardarla <strong>aparte</strong> del
-        archivo anonimizado. ¿Los tres se entienden a la primera? ¿Alguno suena a letra pequeña?
-        <span class="origen origen-nuevo">Nuevo · S3</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="s3"><label for="s3">Escribe una frase de
-        paso <strong>distinta</strong> a la de la llave y pulsa cifrar. Tarda un momento y lo dice.
-        Guarda el archivo: termina en <strong><code>.velo</code></strong>.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo" data-minimo><input type="checkbox" id="s4"><label for="s4"><strong>Compruébalo
-        tú: la bóveda es ilegible.</strong> Abre el <code>.velo</code> con un editor de texto o con
-        <code>strings</code>. <strong>No puede aparecer ni una sola cédula, ni un nombre de
-        columna.</strong> Es la prueba de que el archivo que vas a guardar en tu disco no delata a
-        nadie aunque alguien lo encuentre.
-        <span class="origen origen-nuevo">Nuevo · S3</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="s5"><label for="s5">Guarda también el
-        <strong>CSV anonimizado</strong>. Ahora tienes los dos archivos que necesita el round-trip, y
-        el paso 4 te ofrece el enlace <strong>«Ir al regreso»</strong>.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="s6"><label for="s6">Haz una política
-        <strong>sin ninguna columna reversible</strong> y transforma. <strong>El paso de la bóveda
-        no aparece</strong>: no hay nada que guardar, y la app no te hace guardar un archivo vacío
-        por simetría.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-    </ul>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> si en algún momento la frase de
-      paso de la bóveda se ve en pantalla después de enviarla, o si el archivo <code>.velo</code>
-      deja leer cualquier cosa reconocible.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">T</span><h2>El regreso: el círculo completo</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> · ~12 min · <strong>la
-      prueba que justifica el producto entero.</strong> Necesitas el <code>.velo</code> y el CSV
-      anonimizado del bloque S.</p>
-    <ul class="pasos">
-      <li data-origen="nuevo" data-minimo><input type="checkbox" id="t1"><label for="t1"><strong>Llega
-        como llegaría una persona.</strong> Cierra la pestaña, abre una nueva y entra por la portada
-        —<strong>no escribas la dirección de <code>/regreso</code> a mano</strong>—. Baja hasta «Y
-        semanas después» y pulsa <strong>«Ya tengo mi bóveda y el archivo devuelto»</strong>. Si no
-        encuentras cómo llegar sin escribir la URL, es un fallo grave: esta prueba existe porque la
-        auditoría lo encontró.
-        <span class="origen origen-nuevo">Nuevo · S3</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="t2"><label for="t2"><strong>Haz de
-        tercero.</strong> Abre el CSV anonimizado en tu hoja de cálculo y <strong>maltrátalo como lo
-        haría alguien que trabaja</strong>: ordena por otra columna, añade una columna nueva
-        («resultado», con lo que quieras), borra una columna que no sea la reversible, y cambia a
-        mano tres o cuatro valores. Guárdalo como CSV.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="t3"><label for="t3">En <code>/regreso</code>,
-        carga el <code>.velo</code> con su frase. Se abre y muestra su <strong>huella</strong>, la
-        huella de la llave, cuántas correspondencias tiene y <strong>qué columnas puede
-        devolver</strong>.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="t4"><label for="t4">Carga el archivo que
-        acabas de maltratar. Antes de que puedas pulsar «Restaurar», el <strong>paso 3</strong> te
-        dice si hay valores que <strong>no van a poder volver</strong>, con su número. <strong>El
-        aviso va antes del botón, no después.</strong>
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo" data-minimo><input type="checkbox" id="t5"><label for="t5"><strong>Restaura,
-        guarda y ábrelo en tu hoja de cálculo.</strong> Comprueba las tres cosas a la vez: las
-        cédulas <strong>volvieron a ser las originales</strong>; <strong>tu columna nueva sigue
-        ahí</strong> con lo que escribiste; y los valores que cambiaste a mano <strong>siguen como
-        los dejaste</strong>. Velo devolvió lo suyo y no tocó lo tuyo.
-        <span class="origen origen-nuevo">Nuevo · S3</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="t6"><label for="t6">Vuelve a cargar la
-        bóveda y escribe la frase <strong>mal</strong>. Lo dice claro, y dice también que el mismo
-        mensaje sale si el archivo se dañó. <strong>No da pistas</strong> sobre en qué te
-        equivocaste.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="t7"><label for="t7">Pon un CSV cualquiera
-        en el sitio de la bóveda: se rechaza al instante con <strong>«no es una bóveda de
-        Velo»</strong>, sin pedirte esperar a que descifre nada.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="t8"><label for="t8">Restaura usando un
-        archivo devuelto que <strong>no tenga nada que ver</strong> (por ejemplo
-        <code>tmp/limpio.csv</code>). Velo dice que <strong>esta bóveda no corresponde a este
-        archivo</strong> y <strong>no restaura nada a medias en silencio</strong>.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="t9"><label for="t9">Recarga
-        <code>/regreso</code> con todo cargado. <strong>No queda nada</strong>: ni la bóveda, ni el
-        archivo, ni la restauración. Es la misma promesa del S1, y aquí importa más.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-    </ul>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> cualquier celda que vuelva con un
-      valor que <em>no</em> era el suyo, y cualquier cosa que el tercero hubiera hecho y que Velo
-      haya pisado.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">U</span><h2>Las celdas que no tienen una respuesta</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/</code> con
-      <code>tmp/colisiones.csv</code> · ~8 min · el caso incómodo, provocado a propósito.</p>
-    <ul class="pasos">
-      <li data-origen="nuevo"><input type="checkbox" id="u1"><label for="u1">Anonimiza
-        <code>colisiones.csv</code> con <code>nit_empresa</code> en <strong>«Seudónimo de NIT»</strong>
-        y <strong>reversible</strong>. Sella la bóveda y guárdala.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo" data-minimo><input type="checkbox" id="u2"><label for="u2">En
-        <code>/regreso</code>, abre esa bóveda y carga el archivo anonimizado tal cual. <strong>El
-        paso 3 te dice, ANTES de restaurar, cuántos seudónimos corresponden a más de un valor
-        original.</strong> Lee esa frase con cuidado: ¿dice <em>seudónimos</em> o dice
-        <em>celdas</em>? Tiene que decir lo que de verdad cuenta, y explicar por qué pasa
-        (conservar el formato reduce el espacio y dos valores chocan).
-        <span class="origen origen-nuevo">Nuevo · S3</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="u3"><label for="u3">Restaura. En el
-        resultado, la <strong>ambigüedad aparece ARRIBA del porcentaje</strong>, no debajo ni al
-        lado. Y el porcentaje <strong>no va solo de titular</strong>: viene con la frase de que esa
-        cifra no describe un archivo recuperado del todo.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo" data-minimo><input type="checkbox" id="u4"><label for="u4"><strong>Abre
-        el archivo restaurado y busca las celdas ambiguas.</strong> Tienen que seguir con el
-        <strong>seudónimo</strong>, no con uno de los dos originales ni vacías. Velo no eligió por
-        ti — comprueba que de verdad no lo hizo, porque es la diferencia entre una herramienta y una
-        que te devuelve el dato de otra persona sin avisar.
-        <span class="origen origen-nuevo">Nuevo · S3</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="u5"><label for="u5">Descarga el
-        <strong>informe del regreso</strong> y ábrelo <strong>sin internet</strong> (modo avión). Se
-        ve completo. Busca el pie: repite lo de las celdas ambiguas <strong>otra vez</strong>,
-        porque el documento se lee fuera de la pantalla que lo generó y el porcentaje se puede citar
-        solo.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="u6"><label for="u6">En el informe, busca
-        <strong>cualquier celda del archivo</strong>: ni un seudónimo, ni un valor restaurado.
-        Nombres de columna, cifras y huellas — nada más.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-    </ul>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> cualquier cifra de restauración
-      que aparezca sin su salvedad al lado, en la pantalla o en el informe. Es la regla que gobierna
-      este producto.</p></div>
-  </section>
-
-  <section class="bloque">
-    <div class="bloque-cabeza"><span class="letra">V</span><h2>El regreso: diseño, teclado y promesa</h2></div>
-    <p class="meta-bloque chica suave"><strong>Empieza en:</strong> <code>/regreso</code> ·
-      ~5 min · la cuarta pantalla, con las reglas de las tres primeras.</p>
-    <ul class="pasos">
-      <li data-origen="nuevo"><input type="checkbox" id="v1"><label for="v1">El <strong>sello</strong>
-        «nada sale de aquí» está también aquí y sigue sin animarse. El <strong>tema oscuro</strong> se
-        comporta igual que en las otras tres pantallas.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="v2"><label for="v2">Recorre el regreso
-        <strong>entero con el teclado</strong>: elegir bóveda, frase, abrir, elegir archivo,
-        restaurar, y los dos enlaces de descarga. El foco se ve siempre y el orden es el de la
-        lectura.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="v3"><label for="v3">A <strong>412 px</strong>
-        de ancho: no hay desplazamiento horizontal, las huellas largas <strong>parten de línea</strong>
-        en vez de desbordar, y los botones se leen enteros.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="v4"><label for="v4">Con <strong>movimiento
-        reducido</strong> activado en el sistema: la pantalla sigue <strong>visible y usable</strong>
-        —el cinturón apaga el movimiento, no el contenido—.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo"><input type="checkbox" id="v5"><label for="v5">Suelta un
-        <strong>Excel</strong> como archivo devuelto. Se rechaza y el mensaje <strong>te dice qué
-        hacer</strong>: guardarlo como CSV. No un «archivo inválido» a secas.
-        <span class="origen origen-nuevo">Nuevo · S3</span></label></li>
-      <li data-origen="nuevo" data-minimo><input type="checkbox" id="v6"><label for="v6"><strong>Juicio
-        humano — las cuatro pantallas juntas.</strong> Recorre el ciclo entero de un tirón: aduana →
-        diagnóstico → taller → regreso. ¿Se siente <strong>la misma app</strong> en las cuatro? ¿El
-        regreso parece el final natural del viaje o un añadido pegado al lado? Y la pregunta que
-        importa: después de recorrerlo, <strong>¿confiarías tu archivo a Velo?</strong> Si la
-        respuesta tiene un «pero», ese pero es lo que quiero oír.
-        <span class="origen origen-nuevo">Nuevo · S3</span>
-        <span class="minimo">⭐ mínimo</span></label></li>
-    </ul>
-    <div class="reportame"><p><strong>Repórtame sí o sí:</strong> cualquier frase de estas cuatro
-      pantallas que prometa anonimato garantizado, seguridad absoluta o imposibilidad de
-      reidentificar. Velo reduce el riesgo y lo mide; no promete magia.</p></div>
-  </section>
-
-  <footer>
-    <p class="chica suave">Guía <strong>viva y acumulativa</strong>: contiene TODAS las pruebas
-      vigentes de la app con su origen visible; una prueba solo se elimina cuando su feature dejó
-      de existir (queda declarado abajo). Archivo autocontenido — se abre sin internet, se
-      versiona con el repo y se puede compartir tal cual.</p>
-    <details class="chica">
-      <summary>Historial de la guía</summary>
-      <ul>
-        <li><strong>S1 · 9 de agosto de 2026:</strong> primera versión. Bloques A–J: la aduana, la
-          carga y el progreso, el diagnóstico columna por columna, el riesgo y el consejero, el
-          reporte exportable, errores y límites, Excel, el archivo de 500k, diseño y accesibilidad,
-          y la comprobación manual de la promesa de red. Ninguna prueba eliminada (no había).</li>
-        <li><strong>S2 · 11 de agosto de 2026:</strong> las 44 del S1 pasan a <strong>regresión</strong>
-          y se suman los bloques <strong>K–Q</strong>: la política y las de fábrica, la llave, el
-          antes y después, el balance y su regla de honestidad, el archivo con su documento, el
-          taller a 500.000 filas y el diseño de la pantalla nueva. <strong>Ninguna prueba
-          eliminada.</strong> Cuatro pruebas nacen de la <code>/audita-sprint</code> del sprint y
-          se reconocen porque comprueban algo que estuvo mal: <strong>K7</strong> (la casilla del k
-          no se inventa un 5), <strong>M3</strong> (las filas intactas siguen enmascaradas dentro de
-          una columna que cambió), <strong>N4</strong> (las columnas que salieron intactas se
-          nombran) y <strong>O5</strong> (la huella del reporte es la del archivo que entró).</li>
-        <li><strong>S3 · 12 de agosto de 2026:</strong> las 82 del S1 y el S2 pasan a
-          <strong>regresión</strong> y se suman los bloques <strong>R–V</strong>: el eje reversible,
-          la bóveda, el círculo completo, las celdas que no tienen una respuesta, y el diseño de la
-          cuarta pantalla. <strong>Ninguna prueba eliminada.</strong> Una prueba —<strong>A3</strong>—
-          se <strong>corrigió</strong>: decía que la portada anuncia que Velo «todavía no
-          transforma», frase que estaba <strong>caducada desde el S2</strong> y que esta guía repitió
-          un sprint entero sin que nadie la mirara. Dos nacen de la <code>/audita-sprint</code> del
-          sprint y se reconocen porque comprueban algo que estuvo mal: <strong>T1</strong> (se llega
-          al regreso desde la portada, sin escribir la dirección a mano) y <strong>V5</strong> (el
-          Excel devuelto dice qué hacer, en vez de un «archivo inválido»).</li>
-      </ul>
-    </details>
-  </footer>
-</div>
-
-<script>
-  (function () {
-    // NS VERSIONADO POR SPRINT: al publicar la guía de un sprint nuevo se cambia s001 — así una
-    // regresión sin correr jamás aparece marcada como hecha por el sprint anterior.
-    // S2: s001 → s002. S3: s002 → s003. Las 82 heredadas vuelven a estar sin marcar, que es el punto.
-    var NS = "guia-anonimizador:s003:";
-    var casillas = Array.prototype.slice.call(document.querySelectorAll('input[type="checkbox"]'));
-    var barra = document.getElementById("barra-avance");
-    var contador = document.getElementById("contador");
-    var botones = Array.prototype.slice.call(document.querySelectorAll(".filtros button"));
-    var secciones = Array.prototype.slice.call(document.querySelectorAll("section.bloque"));
-
-    function visible(li, filtro) {
-      if (filtro === "todo") return true;
-      if (filtro === "minimo") return li.hasAttribute("data-minimo");
-      var o = li.getAttribute("data-origen");
-      return o === "nuevo" || o === "mejorado"; // filtro "cambios"
-    }
-    function aplicarFiltro(filtro) {
-      secciones.forEach(function (sec) {
-        var conVisibles = 0;
-        Array.prototype.slice.call(sec.querySelectorAll("ul.pasos li")).forEach(function (li) {
-          var v = visible(li, filtro);
-          if (v) { li.removeAttribute("hidden"); conVisibles++; } else { li.setAttribute("hidden", ""); }
+        function visible(li, filtro) {
+          if (filtro === "todo") return true;
+          if (filtro === "minimo") return li.hasAttribute("data-minimo");
+          var o = li.getAttribute("data-origen");
+          return o === "nuevo" || o === "mejorado"; // filtro "cambios"
+        }
+        function aplicarFiltro(filtro) {
+          secciones.forEach(function (sec) {
+            var conVisibles = 0;
+            Array.prototype.slice
+              .call(sec.querySelectorAll("ul.pasos li"))
+              .forEach(function (li) {
+                var v = visible(li, filtro);
+                if (v) {
+                  li.removeAttribute("hidden");
+                  conVisibles++;
+                } else {
+                  li.setAttribute("hidden", "");
+                }
+              });
+            if (conVisibles) {
+              sec.removeAttribute("hidden");
+            } else {
+              sec.setAttribute("hidden", "");
+            }
+          });
+          botones.forEach(function (b) {
+            b.classList.toggle(
+              "activo",
+              b.getAttribute("data-filtro") === filtro,
+            );
+          });
+          // MODO RECORRIDO: el gate ⭐ del ciclo son 26 pruebas nacidas en cuatro sprints distintos y
+          // repartidas por 20 bloques. Numerarlas de corrido es lo que las convierte en UN camino en vez
+          // de cuatro listas pegadas — sin mover nada de sitio: el orden del documento YA es el del
+          // recorrido, lo que faltaba era que se viera.
+          document.body.classList.toggle("modo-recorrido", filtro === "minimo");
+          numerarParadas(filtro === "minimo");
+          actualizar();
+        }
+        function numerarParadas(activo) {
+          var total = 0;
+          if (activo) {
+            document.querySelectorAll("ul.pasos li").forEach(function (li) {
+              if (!li.hasAttribute("hidden")) total++;
+            });
+          }
+          var n = 0;
+          document.querySelectorAll("ul.pasos li").forEach(function (li) {
+            var chip = li.querySelector(".parada");
+            if (!activo || li.hasAttribute("hidden")) {
+              if (chip) {
+                chip.remove();
+              }
+              return;
+            }
+            n++;
+            if (!chip) {
+              chip = document.createElement("span");
+              chip.className = "parada";
+              li.querySelector("label").insertBefore(
+                chip,
+                li.querySelector("label").firstChild,
+              );
+            }
+            var bloque = li.closest("section").querySelector("h2");
+            chip.textContent =
+              "Parada " +
+              n +
+              " de " +
+              total +
+              " · " +
+              (bloque ? bloque.textContent : "");
+          });
+          var totalEnCabeza = document.getElementById("recorrido-total");
+          if (activo && totalEnCabeza) {
+            totalEnCabeza.textContent = total;
+          }
+        }
+        function actualizar() {
+          var vis = casillas.filter(function (c) {
+            var li = c.closest("li"),
+              sec = c.closest("section");
+            return (
+              !(li && li.hasAttribute("hidden")) &&
+              !(sec && sec.hasAttribute("hidden"))
+            );
+          });
+          var hechas = vis.filter(function (c) {
+            return c.checked;
+          }).length;
+          barra.style.width =
+            (vis.length ? (hechas / vis.length) * 100 : 0) + "%";
+          contador.textContent =
+            hechas +
+            "/" +
+            vis.length +
+            (document.body.classList.contains("modo-recorrido")
+              ? " paradas"
+              : "");
+        }
+        botones.forEach(function (b) {
+          var f = b.getAttribute("data-filtro"),
+            n = 0;
+          document.querySelectorAll("ul.pasos li").forEach(function (li) {
+            if (visible(li, f)) n++;
+          });
+          // `.trim()`: el formateador puede partir el texto del botón en varias líneas, y sin esto
+          // el conteo se pega detrás de un salto de línea.
+          b.textContent = b.textContent.trim() + " (" + n + ")";
+          b.addEventListener("click", function () {
+            aplicarFiltro(f);
+          });
         });
-        if (conVisibles) { sec.removeAttribute("hidden"); } else { sec.setAttribute("hidden", ""); }
-      });
-      botones.forEach(function (b) { b.classList.toggle("activo", b.getAttribute("data-filtro") === filtro); });
-      actualizar();
-    }
-    function actualizar() {
-      var vis = casillas.filter(function (c) {
-        var li = c.closest("li"), sec = c.closest("section");
-        return !(li && li.hasAttribute("hidden")) && !(sec && sec.hasAttribute("hidden"));
-      });
-      var hechas = vis.filter(function (c) { return c.checked; }).length;
-      barra.style.width = (vis.length ? (hechas / vis.length) * 100 : 0) + "%";
-      contador.textContent = hechas + "/" + vis.length;
-    }
-    botones.forEach(function (b) {
-      var f = b.getAttribute("data-filtro"), n = 0;
-      document.querySelectorAll("ul.pasos li").forEach(function (li) { if (visible(li, f)) n++; });
-      b.textContent = b.textContent + " (" + n + ")";
-      b.addEventListener("click", function () { aplicarFiltro(f); });
-    });
-    casillas.forEach(function (c) {
-      try { c.checked = localStorage.getItem(NS + c.id) === "1"; } catch (e) {}
-      c.addEventListener("change", function () {
-        try { localStorage.setItem(NS + c.id, c.checked ? "1" : "0"); } catch (e) {}
+        casillas.forEach(function (c) {
+          try {
+            c.checked = localStorage.getItem(NS + c.id) === "1";
+          } catch (e) {}
+          c.addEventListener("change", function () {
+            try {
+              localStorage.setItem(NS + c.id, c.checked ? "1" : "0");
+            } catch (e) {}
+            actualizar();
+          });
+        });
         actualizar();
-      });
-    });
-    actualizar();
-  })();
-</script>
-</body>
+      })();
+    </script>
+  </body>
 </html>

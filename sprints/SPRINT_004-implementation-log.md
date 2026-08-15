@@ -662,3 +662,85 @@ simularlo:
 | Legible en los dos temas                       | ✅ claro y oscuro, revisados como imagen                                       |
 | `/design-sync` corrido                         | ⏸ **lo corre el usuario** — ver la desviación de arriba                       |
 | `pnpm typecheck` · `pnpm lint` · `pnpm test`   | ✅ limpios, **724 verdes, 1 saltada** (la fase no tocó código de producto)     |
+
+---
+
+## Fase 6 — La guía v4 y el gate ⭐ del ciclo
+
+### Lo que la guía hereda, y el paso que casi se me olvida
+
+`docs/GUIA-DE-PRUEBA.html` pasa de **114 pruebas a 125** y de **22 ⭐ a 26**. Las 114 anteriores
+entran enteras: ninguna eliminada, ninguna comprimida.
+
+**Ni siquiera las del reporte del S2 — y ese reporte ya no existe.** Se convirtió en el certificado
+en la Fase 1, así que sus pruebas siguen siendo válidas sobre el documento que lo sucedió. Borrarlas
+habría sido borrar la regresión de todo lo que el certificado heredó y sigue debiendo cumplir
+(autocontenido, sin una sola fila, huella de entrada correcta).
+
+**El paso que casi se pierde:** la disciplina acumulativa no es solo *añadir* — es **degradar**. Las
+32 pruebas que el S3 estrenó seguían marcadas `nuevo`, así que el filtro «Lo que cambió» decía
+**44** cuando la respuesta correcta era **11**. No lo vi leyendo el archivo: lo delató el propio
+botón al renderizarlo, porque el número no cuadraba con las once que acababa de escribir. Se
+degradaron las 32 a `Heredada · S3`, y la corregida del S3 vuelve a `Heredada · S1` — el chip guarda
+el sprint de **origen**, y la corrección ya está contada en el historial.
+
+### El filtro ⭐ como un solo recorrido
+
+El plan pedía que el gate se leyera *«como un solo recorrido ordenado, no como cuatro listas
+pegadas»*. El problema real era de lectura, no de orden: **el orden del documento ya era el del
+camino** —aduana → diagnóstico → taller → regreso → bitácora—, pero con 26 pruebas repartidas por 20
+bloques y cada una luciendo el sprint que la trajo, lo que se veía era el sprint, no la ruta.
+
+Se resolvió sin mover nada de sitio. Con el filtro ⭐ activo la guía entra en **modo recorrido**:
+cada prueba visible recibe su número —`PARADA 7 DE 26 · LA LLAVE`—, el contador pasa a decir
+«paradas», y una cabecera nombra el camino entero. Los chips de origen se atenúan pero **no se
+esconden**: hacen falta para la regresión. La cabecera lo dice con todas las letras: *«sigue los
+números, no los sprints»*.
+
+Reordenar las secciones por ruta fue la primera idea y **se descartó por falsa**: la mitad de los
+bloques declaran `Empieza en: /` porque ahí se carga el archivo, aunque el trabajo ocurra en
+`/transformar`. Ordenar por esa etiqueta habría producido un recorrido peor y con pinta de exacto.
+
+### Las once pruebas nuevas
+
+| Bloque                          | Qué cubre                                                                     |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| **W** · El certificado (3)      | el estado «todavía no puede existir» explicado con palabras · las dos huellas etiquetadas, sin internet · ⭐ **recalcularlas a mano** |
+| **X** · El riesgo estimado (3)  | «no calculable» con su razón · modelo y supuesto en la misma línea · ⭐ **distinguir exacto de estimado** |
+| **Y** · La bitácora (4)         | se llega por clic · tres entradas en orden con sus dos huellas · ⭐ **cerrar el navegador entero** · ilegible en disco |
+| **Z** · El ciclo completo (1)   | ⭐ el juicio sobre las cinco pantallas y sobre si el ciclo responde la pregunta de los seis meses |
+
+**Desviación del plan (menor):** el plan estimaba «6–8» nuevas y salieron **11**. El sprint entregó
+tres funcionalidades, no una, y cada una necesita sus estados —el certificado que aún no existe, el
+estimador que se calla, la frase equivocada—. Para comparar: el S2 sumó 38 y el S3 sumó 32. Se
+declara por si el número importa más que la cobertura; aquí se eligió la cobertura.
+
+**Las dos ⭐ que solo existen si las corre una persona.** `w3` recalcula el SHA-256 con el comando
+que el propio certificado da: la CI compara dos cadenas, pero **solo un humano comprueba que las
+instrucciones que le damos a un desconocido funcionan en su computador**. Y `y3` **cierra el
+navegador entero** — ninguna prueba automática puede cerrar el navegador que la está ejecutando, y
+sin eso la promesa de «dentro de seis meses» no está probada, solo afirmada.
+
+### Dos frases inexactas que la guía no podía llevar
+
+Renderizando el modo recorrido aparecieron dos:
+
+- La cabecera decía *«cada parada dice dónde ocurre»*. **No lo dice**: el chip lleva el número y el
+  bloque; la ruta está en el «Empieza en:» del bloque. Corregida para que describa lo que hay.
+- El kit decía *«genera los tres que usa esta guía»* y **lista seis comandos** desde el S2. Heredada
+  y falsa durante dos sprints.
+
+En una guía cuyo bloque estrella pregunta si el lector distingue lo exacto de lo estimado, dejar dos
+frases que no describen lo que hay habría sido la peor clase de incoherencia.
+
+### Verificación de la guía
+
+| Criterio                                  | Resultado                                                     |
+| ----------------------------------------- | -------------------------------------------------------------- |
+| Abre **sin internet**                     | ✅ `offline: true`: **0 peticiones externas, 0 errores**       |
+| Acumulativa, ninguna eliminada            | ✅ 114 heredadas (44 S1 + 38 S2 + 32 S3) + 11 nuevas = **125** |
+| Filtro «Lo que cambió en S4»              | ✅ **11** — tras degradar las 32 del S3 a regresión            |
+| Gate ⭐ del ciclo                          | ✅ **26 paradas**, numeradas 1→26 de corrido                   |
+| `localStorage` versionado                 | ✅ `guia-anonimizador:s003:` → `s004:`; probada la persistencia |
+| Los dos temas                             | ✅ claro y oscuro, revisados como imagen                        |
+| Formato                                   | ✅ `prettier --check` limpio (la guía en `main` ya lo estaba)   |
