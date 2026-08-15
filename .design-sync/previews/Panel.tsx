@@ -1,5 +1,6 @@
 import {
   Boton,
+  IconoAdelante,
   IconoCertificado,
   IconoCuaderno,
   IconoDescargar,
@@ -109,6 +110,56 @@ export const ElBalanceDeUnTratamiento = () => (
           Anotar en la bitácora
         </Boton>
       </div>
+    </div>
+  </div>
+);
+
+// PANTALLA DE FORMULARIO. El idioma de campos de Velo no tiene componente propio — son controles
+// nativos con clases exactas (las de la app, verificadas en la hoja compilada). Esta celda existe
+// para que el agente lo IMITE en vez de inventar inputs: etiqueta block, input sobre superficie con
+// borde de control, checkbox con accent-acento, y una sola acción principal.
+export const LaLlaveDelProyecto = () => (
+  <div className="bg-papel text-tinta" style={{ padding: "2rem 1.5rem" }}>
+    <div className="mx-auto w-full max-w-4xl">
+      <Panel
+        etiqueta="Paso 2"
+        titulo="La llave del proyecto"
+        nota="Derivar cuesta 600.000 vueltas de PBKDF2 a propósito: encarece cada intento de adivinarla."
+      >
+        <label
+          className="text-tinta block text-[0.9375rem] font-medium"
+          htmlFor="frase"
+        >
+          Elige la frase de paso de este proyecto
+        </label>
+        <input
+          id="frase"
+          type="password"
+          className="rounded-1 border-borde-control bg-superficie text-tinta mt-2 w-full max-w-md border px-3 py-2 text-[0.9375rem]"
+          placeholder="Una frase larga que puedas recordar"
+        />
+        <p className="text-tinta-suave mt-2 text-[0.875rem] leading-relaxed">
+          La defensa real es la longitud. Esta frase no se puede recuperar: si
+          se pierde, los seudónimos de este proyecto no se podrán reproducir.
+        </p>
+        <label className="text-tinta-suave mt-4 flex max-w-md items-start gap-2 text-[0.8125rem] leading-snug">
+          <input
+            type="checkbox"
+            defaultChecked
+            className="accent-acento mt-0.5 size-4 shrink-0"
+          />
+          <span>
+            Entiendo que Velo no guarda esta frase y no puede recuperarla por
+            mí.
+          </span>
+        </label>
+        <div style={{ marginTop: "1.25rem" }}>
+          <Boton variante="principal">
+            <IconoAdelante />
+            Derivar la llave
+          </Boton>
+        </div>
+      </Panel>
     </div>
   </div>
 );

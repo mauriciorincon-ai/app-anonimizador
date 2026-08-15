@@ -122,6 +122,12 @@ export default function Link({ href, children, ...props }) {
 `,
 );
 
+// El reglamento viaja como guideline: el converter recoge `docs/*.md` del paquete hacia
+// `guidelines/`, y sin esto el agente de diseño no ve ni los 5 estados del §4 ni las reglas del §5 —
+// solo piezas. Es el documento real del repo, sin resumir.
+mkdirSync(join(PKG, "docs"), { recursive: true });
+copyFileSync("design-system.md", join(PKG, "docs", "design-system.md"));
+
 // ── 2. Tailwind compilado ─────────────────────────────────────────────────────────────────────
 //
 // No se compila `globals.css` a secas. Tailwind 4 genera SOLO las utilidades que encuentra

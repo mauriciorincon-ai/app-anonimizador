@@ -58,3 +58,16 @@ dice que no se reutilizan fuera de su pantalla. Decisión del usuario el 2026-08
 - **`velo.css` se recompila cada vez**; si Tailwind cambia de mayor, revisa que las utilidades sigan saliendo con los mismos nombres.
 - **`node_modules/app-anonimizador/` no sobrevive a un `pnpm install --frozen-lockfile`** que limpie node_modules. Es esperado: `preparar.mjs` lo reconstruye.
 - **Las calificaciones de las 19 previews de icono se emitieron sobre una plantilla común**, verificando a fondo `IconoArchivador` y `IconoCertificado` más las dos hojas de contacto que muestran las 26 tarjetas. Si alguien cambia la plantilla, conviene mirar más de dos.
+
+## Ajuste tras el ejercicio introspectivo (2026-08-15)
+
+La pregunta «¿el agente puede rehacer el front con esto?» dio **no** en la primera versión, por tres
+huecos, ya pagados:
+
+- **El idioma de formularios no estaba** (y el taller es la mitad de la app): ahora vive en
+  `conventions.md § Formularios` con las clases exactas verificadas, y como ejemplo imitable en la
+  celda `Panel → LaLlaveDelProyecto`.
+- **El patrón del selector de archivo** (input `sr-only` tras un `Boton discreto`): documentado en la
+  misma sección.
+- **`design-system.md` no viajaba**: `preparar.mjs` lo copia a `<pkg>/docs/` y el converter lo
+  publica en `guidelines/` — los 5 estados del §4 y las reglas del §5 ahora son visibles al agente.

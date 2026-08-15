@@ -75,3 +75,26 @@ icono).
 
 Fíjate en tres cosas: la **nota al pie declara el alcance** (un tope silencioso se lee como «lo
 revisé todo»); hay **una sola** acción principal; y el botón **lleva su icono y conserva su texto**.
+
+## Formularios — el idioma real, con sus clases exactas
+
+No hay componente `Input` ni `Select`: la app usa **controles nativos con estas clases**, y son las
+únicas correctas (verificadas contra la hoja compilada):
+
+- **Etiqueta de campo**: `text-tinta block text-[0.9375rem]` — y `font-medium` si encabeza el campo.
+- **Etiqueta de sección**: la clase propia `etiqueta` (versalitas de mono con tracking — el acento
+  tipográfico de la app; es la que usa `Panel` por dentro).
+- **Input de texto / contraseña / número**:
+  `rounded-1 border-borde-control bg-superficie text-tinta mt-2 w-full max-w-md border px-3 py-2 text-[0.9375rem]`
+- **Select**: igual que el input, con `max-w-[18rem] px-2 py-1.5 text-[0.875rem]`. Velo usa
+  `<select>` **nativo** a propósito (teclado y lector de pantalla gratis) — no inventes dropdowns.
+- **Checkbox**: `accent-acento mt-0.5 size-4 shrink-0`, dentro de un
+  `<label class="text-tinta-suave flex items-start gap-2 text-[0.8125rem] leading-snug">`.
+
+**El selector de archivo nunca es el control nativo a la vista** (mostraría chrome del navegador en
+inglés): es un `<input type="file" class="sr-only">` con `aria-label`, disparado por un
+`<Boton variante="discreto">` con su icono, y al lado una línea con el nombre elegido en `font-mono`
+o «Ningún archivo elegido todavía.» en `text-tinta-tenue`.
+
+**Las frases de paso jamás se muestran ni se guardan en la página** — el campo es `type="password"`
+y su valor no se refleja en ningún otro sitio de la UI.
