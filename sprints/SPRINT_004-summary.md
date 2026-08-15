@@ -5,7 +5,7 @@ titulo: "El cierre — la evidencia, la memoria y el ciclo completo"
 branch: sprint-004/el-cierre
 pr: 9
 cerrado: 2026-08-15
-gate_estrella: pendiente
+gate_estrella: aplazado-indefinidamente
 cierra_ciclo: H1
 ---
 
@@ -87,11 +87,43 @@ certificados y 19 iconos SVG inline.
 
 ---
 
-## El gate ⭐ — **pendiente**, por decisión del usuario
+## El gate ⭐ — **aplazado indefinidamente**, y lo que se hizo a cambio
 
-**El gate no se corrió, y no se corre en las próximas semanas.** Es decisión explícita del usuario,
-tomada con el sprint ya construido y la preview desplegada. Se registra aquí, no se disimula: el
-ciclo H1 queda **entregado y verificado por máquina, con el visto bueno humano pendiente**.
+**El gate no se corrió y no tiene fecha.** Es decisión explícita del usuario, tomada con el sprint
+ya construido, la preview desplegada y el PR mergeado — hay otras apps en curso. Se registra aquí,
+no se disimula: el ciclo H1 queda **entregado y verificado por máquina, con el visto bueno humano
+sin emitir**.
+
+**Y es la cuarta vez seguida en esta app.** Velo es el caso origen de la regla del método sobre el
+diseño (`claude-design-bajo-demanda`, 2026-08-11): llegó al S2 sin que el usuario viera **un solo
+artefacto visual**, con la directiva _«que no se vuelva a repetir»_. Los cuatro sprints difirieron
+su ⭐ al cierre, y el cierre lo aplazó otra vez. **Un gate que compite con 90 minutos de la vida del
+usuario pierde siempre**, y llamarlo «pendiente» un sprint más no lo cambia.
+
+### El gate corto ⭐⭐ — 6 paradas · ~20 min
+
+Construido **después** del cierre, cuando el aplazamiento pasó de «unas semanas» a indefinido. No
+reemplaza al largo ni lo cancela: es **el piso**, lo que se pierde de verdad si el largo no ocurre
+nunca.
+
+El criterio no es «las más rápidas» sino **aquellas cuyo veredicto solo puede ser humano**:
+
+| #   | Parada                              | Qué solo puede decidir una persona                                                                    |
+| --- | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 1   | `a4` · la aduana en reposo          | si Velo **se entiende** en 30 segundos sin saber nada                                                 |
+| 2   | `i1` · los dos temas                | si el claro y el oscuro se leen **cómodos**, no solo si pasan contraste                               |
+| 3   | `r5` · el eje reversible            | si se comprende, **en el momento de marcar la casilla**, que no marcarla es irreversible para siempre |
+| 4   | `s2` · los tres avisos de la bóveda | si dicen **sin rodeos** que la frase no se recupera                                                   |
+| 5   | `x3` · el riesgo estimado           | si un lector **distingue** una cifra exacta de una estimada — el riesgo de honestidad del S4          |
+| 6   | `z1` · las cinco pantallas          | si se sienten **la misma app**                                                                        |
+
+**Las 20 que deja fuera no se borran** —siguen enteras en el filtro ⭐— y la guía dice por qué se
+van: son en su mayoría _compruébalo tú_ (recalcular la huella, la pestaña Red, el `.velo` ilegible,
+el reporte sin wifi). Valen para que la confianza sea del usuario y no mía, pero **el CI ya las
+verifica por otro camino**. Un recorte silencioso habría sido deuda; declarado, es un piso.
+
+El orden de las seis **es el del recorrido real por la app** —portada → temas → eje → bóveda →
+estimado → veredicto—, así que el filtro las numera 1→6 sin reordenar nada.
 
 Lo que sí se hizo, que es todo lo exigible del lado del constructor:
 

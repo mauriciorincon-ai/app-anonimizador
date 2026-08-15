@@ -973,3 +973,117 @@ exactamente el gate ⭐, y el usuario decidió no correrlo ahora. **No se marca 
 
 El summary lo registra como pendiente en vez de disimularlo, y el `/deploy-check` prohíbe que el
 merge lo haga el constructor: **lo hace el usuario, a mano, cuando quiera**.
+
+---
+
+## Después del merge — el gate corto ⭐⭐
+
+El PR #9 se mergeó (`b4426c5`) y el usuario declaró el gate ⭐ **aplazado indefinidamente**. Al ver
+la guía constató que **el gate corto no existía**: creía tenerlo por defecto. Se construye aquí.
+
+### El criterio, que es lo único que hace que esto no sea un recorte
+
+Las 26 ⭐ no son homogéneas. Se separan en tres clases, y **solo una es irreemplazable**:
+
+| Clase                  | Ejemplos                                                                                       | ¿Puede una máquina?              |
+| ---------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------- |
+| **Juicio humano**      | ¿se entiende Velo en 30 s? · ¿distingues exacto de estimado? · ¿se sienten la misma app?       | **No, por definición**           |
+| **Compruébalo tú**     | recalcular la huella SHA-256 · la pestaña Red · el `.velo` con `strings` · el reporte sin wifi | **Sí — y el CI ya lo hace**      |
+| **¿Se siente fluido?** | el archivo grande · las 500.000 filas                                                          | **Sí — long-tasks medidas en 0** |
+
+Las de la segunda clase están en el gate largo **para que la confianza sea del usuario y no mía**,
+que es una razón legítima pero distinta de «es lo único que lo descubre». Cuando el presupuesto baja
+de 90 a 20 minutos, esa distinción decide qué sobrevive.
+
+**Seis paradas, y el orden del documento ya era el del recorrido** —`a4` portada, `i1` temas, `r5`
+eje reversible, `s2` avisos de la bóveda, `x3` riesgo estimado, `z1` las cinco pantallas—, así que
+el filtro las numera 1→6 sin reordenar una sola línea del HTML. Eso no fue suerte: se eligieron
+**comprobando que la secuencia fuera caminable**. Un candidato se descartó por esto — `n6` (el peso
+relativo del balance) comparte eje con `x3` pero vive en un bloque anterior, y meterlo obligaba a
+mirar el balance antes de haber definido la política.
+
+### Lo que la guía dice en voz alta
+
+El encabezado del recorrido corto **declara las 20 que deja fuera y por qué**, y que ninguna se
+borra. La regla que aplica aquí es la de no recortar en silencio: un gate que se encoge sin decirlo
+se lee como «esto es todo lo que había».
+
+Y el párrafo del encabezado **dejó de mentir**: decía _«este es el gate, y se corre ahora… no se
+difiere otra vez»_. Se difirió. Ahora dice que se aplazó indefinidamente y por qué existe el corto.
+De paso se corrigió el conteo de unitarias, que había quedado en 724 y son **732**.
+
+### Verificación
+
+Guía renderizada con `offline: true` y recorrida a máquina:
+
+| Criterio                                       | Resultado                                                                                    |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Los cuatro filtros cuentan bien                | ✅ `Todo (125)` · `Lo que cambió en S4 (11)` · `Gate mínimo ⭐ (26)` · `Gate corto ⭐⭐ (6)` |
+| **Los conteos anteriores no se movieron**      | ✅ 125 / 11 / 26 intactos — el corto **añade una lente, no reparte**                         |
+| Las seis son las elegidas, en orden            | ✅ `a4, i1, r5, s2, x3, z1` numeradas «Parada N de 6»                                        |
+| El modo recorrido se activa en los dos gates   | ✅                                                                                           |
+| El encabezado se intercambia en ambos sentidos | ✅ corto visible ⇄ largo visible, sin quedarse pegado                                        |
+| Persistencia                                   | ✅ marcada una parada y recargado: sigue marcada (mismo NS `s004:`)                          |
+| Abre sin internet                              | ✅ **0 peticiones externas, 0 errores de JS**                                                |
+| Formato                                        | ✅ `prettier --check` limpio                                                                 |
+
+---
+
+## Propuesta para la casa planeadora (no la escribo yo)
+
+Dos cosas que este sprint destapó y que **no son de esta app sino del método**. Van aquí porque la
+regla dura lo manda: el constructor no escribe en la planeadora. El usuario las lleva.
+
+### 1 · El gate corto debería ser parte del molde de la guía, no un rescate
+
+**Qué pasó:** el método diferió el ⭐ cuatro sprints seguidos hacia un gate acumulado de 90 minutos,
+y al llegar el momento el usuario lo aplazó indefinidamente. **No falló el gate: falló su tamaño.**
+Un único gate grande es todo-o-nada, y cuando el usuario tiene varias apps en curso, gana nada.
+
+**Qué proponer:** que la plantilla de `GUIA-DE-PRUEBA.html` (kit v1.10.0) traiga **dos filtros de
+gate desde el primer sprint**, no uno:
+
+- **⭐ Gate mínimo** — lo no automatizable, como hoy.
+- **⭐⭐ Gate corto** — el subconjunto cuyo veredicto **solo puede ser humano**, con techo declarado
+  (~20 min). Regla de selección: si el CI lo verifica por otro camino, **no entra** — aunque esté en
+  el gate largo por buenas razones de confianza.
+
+Y que el cierre de sprint **exija el corto**, no el largo. El largo se ofrece; el corto se pide.
+
+**Por qué importa más allá de Velo:** el diferimiento del ⭐ es política del método para TODAS las
+apps. Velo es la primera que llega al final del ciclo con la factura entera, y la pagó con un
+aplazamiento indefinido. La siguiente app llegará igual.
+
+### 2 · `/design-sync` como entregable obligatorio contradice una regla del propio usuario
+
+**El conflicto, con sus dos fuentes:**
+
+- La orden `SPRINT_004-orden.md` lo exige: tabla de servicios (fase 5, _«se publica ahí como activo
+  estable»_) y criterio de aceptación **nº 7** (_«design system consolidado publicado»_).
+- La regla de feedback vigente (método **v1.14.0**, 2026-08-11) dice lo contrario: **no crear
+  proyecto de Claude Design por defecto**; se ofrece **solo** si el usuario rechaza el diseño en el
+  gate visual o pide explorar pantallas. Motivo: dos apps seguidas donde el proyecto se creó al
+  arrancar y **nunca se usó**.
+
+**Estado de hecho:** no existe proyecto de Velo en Claude Design, y con el gate ⭐ aplazado
+indefinidamente **el disparador de la regla nunca se activa**. Publicar como «activo estable» el
+design system de un diseño que nadie ha aprobado es exactamente la ceremonia que la regla retiró.
+
+**Qué proponer:** que `/design-sync` **salga de la lista de entregables obligatorios de cierre de
+ciclo** y vuelva a bajo demanda, con su disparador escrito (gate visual rechazado, o exploración
+pedida). Si se queda como obligatorio, que la orden lo diga **contra** la regla y con su razón — hoy
+las dos fuentes se contradicen sin saberlo.
+
+### 3 · Corrección a la desviación que declaré en la Fase 5
+
+En la Fase 5 escribí que **el constructor no puede correr `/design-sync`**. **Es inexacto y ya viajó
+a dos documentos** (bitácora y summary). Lo correcto:
+
+- La **skill** `/design-sync` —el método— tiene `disable-model-invocation`: **solo la invoca el
+  usuario**.
+- La **herramienta** `DesignSync` —la API: `list_projects`, `create_project`, `finalize_plan`,
+  `write_files`— **sí está disponible para el constructor**. Verificado llamando `list_projects`.
+
+**La regla real es: el usuario invoca, el constructor ejecuta.** Lo reservado es el disparador, no
+el trabajo. La planeadora tenía razón en decir que lo hace el builder; lo que falta en ambos lados
+es que **la invocación la tiene que escribir el usuario**.
