@@ -744,3 +744,58 @@ frases que no describen lo que hay habría sido la peor clase de incoherencia.
 | `localStorage` versionado                 | ✅ `guia-anonimizador:s003:` → `s004:`; probada la persistencia |
 | Los dos temas                             | ✅ claro y oscuro, revisados como imagen                        |
 | Formato                                   | ✅ `prettier --check` limpio (la guía en `main` ya lo estaba)   |
+
+### La última milla, y lo que encontró
+
+El plan exige probar la app **desde afuera y sin sesión antes de pedir los 90 minutos** (regla 13).
+Se corrió contra la preview de la rama, en contextos de navegador limpios, sin credenciales.
+
+**Las cinco rutas responden 200 sin login.** Y el flujo entero funciona sobre lo desplegado: cargar
+→ diagnosticar → transformar → estimar → descargar → certificar → anotar → sellar → reabrir.
+
+**La ⭐ `w3`, hecha a máquina, para saber que se puede hacer a mano.** Se recalcularon las dos huellas
+**por fuera de la app**, con `crypto` de Node sobre los archivos descargados, y se buscaron en el
+HTML del certificado:
+
+| Comprobación                                | Resultado                         |
+| ------------------------------------------- | --------------------------------- |
+| Huella de **salida** recalculada por fuera  | `f30f231b2c7cb21e617ee1f9…` ✅ la declara |
+| Huella de **entrada** recalculada por fuera | `50ad22651a462bb3d5ebf08f…` ✅ la declara |
+| ¿Son distintas?                             | ✅                                |
+| ¿Trae el comando para comprobarlas?         | ✅ macOS/Linux **y** Windows      |
+| ¿Autocontenido?                             | ✅ 32 KB, sin un solo `src` externo |
+
+**La bitácora, sellada y reabierta en un navegador sin memoria:** 515 bytes, **sin el nombre del
+archivo en claro** y **sin la frase de paso en los bytes**. Con frase equivocada devuelve *«La frase
+no abre esta bitácora. También sale este mensaje si el archivo se dañó o lo modificaron»* — que dice
+qué pudo pasar, no solo que falló.
+
+#### El hallazgo: la preview hace UNA petición externa, y la CSP la para
+
+Durante el flujo apareció **una** petición fuera del origen:
+`vercel.live/_next-live/feedback/feedback.js`. Es la barra de comentarios que **Vercel inyecta en
+las previews**. Medido en los dos entornos:
+
+| | Peticiones externas | Estado |
+| --- | --- | --- |
+| **Preview** | 1 | **bloqueada por la CSP** (`errorText: csp`, con su aviso en consola) |
+| **Producción** | 0 | Vercel ni siquiera la inyecta — verificado en el HTML servido |
+
+**Es exactamente lo que el `next.config.ts` afirma y nadie había visto ocurrir:** *«el test prueba
+que no pasa; esto hace que no pueda pasar»*. `script-src 'self'` le prohibió al navegador cargar un
+script **del propio proveedor del hosting**. El cinturón funciona contra alguien con más poder que
+un bug nuestro.
+
+**Y el e2e de la garantía de red no podía verlo**, porque corre contra `localhost` con `pnpm start`,
+donde Vercel no inyecta nada. Otra vez el patrón del sprint: *lo que ninguna fase mira, no lo mira
+nadie* — aquí, lo que ningún **entorno de prueba** reproduce.
+
+**Lo que se hizo con el hallazgo, y por qué importa para el gate.** La prueba ⭐ `j1` pide abrir las
+herramientas de desarrollo y comprobar que nada sale; su «Repórtame sí o sí» decía *«una sola
+petición a un dominio que no sea el de Velo… es fallo de bloqueo absoluto»*. **El usuario iba a ver
+justo eso en rojo y a reportar un fallo que no existe** — o peor, a dudar de la promesa central del
+producto en mitad del gate. El bloque J gana ahora una nota que dice qué va a ver, que sale
+bloqueada, que producción ni la lleva, y que **el bloqueo ES la prueba**; y el «Repórtame» se afina
+para pedir lo contrario: que se reporte cualquier externa que **no** aparezca bloqueada.
+
+Sin correr la última milla, ese susto lo habría descubierto el usuario a mitad de sus 90 minutos.

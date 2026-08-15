@@ -1230,11 +1230,35 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
             >
           </li>
         </ul>
+        <div class="kit">
+          <p>
+            <strong
+              >Vas a ver exactamente una petición en rojo, y NO es un
+              fallo.</strong
+            >
+            En la pestaña Red aparecerá
+            <code>vercel.live/_next-live/feedback/feedback.js</code>, marcada
+            como <strong>bloqueada</strong>. Es la barra de comentarios que
+            Vercel inyecta <strong>solo en las previews</strong> —nunca en
+            producción, comprobado— y no es código de Velo.
+          </p>
+          <p class="chica suave" style="margin: 6px 0 0">
+            <strong>Que salga bloqueada es justamente la prueba.</strong> La
+            política de seguridad de Velo (<code>script-src 'self'</code>) le
+            prohíbe al navegador cargar cualquier script que no sea de la propia
+            app, así que ni siquiera el proveedor del hosting puede meter uno.
+            El navegador lo rechaza antes de que corra. Si algún día algo
+            intentara mandar datos afuera, se estrellaría contra esta misma
+            pared.
+          </p>
+        </div>
         <div class="reportame">
           <p>
-            <strong>Repórtame sí o sí:</strong> una sola petición a un dominio
-            que no sea el de Velo durante el flujo con archivo cargado. Es fallo
-            de bloqueo absoluto.
+            <strong>Repórtame sí o sí:</strong> cualquier petición a un dominio
+            que no sea el de Velo —salvo la de <code>vercel.live</code> de
+            arriba, y solo si sale bloqueada— durante el flujo con archivo
+            cargado. Y con más razón si alguna <strong>no</strong> aparece
+            bloqueada. Es fallo de bloqueo absoluto.
           </p>
         </div>
       </section>
