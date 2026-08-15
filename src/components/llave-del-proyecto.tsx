@@ -20,6 +20,7 @@
 import { useId, useState } from "react";
 
 import { Boton } from "@/components/boton";
+import { IconoAdelante } from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import { ITERACIONES_PBKDF2 } from "@/lib/llave";
 import { numero } from "@/lib/formato";
@@ -115,7 +116,10 @@ export function LlaveDelProyecto({
       </ul>
 
       <div className="mt-5">
-        <label htmlFor={idDeFrase} className="text-tinta text-[0.9375rem]">
+        <label
+          htmlFor={idDeFrase}
+          className="text-tinta block text-[0.9375rem]"
+        >
           Frase de paso del proyecto
         </label>
         <input
@@ -145,6 +149,7 @@ export function LlaveDelProyecto({
             setFrase("");
           }}
         >
+          <IconoAdelante />
           {derivando ? "Derivando la llave…" : "Derivar la llave"}
         </Boton>
         {derivando ? (

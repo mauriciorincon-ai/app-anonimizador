@@ -16,12 +16,14 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
+import { IconoAtras, IconoTransformar } from "@/components/iconos";
 import { BalanceEnPantalla } from "@/components/balance-en-pantalla";
 import { BovedaDelTratamiento } from "@/components/boveda-del-tratamiento";
 import { clasesDeBoton, Boton } from "@/components/boton";
 import { DescargaDelArchivo } from "@/components/descarga-del-archivo";
 import { EditorDePolitica } from "@/components/editor-de-politica";
 import { LlaveDelProyecto } from "@/components/llave-del-proyecto";
+import { RiesgoEstimadoEnPantalla } from "@/components/riesgo-estimado-en-pantalla";
 import { VistaPrevia } from "@/components/vista-previa";
 import {
   esReversible,
@@ -33,6 +35,7 @@ import { numero } from "@/lib/formato";
 import {
   derivarLlaveDelProyecto,
   invalidarTransformacion,
+  pedirEstimacion,
   prepararArchivo,
   sellarLaBoveda,
   transformar,
@@ -41,17 +44,24 @@ import {
 import type { Informe, MotivoDeError } from "@/workers/contrato";
 
 /**
- * El reporte se carga cuando hace falta, no al abrir el taller.
+ * El certificado se carga cuando hace falta, no al abrir el taller.
  *
- * `DescargaDelReporte` arrastra `@/engine/reporte` entero —la plantilla del documento, con su CSS y
- * su texto— y aquí solo aparece **después** de transformar. Mismo patrón que SheetJS en el worker:
- * lo que solo se usa en una rama, se carga en esa rama.
+ * `DescargaDelCertificado` arrastra `@/engine/reporte` entero —la plantilla del documento, con su
+ * CSS y su texto— y aquí solo aparece **después** de transformar. Mismo patrón que SheetJS en el
+ * worker: lo que solo se usa en una rama, se carga en esa rama.
  */
-const DescargaDelReporte = dynamic(
+const DescargaDelCertificado = dynamic(
   () =>
-    import("@/components/descarga-del-reporte").then(
-      (m) => m.DescargaDelReporte,
+    import("@/components/descarga-del-certificado").then(
+      (m) => m.DescargaDelCertificado,
     ),
+  { ssr: false },
+);
+
+/** Mismo motivo: solo aparece tras transformar, y arrastra el estado propio de la bitácora. */
+const AnotarEnBitacora = dynamic(
+  () =>
+    import("@/components/anotar-en-bitacora").then((m) => m.AnotarEnBitacora),
   { ssr: false },
 );
 
@@ -134,6 +144,7 @@ export function Taller({ informe }: { informe: Informe }) {
             disabled={!puedeTransformar}
             onClick={() => transformar(politica)}
           >
+            <IconoTransformar />
             {taller.transformacion.fase === "transformando"
               ? "Transformando…"
               : "Transformar"}
@@ -177,6 +188,14 @@ export function Taller({ informe }: { informe: Informe }) {
               filas={informe.diagnostico.filas}
             />
             <BalanceEnPantalla balance={hecha.balance} />
+            {/* Panel APARTE, y nunca dentro del balance: lo de arriba es exacto y esto es
+                estimado. La regla del sprint es que no se compongan, y dos cifras en el mismo
+                panel se componen aunque nadie las sume. */}
+            <RiesgoEstimadoEnPantalla
+              estimacion={taller.estimacion}
+              poblacion={taller.poblacionDeclarada}
+              onDeclarar={pedirEstimacion}
+            />
             <DescargaDelArchivo
               archivo={taller.archivo}
               preparando={taller.etapa === "escribiendo"}
@@ -188,9 +207,17 @@ export function Taller({ informe }: { informe: Informe }) {
             {/* El archivo no puede salir solo. Un CSV anonimizado sin un documento que diga qué se
                 le hizo obliga a quien lo recibe a creer; y el reporte del diagnóstico, que describe
                 el archivo ORIGINAL, mandado junto al tratado es la mentira por composición de este
-                sprint a nivel de artefacto. Hallazgo A2 de la auditoría. */}
-            <DescargaDelReporte
+                sprint a nivel de artefacto. Hallazgo A2 de la auditoría del S2.
+
+                El S4 cierra la otra mitad: el documento ya no describe el tratamiento, lo
+                **certifica**, porque lleva la huella del archivo que sale. Y eso obliga a que
+                dependa de `taller.archivo` — la huella no existe hasta que el archivo existe. No es
+                una dependencia incómoda: es la verdad del artefacto, y por eso el paso lo dice en
+                vez de enseñar un botón muerto. */}
+            <DescargaDelCertificado
               informe={informe}
+              archivo={taller.archivo}
+              huellaDeSalida={taller.huellaDeSalida}
               tratamiento={{
                 balance: hecha.balance,
                 utilidad: hecha.utilidad,
@@ -198,6 +225,33 @@ export function Taller({ informe }: { informe: Informe }) {
                 suprimidas: hecha.suprimidas,
               }}
             />
+            {/* Anotar exige lo mismo que certificar: que el archivo exista, porque una entrada sin
+                la huella de salida no se podría atar nunca al certificado que la acompaña. Se pinta
+                solo entonces, en vez de ofrecer un paso que todavía no puede completarse. */}
+            {taller.huellaDeSalida ? (
+              <AnotarEnBitacora
+                entrada={{
+                  archivo: informe.archivo.nombre,
+                  hashDePolitica: hecha.hashDePolitica,
+                  // Las técnicas SIN los nombres de columna: qué se hizo, no a qué. Se guardan las
+                  // claves y no las etiquetas, porque un registro se lee con otra versión de Velo.
+                  // Orden estable por cómo aparecen las columnas, que ya es determinista.
+                  tecnicas: [
+                    ...new Set(
+                      hecha.muestras
+                        .filter((m) => !m.omitida)
+                        .map((m) => m.tecnica),
+                    ),
+                  ],
+                  filas: informe.diagnostico.filas,
+                  unicosAntes: hecha.balance.antes.proporcionUnicos,
+                  unicosDespues: hecha.balance.despues.proporcionUnicos,
+                  esTitular: hecha.balance.esTitular,
+                  huellaDeEntrada: informe.archivo.sha256,
+                  huellaDeSalida: taller.huellaDeSalida,
+                }}
+              />
+            ) : null}
             {/* Solo si la política pidió columnas reversibles. Ofrecer una bóveda cuando no hay
                 correspondencia que guardar prometería una vuelta que no existe. */}
             {columnasReversibles.length > 0 ? (
@@ -218,6 +272,7 @@ export function Taller({ informe }: { informe: Informe }) {
           className={clasesDeBoton("discreto")}
           onClick={() => router.push("/diagnostico")}
         >
+          <IconoAtras />
           Volver al diagnóstico
         </button>
       </div>

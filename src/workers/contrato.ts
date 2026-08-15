@@ -8,9 +8,8 @@
 // nombres de columna, proporciones y muestras YA enmascaradas. No viaja ni una celda del archivo.
 
 import type { BalanceDelTratamiento } from "@/engine/balance";
+import type { EntradaDeBitacora } from "@/engine/bitacora";
 import type { Diagnostico } from "@/engine/clasificador";
-import type { MedidaDeDiversidad } from "@/engine/diversidad";
-import type { ResultadoDeMondrian } from "@/engine/mondrian";
 import type { Politica } from "@/engine/politica";
 import type {
   CeldasDeColumna,
@@ -19,7 +18,7 @@ import type {
   SalvedadDelRegreso,
 } from "@/engine/restaurar";
 import type { AdvisorDeQis, RiesgoExacto } from "@/engine/riesgo";
-import type { ColisionEnColumna } from "@/engine/tecnicas";
+import type { RiesgoEstimado } from "@/engine/riesgo-estimado";
 import type { Utilidad } from "@/engine/utilidad";
 
 export type FormatoDeArchivo = "csv" | "excel";
@@ -51,7 +50,35 @@ export type MensajeAlWorker =
   | { tipo: "analizar-devuelto"; archivo: File }
   | { tipo: "restaurar" }
   | { tipo: "construir-restaurado" }
-  | { tipo: "construir-informe-del-regreso"; fecha: string };
+  | { tipo: "construir-informe-del-regreso"; fecha: string }
+  /**
+   * Estima el riesgo poblacional del archivo que va a salir, con la población que el usuario
+   * declaró. `null` es un caso legítimo y frecuente —no la declaró— y el motor contesta con su
+   * «no calculable» razonado, que es lo que la pantalla enseña.
+   *
+   * Se calcula aquí y no en la página porque necesita las clases de equivalencia de la tabla
+   * transformada, que es el archivo entero. Lo que cruza es el veredicto.
+   */
+  | { tipo: "estimar-riesgo"; poblacion: number | null }
+  /**
+   * Abre un `.velolog`. Igual que la bóveda: el `File` viaja **entero al worker** y ningún
+   * componente lo toca, porque el gate de privacidad veta `.arrayBuffer()` fuera de `src/workers/`.
+   */
+  | { tipo: "abrir-bitacora"; archivo: File; frase: string }
+  /**
+   * Sella la bitácora abierta, opcionalmente con una entrada nueva al final. Si no hay ninguna
+   * abierta, empieza una.
+   *
+   * **La frase se pide siempre, también al añadir a una bitácora que se acaba de abrir.** Podría
+   * guardarse tras `abrir-bitacora` y ahorrarle al usuario escribirla otra vez; no se hace, porque
+   * la regla del S2 y del S3 es que la frase entra y **no se queda**. Una frase retenida «por
+   * comodidad» es una frase que vive en memoria durante toda la sesión.
+   */
+  | {
+      tipo: "sellar-bitacora";
+      frase: string;
+      entrada: EntradaDeBitacora | null;
+    };
 
 /** Etapas del trabajo, en el orden en que ocurren. La UI las nombra tal cual. */
 export type EtapaDelWorker =
@@ -65,7 +92,9 @@ export type EtapaDelWorker =
   | "escribiendo"
   | "sellando-boveda"
   | "abriendo-boveda"
-  | "restaurando";
+  | "restaurando"
+  | "abriendo-bitacora"
+  | "sellando-bitacora";
 
 /**
  * Lo que la página sabe de una bóveda abierta. **Ni un par de la correspondencia cruza** — eso son
@@ -115,9 +144,37 @@ export type MotivoDeBoveda =
   | "contenido-invalido"
   | "lectura-fallida";
 
+/** Por qué no se pudo abrir un `.velolog`. Mismos motivos que la bóveda, y por eso otro tipo. */
+export type MotivoDeBitacora =
+  | "no-es-una-bitacora"
+  | "version-distinta"
+  | "frase-incorrecta"
+  | "costo-inaceptable"
+  | "contenido-invalido"
+  | "lectura-fallida";
+
+/**
+ * Lo que la página sabe de una bitácora abierta: **sus entradas, enteras**.
+ *
+ * Es la única estructura de Velo cuyo contenido cruza la frontera sin recortar, y conviene decir
+ * por qué no contradice la regla. Lo que el worker guarda para sí son los **datos de otras
+ * personas** —celdas, valores originales, correspondencias de la bóveda—. Una bitácora no tiene
+ * nada de eso: son los apuntes del propio usuario sobre su propio trabajo, y la pantalla que pidió
+ * abrirlos existe justamente para enseñárselos. Nombres de archivo ya cruzaban desde el S1
+ * (`Informe.archivo.nombre`).
+ *
+ * Lo que sí sigue sin cruzar es la **frase de paso**, que entra al worker y no vuelve.
+ */
+export interface ContenidoDeBitacora {
+  readonly version: number;
+  readonly entradas: readonly EntradaDeBitacora[];
+  /** SHA-256 de la serialización EN CLARO — la identidad estable, nunca la del archivo cifrado. */
+  readonly huella: string;
+}
+
 /** Para qué es el archivo que el worker acaba de construir. El asa es la misma; el destino no. */
 export type PropositoDelArchivo =
-  "anonimizado" | "boveda" | "restaurado" | "informe-del-regreso";
+  "anonimizado" | "boveda" | "restaurado" | "informe-del-regreso" | "bitacora";
 
 export type MotivoDeError =
   | "formato-no-soportado"
@@ -130,7 +187,8 @@ export type MotivoDeError =
   | "transformacion-fallida"
   | "sin-boveda"
   | "sin-devuelto"
-  | "restauracion-fallida";
+  | "restauracion-fallida"
+  | "sin-bitacora";
 
 export interface Informe {
   archivo: {
@@ -159,16 +217,6 @@ export interface Informe {
 }
 
 /**
- * El reparto de Mondrian **sin su tabla**.
- *
- * `ResultadoDeMondrian` lleva dentro la `TablaColumnar` generalizada — o sea, el archivo entero.
- * Reenviarlo tal cual por `postMessage` habría tirado la frontera por la ventana en el sprint que
- * la pone a prueba, y el defecto sería invisible: la pantalla se vería idéntica. El `Omit` es el
- * gate en forma de tipo, y `tests/unit/privacidad.test.ts` lo comprueba también sobre el objeto.
- */
-export type ResumenDeMondrian = Omit<ResultadoDeMondrian, "tabla">;
-
-/**
  * Una columna en la vista previa, con la regla de exposición que la gobierna.
  *
  * `antes` va SIEMPRE enmascarado: es el dato crudo del usuario y la regla del S1 no se relaja
@@ -194,16 +242,26 @@ export interface MuestraDeTransformacion {
   readonly suprimida: boolean;
 }
 
+/**
+ * Lo que la página sabe de un tratamiento.
+ *
+ * **Aquí se pagó la deuda B2 del S2 (S4, fase 0), y la forma del pago importa más que el pago.**
+ * Cruzaban además `mondrian`, `diversidad`, `colisiones` y `pendientesDeMondrian` — las cuatro
+ * estructuras crudas que `balanceDelTratamiento` consume **dentro del worker** para producir
+ * `balance.salvedades`. O sea: la frontera llevaba la materia prima **y** la conclusión sacada de
+ * ella, y ningún componente leía la materia prima. Verificado antes de borrar: cero lectores en
+ * `components/`, `app/` y `lib/`.
+ *
+ * La regla que queda, y que `tests/unit/taller.test.tsx` sostiene con una lista literal de claves:
+ * **un campo del contrato nace con su lector o no nace.** Si un consumidor futuro —el certificado
+ * del S4, por ejemplo— necesita una de las cuatro, vuelve con quien la lea, no «por si acaso».
+ */
 export interface ResultadoDeTransformacion {
   /** Identidad del tratamiento: mismo hash ⇒ mismo trato. */
   readonly hashDePolitica: string;
   readonly balance: BalanceDelTratamiento;
   readonly utilidad: Utilidad;
-  readonly mondrian: ResumenDeMondrian | null;
-  readonly diversidad: readonly MedidaDeDiversidad[];
   readonly suprimidas: readonly string[];
-  readonly colisiones: readonly ColisionEnColumna[];
-  readonly pendientesDeMondrian: readonly string[];
   readonly muestras: readonly MuestraDeTransformacion[];
   readonly ms: number;
 }
@@ -230,6 +288,20 @@ export type MensajeDelWorker =
       nombre: string;
       bytes: number;
       proposito: PropositoDelArchivo;
+      /**
+       * SHA-256 del archivo que se acaba de construir.
+       *
+       * **Opcional a propósito, y presente solo cuando `proposito` es `"anonimizado"`** — que es el
+       * único caso con lector: el certificado del S4, que necesita las dos huellas para que un
+       * tercero pueda comprobar que el documento habla de la copia que tiene en la mano.
+       *
+       * Podría calcularse para los cuatro propósitos casi gratis, y por eso conviene decir por qué
+       * no se hace: la regla §5 de este repo es que **un campo del contrato nace con su lector o no
+       * nace**, y en la fase 0 de este mismo sprint se borraron cuatro campos que cruzaban la
+       * frontera sin que nadie los leyera. Añadir tres huellas «por simetría» sería reabrir esa
+       * deuda el mismo día de pagarla.
+       */
+      sha256?: string;
     }
   | { tipo: "boveda-abierta"; resumen: ResumenDeBoveda }
   | { tipo: "boveda-rechazada"; motivo: MotivoDeBoveda; detalle: string }
@@ -243,4 +315,8 @@ export type MensajeDelWorker =
       sha256: string;
     }
   | { tipo: "restaurado"; resumen: ResumenDelRegreso }
+  /** El veredicto de los dos estimadores. Ninguno se compone con el riesgo exacto. */
+  | { tipo: "riesgo-estimado"; estimacion: RiesgoEstimado }
+  | { tipo: "bitacora-abierta"; contenido: ContenidoDeBitacora }
+  | { tipo: "bitacora-rechazada"; motivo: MotivoDeBitacora; detalle: string }
   | { tipo: "error"; motivo: MotivoDeError };

@@ -26,6 +26,7 @@ const RUTAS_PERMITIDAS = [
   /^\/diagnostico$/,
   /^\/transformar$/,
   /^\/regreso$/,
+  /^\/bitacora$/,
   /^\/_next\/static\//,
   /^\/favicon\.ico$/,
 ];
@@ -138,15 +139,21 @@ test("cero peticiones con datos durante todo el flujo", async ({
     .getByLabel("Técnica para la columna cedula_titular")
     .selectOption("seudonimizar");
   await page.getByRole("checkbox").first().check();
-  await page.getByLabel("Frase de paso del proyecto").fill("una frase larga de prueba");
+  await page
+    .getByLabel("Frase de paso del proyecto")
+    .fill("una frase larga de prueba");
   await page.getByRole("button", { name: "Derivar la llave" }).click();
   await page.getByText("Llave lista").waitFor({ timeout: 60_000 });
 
   await page.getByRole("button", { name: "Transformar", exact: true }).click();
-  await page.getByRole("heading", { name: "Qué cambió, y qué sigue igual" }).waitFor({ timeout: 60_000 });
+  await page
+    .getByRole("heading", { name: "Qué cambió, y qué sigue igual" })
+    .waitFor({ timeout: 60_000 });
 
   await page.getByRole("button", { name: "Preparar el archivo" }).click();
-  const guardar = page.getByRole("link", { name: /^Guardar velo-anonimizado-/ });
+  const guardar = page.getByRole("link", {
+    name: /^Guardar velo-anonimizado-/,
+  });
   await guardar.waitFor({ timeout: 60_000 });
 
   // La URL del enlace es `blob:` — un origen opaco de este documento. No hay petición de red que
@@ -164,8 +171,12 @@ test("cero peticiones con datos durante todo el flujo", async ({
   // anonimizado; a partir de aquí Velo abre un archivo cifrado que contiene los valores
   // ORIGINALES del usuario y los vuelve a escribir. Es el material más sensible que el producto
   // maneja y la superficie donde una fuga costaría más.
-  await page.getByLabel("Frase de paso de la bóveda").fill("la frase de la boveda");
-  await page.getByRole("button", { name: "Cifrar y preparar la bóveda" }).click();
+  await page
+    .getByLabel("Frase de paso de la bóveda")
+    .fill("la frase de la boveda");
+  await page
+    .getByRole("button", { name: "Cifrar y preparar la bóveda" })
+    .click();
   const guardarBoveda = page.getByRole("link", { name: "Guardar la bóveda" });
   await guardarBoveda.waitFor({ timeout: 60_000 });
   expect(await guardarBoveda.getAttribute("href")).toMatch(/^blob:/);
@@ -178,16 +189,24 @@ test("cero peticiones con datos durante todo el flujo", async ({
 
   await page.getByRole("link", { name: "Ir al regreso" }).click();
   await page.waitForURL("**/regreso");
-  await page.getByLabel("Elegir el archivo de bóveda").setInputFiles(rutaDeBoveda);
-  await page.getByLabel("Frase de paso de la bóveda").fill("la frase de la boveda");
+  await page
+    .getByLabel("Elegir el archivo de bóveda")
+    .setInputFiles(rutaDeBoveda);
+  await page
+    .getByLabel("Frase de paso de la bóveda")
+    .fill("la frase de la boveda");
   await page.getByRole("button", { name: "Abrir la bóveda" }).click();
-  await page.getByRole("heading", { name: "Bóveda abierta" }).waitFor({ timeout: 60_000 });
+  await page
+    .getByRole("heading", { name: "Bóveda abierta" })
+    .waitFor({ timeout: 60_000 });
 
   // El archivo devuelto es el propio anonimizado: para la red da igual quién lo tocó antes.
   await page
     .getByLabel("Elegir el archivo que devolvió el tercero")
     .setInputFiles(await anonimizado.path());
-  await page.getByRole("button", { name: "Restaurar los valores originales" }).click();
+  await page
+    .getByRole("button", { name: "Restaurar los valores originales" })
+    .click();
   await page
     .getByRole("button", { name: "Preparar el archivo restaurado" })
     .click({ timeout: 60_000 });
@@ -237,4 +256,115 @@ test("el reporte descargado tampoco llama a nadie cuando se abre", async ({
   // Y sí lleva lo que tiene que llevar.
   expect(html).toMatch(/[0-9a-f]{64}/);
   expect(html).toContain("clinico-2000-s42.csv");
+});
+
+test("la bitácora y el estimado tampoco mandan nada", async ({
+  page,
+  baseURL,
+}) => {
+  // Las dos superficies nuevas del S4, con el mismo listón que el resto:
+  //
+  //   · **La bitácora** es un archivo cifrado que lleva NOMBRES DE ARCHIVO del usuario — el ADR-005
+  //     ya dijo que un nombre cuenta de qué va el contenido antes de que nadie lo abra. Se sella y
+  //     se vuelve a abrir aquí dentro.
+  //   · **El estimado** pide la población y devuelve una cifra; es la única interacción del sprint
+  //     que se parece a una consulta, y por eso conviene demostrar que no consulta nada.
+  const origen = new URL(baseURL!).origin;
+  const sospechosas: string[] = [];
+  const todas: string[] = [];
+
+  page.on("request", (peticion) => {
+    const url = new URL(peticion.url());
+    todas.push(`${peticion.method()} ${url.pathname}`);
+    if (url.origin !== origen) {
+      sospechosas.push(`fuera del origen: ${peticion.url()}`);
+      return;
+    }
+    if (peticion.postData()) {
+      sospechosas.push(`con cuerpo: ${peticion.method()} ${url.pathname}`);
+    }
+    if (!RUTAS_PERMITIDAS.some((permitida) => permitida.test(url.pathname))) {
+      sospechosas.push(`ruta no prevista: ${url.pathname}`);
+    }
+    for (const columna of COLUMNAS_DEL_FIXTURE) {
+      if (peticion.url().includes(columna)) {
+        sospechosas.push(`nombre de columna en la URL: ${peticion.url()}`);
+      }
+    }
+  });
+  page.on("websocket", (ws) => sospechosas.push(`websocket: ${ws.url()}`));
+
+  await page.goto("/");
+  await page.setInputFiles("#archivo", CLINICO);
+  await page.waitForURL("**/diagnostico", { timeout: 150_000 });
+  await page.getByRole("link", { name: "Transformar este archivo" }).click();
+  await page.waitForURL("**/transformar");
+
+  await page
+    .getByLabel("Técnica para la columna cedula_titular")
+    .selectOption("enmascarar");
+  await page.getByRole("button", { name: "Transformar", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Qué cambió, y qué sigue igual" })
+    .waitFor({ timeout: 60_000 });
+
+  // El estimado: se declara una población y sale una cifra, sin salir de la pestaña.
+  await page
+    .getByLabel("¿De cuántas personas salió este archivo? (opcional)")
+    .fill("20000");
+  await page.getByRole("button", { name: "Estimar" }).click();
+  await page
+    .getByText(/Cifra estimada/)
+    .first()
+    .waitFor({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "Preparar el archivo" }).click();
+  await page
+    .getByRole("link", { name: /^Guardar velo-anonimizado-/ })
+    .waitFor({ timeout: 60_000 });
+
+  // Y la bitácora, de punta a punta: sellar, guardar y volver a abrir.
+  await page.getByRole("button", { name: "Anotar en mi bitácora" }).click();
+  await page.waitForURL("**/bitacora");
+  await page
+    .getByLabel("Elige la frase de paso de tu bitácora")
+    .fill("una frase larga para la bitacora");
+  await page
+    .getByRole("button", { name: "Cifrar y empezar la bitácora" })
+    .click();
+
+  const guardar = page
+    .getByRole("link", { name: "Guardar la bitácora" })
+    .first();
+  await guardar.waitFor({ timeout: 60_000 });
+  // `blob:` — un origen opaco de este documento. No hay petición que interceptar porque no hay red.
+  expect(await guardar.getAttribute("href")).toMatch(/^blob:/);
+  const [descarga] = await Promise.all([
+    page.waitForEvent("download"),
+    guardar.click(),
+  ]);
+  const ruta = join(DIRECTORIO_DE_FIXTURES, "red-bitacora.velolog");
+  await descarga.saveAs(ruta);
+
+  // Se recarga la ruta a propósito: tras sellar, la bitácora ya está abierta en memoria y el
+  // formulario de apertura desaparece —no hay nada que abrir—. Una recarga la vacía, que es la
+  // promesa de la app, y deja el camino de LEER un `.velolog` del disco expuesto al listener.
+  await page.goto("/bitacora");
+  await page
+    .getByLabel("Archivo de bitácora")
+    .setInputFiles(ruta, { timeout: 60_000 });
+  await page
+    .getByLabel("Frase de paso")
+    .fill("una frase larga para la bitacora");
+  await page.getByRole("button", { name: "Abrir la bitácora" }).click();
+  await page
+    .getByRole("heading", { name: /tratamiento[s]? anotado/ })
+    .waitFor({ timeout: 60_000 });
+
+  await page.waitForTimeout(1_500);
+
+  expect(sospechosas, `peticiones observadas:\n${todas.join("\n")}`).toEqual(
+    [],
+  );
+  expect(todas.length).toBeGreaterThan(5);
 });

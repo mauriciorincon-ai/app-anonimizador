@@ -8,7 +8,6 @@ import {
   colisionesDeBoveda,
   construirBoveda,
   deserializarBoveda,
-  esDeLaMismaLlave,
   huellaDeBoveda,
   indiceDeColumna,
   paresDeBoveda,
@@ -109,9 +108,12 @@ describe("construir la bóveda", () => {
     expect(BOVEDA.version).toBe(VERSION_DE_BOVEDA);
   });
 
-  it("reconoce una bóveda de OTRA llave sin intentar restaurar nada", () => {
-    expect(esDeLaMismaLlave(BOVEDA, "a1b2c3d4e5f6")).toBe(true);
-    expect(esDeLaMismaLlave(BOVEDA, "000000000000")).toBe(false);
+  it("guarda la huella de la llave para que una persona reconozca el proyecto", () => {
+    // Antes esto probaba `esDeLaMismaLlave`, borrada en el S4: era un exportado sin llamador. Lo
+    // que se conserva —y lo único que se usaba de verdad— es que la huella viaje en la bóveda para
+    // enseñarse. Quién decide si la bóveda corresponde al archivo es `restaurar()`, mirando el
+    // contenido; `tests/unit/restaurar.test.ts` lo prueba con «esta bóveda no es de este archivo».
+    expect(BOVEDA.huellaDeLlave).toBe("a1b2c3d4e5f6");
   });
 });
 

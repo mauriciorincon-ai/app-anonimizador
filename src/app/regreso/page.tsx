@@ -43,7 +43,7 @@ export default function PaginaDelRegreso() {
       <h1 className="font-display text-tinta mt-2 text-[clamp(1.75rem,5vw,2.25rem)] leading-tight font-semibold text-balance">
         Recupera lo que entregaste
       </h1>
-      <p className="text-tinta-suave mt-3 max-w-prose leading-relaxed text-pretty">
+      <p className="text-tinta-suave mt-3 leading-relaxed text-pretty">
         Carga la bóveda que guardaste y el archivo que te devolvieron. Velo pone
         los valores originales de vuelta —por valor, no por posición— y respeta
         el trabajo que hicieron encima. Todo dentro de esta pestaña.

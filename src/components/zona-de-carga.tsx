@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { clasesDeBoton } from "@/components/boton";
+import { IconoLupa, IconoReiniciar, IconoTabla } from "@/components/iconos";
 import { bytes as enBytes, numero, porcentaje } from "@/lib/formato";
 import type { EstadoDeSesion } from "@/lib/sesion";
 import { TOPE_EXCEL_BYTES } from "@/lib/archivo";
@@ -130,6 +131,7 @@ export function ZonaDeCarga({
           htmlFor="archivo"
           className={`${clasesDeBoton("principal")} cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--acento)]`}
         >
+          <IconoTabla />
           Elegir archivo
         </label>
       </div>
@@ -219,6 +221,7 @@ function EnCurso({
           href="/diagnostico"
           className={`${clasesDeBoton("principal")} self-start`}
         >
+          <IconoLupa />
           Ver el diagnóstico
         </Link>
       ) : null}
@@ -276,6 +279,7 @@ function Fallo({
         onClick={onReintentar}
         className={`${clasesDeBoton("discreto")} mt-1`}
       >
+        <IconoReiniciar />
         Elegir otro archivo
       </button>
     </div>

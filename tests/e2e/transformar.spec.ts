@@ -385,29 +385,39 @@ test("el taller entrega también el documento que dice qué se le hizo", async (
   await page.getByRole("button", { name: /Habeas Data/ }).click();
   await derivarLlave(page);
   await page.getByRole("button", { name: "Transformar", exact: true }).click();
+  // Desde el S4 el documento es el CERTIFICADO, y no existe hasta que existe el archivo: lleva la
+  // huella de salida. Así que primero se genera el archivo — que es también el orden en que lo vive
+  // el usuario.
   await page
-    .getByRole("heading", { name: "Llévate el reporte del tratamiento" })
+    .getByRole("heading", { name: "Qué cambió, y qué sigue igual" })
+    .waitFor({ timeout: 60_000 });
+  await page.getByRole("button", { name: "Preparar el archivo" }).click();
+  await page
+    .getByRole("link", { name: /^Guardar velo-anonimizado-/ })
+    .waitFor({ timeout: 60_000 });
+  await page
+    .getByRole("heading", { name: "Llévate el certificado del tratamiento" })
     .waitFor({ timeout: 60_000 });
 
   await page.getByRole("button", { name: "Ver antes de descargar" }).click();
-  const reporte = page.frameLocator('iframe[title="Vista previa del reporte"]');
 
-  // La aclaración que hace falta al leerlo sin esta pantalla al lado.
-  await expect(
-    reporte.getByText(/Esta huella no es la del archivo que se entrega/),
-  ).toBeVisible();
-
-  // Y el orden: qué se le hizo ANTES que el riesgo, que es del archivo original.
+  // El orden dentro del documento, que es lo que este test cubre y ningún otro: qué se le hizo va
+  // ANTES que el riesgo del archivo original. Si se leyera al revés, las cifras del original se
+  // tomarían por las del archivo que sale. (Que la huella sea la correcta lo prueba
+  // `certificado.spec.ts`, contra `node:crypto`.)
   const posiciones = await page
-    .frameLocator('iframe[title="Vista previa del reporte"]')
+    .frameLocator('iframe[title="Vista previa del certificado"]')
     .locator("body")
     .evaluate((cuerpo) => {
       const texto = cuerpo.textContent ?? "";
       return {
         tratamiento: texto.indexOf("Balance del tratamiento"),
         riesgo: texto.indexOf("el archivo ORIGINAL"),
+        verificacion: texto.indexOf("No hace falta creerle a este documento"),
       };
     });
   expect(posiciones.tratamiento).toBeGreaterThan(-1);
   expect(posiciones.riesgo).toBeGreaterThan(posiciones.tratamiento);
+  // Y el «cómo comprobarlo» va después del tratamiento: primero qué se hizo, luego cómo verificarlo.
+  expect(posiciones.verificacion).toBeGreaterThan(posiciones.tratamiento);
 });

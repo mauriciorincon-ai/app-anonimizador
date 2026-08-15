@@ -17,6 +17,13 @@ import Papa from "papaparse";
 
 import { balanceDelTratamiento } from "@/engine/balance";
 import {
+  anadirEntrada,
+  bitacoraVacia,
+  huellaDeBitacora,
+  type Bitacora,
+  type EntradaDeBitacora,
+} from "@/engine/bitacora";
+import {
   colisionesDeBoveda,
   construirBoveda,
   huellaDeBoveda,
@@ -35,10 +42,20 @@ import {
   nombreDelInforme,
 } from "@/engine/reporte";
 import { restaurar, type Restauracion } from "@/engine/restaurar";
-import { evaluarRiesgo } from "@/engine/riesgo";
+import {
+  clasesDeEquivalencia,
+  evaluarRiesgo,
+  type ClasesDeEquivalencia,
+} from "@/engine/riesgo";
+import { estimarRiesgo } from "@/engine/riesgo-estimado";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
 import { formatoDeArchivo } from "@/lib/archivo";
+import {
+  abrirBitacora,
+  sellarBitacora,
+  NOMBRE_DE_BITACORA,
+} from "@/lib/bitacora-archivo";
 import {
   abrirBoveda,
   sellarBoveda,
@@ -268,6 +285,8 @@ function heapUsadoMb(): number | null {
 let llave: CryptoKey | null = null;
 /** La tabla ya transformada, para poder escribir el archivo sin rehacer el trabajo. */
 let transformada: TablaColumnar | null = null;
+/** Las clases de equivalencia del DESPUÉS, para estimar sin recorrer el archivo otra vez. */
+let clasesDespues: ClasesDeEquivalencia | null = null;
 let hashDeLaPolitica = "";
 /** El material de la bóveda: pares (original, seudónimo) de las columnas reversibles. */
 let correspondencias: readonly EntradaDeBoveda[] = [];
@@ -341,39 +360,39 @@ async function transformar(politica: Politica): Promise<void> {
     );
 
     transformada = resultado.tabla;
+    // Las clases del DESPUÉS se guardan aquí porque el estimador poblacional las necesita y el
+    // usuario puede declarar su población varias veces —tanteando la cifra— sin que valga la pena
+    // recorrer el archivo entero en cada intento. Son los mismos cuasi-identificadores con los que
+    // `balanceDelTratamiento` midió `despues`: si fueran otros, el estimado y el exacto estarían
+    // hablando de tablas distintas.
+    clasesDespues = clasesDeEquivalencia(
+      qis
+        .map((nombre) =>
+          resultado.tabla.columnas.find((c) => c.nombre === nombre),
+        )
+        .filter((c) => c !== undefined),
+      resultado.tabla.filas,
+    );
     hashDeLaPolitica = hashDePolitica(politica);
     // El material de la bóveda se guarda AQUÍ, del lado de la frontera donde están los originales.
     // Sellarlo es un mensaje aparte porque exige la frase de paso del usuario, que se pide después.
     correspondencias = resultado.correspondencias;
 
-    // `mondrian` viaja SIN su tabla: `ResultadoDeMondrian` la lleva dentro, y reenviarlo entero
-    // habría mandado el archivo a la página sin que se notara en pantalla. Se copian los campos
-    // UNO A UNO en vez de con un `Omit`: así la frontera es literal, y el día que el reparto gane
-    // un campo nuevo no cruza solo — hay que escribirlo aquí y mirarlo.
-    const m = resultado.mondrian;
-    const mondrian = m
-      ? {
-          kObjetivo: m.kObjetivo,
-          kAlcanzado: m.kAlcanzado,
-          alcanzado: m.alcanzado,
-          motivo: m.motivo,
-          dimensiones: m.dimensiones,
-          sinCortes: m.sinCortes,
-          particiones: m.particiones,
-        }
-      : null;
-
+    // Aquí vivía la proyección campo a campo del reparto de Mondrian, para que su tabla —el archivo
+    // entero— no cruzara la frontera dentro de `ResultadoDeMondrian`. **Ya no hace falta porque el
+    // reparto no cruza en absoluto** (deuda B2, pagada arriba): lo consume `balanceDelTratamiento`
+    // en este mismo lado. La defensa más barata contra que un dato cruce sigue siendo que no cruce.
     enviar({
       tipo: "transformado",
+      // Las cuatro estructuras crudas —`mondrian`, `diversidad`, `colisiones` y
+      // `pendientesDeMondrian`— **ya no cruzan** (deuda B2, pagada en el S4). Se consumen arriba,
+      // en `balanceDelTratamiento`, y lo que la pantalla necesita es la conclusión: las salvedades
+      // del balance, ya ordenadas y con su gravedad decidida.
       resultado: {
         hashDePolitica: hashDeLaPolitica,
         balance,
         utilidad: medirUtilidad(original, resultado.tabla),
-        mondrian,
-        diversidad,
         suprimidas: resultado.suprimidas,
-        colisiones: resultado.colisiones,
-        pendientesDeMondrian: resultado.pendientesDeMondrian,
         muestras,
         ms: Math.round(performance.now() - inicio),
       },
@@ -400,6 +419,21 @@ function construirArchivo(): void {
   // El CSV se acumula en trozos y no en una sola cadena: 500.000 filas × 24 columnas son ~130 MB
   // de texto, y concatenarlos en un solo string obligaría a tener dos copias vivas al duplicar el
   // buffer. `Blob` acepta la lista y la junta él, una sola vez.
+  // **La huella de SALIDA se calcula AQUÍ, sobre los mismos trozos que forman el `Blob`** — es lo
+  // que convierte el documento del S2 en un certificado verificable (S4).
+  //
+  // Tres cosas que hacen que esto sea correcto y no una conveniencia:
+  //
+  //   1. **Son exactamente los bytes del archivo.** `new Blob([...cadenas])` codifica cada cadena
+  //      como UTF-8, así que hashear `TextEncoder().encode(trozo)` en el mismo orden da el mismo
+  //      flujo de bytes que el navegador va a escribir en el disco. No es una aproximación.
+  //   2. **No hay segunda pasada.** Volver a leer el `Blob` para hashearlo costaría recorrer otra
+  //      vez los ~130 MB del peor caso; aquí el costo es el del hash y nada más.
+  //   3. **Los bytes no cruzan.** A la página va la huella —64 hex—, igual que ya cruza la del
+  //      archivo de entrada desde el S1. La frontera del ADR-005 no se toca: el `Blob` sigue
+  //      saliendo como asa opaca.
+  const huellaDeSalida = new Sha256();
+  const codificador = new TextEncoder();
   const trozos: string[] = [];
   let acumulado = "";
   let filas = 0;
@@ -407,10 +441,14 @@ function construirArchivo(): void {
     acumulado += fila;
     if (++filas % FILAS_POR_TROZO === 0) {
       trozos.push(acumulado);
+      huellaDeSalida.actualizar(codificador.encode(acumulado));
       acumulado = "";
     }
   }
-  if (acumulado) trozos.push(acumulado);
+  if (acumulado) {
+    trozos.push(acumulado);
+    huellaDeSalida.actualizar(codificador.encode(acumulado));
+  }
 
   const blob = new Blob(trozos, { type: "text/csv;charset=utf-8" });
   enviar({
@@ -419,6 +457,7 @@ function construirArchivo(): void {
     nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica),
     bytes: blob.size,
     proposito: "anonimizado",
+    sha256: huellaDeSalida.terminar(),
   });
 }
 
@@ -504,6 +543,111 @@ async function abrir(archivo: File, frase: string): Promise<void> {
       colisiones: colisionesDeBoveda(resultado.boveda),
     },
   });
+}
+
+/**
+ * Estima el riesgo poblacional del archivo que va a salir.
+ *
+ * `poblacion` puede ser `null` —el caso normal, porque el usuario no siempre la sabe— y entonces el
+ * motor devuelve su «no calculable» con la razón. **No se inventa un valor por defecto**: sin
+ * fracción de muestreo no hay estimador poblacional que valga, y suponerla sería la mentira que
+ * `engine/riesgo-estimado.ts` existe para no cometer.
+ */
+function estimar(poblacion: number | null): void {
+  if (!transformada || !clasesDespues) {
+    enviar({ tipo: "error", motivo: "sin-tabla" });
+    return;
+  }
+  enviar({
+    tipo: "riesgo-estimado",
+    estimacion: estimarRiesgo({
+      clases: clasesDespues,
+      filas: transformada.filas,
+      poblacion,
+    }),
+  });
+}
+
+// ── La bitácora ───────────────────────────────────────────────────────────────────────────────
+//
+// La bitácora abierta vive aquí, como la bóveda y la llave, y muere con el worker. La frase de paso
+// NO se guarda: entra con cada mensaje y se va con él.
+
+let bitacoraActual: Bitacora | null = null;
+
+function anunciarBitacora(bitacora: Bitacora): void {
+  enviar({
+    tipo: "bitacora-abierta",
+    contenido: {
+      version: bitacora.version,
+      entradas: bitacora.entradas,
+      huella: huellaDeBitacora(bitacora),
+    },
+  });
+}
+
+async function abrirLaBitacora(archivo: File, frase: string): Promise<void> {
+  avisar("abriendo-bitacora", 0, 0, archivo.size);
+  let bytes: Uint8Array;
+  try {
+    // Igual que la bóveda: `arrayBuffer()` solo puede llamarse dentro de este directorio.
+    bytes = new Uint8Array(await archivo.arrayBuffer());
+  } catch {
+    enviar({
+      tipo: "bitacora-rechazada",
+      motivo: "lectura-fallida",
+      detalle: "No se pudo leer el archivo.",
+    });
+    return;
+  }
+
+  const resultado = await abrirBitacora(bytes, frase);
+  if (!resultado.ok) {
+    enviar({
+      tipo: "bitacora-rechazada",
+      motivo: resultado.motivo,
+      detalle: resultado.detalle,
+    });
+    return;
+  }
+
+  bitacoraActual = resultado.bitacora;
+  anunciarBitacora(resultado.bitacora);
+}
+
+/**
+ * Sella la bitácora, con una entrada nueva al final si viene alguna.
+ *
+ * Si no hay ninguna abierta, empieza una — es el caso de la primera vez, y no necesita una pantalla
+ * aparte: una bitácora nueva es una bitácora vacía a la que se le añade la primera entrada.
+ */
+async function sellarLaBitacora(
+  frase: string,
+  entrada: EntradaDeBitacora | null,
+): Promise<void> {
+  const base = bitacoraActual ?? bitacoraVacia();
+  const bitacora = entrada ? anadirEntrada(base, entrada) : base;
+  if (bitacora.entradas.length === 0) {
+    enviar({ tipo: "error", motivo: "sin-bitacora" });
+    return;
+  }
+
+  avisar("sellando-bitacora", bitacora.entradas.length, 0, 0);
+  try {
+    const bytes = await sellarBitacora(bitacora, frase);
+    bitacoraActual = bitacora;
+    const blob = new Blob([bytes], { type: "application/octet-stream" });
+    enviar({
+      tipo: "archivo",
+      blob,
+      nombre: NOMBRE_DE_BITACORA,
+      bytes: blob.size,
+      proposito: "bitacora",
+    });
+    anunciarBitacora(bitacora);
+  } catch {
+    enviar({ tipo: "error", motivo: "sin-bitacora" });
+  }
 }
 
 /** Parsea el archivo devuelto. Sin clasificar y sin medir riesgo: es otro flujo. */
@@ -665,4 +809,9 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
   if (mensaje?.tipo === "construir-restaurado") construirRestaurado();
   if (mensaje?.tipo === "construir-informe-del-regreso")
     construirInformeDelRegreso(mensaje.fecha);
+  if (mensaje?.tipo === "estimar-riesgo") estimar(mensaje.poblacion);
+  if (mensaje?.tipo === "abrir-bitacora")
+    void abrirLaBitacora(mensaje.archivo, mensaje.frase);
+  if (mensaje?.tipo === "sellar-bitacora")
+    void sellarLaBitacora(mensaje.frase, mensaje.entrada);
 });

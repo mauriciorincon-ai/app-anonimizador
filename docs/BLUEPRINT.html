@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Velo — Blueprint de infraestructura (as-built)</title>
+    <style>
+      :root {
+        --fondo: #fafaf9;
+        --tinta: #1c1917;
+        --tinta-suave: #57534e;
+        --borde: #d6d3d1;
+        --tarjeta: #ffffff;
+        --acento: #1d4ed8;
+        --acento-suave: #dbeafe;
+        --ok: #15803d;
+        --alerta: #b45309;
+        --futuro: #9333ea;
+        --caja-svg: #ffffff;
+        --bd-svg: #eff6ff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fondo: #1c1917;
+          --tinta: #fafaf9;
+          --tinta-suave: #a8a29e;
+          --borde: #44403c;
+          --tarjeta: #292524;
+          --acento: #60a5fa;
+          --acento-suave: #1e3a5f;
+          --ok: #4ade80;
+          --alerta: #fbbf24;
+          --futuro: #c084fc;
+          --caja-svg: #292524;
+          --bd-svg: #1e3a5f;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 2rem 1rem 4rem;
+        background: var(--fondo);
+        color: var(--tinta);
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.55;
+      }
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0 0 0.25rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin: 2.2rem 0 0.8rem;
+        border-bottom: 2px solid var(--borde);
+        padding-bottom: 0.35rem;
+      }
+      h3 {
+        font-size: 0.98rem;
+        margin: 1.4rem 0 0.4rem;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        background: var(--acento-suave);
+        color: var(--acento);
+        border-radius: 999px;
+        padding: 0.15rem 0.6rem;
+        vertical-align: middle;
+        text-transform: uppercase;
+      }
+      .meta {
+        color: var(--tinta-suave);
+        font-size: 0.9rem;
+        margin: 0.2rem 0 1rem;
+      }
+      .nota {
+        background: var(--tarjeta);
+        border: 1px solid var(--borde);
+        border-left: 4px solid var(--acento);
+        border-radius: 8px;
+        padding: 0.8rem 1rem;
+        font-size: 0.88rem;
+        color: var(--tinta-suave);
+      }
+      .nota-ok {
+        border-left-color: var(--ok);
+      }
+      .diagrama {
+        background: var(--tarjeta);
+        border: 1px solid var(--borde);
+        border-radius: 12px;
+        padding: 1rem;
+        overflow-x: auto;
+      }
+      .diagrama svg {
+        display: block;
+        min-width: 720px;
+        width: 100%;
+        height: auto;
+      }
+      .caja {
+        fill: var(--caja-svg);
+        stroke: var(--borde);
+        stroke-width: 1.5;
+        rx: 10;
+      }
+      .caja-principal {
+        stroke: var(--acento);
+        stroke-width: 2;
+      }
+      .caja-interna {
+        fill: var(--fondo);
+        stroke: var(--borde);
+        stroke-width: 1;
+      }
+      .caja-bd {
+        fill: var(--bd-svg);
+        stroke: var(--acento);
+        stroke-width: 1.5;
+      }
+      .caja-ausencia {
+        fill: none;
+        stroke: var(--ok);
+        stroke-width: 1.5;
+        stroke-dasharray: 6 5;
+      }
+      .titulo-caja {
+        font:
+          700 13px system-ui,
+          sans-serif;
+        fill: var(--tinta);
+      }
+      .titulo-menor {
+        font:
+          700 11.5px system-ui,
+          sans-serif;
+        fill: var(--tinta);
+      }
+      .detalle-caja {
+        font:
+          400 11px system-ui,
+          sans-serif;
+        fill: var(--tinta-suave);
+      }
+      .detalle-ausencia {
+        fill: var(--ok);
+      }
+      .flecha {
+        stroke: var(--tinta-suave);
+        stroke-width: 1.5;
+        fill: none;
+        marker-end: url(#punta);
+      }
+      .flecha-vetada {
+        stroke: var(--alerta);
+        stroke-width: 1.5;
+        fill: none;
+        stroke-dasharray: 5 4;
+      }
+      .aspa {
+        stroke: var(--alerta);
+        stroke-width: 2;
+      }
+      .etiqueta-flecha {
+        font:
+          600 10.5px system-ui,
+          sans-serif;
+        fill: var(--tinta-suave);
+      }
+      .etiqueta-veto {
+        fill: var(--alerta);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+        background: var(--tarjeta);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 0.55rem 0.7rem;
+        border: 1px solid var(--borde);
+        vertical-align: top;
+      }
+      th {
+        background: var(--acento-suave);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      tr.critica td {
+        font-weight: 700;
+      }
+      .ninguna {
+        color: var(--ok);
+        font-weight: 700;
+      }
+      .tabla-scroll {
+        overflow-x: auto;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.92em;
+      }
+      details {
+        margin: 1rem 0;
+        font-size: 0.85rem;
+        color: var(--tinta-suave);
+      }
+      details summary {
+        cursor: pointer;
+        font-weight: 600;
+      }
+      footer {
+        margin-top: 3rem;
+        font-size: 0.8rem;
+        color: var(--tinta-suave);
+        border-top: 1px solid var(--borde);
+        padding-top: 0.8rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>
+        Velo — Blueprint de infraestructura <span class="badge">as-built</span>
+      </h1>
+      <p class="meta">
+        Ciclo: <strong>H1</strong> · Cerrado: <strong>2026-08-15</strong> ·
+        Sprints del ciclo: <strong>S001–S004</strong> · Última actualización:
+        <strong>2026-08-15</strong>
+      </p>
+      <p class="nota">
+        <strong>Entregable obligatorio del CIERRE DE CICLO:</strong> el mapa
+        real de <strong>TODA</strong> la infraestructura que soporta esta app.
+        Se escribe con lo <strong>DESPLEGADO de verdad</strong>, no con lo
+        planeado — cada afirmación de este documento salió de consultar el
+        servicio, no la intención. Es <strong>vivo y acumulativo</strong>: el
+        ciclo siguiente lo ACTUALIZA y declara sus cambios en el historial del
+        pie. HTML autocontenido con diagrama SVG embebido — cero CDNs, cero
+        dependencias externas.
+      </p>
+
+      <p class="nota nota-ok">
+        <strong
+          >Este blueprint es más corto que el de cualquier otra app del
+          portafolio, y esa es la noticia.</strong
+        >
+        Velo no tiene base de datos, ni backend, ni servicio externo, ni IA.
+        Cada casilla que dice <span class="ninguna">NINGUNO</span> es una
+        decisión con su ADR detrás y, en tres casos, un gate mecánico que la
+        vigila. En un producto cuya promesa es
+        <em>«tus datos no salen de tu navegador»</em>,
+        <strong
+          >la infraestructura que no existe es la que hace la promesa
+          cumplible</strong
+        >: no se puede filtrar por un servidor que no está.
+      </p>
+
+      <h2>Diagrama</h2>
+      <div class="diagrama">
+        <svg
+          viewBox="0 0 960 500"
+          role="img"
+          aria-label="Diagrama de infraestructura de Velo: GitHub despliega a Vercel, Vercel sirve la aplicación al navegador de la persona por HTTPS, y todo el procesamiento de datos ocurre dentro de ese navegador. No hay base de datos, ni backend, ni servicios externos, ni IA."
+        >
+          <defs>
+            <marker
+              id="punta"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path
+                d="M 0 0 L 10 5 L 0 10 z"
+                fill="currentColor"
+                opacity="0.65"
+              />
+            </marker>
+          </defs>
+
+          <!-- GitHub -->
+          <rect class="caja" x="90" y="20" width="270" height="94" />
+          <text class="titulo-caja" x="225" y="46" text-anchor="middle">
+            GitHub — repositorio público
+          </text>
+          <text class="detalle-caja" x="225" y="65" text-anchor="middle">
+            mauriciorincon-ai/app-anonimizador
+          </text>
+          <text class="detalle-caja" x="225" y="82" text-anchor="middle">
+            ruleset «main-protegida» · PR obligatorio
+          </text>
+          <text class="detalle-caja" x="225" y="99" text-anchor="middle">
+            4 checks: anti-ia · quality · e2e · lighthouse
+          </text>
+
+          <!-- Vercel -->
+          <rect
+            class="caja caja-principal"
+            x="490"
+            y="20"
+            width="270"
+            height="94"
+          />
+          <text class="titulo-caja" x="625" y="46" text-anchor="middle">
+            Vercel — Hosting (plan Hobby)
+          </text>
+          <text class="detalle-caja" x="625" y="65" text-anchor="middle">
+            app-anonimizador.vercel.app
+          </text>
+          <text class="detalle-caja" x="625" y="82" text-anchor="middle">
+            Next.js 16 App Router · edge iad1
+          </text>
+          <text class="detalle-caja" x="625" y="99" text-anchor="middle">
+            prod y previews PÚBLICAS (sin login)
+          </text>
+
+          <path class="flecha" d="M 362 67 L 485 67" />
+          <text class="etiqueta-flecha" x="424" y="57" text-anchor="middle">
+            CI: 4 checks → deploy
+          </text>
+
+          <path class="flecha" d="M 625 116 C 625 146 479 146 479 174" />
+          <text class="etiqueta-flecha" x="640" y="140">
+            HTTPS: HTML, JS, CSS.
+          </text>
+          <text class="etiqueta-flecha" x="640" y="155">
+            Cero bytes de datos.
+          </text>
+
+          <!-- Persona -->
+          <rect class="caja" x="20" y="212" width="180" height="96" />
+          <text class="titulo-caja" x="110" y="246" text-anchor="middle">
+            La persona
+          </text>
+          <text class="detalle-caja" x="110" y="268" text-anchor="middle">
+            su tabla, en su disco
+          </text>
+          <text class="detalle-caja" x="110" y="286" text-anchor="middle">
+            CSV sin tope · Excel ≤150 MB
+          </text>
+
+          <path class="flecha" d="M 202 244 L 293 244" />
+          <text class="etiqueta-flecha" x="247" y="236" text-anchor="middle">
+            arrastra su tabla
+          </text>
+          <path class="flecha" d="M 293 282 L 202 282" />
+          <text class="etiqueta-flecha" x="247" y="298" text-anchor="middle">
+            y recibe el
+          </text>
+          <text class="etiqueta-flecha" x="247" y="312" text-anchor="middle">
+            resultado
+          </text>
+
+          <!-- El navegador: la app entera -->
+          <rect
+            class="caja caja-principal"
+            x="298"
+            y="178"
+            width="362"
+            height="198"
+          />
+          <text class="titulo-caja" x="479" y="204" text-anchor="middle">
+            El navegador de esa persona
+          </text>
+          <text class="detalle-caja" x="479" y="222" text-anchor="middle">
+            aquí ocurre TODO el trabajo — no hay a dónde más ir
+          </text>
+
+          <rect
+            class="caja-interna"
+            x="314"
+            y="234"
+            width="164"
+            height="62"
+            rx="8"
+          />
+          <text class="titulo-menor" x="396" y="258" text-anchor="middle">
+            Interfaz (React)
+          </text>
+          <text class="detalle-caja" x="396" y="276" text-anchor="middle">
+            agregados y muestras
+          </text>
+          <text class="detalle-caja" x="396" y="290" text-anchor="middle">
+            enmascaradas, nunca filas
+          </text>
+
+          <rect
+            class="caja-interna"
+            x="488"
+            y="234"
+            width="158"
+            height="62"
+            rx="8"
+          />
+          <text class="titulo-menor" x="567" y="258" text-anchor="middle">
+            Worker — LA FRONTERA
+          </text>
+          <text class="detalle-caja" x="567" y="276" text-anchor="middle">
+            los datos crudos viven
+          </text>
+          <text class="detalle-caja" x="567" y="290" text-anchor="middle">
+            aquí y solo aquí
+          </text>
+
+          <rect
+            class="caja-interna"
+            x="314"
+            y="306"
+            width="332"
+            height="54"
+            rx="8"
+          />
+          <text class="titulo-menor" x="480" y="328" text-anchor="middle">
+            Web Crypto — cero librerías de cripto
+          </text>
+          <text class="detalle-caja" x="480" y="346" text-anchor="middle">
+            HMAC-SHA256 · PBKDF2-600k · AES-GCM-256
+          </text>
+
+          <!-- Los archivos del usuario -->
+          <rect class="caja caja-bd" x="762" y="196" width="182" height="128" />
+          <text class="titulo-caja" x="853" y="222" text-anchor="middle">
+            Tus archivos, en TU disco
+          </text>
+          <text class="detalle-caja" x="853" y="242" text-anchor="middle">
+            la «base de datos» de Velo
+          </text>
+          <text class="detalle-caja" x="853" y="262" text-anchor="middle">
+            .velo — bóveda (ADR-006)
+          </text>
+          <text class="detalle-caja" x="853" y="279" text-anchor="middle">
+            .velolog — bitácora (ADR-007)
+          </text>
+          <text class="detalle-caja" x="853" y="299" text-anchor="middle">
+            cifrados; sin tu frase
+          </text>
+          <text class="detalle-caja" x="853" y="313" text-anchor="middle">
+            no los abre nadie
+          </text>
+
+          <path class="flecha" d="M 662 236 L 757 236" />
+          <text class="etiqueta-flecha" x="709" y="228" text-anchor="middle">
+            descarga
+          </text>
+          <path class="flecha" d="M 757 288 L 662 288" />
+          <text class="etiqueta-flecha" x="709" y="304" text-anchor="middle">
+            abres con
+          </text>
+          <text class="etiqueta-flecha" x="709" y="318" text-anchor="middle">
+            tu frase
+          </text>
+
+          <!-- La conexión que no existe -->
+          <path class="flecha-vetada" d="M 479 378 L 479 402" />
+          <path class="aspa" d="M 471 382 L 487 398" />
+          <path class="aspa" d="M 487 382 L 471 398" />
+          <text class="etiqueta-flecha etiqueta-veto" x="496" y="394">
+            connect-src 'self' — el navegador la prohíbe
+          </text>
+
+          <!-- Las tres ausencias verificadas -->
+          <rect
+            class="caja-ausencia"
+            x="20"
+            y="404"
+            width="290"
+            height="80"
+            rx="10"
+          />
+          <text
+            class="titulo-caja detalle-ausencia"
+            x="165"
+            y="430"
+            text-anchor="middle"
+          >
+            Backend / API con datos: NINGUNO
+          </text>
+          <text
+            class="detalle-caja detalle-ausencia"
+            x="165"
+            y="450"
+            text-anchor="middle"
+          >
+            sin servidor, sin BD, sin auth
+          </text>
+          <text
+            class="detalle-caja detalle-ausencia"
+            x="165"
+            y="467"
+            text-anchor="middle"
+          >
+            e2e que intercepta toda la red
+          </text>
+
+          <rect
+            class="caja-ausencia"
+            x="336"
+            y="404"
+            width="290"
+            height="80"
+            rx="10"
+          />
+          <text
+            class="titulo-caja detalle-ausencia"
+            x="481"
+            y="430"
+            text-anchor="middle"
+          >
+            Servicios externos: NINGUNO
+          </text>
+          <text
+            class="detalle-caja detalle-ausencia"
+            x="481"
+            y="450"
+            text-anchor="middle"
+          >
+            sin email, sin storage, sin APIs
+          </text>
+          <text
+            class="detalle-caja detalle-ausencia"
+            x="481"
+            y="467"
+            text-anchor="middle"
+          >
+            CSP + test de código fuente
+          </text>
+
+          <rect
+            class="caja-ausencia"
+            x="654"
+            y="404"
+            width="290"
+            height="80"
+            rx="10"
+          />
+          <text
+            class="titulo-caja detalle-ausencia"
+            x="799"
+            y="430"
+            text-anchor="middle"
+          >
+            IA generativa: NINGUNA
+          </text>
+          <text
+            class="detalle-caja detalle-ausencia"
+            x="799"
+            y="450"
+            text-anchor="middle"
+          >
+            para siempre (ADR-001)
+          </text>
+          <text
+            class="detalle-caja detalle-ausencia"
+            x="799"
+            y="467"
+            text-anchor="middle"
+          >
+            gate anti-ia sobre el lockfile
+          </text>
+        </svg>
+      </div>
+
+      <p class="nota">
+        <strong>Cómo leer el diagrama:</strong> la única flecha que sale del
+        navegador va a <em>tu disco</em>. Ninguna vuelve a Vercel, y la que un
+        día podría intentarlo aparece tachada porque el propio navegador la
+        rechaza: la cabecera <code>connect-src 'self'</code> le prohíbe abrir
+        conexión a cualquier origen que no sea el de la app. Vercel entrega la
+        aplicación y desaparece del flujo; a partir de ahí, Velo funciona igual
+        con el wifi apagado.
+      </p>
+
+      <h2>Tabla por pieza</h2>
+      <div class="tabla-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Pieza</th>
+              <th>Servicio + plan</th>
+              <th>Detalle operativo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Código / versionamiento</td>
+              <td>
+                GitHub <code>mauriciorincon-ai/app-anonimizador</code> (público)
+              </td>
+              <td>
+                Ruleset <code>main-protegida</code>, activa. Cuatro checks
+                requeridos: <code>anti-ia</code>, <code>quality</code>,
+                <code>e2e</code>, <code>lighthouse</code>. Además: PR
+                obligatorio, borrado de rama vetado, force-push vetado. Sin push
+                directo a <code>main</code> — también lo bloquea un hook local.
+              </td>
+            </tr>
+            <tr>
+              <td>CI/CD</td>
+              <td>GitHub Actions (repo público → minutos gratis sin tope)</td>
+              <td>
+                Cuatro jobs. <code>anti-ia</code> corre
+                <strong>solo y primero</strong> (~40 s, sin
+                <code>install</code>: solo lee <code>package.json</code> y el
+                lockfile) para ponerse rojo de inmediato.
+                <code>quality</code> (~1 min): typecheck, lint, tests con
+                cobertura, build, <code>pnpm audit</code>. <code>e2e</code> (~3
+                min) y <code>lighthouse</code> (~3 min) dependen de
+                <code>quality</code>. Vercel despliega por su cuenta en cada
+                push; el gate que importa es el de la ruleset, que impide el
+                merge.
+              </td>
+            </tr>
+            <tr>
+              <td>Hosting / publicación</td>
+              <td>
+                Vercel, plan <strong>Hobby</strong> (gratuito, cuenta personal)
+              </td>
+              <td>
+                <a href="https://app-anonimizador.vercel.app"
+                  >app-anonimizador.vercel.app</a
+                >
+                · edge <code>iad1</code> (Washington D.C.). Next.js 16.3 App
+                Router, cinco rutas.
+                <strong>Uso comercial: NO permitido por el plan Hobby</strong> —
+                el día que Velo se cobre, hay que pasar a Pro (US$20/mes). Está
+                declarado aquí para que la decisión sea consciente y no una
+                sorpresa.
+              </td>
+            </tr>
+            <tr>
+              <td>Base de datos</td>
+              <td>
+                <span class="ninguna">NINGUNA</span> — local-first por diseño de
+                producto
+              </td>
+              <td>
+                Lo que en otra app sería una tabla, aquí son
+                <strong>dos archivos cifrados que custodia el usuario</strong>:
+                la bóveda <code>.velo</code> (correspondencia
+                seudónimo→original) y la bitácora
+                <code>.velolog</code> (historial de tratamientos). AES-GCM-256
+                con clave derivada por PBKDF2-600k, cabecera autenticada. Razón
+                en
+                <a href="../decisions/006-la-boveda-archivo-no-base-de-datos.md"
+                  >ADR-006</a
+                >
+                y
+                <a href="../decisions/007-la-bitacora-archivo-propio.md"
+                  >ADR-007</a
+                >. Sin RLS porque no hay filas ni servidor a los que
+                aplicársela.
+              </td>
+            </tr>
+            <tr>
+              <td>Auth</td>
+              <td><span class="ninguna">NO APLICA</span></td>
+              <td>
+                No hay cuentas, ni sesión, ni nada que autenticar: la app no
+                sabe quién eres y no tiene dónde guardarlo. Lo más parecido a
+                una credencial es la <strong>frase de paso</strong> de los
+                archivos cifrados — y se verifica <em>dentro del navegador</em>,
+                contra el tag de autenticación de AES-GCM, jamás contra un
+                servidor.
+              </td>
+            </tr>
+            <tr>
+              <td>Almacenamiento de archivos</td>
+              <td><span class="ninguna">NINGUNO</span></td>
+              <td>
+                Nada se sube. La descarga se hace con un
+                <code>Blob</code> creado en el navegador y una URL de objeto que
+                se revoca de inmediato (<a
+                  href="../decisions/005-la-frontera-y-la-descarga.md"
+                  >ADR-005</a
+                >). El «almacenamiento» de Velo es la carpeta de descargas del
+                usuario.
+              </td>
+            </tr>
+            <tr>
+              <td>Email / notificaciones</td>
+              <td><span class="ninguna">NO APLICA</span></td>
+              <td>
+                Sin cuentas no hay a quién escribirle, y sin backend no hay
+                quién escriba.
+              </td>
+            </tr>
+            <tr>
+              <td>IA embebida</td>
+              <td><span class="ninguna">NINGUNA</span> — y para siempre</td>
+              <td>
+                Regla dura nº1, documentada en
+                <a href="../decisions/001-cero-ia.md">ADR-001</a>. No es una
+                limitación de presupuesto: el determinismo <em>es</em> la
+                propuesta de valor, y un modelo generativo la rompería. Lo
+                vigila <code>scripts/gate-anti-ia.mjs</code>, que audita
+                <code>package.json</code> <strong>y el lockfile</strong> contra
+                tres familias de SDKs: una dependencia transitiva cuenta igual
+                que una directa.
+              </td>
+            </tr>
+            <tr>
+              <td>Observabilidad</td>
+              <td>
+                Sentry (client-only) + Pino —
+                <strong>cableados, sin DSN</strong>
+              </td>
+              <td>
+                El cliente está integrado con un
+                <strong>sanitizador propio en el borde</strong> más duro que el
+                del kit: los strings solo pasan si tienen forma de etiqueta
+                corta en kebab-case (un encabezado real como «Cédula del
+                titular» no la tiene), y los números por encima de 10.000 viajan
+                como <em>orden de magnitud</em> —«1e5–1e6»— porque una cédula y
+                un conteo de columnas son ambos <code>number</code>.
+                <strong>Hoy no hay DSN configurado en Vercel</strong>:
+                verificado, el HTML de producción no contiene ninguno, así que
+                el cliente está inerte y no se envía ni un evento. Es lo
+                correcto para esta app y se declara en vez de suponerse.
+              </td>
+            </tr>
+            <tr>
+              <td>Crons / keep-alives</td>
+              <td><span class="ninguna">NINGUNO</span></td>
+              <td>
+                Los keep-alive del pipeline existen para que un free tier de
+                base de datos no se duerma. Aquí no hay base de datos que
+                despertar.
+              </td>
+            </tr>
+            <tr>
+              <td>Secretos</td>
+              <td>
+                Vercel env vars (gestor declarado) —
+                <strong>hoy: ninguno en uso</strong>
+              </td>
+              <td>
+                <code>.env.example</code> declara dos variables, ambas
+                opcionales y ambas <code>NEXT_PUBLIC_</code> (Sentry DSN y
+                nombre de la app): ni una es un secreto. Doble cinturón gitleaks
+                igual: hook <code>githooks/pre-commit</code> (activado por
+                <code>core.hooksPath</code>) y hook <code>PreToolUse</code> del
+                agente. Protege sobre todo contra el accidente que sí importa en
+                un repo público: que un archivo real de una persona entre al
+                working tree.
+              </td>
+            </tr>
+            <tr>
+              <td>Dominio</td>
+              <td>
+                Subdominio del hosting: <code>app-anonimizador.vercel.app</code>
+              </td>
+              <td>
+                Sin dominio propio. Se administra desde el panel del proyecto en
+                Vercel; no hay DNS de terceros, ni registrador, ni certificado
+                que renovar a mano (TLS lo emite Vercel).
+              </td>
+            </tr>
+            <tr>
+              <td>Protección de deployment</td>
+              <td>
+                <strong>Apagada</strong> en producción <strong>y</strong> en
+                previews
+              </td>
+              <td>
+                <code>Require Log In</code> desactivado en ambos entornos.
+                Verificado desde afuera y sin sesión (<code>curl</code>):
+                producción <strong>200</strong>, preview del último commit
+                <strong>200</strong>. Consecuencia aceptada: cualquiera con la
+                URL de una preview la ve. Es tolerable porque las previews no
+                contienen datos —no hay backend ni base de datos que exponer— y
+                a cambio el gate ⭐ del usuario y las revisiones se hacen sobre
+                la preview real sin fricción de login.
+                <strong
+                  >Si algún día hubiera backend, esta casilla cambia
+                  primero.</strong
+                >
+              </td>
+            </tr>
+            <tr class="critica">
+              <td>Costo real / mes</td>
+              <td><strong>US$ 0,00</strong></td>
+              <td>
+                Vercel Hobby: gratis, 100 GB de banda/mes — con ~1 MB por visita
+                completa harían falta unas
+                <strong>100.000 visitas mensuales</strong> para rozar el límite;
+                el uso real está tres órdenes de magnitud por debajo. GitHub
+                repo público: gratis, Actions sin tope de minutos (consumo real
+                ~7 min de runner por push). Sentry:
+                <strong>no contratado</strong>. Sin BD, sin dominio, sin APIs de
+                pago, sin IA. El costo marginal de un usuario nuevo es el ancho
+                de banda de una descarga estática — el trabajo lo paga su propio
+                computador.
+              </td>
+            </tr>
+            <tr class="critica">
+              <td>Punto único de falla</td>
+              <td>
+                <strong>La frase de paso del usuario</strong> — no la
+                infraestructura
+              </td>
+              <td>
+                Si Vercel o GitHub desaparecieran mañana,
+                <strong>no se pierde ni un dato</strong>: Velo no custodia
+                ninguno, los archivos están en el disco de cada persona y el
+                repo es público y clonable (la app corre con
+                <code>pnpm build &amp;&amp; pnpm start</code> en cualquier
+                máquina). El punto único de falla real es el del usuario:
+                <strong
+                  >frase de paso perdida = bóveda y bitácora
+                  irrecuperables</strong
+                >, por diseño y sin puerta trasera. No tiene mitigación técnica
+                —tenerla sería el agujero— así que la mitigación es de producto:
+                la interfaz lo advierte antes de cifrar, con esas palabras. En
+                segundo lugar, y esto sí es infraestructura: las cuentas de
+                GitHub y Vercel del dueño, mitigadas con 2FA.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Lo que sostiene las tres ausencias</h2>
+      <p class="nota">
+        Un blueprint que dijera «NINGUNO» tres veces sin más sería una
+        declaración de intenciones. Estas son las máquinas que la hacen cumplir,
+        y todas ponen el CI en rojo:
+      </p>
+      <div class="tabla-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Regla dura</th>
+              <th>Gate que la vigila</th>
+              <th>Qué la pondría en rojo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Cero IA generativa</td>
+              <td>
+                Job <code>anti-ia</code> · <code>scripts/gate-anti-ia.mjs</code>
+              </td>
+              <td>
+                Un SDK de LLM en <code>package.json</code>
+                <em>o en el lockfile</em>, aunque entre como dependencia
+                transitiva de otra cosa.
+              </td>
+            </tr>
+            <tr>
+              <td>Los datos jamás salen del navegador</td>
+              <td>
+                Job <code>e2e</code> · e2e de garantía de red + CSP
+                <code>connect-src 'self'</code> + test de código fuente
+              </td>
+              <td>
+                Una petición fuera del propio origen durante el flujo completo
+                con archivo cargado; o un <code>fetch</code>,
+                <code>localStorage</code> o <code>indexedDB</code> en el código.
+              </td>
+            </tr>
+            <tr>
+              <td>Determinismo byte-idéntico</td>
+              <td>
+                Job <code>quality</code> · tests de doble ejecución + barrido
+                del motor
+              </td>
+              <td>
+                Una salida distinta entre dos corridas del mismo input; o un
+                <code>Math.random</code>, <code>Date.now</code>,
+                <code>new Date()</code> o <code>localeCompare</code> dentro de
+                <code>engine/</code>.
+              </td>
+            </tr>
+            <tr>
+              <td>Honestidad medida</td>
+              <td>
+                Job <code>quality</code> · barrido de frases vetadas en la
+                interfaz
+              </td>
+              <td>
+                «anonimato garantizado», «100 % seguro», «imposible de
+                reidentificar» — en cualquier texto de pantalla.
+              </td>
+            </tr>
+            <tr>
+              <td>Ni un dato real en el repo</td>
+              <td>
+                <code>githooks/pre-commit</code> (gitleaks) + revisión en cada
+                <code>/self-review</code>
+              </td>
+              <td>
+                Un secreto en el diff. Los archivos de prueba salen todos del
+                generador sintético con semilla.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Historial del blueprint</h2>
+      <div class="tabla-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Ciclo</th>
+              <th>Cambios</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2026-08-15</td>
+              <td>H1 (S001–S004)</td>
+              <td>
+                Versión inicial. Infraestructura desplegada a lo largo del
+                ciclo: repo público con ruleset <code>main-protegida</code> y
+                cuatro checks requeridos (S001–S004, uno por sprint que añadió
+                job), Vercel Hobby con producción y previews públicas desde el
+                día 0, cero backend, cero base de datos, cero servicios
+                externos, cero IA. Ningún costo contraído.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer>
+        Blueprint as-built de Velo (app-anonimizador) · pipeline AI-APPs · se
+        actualiza en cada cierre de ciclo. Archivo del repo — sin CDNs ni
+        dependencias externas: este documento abre sin internet.
+      </footer>
+    </main>
+  </body>
+</html>

@@ -20,6 +20,7 @@ import {
   derivarLlaveDelProyecto,
   descartar,
   invalidarTransformacion,
+  pedirEstimacion,
   prepararArchivo,
   sellarLaBoveda,
   transformar,
@@ -147,6 +148,29 @@ const RESULTADO = {
   ms: 12,
 } as unknown as ResultadoDeTransformacion;
 
+/**
+ * La guardia de §5 sobre `ResultadoDeTransformacion`: **un campo del contrato nace con su lector o
+ * no nace.**
+ *
+ * Es un `Record<keyof …, true>`, y esa forma es la gracia: TypeScript exige **todas** las claves y
+ * **solo** esas, así que añadir un campo al contrato **rompe la compilación aquí** y borrarlo
+ * también. No hace falta un fixture completo —construir un `BalanceDelTratamiento` de mentira para
+ * esto sería pagar mucho por menos garantía—, y a diferencia de una lista de claves en tiempo de
+ * ejecución, no hay `as unknown as` que la pueda esquivar. El fixture de arriba sí lleva el cast, y
+ * ese cast es justamente lo que dejó vivir cuatro campos sin lector hasta el S4.
+ *
+ * Cuando esto falle, la pregunta no es «¿cómo lo arreglo?» sino **«¿quién lee el campo nuevo?»**.
+ * Si la respuesta es «nadie todavía», el campo no cruza la frontera.
+ */
+const CLAVES_DEL_RESULTADO: Record<keyof ResultadoDeTransformacion, true> = {
+  hashDePolitica: true,
+  balance: true,
+  utilidad: true,
+  suprimidas: true,
+  muestras: true,
+  ms: true,
+};
+
 function archivoListo(
   worker: WorkerDeMentira,
   nombre = "tabla-velo.csv",
@@ -162,6 +186,36 @@ function archivoListo(
 }
 
 // ── Los tests ─────────────────────────────────────────────────────────────────────────────────
+
+describe("el contrato del tratamiento (§5 — deuda B2)", () => {
+  it("cruzan seis campos, y cada uno tiene su lector", () => {
+    // Los nombres se escriben aquí para que un humano los lea, no porque el runtime los necesite:
+    // la garantía fuerte la da el tipo de `CLAVES_DEL_RESULTADO`, que no compila si sobra o falta
+    // uno. Esta lista obliga además a que el campo nuevo se vea en el diff del PR.
+    expect(Object.keys(CLAVES_DEL_RESULTADO).sort()).toEqual([
+      "balance",
+      "hashDePolitica",
+      "ms",
+      "muestras",
+      "suprimidas",
+      "utilidad",
+    ]);
+  });
+
+  it("las cuatro estructuras crudas del reparto NO cruzan", () => {
+    // El pago de B2, escrito como test y no solo como commit: `mondrian`, `diversidad`,
+    // `colisiones` y `pendientesDeMondrian` las consume `balanceDelTratamiento` dentro del worker.
+    // Lo que la pantalla recibe es la conclusión —`balance.salvedades`—, no la materia prima.
+    for (const crudo of [
+      "mondrian",
+      "diversidad",
+      "colisiones",
+      "pendientesDeMondrian",
+    ]) {
+      expect(CLAVES_DEL_RESULTADO).not.toHaveProperty(crudo);
+    }
+  });
+});
 
 describe("el asa opaca (ADR-005)", () => {
   it("lo que llega a la interfaz son tres datos, y ninguno es el archivo", () => {
@@ -356,17 +410,24 @@ describe("sin worker no hay taller", () => {
       transformar(POLITICA);
       prepararArchivo();
       sellarLaBoveda("frase de la boveda");
+      pedirEstimacion(1000);
     });
     expect(WorkerDeMentira.ultimo).toBeNull();
     // La forma COMPLETA, a propósito: un campo nuevo en el taller tiene que pasar por aquí y ser
-    // mirado. Es lo que cazó la bóveda del S3 al añadir sus dos.
+    // mirado. Cazó los dos de la bóveda en el S3, la huella de salida en el S4 y ahora los dos de
+    // la estimación.
     expect(taller).toEqual({
       llave: { fase: "sin-llave" },
       transformacion: { fase: "sin-hacer" },
       etapa: null,
       archivo: null,
+      huellaDeSalida: null,
       boveda: { fase: "sin-sellar" },
       archivoDeBoveda: null,
+      estimacion: null,
+      // Sin worker, `pedirEstimacion` sale antes de tocar el estado: si publicara la población
+      // primero, la pantalla enseñaría un dato declarado que nadie va a poder usar.
+      poblacionDeclarada: null,
     });
   });
 });

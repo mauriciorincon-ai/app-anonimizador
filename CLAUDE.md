@@ -7,10 +7,10 @@
 
 ## Las dos casas (regla dura)
 
-| Casa | Path | Escritor único | Qué vive ahí |
-|---|---|---|---|
+| Casa           | Path                           | Escritor único   | Qué vive ahí                                                                     |
+| -------------- | ------------------------------ | ---------------- | -------------------------------------------------------------------------------- |
 | **Planeadora** | `~/Code/hr01-develop-ai-apps/` | su propia sesión | brief, VISION, sprints (plan+retro), órdenes de construcción, método, estándares |
-| **Esta app** | este repo | **tú** | código, tests, ADRs de implementación, bitácora y summary del sprint |
+| **Esta app**   | este repo                      | **tú**           | código, tests, ADRs de implementación, bitácora y summary del sprint             |
 
 - ✅ Puedes **leer** la planeadora (conexión fija vía `.claude/settings.local.json`, o por path absoluto).
 - ❌ **Nunca escribes** en la planeadora. Si el plan necesita cambio, lo anotas en tu
@@ -19,13 +19,19 @@
 
 ## Qué es esta app
 
-**Velo** — *"Velo para entregar. Desvelo para recuperar."* La **aduana de datos** del usuario:
+**Velo** — _"Velo para entregar. Desvelo para recuperar."_ La **aduana de datos** del usuario:
 anonimiza y **des-anonimiza** datos tabulares (CSV/Excel, ≤500k filas) antes de entregarlos a
 IAs no confiables, herramientas cloud y terceros — con transformaciones **100% deterministas**
 y el ciclo completo de ida y vuelta (el tercero procesa; Velo restaura la consistencia
 original con la bóveda local). Contrato de alcance: `portafolio/anonimizador/VISION.md`
-(planeadora, aprobada 2026-08-09 — 22 funcionalidades). Sprint 001: "El diagnóstico" (modo
-auditoría end-to-end; en S1 NO se transforma nada).
+(planeadora, aprobada 2026-08-09 — 22 funcionalidades).
+
+**Estado: ciclo H1 entregado (S001–S004, cerrado el 2026-08-15).** Velo **ve** (S1: diagnóstico
+y riesgo exacto), **transforma** (S2: técnicas, política, k-anonimato), **devuelve** (S3: bóveda
+cifrada y restauración por valor) y **deja constancia** (S4: certificado con las dos huellas,
+bitácora cifrada, riesgo poblacional estimado). Cinco rutas: `/` · `/diagnostico` ·
+`/transformar` · `/regreso` · `/bitacora`. Las 14 funcionalidades del MVP personal están en
+`main`. El as-built de la infraestructura vive en `docs/BLUEPRINT.html`.
 
 **La tesis del producto:** el mercado hace la mitad del viaje (micro-tools unidireccionales o
 enterprise inaccesible); Velo es la única herramienta 100%-navegador con round-trip,
@@ -37,8 +43,8 @@ precisión determinista es el lujo**.
 1. **CERO IA generativa — para siempre en el runtime.** Ni SDKs de LLM, ni llamadas a APIs de
    IA, ni "solo para esta feature". Es LA propuesta de valor (reproducible = auditable), no
    una limitación. Se blinda con **gate anti-IA en CI** (check que falla si un SDK de LLM
-   aparece en `package.json`). ADR-001 lo documenta. *(La IA como herramienta de DESARROLLO
-   —tú, Claude Code— está bien; en el producto, jamás.)*
+   aparece en `package.json`). ADR-001 lo documenta. _(La IA como herramienta de DESARROLLO
+   —tú, Claude Code— está bien; en el producto, jamás.)_
 2. **Los datos del usuario JAMÁS salen del navegador.** Ni red, ni logs, ni Sentry (los
    eventos no pueden contener valores de celdas NI nombres de columnas), ni almacenamiento
    persistente por defecto (el vault cifrado del S3 será la ÚNICA excepción, con acción
@@ -114,8 +120,8 @@ sprints/ · decisions/
 6. **Secrets solo en `.env.local`/Vercel.** Doble cinturón gitleaks (hook pre-commit +
    PreToolUse). **Carnada canónica verificada (viaja PARTIDA aquí):** ármala concatenando
    `AWS_ACCESS_KEY_ID=` + `AKIAQ7RTZ4PX` + `KM2WNB3S` SOLO en el archivo de prueba del hook.
-   *(Nota: en esta app casi no hay secrets — no hay APIs; el cinturón protege igual contra
-   accidentes, p. ej. un archivo real del usuario.)*
+   _(Nota: en esta app casi no hay secrets — no hay APIs; el cinturón protege igual contra
+   accidentes, p. ej. un archivo real del usuario.)_
 7. **Presupuesto de esfuerzo:** ~12 pasos por pantalla; si lo excedes, simplifica o consulta.
 8. **Manual de uso vivo** (`docs/MANUAL-DE-USO.md`): toda feature en `main` queda documentada
    en el mismo sprint, en español llano.
@@ -125,16 +131,16 @@ sprints/ · decisions/
    (método v1.11.0: bloques leídos como imagen, animaciones cuadro a cuadro) + checklist +
    gate visual del usuario sobre la preview.
 10. **Guía de prueba viva y ACUMULATIVA** (`docs/GUIA-DE-PRUEBA.html`, plantilla kit v1.10.0):
-   bola de nieve, origen por línea, filtros, gate mínimo ⭐ (solo lo no-automatizable),
-   "Empieza en:" por bloque, acumulados con punto de partida, localStorage versionado por
-   sprint, kit de prueba enlazado.
+    bola de nieve, origen por línea, filtros, gate mínimo ⭐ (solo lo no-automatizable),
+    "Empieza en:" por bloque, acumulados con punto de partida, localStorage versionado por
+    sprint, kit de prueba enlazado.
 11. **PROHIBIDO entregar por artifacts** — todo entregable es archivo del repo (HTML
-   autocontenido o MD).
+    autocontenido o MD).
 12. **Brochure vivo** (`docs/BROCHURE.html` + `/conoce`, molde v2): se PRODUCE (storyboard con
-   clímax aprobado antes del HTML + banco de técnicas del kit) — entregable del cierre de
-   ciclo (S3), anclado al design-system de esta app.
+    clímax aprobado antes del HTML + banco de técnicas del kit) — entregable del cierre de
+    ciclo (S3), anclado al design-system de esta app.
 13. **Última milla** (método v1.11.0): todo link de producción se prueba DESDE AFUERA, SIN
-   sesión (curl/incógnito); dominio + protección de deployment documentados en el BLUEPRINT.
+    sesión (curl/incógnito); dominio + protección de deployment documentados en el BLUEPRINT.
 
 ## Estándares (los 6+1, gates en CI)
 
