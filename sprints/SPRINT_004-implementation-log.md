@@ -544,3 +544,121 @@ tarea larga.
   manual**, y la sección lo dice con esas palabras.
 - El manual gana dos secciones nuevas (el riesgo estimado y la bitácora) y su cabecera deja de decir
   «Sprint 002».
+
+---
+
+## Fase 5 — Los dos cierres de ciclo
+
+### La comprobación que iba primero, y por qué el plan la puso ahí
+
+El riesgo 7 decía: *«`/design-sync` es el único paso que sale del repo y necesita sesión de
+claude.ai. Esta sesión ya reportó conectores sin autorizar»*, con la mitigación de comprobar la
+conexión **al empezar la fase, no al final** — para no gastarla y descubrir el bloqueo con el trabajo
+hecho.
+
+Comprobada de primero: la conexión responde y devuelve **seis proyectos de diseño**, todos del
+usuario. **Ninguno es de Velo** — el dato que cambia la fase: `/design-sync` aquí **crea** el
+proyecto, no actualiza uno existente.
+
+Y la alarma de conectores era otra cosa. El aviso de esta sesión es de `claude.ai Google Drive`, un
+conector distinto que Velo no usa para nada. **El riesgo 7 estaba correctamente identificado y
+resultó no aplicar** — que es un desenlace distinto de «no existía»: la comprobación era barata y la
+alternativa era enterarse al final.
+
+### El BLUEPRINT se escribió consultando, no recordando
+
+`docs/BLUEPRINT.html`, desde `docs/BLUEPRINT.plantilla.html`. La regla de la plantilla —*«se escribe
+con lo DESPLEGADO de verdad, no con lo planeado»*— se tomó literalmente: **ninguna casilla salió de
+la memoria de este sprint ni de lo que dicen el CLAUDE.md o el README.** Cada una salió de preguntarle
+al servicio.
+
+| Afirmación del blueprint         | De dónde salió                                                                     |
+| -------------------------------- | ---------------------------------------------------------------------------------- |
+| Ruleset y sus 4 checks           | `gh api repos/:owner/:repo/rulesets/20613936` — y hay 3 reglas más de las que sabía |
+| Duración real de cada job de CI  | `gh api .../actions/runs/<id>/jobs` sobre la última corrida: 0 · 1 · 3 · 3 min      |
+| Protección de deployment apagada | `curl` sin sesión: producción **200**, preview del último commit **200**            |
+| Región del edge                  | cabecera `x-vercel-id: iad1::…` de la respuesta de producción                       |
+| Sentry sin DSN                   | el HTML de producción no contiene ninguno — verificado, no supuesto                 |
+| Doble cinturón gitleaks          | `githooks/pre-commit` + `git config core.hooksPath` — existe y está activo          |
+
+Las dos últimas importan más de lo que parecen. «Sentry está cableado» y «Sentry está reportando»
+son afirmaciones distintas, y un blueprint que las confunda hace creer que hay observabilidad donde
+no la hay. La casilla dice las dos cosas: **el cliente está integrado con un sanitizador más duro que
+el del kit, y hoy está inerte porque no hay DSN.**
+
+### Lo que el blueprint obligó a mirar y nadie había mirado en cuatro sprints
+
+- **El plan Hobby de Vercel no permite uso comercial.** Velo no cobra hoy, así que no hay
+  incumplimiento — pero la casilla estaba vacía y ahora dice que el día que cobre hay que pasar a
+  Pro. Es exactamente la clase de dato que se descubre tarde y caro.
+- **El punto único de falla de Velo no es la infraestructura.** La plantilla pregunta «¿cuál es y qué
+  lo mitiga?» esperando 2FA y backups. La respuesta honesta de esta app es otra: **si Vercel y GitHub
+  desaparecieran mañana no se pierde ni un dato**, porque Velo no custodia ninguno y el repo es
+  público y clonable. El punto único de falla real es **la frase de paso del usuario**, y **no tiene
+  mitigación técnica — tenerla sería el agujero**. La mitigación es de producto: la interfaz lo
+  advierte antes de cifrar. Se escribió así, con esas palabras.
+
+### El defecto que solo aparece dibujando
+
+El SVG salió del primer intento **válido, autocontenido y con cinco textos saliéndose de su caja**:
+el título de GitHub desbordando por ambos lados, la etiqueta «4 checks → deploy» pisando el borde de
+Vercel, «recibe el resultado» y «abres con tu frase» metiéndose dentro de las cajas vecinas, y la
+línea de Web Crypto rebasando su recuadro interior.
+
+Ninguna herramienta iba a decirlo. El HTML era correcto, no había peticiones externas y el documento
+abría sin internet — los tres criterios que el plan pedía verificar. **Un diagrama as-built con las
+etiquetas cortadas miente por omisión igual que una lista desactualizada**, y la única forma de verlo
+fue la misma de la Fase 4: renderizar y mirar. Se corrigieron los cinco y se volvió a mirar.
+
+### §4 — una tercera promesa aplazada, en el sitio que ninguna fase toca
+
+`.env.example:10` decía: *«El proveedor LLM y sus keys se añaden en el sprint que active IA (ver su
+ADR)»*. Heredada de la plantilla del kit.
+
+Es la **tercera forma** de promesa aplazada de este sprint, y la primera con una propiedad que las
+otras dos no tienen: **no caduca en un sprint — es falsa para siempre.** La regla dura nº1 veta la IA
+generativa en el runtime PARA SIEMPRE, el ADR-001 lo documenta y `gate-anti-ia` pone el CI en rojo si
+aparece. Un archivo de ejemplo que le reserva sitio a una key que jamás va a existir enseña lo
+contrario de lo que el producto es.
+
+**Ninguna de las dos barridas de la Fase 0 la encontró**, y la razón es el patrón que la orden mandó
+leer antes de planear: *un gate de fase no ve lo que la fase no toca*. Las dos barridas peinaron
+documentos y copy de pantalla; `.env.example` no es ninguna de las dos cosas. Y **ningún sprint del
+ciclo lo abrió jamás**, porque ningún sprint necesitó una variable de entorno: es un archivo que se
+estampó una vez, se lee como andamiaje y nadie vuelve a mirar. Se pagó en esta fase, que es
+justamente la que declara «IA embebida: NINGUNA» en el blueprint — la contradicción quedaba a dos
+párrafos de distancia.
+
+### Desviación del plan — `/design-sync` no lo puede correr el constructor
+
+El plan asignaba a esta fase *«`/design-sync` — el design system consolidado se publica como activo
+estable»*. La skill está marcada **`disable-model-invocation`**: reservada a invocación explícita del
+usuario, y con instrucción expresa de **no replicar su flujo por otros medios**.
+
+Así que la fase entrega lo que sí le corresponde y deja el resto en manos del usuario, sin
+simularlo:
+
+- ✅ **Conexión comprobada y funcionando** (la mitigación del riesgo 7, que era el trabajo real
+  asignado a esta fase).
+- ✅ **Destino identificado:** no existe proyecto de Velo → el comando **crea** uno nuevo.
+- ✅ **Fuente lista:** `design-system.md`, 241 líneas, 7 secciones — personalidad, tokens,
+  componentes canon, los cinco estados, la regla de cómo se presenta un número, anti-patrones
+  vetados y el gate de revisión.
+- ⏸ **Pendiente del usuario:** correr `/design-sync`. **El cierre del ciclo queda condicionado a
+  eso**, y así se declarará en el summary — no como hecho.
+
+### Verificación de la Fase 5
+
+| Criterio del plan                              | Resultado                                                                     |
+| ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| El BLUEPRINT abre **sin internet**             | ✅ renderizado con `offline: true`: **0 peticiones externas, 0 fallos**        |
+| Con su SVG dentro                              | ✅ embebido en el documento; el único `url()` es `url(#punta)`, interno        |
+| Autocontenido                                  | ✅ cero `<script>`, `<link>`, `<img>`, `@import`; los 5 `href` son navegación  |
+| Declara dominio                                | ✅ subdominio del hosting, sin DNS de terceros, con dónde se administra        |
+| Declara protección de deployment               | ✅ apagada en prod **y** previews, verificado desde afuera y sin sesión        |
+| Costo real desglosado                          | ✅ US$0,00, con el límite de cada free tier y el margen real                   |
+| Punto único de falla con su mitigación         | ✅ la frase de paso del usuario — y por qué no puede tener mitigación técnica  |
+| Tabla completa, incluidas las casillas vacías  | ✅ 14 filas; las 6 que dicen NINGUNO/NO APLICA llevan su razón, no un guion    |
+| Legible en los dos temas                       | ✅ claro y oscuro, revisados como imagen                                       |
+| `/design-sync` corrido                         | ⏸ **lo corre el usuario** — ver la desviación de arriba                       |
+| `pnpm typecheck` · `pnpm lint` · `pnpm test`   | ✅ limpios, **724 verdes, 1 saltada** (la fase no tocó código de producto)     |
