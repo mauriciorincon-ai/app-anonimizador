@@ -25,6 +25,7 @@
 import { useId, useState } from "react";
 
 import { Boton } from "@/components/boton";
+import { IconoBarras, IconoEquis } from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import type {
   CifraEstimada,
@@ -69,7 +70,10 @@ export function RiesgoEstimadoEnPantalla({
       }
     >
       <div>
-        <label htmlFor={idDePoblacion} className="text-tinta text-[0.9375rem]">
+        <label
+          htmlFor={idDePoblacion}
+          className="text-tinta block text-[0.9375rem]"
+        >
           ¿De cuántas personas salió este archivo? (opcional)
         </label>
         <div className="mt-2 flex flex-wrap items-start gap-3">
@@ -90,6 +94,7 @@ export function RiesgoEstimadoEnPantalla({
             disabled={invalido}
             onClick={() => onDeclarar(invalido ? null : valor)}
           >
+            {valor === null ? <IconoEquis /> : <IconoBarras />}
             {valor === null ? "Quitar la estimación" : "Estimar"}
           </Boton>
         </div>

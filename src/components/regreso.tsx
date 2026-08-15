@@ -21,6 +21,16 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 
 import { Boton, clasesDeBoton } from "@/components/boton";
+import {
+  IconoAbrir,
+  IconoArchivador,
+  IconoAtras,
+  IconoDescargar,
+  IconoDocumento,
+  IconoReiniciar,
+  IconoTabla,
+  IconoVolver,
+} from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import { MarcaDeSello } from "@/components/sello";
 import { numero, porcentaje } from "@/lib/formato";
@@ -108,6 +118,7 @@ export function Regreso() {
           className={clasesDeBoton("discreto")}
           onClick={descartarRegreso}
         >
+          <IconoReiniciar />
           Empezar de nuevo
         </button>
         <p className="text-tinta-tenue mt-3 max-w-prose text-[0.8125rem] leading-relaxed">
@@ -193,6 +204,7 @@ function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
           variante="discreto"
           onClick={() => entrada.current?.click()}
         >
+          <IconoArchivador />
           Elegir la bóveda
         </Boton>
         <input
@@ -220,7 +232,7 @@ function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
       <div className="mt-5">
         <label
           htmlFor="frase-de-la-boveda"
-          className="text-tinta text-[0.9375rem]"
+          className="text-tinta block text-[0.9375rem]"
         >
           Frase de paso de la bóveda
         </label>
@@ -246,6 +258,7 @@ function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
             setFrase("");
           }}
         >
+          <IconoAbrir />
           {abriendo ? "Abriendo…" : "Abrir la bóveda"}
         </Boton>
         {abriendo ? (
@@ -289,6 +302,7 @@ function PanelDelDevuelto({ estado }: { estado: EstadoDelRegreso }) {
           variante="discreto"
           onClick={() => entrada.current?.click()}
         >
+          <IconoTabla />
           Elegir el archivo devuelto
         </Boton>
         <input
@@ -387,6 +401,7 @@ function PanelDeConfirmacion({ estado }: { estado: EstadoDelRegreso }) {
 
       <div className="mt-5">
         <Boton type="button" disabled={restaurando} onClick={restaurarAhora}>
+          <IconoVolver />
           {restaurando ? "Restaurando…" : "Restaurar los valores originales"}
         </Boton>
       </div>
@@ -550,6 +565,7 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
             download={estado.archivo.nombre}
             className={clasesDeBoton("principal")}
           >
+            <IconoDescargar />
             Guardar el archivo restaurado
           </a>
         ) : (
@@ -558,6 +574,7 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
             disabled={preparando}
             onClick={prepararRestaurado}
           >
+            <IconoDocumento />
             {preparando ? "Preparando…" : "Preparar el archivo restaurado"}
           </Boton>
         )}
@@ -568,6 +585,7 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
             download={estado.informe.nombre}
             className={clasesDeBoton("discreto")}
           >
+            <IconoDescargar />
             Guardar el informe
           </a>
         ) : (
@@ -585,6 +603,7 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
               )
             }
           >
+            <IconoDocumento />
             Preparar el informe
           </Boton>
         )}
@@ -598,6 +617,7 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
 
       <div className="border-borde mt-5 border-t pt-4">
         <Link href="/" className={clasesDeBoton("discreto")}>
+          <IconoAtras />
           Volver a la aduana
         </Link>
       </div>

@@ -36,7 +36,7 @@ export default function PaginaDeBitacora() {
       <h1 className="font-display text-tinta mt-2 text-[clamp(1.75rem,5vw,2.25rem)] leading-tight font-semibold text-balance">
         Qué has tratado, y cuándo
       </h1>
-      <p className="text-tinta-suave mt-3 max-w-prose leading-relaxed text-pretty">
+      <p className="text-tinta-suave mt-3 leading-relaxed text-pretty">
         Tu historial de tratamientos, en un archivo cifrado que guardas tú: qué
         anonimizaste, cuándo, con qué política y con qué riesgo resultante. Va
         cifrado porque el nombre de un archivo ya cuenta de qué va su contenido.

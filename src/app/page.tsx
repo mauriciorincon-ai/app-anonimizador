@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { clasesDeBoton } from "@/components/boton";
+import { IconoCuaderno, IconoVolver } from "@/components/iconos";
 import { Sello } from "@/components/sello";
 import { ZonaDeCarga } from "@/components/zona-de-carga";
 import { analizar, descartar, useSesion } from "@/lib/sesion";
@@ -55,7 +56,7 @@ export default function Aduana() {
   }, [estado.fase, router]);
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12 sm:py-16">
+    <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12 sm:py-16">
       <h1 className="font-display text-tinta text-[clamp(1.875rem,5vw,2.75rem)] leading-[1.1] font-semibold text-balance">
         Mira tu tabla como la vería un extraño
       </h1>
@@ -113,7 +114,7 @@ export default function Aduana() {
         <h2 id="el-regreso" className="etiqueta">
           Y semanas después
         </h2>
-        <p className="text-tinta-suave mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-pretty">
+        <p className="text-tinta-suave mt-2 text-[0.9375rem] leading-relaxed text-pretty">
           Cuando el tercero te devuelva el archivo trabajado, Velo{" "}
           <strong className="text-tinta font-medium">
             pone los valores originales de vuelta
@@ -124,6 +125,7 @@ export default function Aduana() {
           vuelve.
         </p>
         <Link href="/regreso" className={`${clasesDeBoton("discreto")} mt-4`}>
+          <IconoVolver />
           Ya tengo mi bóveda y el archivo devuelto
         </Link>
       </section>
@@ -140,7 +142,7 @@ export default function Aduana() {
         <h2 id="la-bitacora" className="etiqueta">
           Y meses después
         </h2>
-        <p className="text-tinta-suave mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-pretty">
+        <p className="text-tinta-suave mt-2 text-[0.9375rem] leading-relaxed text-pretty">
           Cuando alguien te pregunte{" "}
           <strong className="text-tinta font-medium">
             qué entregaste y con qué criterio
@@ -151,6 +153,7 @@ export default function Aduana() {
           contenido.
         </p>
         <Link href="/bitacora" className={`${clasesDeBoton("discreto")} mt-4`}>
+          <IconoCuaderno />
           Abrir mi bitácora
         </Link>
       </section>

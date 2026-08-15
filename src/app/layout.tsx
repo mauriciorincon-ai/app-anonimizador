@@ -51,7 +51,7 @@ export const metadata: Metadata = {
 function Encabezado() {
   return (
     <header className="border-borde bg-papel/85 sticky top-0 z-10 border-b backdrop-blur-sm">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-3">
+      <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-6 py-3">
         <Link
           href="/"
           className="font-display text-tinta text-xl leading-none font-semibold tracking-tight"
@@ -67,7 +67,7 @@ function Encabezado() {
 function Pie() {
   return (
     <footer className="border-borde text-tinta-tenue mt-16 border-t">
-      <div className="mx-auto w-full max-w-6xl px-6 py-6 text-[0.8125rem] leading-relaxed">
+      <div className="mx-auto w-full max-w-4xl px-6 py-6 text-[0.8125rem] leading-relaxed">
         <p className="text-tinta-suave font-medium">
           Velo para entregar. Desvelo para recuperar.
         </p>

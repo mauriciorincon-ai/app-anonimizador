@@ -22,6 +22,7 @@
 import { useId, useRef, useState } from "react";
 
 import { Boton } from "@/components/boton";
+import { IconoExportar, IconoImportar } from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import type { HallazgoDeColumna } from "@/engine/clasificador";
 import {
@@ -294,6 +295,7 @@ export function EditorDePolitica({
           </Boton>
         ))}
         <Boton type="button" variante="discreto" onClick={exportar}>
+          <IconoExportar />
           Exportar
         </Boton>
         <Boton
@@ -301,6 +303,7 @@ export function EditorDePolitica({
           variante="discreto"
           onClick={() => entrada.current?.click()}
         >
+          <IconoImportar />
           Importar
         </Boton>
         <input

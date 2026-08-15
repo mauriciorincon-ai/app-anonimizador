@@ -22,6 +22,12 @@
 import { useId, useState } from "react";
 
 import { Boton, clasesDeBoton } from "@/components/boton";
+import {
+  IconoAbrir,
+  IconoDescargar,
+  IconoEquis,
+  IconoMas,
+} from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import { MarcaDeSello } from "@/components/sello";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
@@ -87,6 +93,7 @@ export function Bitacora() {
             download={estado.guardado.nombre}
             className={`${clasesDeBoton("principal")} mt-4`}
           >
+            <IconoDescargar />
             Guardar la bitácora
           </a>
         </Panel>
@@ -137,6 +144,7 @@ function Anotacion({
           download={guardado.nombre}
           className={clasesDeBoton("principal")}
         >
+          <IconoDescargar />
           Guardar la bitácora
         </a>
         <p className="text-tinta-suave mt-3 text-[0.875rem] leading-relaxed">
@@ -173,7 +181,10 @@ function Anotacion({
       <ResumenDeEntrada entrada={entrada} />
 
       <div className="mt-5">
-        <label htmlFor={idDeFrase} className="text-tinta text-[0.9375rem]">
+        <label
+          htmlFor={idDeFrase}
+          className="text-tinta block text-[0.9375rem]"
+        >
           {primera
             ? "Elige la frase de paso de tu bitácora"
             : "Frase de paso de tu bitácora"}
@@ -214,6 +225,7 @@ function Anotacion({
             setFrase("");
           }}
         >
+          <IconoMas />
           {sellando
             ? "Cifrando…"
             : primera
@@ -221,6 +233,7 @@ function Anotacion({
               : "Añadir y cifrar"}
         </Boton>
         <Boton type="button" variante="discreto" onClick={descartarAnotacion}>
+          <IconoEquis />
           Descartar la anotación
         </Boton>
         {sellando ? (
@@ -271,7 +284,10 @@ function Apertura({
       />
 
       <div className="mt-4">
-        <label htmlFor={idDeFrase} className="text-tinta text-[0.9375rem]">
+        <label
+          htmlFor={idDeFrase}
+          className="text-tinta block text-[0.9375rem]"
+        >
           Frase de paso
         </label>
         <input
@@ -295,6 +311,7 @@ function Apertura({
             setFrase("");
           }}
         >
+          <IconoAbrir />
           {abriendo ? "Descifrando…" : "Abrir la bitácora"}
         </Boton>
         {abriendo ? (
@@ -397,6 +414,7 @@ function Entradas({
           className="mt-4"
           onClick={cerrarBitacora}
         >
+          <IconoEquis />
           Cerrar la bitácora
         </Boton>
       </div>

@@ -21,6 +21,7 @@
 
 import { useState } from "react";
 
+import { IconoCertificado, IconoEquis, IconoOjo } from "@/components/iconos";
 import { Boton } from "@/components/boton";
 import { Panel } from "@/components/panel";
 import {
@@ -182,6 +183,7 @@ export function DescargaDelCertificado({
 
       <div className="mt-5 flex flex-wrap gap-3">
         <Boton type="button" onClick={descargar}>
+          <IconoCertificado />
           {esCertificado ? "Descargar el certificado" : "Descargar el reporte"}
         </Boton>
         <Boton
@@ -192,6 +194,7 @@ export function DescargaDelCertificado({
             setVistaPrevia((actual) => (actual === null ? generar() : null))
           }
         >
+          {vistaPrevia === null ? <IconoOjo /> : <IconoEquis />}
           {vistaPrevia === null ? "Ver antes de descargar" : "Cerrar la vista"}
         </Boton>
       </div>

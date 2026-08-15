@@ -187,6 +187,17 @@ un componente nuevo puede dar por hechas.
 | **Insignia**      | `components/insignias.tsx`     | Categoría de la Ley 1581 y nivel de certeza. Color + texto, siempre los dos.                                                     |
 | **Panel**         | `components/panel.tsx`         | Contenedor de sección con título y nota al pie opcional. **La nota se pinta en el PIE** — nunca escribas en ella «lo de arriba». |
 | **Botón**         | `components/boton.tsx`         | Variantes `principal` (acento sólido) y `discreto` (borde). Una sola acción principal por pantalla.                              |
+| **Iconos**        | `components/iconos.tsx`        | Trazo de 1,5 sobre rejilla de 24, `currentColor`, tamaño en `em`. **Todo botón lleva el suyo**, siempre `aria-hidden`.           |
+
+**Las tres reglas del icono**, que salen del § 6 y no del gusto:
+
+1. **Ni candado, ni escudo, ni llave** — vetados. Donde la acción es cifrar, el icono nombra **lo
+   que el usuario hace** (añadir, guardar), no la criptografía que ocurre debajo.
+2. **Nada que sugiera subida ni nube.** «Subir un archivo» es precisamente lo que Velo NO hace: una
+   flecha hacia una nube contaría una mentira sobre el producto en el primer botón que se ve.
+3. **El texto nunca se va.** El icono es redundancia útil para reconocer la acción de un vistazo;
+   un icono solo, sin etiqueta, es un jeroglífico. Por eso van `aria-hidden`: el lector de pantalla
+   ya lee la etiqueta, y oírla dos veces es peor que no ver el dibujo.
 
 **Los compuestos son de su pantalla y no se reutilizan fuera de ella.** Cada uno conoce su dominio;
 sacarlo de contexto obliga a generalizarlo y ahí es donde se pierde la voz de la app.

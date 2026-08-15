@@ -16,6 +16,7 @@
 
 import { Boton } from "@/components/boton";
 import { Panel } from "@/components/panel";
+import { IconoDescargar, IconoDocumento } from "@/components/iconos";
 import { bytes as enBytes, numero } from "@/lib/formato";
 import type { AsaDeArchivo } from "@/lib/sesion";
 
@@ -82,6 +83,7 @@ export function DescargaDelArchivo({
       <div className="mt-5 flex flex-wrap items-center gap-3">
         {archivo === null ? (
           <Boton type="button" disabled={preparando} onClick={onPreparar}>
+            <IconoDocumento />
             {preparando ? "Escribiendo el archivo…" : "Preparar el archivo"}
           </Boton>
         ) : (
@@ -91,6 +93,7 @@ export function DescargaDelArchivo({
               download={archivo.nombre}
               className="rounded-1 bg-acento text-papel shadow-1 inline-flex items-center gap-2 px-5 py-2.5 text-[0.9375rem] font-medium"
             >
+              <IconoDescargar />
               Guardar {archivo.nombre}
             </a>
             <p className="text-tinta-tenue text-[0.875rem]">

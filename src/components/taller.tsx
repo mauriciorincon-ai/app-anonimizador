@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
+import { IconoAtras, IconoTransformar } from "@/components/iconos";
 import { BalanceEnPantalla } from "@/components/balance-en-pantalla";
 import { BovedaDelTratamiento } from "@/components/boveda-del-tratamiento";
 import { clasesDeBoton, Boton } from "@/components/boton";
@@ -143,6 +144,7 @@ export function Taller({ informe }: { informe: Informe }) {
             disabled={!puedeTransformar}
             onClick={() => transformar(politica)}
           >
+            <IconoTransformar />
             {taller.transformacion.fase === "transformando"
               ? "Transformando…"
               : "Transformar"}
@@ -270,6 +272,7 @@ export function Taller({ informe }: { informe: Informe }) {
           className={clasesDeBoton("discreto")}
           onClick={() => router.push("/diagnostico")}
         >
+          <IconoAtras />
           Volver al diagnóstico
         </button>
       </div>

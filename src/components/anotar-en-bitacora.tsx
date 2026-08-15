@@ -18,6 +18,7 @@
 import { useRouter } from "next/navigation";
 
 import { Boton } from "@/components/boton";
+import { IconoCuaderno } from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
 import { anotarTratamiento } from "@/lib/bitacora";
@@ -74,6 +75,7 @@ export function AnotarEnBitacora({ entrada }: { entrada: EntradaSinFecha }) {
           router.push("/bitacora");
         }}
       >
+        <IconoCuaderno />
         Anotar en mi bitácora
       </Boton>
 

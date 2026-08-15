@@ -21,6 +21,11 @@ import { useId, useState } from "react";
 import Link from "next/link";
 
 import { Boton, clasesDeBoton } from "@/components/boton";
+import {
+  IconoArchivador,
+  IconoDescargar,
+  IconoVolver,
+} from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import { numero } from "@/lib/formato";
 import type { AsaDeArchivo, EstadoDeBoveda } from "@/lib/sesion";
@@ -62,6 +67,7 @@ export function BovedaDelTratamiento({
           download={archivo.nombre}
           className={clasesDeBoton("principal")}
         >
+          <IconoDescargar />
           Guardar la bóveda
         </a>
         <p className="text-tinta-suave mt-3 text-[0.875rem] leading-relaxed">
@@ -85,6 +91,7 @@ export function BovedaDelTratamiento({
             su frase.
           </p>
           <Link href="/regreso" className={`${clasesDeBoton("discreto")} mt-3`}>
+            <IconoVolver />
             Ir al regreso
           </Link>
         </div>
@@ -134,7 +141,10 @@ export function BovedaDelTratamiento({
       </ul>
 
       <div className="mt-5">
-        <label htmlFor={idDeFrase} className="text-tinta text-[0.9375rem]">
+        <label
+          htmlFor={idDeFrase}
+          className="text-tinta block text-[0.9375rem]"
+        >
           Frase de paso de la bóveda
         </label>
         <input
@@ -164,6 +174,7 @@ export function BovedaDelTratamiento({
             setFrase("");
           }}
         >
+          <IconoArchivador />
           {sellando ? "Cifrando la bóveda…" : "Cifrar y preparar la bóveda"}
         </Boton>
         {sellando ? (
