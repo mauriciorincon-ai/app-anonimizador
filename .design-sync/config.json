@@ -1,0 +1,52 @@
+{
+  "projectId": "39b159c1-f84c-4a06-8f1a-41b400bd8f23",
+  "shape": "package",
+  "pkg": "app-anonimizador",
+  "globalName": "Velo",
+  "srcDir": "src/components",
+  "cssEntry": "ds-styles/velo.css",
+  "extraFonts": ["ds-styles/fonts/velo-fonts.css"],
+  "docsDir": "../../.design-sync/docs",
+  "docsMap": {
+    "IconoTabla": "../../.design-sync/docs/iconos.md",
+    "IconoLupa": "../../.design-sync/docs/iconos.md",
+    "IconoDescargar": "../../.design-sync/docs/iconos.md",
+    "IconoOjo": "../../.design-sync/docs/iconos.md",
+    "IconoTransformar": "../../.design-sync/docs/iconos.md",
+    "IconoVolver": "../../.design-sync/docs/iconos.md",
+    "IconoAtras": "../../.design-sync/docs/iconos.md",
+    "IconoAdelante": "../../.design-sync/docs/iconos.md",
+    "IconoCuaderno": "../../.design-sync/docs/iconos.md",
+    "IconoArchivador": "../../.design-sync/docs/iconos.md",
+    "IconoMas": "../../.design-sync/docs/iconos.md",
+    "IconoEquis": "../../.design-sync/docs/iconos.md",
+    "IconoExportar": "../../.design-sync/docs/iconos.md",
+    "IconoImportar": "../../.design-sync/docs/iconos.md",
+    "IconoBarras": "../../.design-sync/docs/iconos.md",
+    "IconoReiniciar": "../../.design-sync/docs/iconos.md",
+    "IconoAbrir": "../../.design-sync/docs/iconos.md",
+    "IconoDocumento": "../../.design-sync/docs/iconos.md",
+    "IconoCertificado": "../../.design-sync/docs/iconos.md"
+  },
+  "overrides": {
+    "Boton": {
+      "cardMode": "column"
+    },
+    "Panel": {
+      "cardMode": "column"
+    },
+    "Sello": {
+      "cardMode": "column"
+    },
+    "ZonaDeCarga": {
+      "cardMode": "column"
+    },
+    "MarcaDeSello": {
+      "cardMode": "column"
+    },
+    "InsigniaDeCerteza": {
+      "cardMode": "column"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}
