@@ -264,6 +264,20 @@
         white-space: nowrap;
         margin-left: 4px;
       }
+      /* GATE CORTO ⭐⭐ — el subconjunto de las ⭐ que NINGUNA automatización puede juzgar.
+     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 26 ⭐ incluyen
+     comprobaciones que una máquina SÍ puede hacer y que están en el gate para que el usuario las
+     haga con SUS herramientas (recalcular una huella, mirar la pestaña Red). Esas se quedan fuera
+     del corto a propósito, porque el CI ya las cubre por otro camino. Lo que queda son las seis
+     donde el veredicto es humano por definición: comprensión, jerarquía, honestidad percibida y
+     cohesión. Si el gate largo no se corre nunca, estas seis son lo único que se pierde de verdad. */
+      .esencial {
+        font-size: 0.75rem;
+        white-space: nowrap;
+        margin-left: 4px;
+        color: var(--acento);
+        font-weight: 600;
+      }
 
       /* MODO RECORRIDO — solo con el filtro ⭐ activo.
      El gate del ciclo son 26 pruebas repartidas por 20 bloques que nacieron en cuatro sprints
@@ -385,23 +399,33 @@
           regresión sin correr no está probada.
         </p>
         <p class="chica">
-          <strong>Gate mínimo ⭐ del CICLO H1: 26 pruebas · ~90 min.</strong>
-          Este es <strong>el gate, y se corre ahora</strong>: los cuatro sprints
-          difirieron su ⭐ al cierre del ciclo, y el ciclo cierra aquí. No se
-          difiere otra vez. El filtro ⭐ de abajo muestra el
-          <strong>acumulado completo</strong> —8 del S1, 6 del S2, 8 del S3 y 4
-          del S4— presentado como <strong>un solo recorrido numerado</strong>,
-          no como cuatro listas pegadas. Es lo único que ninguna automatización
-          puede verificar: juicio humano sobre el diseño y el lenguaje, y las
-          comprobaciones que solo valen si las haces tú con tus propias
-          herramientas (recalcular la huella SHA-256 con tu propio comando, el
-          documento abierto sin internet, el archivo tratado abierto en tu hoja
-          de cálculo, el archivo devuelto que maltratas tú mismo, y ahora
-          <strong>cerrar el navegador entero</strong> para comprobar que la
-          bitácora sobrevive). Todo lo demás lo respalda la CI —<strong
-            >724 pruebas unitarias, 117 e2e</strong
-          >, axe en dos temas y dos tamaños, Lighthouse ≥90 en las 4 categorías
-          de las <strong>cinco rutas</strong>— y se corre en pases completos.
+          <strong>Dos gates, y el corto existe para que el largo no gane</strong
+          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 26 pruebas · ~90
+          min: el acumulado completo —8 del S1, 6 del S2, 8 del S3 y 4 del S4—
+          como <strong>un solo recorrido numerado</strong>, no como cuatro
+          listas pegadas. El
+          <strong>Gate corto ⭐⭐ son 6 paradas · ~20 min</strong>: el
+          subconjunto donde el veredicto <strong>solo puede ser humano</strong>
+          —si Velo se entiende, si sus cifras exactas se distinguen de las
+          estimadas, si la decisión irreversible se comprende al tomarla, y si
+          las cinco pantallas se sienten la misma app—.
+        </p>
+        <p class="chica">
+          <strong>Por qué hay un gate corto.</strong> El del ciclo se difirió
+          cuatro sprints seguidos y al cerrar el H1 quedó
+          <strong>aplazado indefinidamente</strong> por decisión del usuario
+          —hay otras apps en curso—. Un gate que nunca se corre no protege nada,
+          y un gate de 90 minutos compite con el resto de la vida. El corto no
+          lo reemplaza ni lo cancela: es <strong>el piso</strong>, lo que se
+          pierde de verdad si el largo no ocurre nunca. Las 20 pruebas que deja
+          fuera <strong>no se borran</strong> —siguen enteras en el filtro ⭐— y
+          son en su mayoría <em>compruébalo tú</em>: valiosas para que la
+          confianza sea tuya, pero <strong>ya verificadas por la CI</strong> por
+          otro camino (recalcular la huella, la pestaña Red, el reporte sin
+          wifi, el <code>.velo</code> ilegible). Todo eso lo respalda la CI
+          —<strong>732 pruebas unitarias, 117 e2e</strong>, axe en dos temas y
+          dos tamaños, Lighthouse ≥90 en las 4 categorías de las
+          <strong>cinco rutas</strong>— y se corre en pases completos.
         </p>
         <p class="chica">
           <strong
@@ -487,11 +511,12 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           <button type="button" data-filtro="minimo">
             Gate mínimo ⭐ del ciclo
           </button>
+          <button type="button" data-filtro="esencial">Gate corto ⭐⭐</button>
         </div>
       </div>
 
       <div id="recorrido">
-        <p>
+        <p id="recorrido-largo">
           <strong
             >El recorrido del ciclo H1 —
             <span id="recorrido-total">26</span> paradas · ~90 min.</strong
@@ -500,6 +525,38 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           → el taller → el regreso → la bitácora, y al final el juicio del
           conjunto.
         </p>
+        <div id="recorrido-corto" hidden>
+          <p>
+            <strong
+              >El gate corto — <span id="recorrido-total-corto">6</span> paradas
+              · ~20 min.</strong
+            >
+            Las seis pruebas del gate largo donde
+            <strong>el veredicto es humano por definición</strong>: si esto no
+            se corre nunca, nadie sabrá jamás si Velo se entiende, si sus cifras
+            se distinguen y si las cinco pantallas se sienten la misma app. Un
+            archivo, una pasada, seis paradas.
+          </p>
+          <p class="chica suave">
+            <strong>Lo que deja fuera, y por qué:</strong> las otras 20 ⭐ son
+            en su mayoría <em>compruébalo tú</em> —recalcular la huella SHA-256,
+            mirar la pestaña Red, abrir el <code>.velo</code> con un editor,
+            abrir el reporte sin wifi—. Valen mucho, pero
+            <strong>el CI ya las verifica por otro camino</strong>: están en el
+            gate largo para que la confianza sea tuya y no mía, no porque sean
+            lo único que las descubre. Fuera quedan también las dos de
+            <em>«¿se siente fluido?»</em>, con el presupuesto de tareas largas
+            ya medido en 0. <strong>Ninguna se borra</strong>: siguen en «Gate
+            mínimo ⭐ del ciclo», esperando el día que haya 90 minutos.
+          </p>
+          <p class="chica suave">
+            <strong>La parada 6 se juzga con lo que tengas en pantalla.</strong>
+            Pide recorrer las cinco rutas; en el corto no hace falta cerrar el
+            círculo entero — basta con <em>visitar</em> <code>/regreso</code> y
+            <code>/bitacora</code>, aunque estén vacías, para responder si se
+            sienten la misma app. La versión completa vive en el gate largo.
+          </p>
+        </div>
         <p class="chica suave">
           Cada parada lleva su número y el bloque al que pertenece; el bloque
           dice, justo encima, <strong>dónde empieza</strong>. El chip de origen
@@ -555,14 +612,15 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               <span class="origen origen-heredada">Heredada · S1</span></label
             >
           </li>
-          <li data-origen="heredado" data-minimo>
+          <li data-origen="heredado" data-minimo data-esencial>
             <input type="checkbox" id="a4" /><label for="a4"
               ><strong>Léelo como si no supieras nada de la app.</strong>
               ¿Entiendes en menos de 30 segundos qué hace Velo y por qué
               deberías confiarle un archivo? Si alguna frase te obliga a
               releerla, anótala.
               <span class="origen origen-heredada">Heredada · S1</span>
-              <span class="minimo">⭐ mínimo</span></label
+              <span class="minimo">⭐ mínimo</span
+              ><span class="esencial">⭐⭐ corto</span></label
             >
           </li>
           <li data-origen="heredado">
@@ -1114,7 +1172,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           — lo firma tu ojo, no la CI.
         </p>
         <ul class="pasos">
-          <li data-origen="heredado" data-minimo>
+          <li data-origen="heredado" data-minimo data-esencial>
             <input type="checkbox" id="i1" /><label for="i1"
               ><strong>Los dos temas.</strong> Cambia tu sistema a modo oscuro y
               recorre las dos pantallas; luego a claro. Todo tiene que leerse
@@ -1122,7 +1180,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               ningún borde invisible.
               <strong>La aprobación visual es tuya.</strong>
               <span class="origen origen-heredada">Heredada · S1</span>
-              <span class="minimo">⭐ mínimo</span></label
+              <span class="minimo">⭐ mínimo</span
+              ><span class="esencial">⭐⭐ corto</span></label
             >
           </li>
           <li data-origen="heredado">
@@ -1796,7 +1855,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               <span class="origen origen-heredada">Heredada · S3</span></label
             >
           </li>
-          <li data-origen="heredado" data-minimo>
+          <li data-origen="heredado" data-minimo data-esencial>
             <input type="checkbox" id="r5" /><label for="r5"
               ><strong>Juicio humano — la decisión irreversible.</strong> Ponte
               en el lugar de alguien que llega aquí por primera vez con un
@@ -1806,7 +1865,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               un archivo más y no perderlo? Si tienes que subir a releer algo
               para decidir, anótalo.
               <span class="origen origen-heredada">Heredada · S3</span>
-              <span class="minimo">⭐ mínimo</span></label
+              <span class="minimo">⭐ mínimo</span
+              ><span class="esencial">⭐⭐ corto</span></label
             >
           </li>
         </ul>
@@ -1838,7 +1898,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               <span class="origen origen-heredada">Heredada · S3</span></label
             >
           </li>
-          <li data-origen="heredado" data-minimo>
+          <li data-origen="heredado" data-minimo data-esencial>
             <input type="checkbox" id="s2" /><label for="s2"
               ><strong
                 >Lee los tres avisos del paso 4 antes de escribir nada.</strong
@@ -1850,7 +1910,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               anonimizado. ¿Los tres se entienden a la primera? ¿Alguno suena a
               letra pequeña?
               <span class="origen origen-heredada">Heredada · S3</span>
-              <span class="minimo">⭐ mínimo</span></label
+              <span class="minimo">⭐ mínimo</span
+              ><span class="esencial">⭐⭐ corto</span></label
             >
           </li>
           <li data-origen="heredado">
@@ -2280,7 +2341,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               <span class="origen origen-nuevo">Nuevo · S4</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="nuevo" data-minimo data-esencial>
             <input type="checkbox" id="x3" /><label for="x3"
               ><strong
                 >Léelo como un lector, no como quien lo mandó construir.</strong
@@ -2303,7 +2364,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               fallando en lo único que este sprint no puede fallar, y es un
               hallazgo aunque todo lo demás esté bien.
               <span class="origen origen-nuevo">Nuevo · S4</span>
-              <span class="minimo">⭐ mínimo</span></label
+              <span class="minimo">⭐ mínimo</span
+              ><span class="esencial">⭐⭐ corto</span></label
             >
           </li>
         </ul>
@@ -2405,7 +2467,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           parada: el juicio sobre el conjunto, que es lo que se entrega.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="nuevo" data-minimo data-esencial>
             <input type="checkbox" id="z1" /><label for="z1"
               ><strong
                 >Juicio humano — las cinco pantallas y el ciclo entero.</strong
@@ -2423,7 +2485,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               falta algo para esa respuesta, ese hueco es el hallazgo más
               valioso de todo el gate.
               <span class="origen origen-nuevo">Nuevo · S4</span>
-              <span class="minimo">⭐ mínimo</span></label
+              <span class="minimo">⭐ mínimo</span
+              ><span class="esencial">⭐⭐ corto</span></label
             >
           </li>
         </ul>
@@ -2530,8 +2593,13 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
         function visible(li, filtro) {
           if (filtro === "todo") return true;
           if (filtro === "minimo") return li.hasAttribute("data-minimo");
+          if (filtro === "esencial") return li.hasAttribute("data-esencial");
           var o = li.getAttribute("data-origen");
           return o === "nuevo" || o === "mejorado"; // filtro "cambios"
+        }
+        // Los dos gates se recorren igual —numerados, de corrido— y solo cambian de tamaño.
+        function esRecorrido(filtro) {
+          return filtro === "minimo" || filtro === "esencial";
         }
         function aplicarFiltro(filtro) {
           secciones.forEach(function (sec) {
@@ -2563,9 +2631,23 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           // repartidas por 20 bloques. Numerarlas de corrido es lo que las convierte en UN camino en vez
           // de cuatro listas pegadas — sin mover nada de sitio: el orden del documento YA es el del
           // recorrido, lo que faltaba era que se viera.
-          document.body.classList.toggle("modo-recorrido", filtro === "minimo");
-          numerarParadas(filtro === "minimo");
+          document.body.classList.toggle("modo-recorrido", esRecorrido(filtro));
+          numerarParadas(esRecorrido(filtro));
+          textoDelRecorrido(filtro);
           actualizar();
+        }
+        // El encabezado del recorrido no puede ser el mismo para los dos gates: cambian el tamaño,
+        // el tiempo y —sobre todo— lo que se deja fuera. Decirlo es la diferencia entre un gate
+        // corto y un gate recortado en silencio.
+        function textoDelRecorrido(filtro) {
+          var caja = document.getElementById("recorrido-corto");
+          if (caja) {
+            caja.hidden = filtro !== "esencial";
+          }
+          var largo = document.getElementById("recorrido-largo");
+          if (largo) {
+            largo.hidden = filtro !== "minimo";
+          }
         }
         function numerarParadas(activo) {
           var total = 0;
@@ -2601,9 +2683,13 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               " · " +
               (bloque ? bloque.textContent : "");
           });
-          var totalEnCabeza = document.getElementById("recorrido-total");
-          if (activo && totalEnCabeza) {
-            totalEnCabeza.textContent = total;
+          if (activo) {
+            ["recorrido-total", "recorrido-total-corto"].forEach(function (id) {
+              var e = document.getElementById(id);
+              if (e) {
+                e.textContent = total;
+              }
+            });
           }
         }
         function actualizar() {
