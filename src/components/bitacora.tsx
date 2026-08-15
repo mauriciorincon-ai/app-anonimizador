@@ -19,11 +19,12 @@
 // la bóveda. Y **no recuerda la frase**: hay que escribirla otra vez para volver a sellar, porque
 // el worker no la retiene entre mensajes.
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { Boton, clasesDeBoton } from "@/components/boton";
 import {
   IconoAbrir,
+  IconoCuaderno,
   IconoDescargar,
   IconoEquis,
   IconoMas,
@@ -254,6 +255,7 @@ function Apertura({
   estado: ReturnType<typeof useBitacora>["archivo"];
 }) {
   const idDeFrase = useId();
+  const entrada = useRef<HTMLInputElement>(null);
   const [frase, setFrase] = useState("");
   const [archivo, setArchivo] = useState<File | null>(null);
 
@@ -274,14 +276,48 @@ function Apertura({
         </>
       }
     >
-      <input
-        type="file"
-        accept=".velolog"
-        disabled={abriendo}
-        aria-label="Archivo de bitácora"
-        className="text-tinta-suave file:rounded-1 file:border-borde-control file:bg-superficie file:text-tinta block w-full max-w-md text-[0.875rem] file:mr-3 file:border file:px-3 file:py-1.5"
-        onChange={(evento) => setArchivo(evento.target.files?.[0] ?? null)}
-      />
+      {/* El input va escondido detrás de un botón propio, como en `/regreso`. No es capricho: el
+          control nativo escribe «Choose File / No file chosen» en el idioma del NAVEGADOR, no en el
+          de la página, y ese texto es chrome del navegador — no se puede traducir ni desde `lang`
+          ni desde el pseudo-elemento `file:`, que solo pinta el botón. Era la única pantalla de las
+          cinco con inglés a la vista, y el § 6 del sistema de diseño veta el inglés residual.
+
+          El input sigue siendo REAL y navegable por teclado (`sr-only` no lo saca del orden de
+          tabulación), y conserva su `aria-label`: lo que cambia es lo que se ve, no lo que se
+          puede hacer. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Boton
+          type="button"
+          variante="discreto"
+          disabled={abriendo}
+          onClick={() => entrada.current?.click()}
+        >
+          <IconoCuaderno />
+          Elegir la bitácora
+        </Boton>
+        <input
+          ref={entrada}
+          type="file"
+          accept=".velolog"
+          disabled={abriendo}
+          aria-label="Archivo de bitácora"
+          className="sr-only"
+          onChange={(evento) => {
+            setArchivo(evento.target.files?.[0] ?? null);
+            // Se limpia para que volver a elegir EL MISMO archivo dispare el cambio otra vez.
+            evento.target.value = "";
+          }}
+        />
+        {archivo ? (
+          <p className="text-tinta text-[0.875rem]">
+            <code className="font-mono text-[0.8125rem]">{archivo.name}</code>
+          </p>
+        ) : (
+          <p className="text-tinta-tenue text-[0.875rem]">
+            Ningún archivo elegido todavía.
+          </p>
+        )}
+      </div>
 
       <div className="mt-4">
         <label

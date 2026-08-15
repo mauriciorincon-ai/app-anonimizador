@@ -873,3 +873,54 @@ e2e del certificado comprueba que la cédula del fixture **no** aparece en el do
 | **Medio** | `src/lib/bitacora.ts` al **25,49 %** de sentencias y **0 % de ramas**. El umbral pasa porque se mide sobre el agregado de `lib` (87,02 %); los hermanos están al 85–92 %. Cero ramas = ninguna ruta de error del store tiene test unitario, y las rutas de error de la bitácora son justo lo que el usuario encuentra meses después. Cubierto por e2e, así que es hueco de prueba, no de comportamiento. | Primer sprint del H2 |
 | **Bajo** | `layout.tsx` metadata no nombra el certificado ni la bitácora. No es falsa, está incompleta — y es lo que ve un buscador o un enlace compartido. | Primer sprint del H2 |
 | **Bajo** | `next/font` con dependencia de red en tiempo de build (2 casos, heredado del S3). | Primer sprint del H2, con `next/font/local` |
+
+---
+
+## Después de la auditoría — dos arreglos de interfaz que pidió el usuario
+
+Fuera del alcance del sprint, pedidos al mirar la interfaz ya construida. Se anotan aquí porque el
+summary aún no está escrito y porque el segundo terminó tocando el sistema de diseño.
+
+### Los párrafos no eran el problema: eran tres rieles
+
+El síntoma era «los párrafos están demasiado a la izquierda». La causa, tres anchos distintos en un
+mismo producto: la portada a `max-w-3xl` (768), las otras cuatro rutas a `max-w-4xl` (896), y el
+encabezado y el pie a `max-w-6xl` (1152). **Nada compartía borde izquierdo** — el logo empezaba en
+un sitio, el texto en otro y el pie en un tercero. Todo a `4xl`.
+
+Y encima los párrafos llevaban `max-w-prose`, que los recortaba al **81 %** de una columna que ya
+era una medida de lectura. De ahí el aire muerto contra las líneas divisorias, que sí iban al 100 %.
+
+### Un icono en cada botón, con tres reglas que no son de gusto
+
+`src/components/iconos.tsx`: 19 iconos de trazo sobre rejilla de 24, `currentColor`, tamaño en `em`,
+repartidos por ~37 botones. Cero librerías, cero emojis. Las tres reglas salen del § 6:
+
+1. **Ni candado, ni escudo, ni llave** — vetados. Donde la acción es cifrar, el icono nombra lo que
+   el usuario hace (añadir, guardar), no la criptografía de debajo.
+2. **Nada que sugiera subida ni nube.** Subir es exactamente lo que Velo NO hace: una flecha hacia
+   una nube contaría una mentira sobre el producto en el primer botón que se ve.
+3. **El texto nunca se va**, y el icono va `aria-hidden`.
+
+**El juego quedó registrado en `design-system.md` en el mismo commit** — que es justo lo que la
+auditoría acababa de encontrar que llevaba cuatro sprints sin hacerse.
+
+### Dos defectos que el cambio destapó
+
+- **Las etiquetas de formulario eran `inline`**, así que un campo `w-full` cabía a su lado y el
+  `mt-2` no separaba nada: la frase de paso estaba pegada a su etiqueta en cuatro pantallas.
+- **`/bitacora` era la única de las cinco con el `input[type=file]` crudo**, y por tanto la única
+  con inglés a la vista: «Choose File / No file chosen». Ese texto es chrome del navegador —sigue
+  el idioma del NAVEGADOR, no el `lang` de la página— y no se puede traducir ni desde CSS ni desde
+  el pseudo-elemento `file:`. El § 6 veta el inglés residual, así que se escondió detrás de un botón
+  propio con el patrón ya probado en `/regreso`.
+
+**El input sigue siendo real y navegable por teclado** (`sr-only` no lo saca del orden de
+tabulación: `BUTTON → INPUT:file → INPUT:password → BUTTON`, verificado) y **conserva su
+`aria-label`**, así que las **seis** referencias de los tests siguen intactas. Cambió **una sola
+línea de test**, y para mejor: antes afirmaba que se veía un control nativo; ahora, que se ve el
+botón que el usuario busca.
+
+**Verificación:** typecheck y lint limpios · **732 unitarias** verdes · **117 e2e passed, 3 skipped,
+cero flaky** — el mismo total que antes del cambio · sin desplazamiento horizontal a 420 px · los
+dos temas revisados como imagen.

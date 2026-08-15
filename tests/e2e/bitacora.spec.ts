@@ -184,7 +184,12 @@ test.describe("movimiento reducido", () => {
     await expect(
       page.getByRole("heading", { name: "Abre la bitácora que guardaste" }),
     ).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByLabel("Archivo de bitácora")).toBeVisible();
+    // Se afirma el BOTÓN, no el `<input type="file">`. El input sigue ahí, real y navegable por
+    // teclado, pero va `sr-only` detrás del botón: el control nativo escribe «Choose File» en el
+    // idioma del navegador y no hay forma de traducirlo. Lo que el usuario tiene que ver es esto.
+    await expect(
+      page.getByRole("button", { name: "Elegir la bitácora" }),
+    ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Abrir la bitácora" }),
     ).toBeVisible();
