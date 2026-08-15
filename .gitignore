@@ -20,3 +20,11 @@ tmp/
 .vercel/
 .DS_Store
 Thumbs.db
+
+# design-sync (kit v1.10.0 no lo trae: lo añade el sync a Claude Design)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+.design-sync/entrada.css
