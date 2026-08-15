@@ -551,8 +551,8 @@ tarea larga.
 
 ### La comprobación que iba primero, y por qué el plan la puso ahí
 
-El riesgo 7 decía: *«`/design-sync` es el único paso que sale del repo y necesita sesión de
-claude.ai. Esta sesión ya reportó conectores sin autorizar»*, con la mitigación de comprobar la
+El riesgo 7 decía: _«`/design-sync` es el único paso que sale del repo y necesita sesión de
+claude.ai. Esta sesión ya reportó conectores sin autorizar»_, con la mitigación de comprobar la
 conexión **al empezar la fase, no al final** — para no gastarla y descubrir el bloqueo con el trabajo
 hecho.
 
@@ -567,13 +567,13 @@ alternativa era enterarse al final.
 
 ### El BLUEPRINT se escribió consultando, no recordando
 
-`docs/BLUEPRINT.html`, desde `docs/BLUEPRINT.plantilla.html`. La regla de la plantilla —*«se escribe
-con lo DESPLEGADO de verdad, no con lo planeado»*— se tomó literalmente: **ninguna casilla salió de
+`docs/BLUEPRINT.html`, desde `docs/BLUEPRINT.plantilla.html`. La regla de la plantilla —_«se escribe
+con lo DESPLEGADO de verdad, no con lo planeado»_— se tomó literalmente: **ninguna casilla salió de
 la memoria de este sprint ni de lo que dicen el CLAUDE.md o el README.** Cada una salió de preguntarle
 al servicio.
 
-| Afirmación del blueprint         | De dónde salió                                                                     |
-| -------------------------------- | ---------------------------------------------------------------------------------- |
+| Afirmación del blueprint         | De dónde salió                                                                      |
+| -------------------------------- | ----------------------------------------------------------------------------------- |
 | Ruleset y sus 4 checks           | `gh api repos/:owner/:repo/rulesets/20613936` — y hay 3 reglas más de las que sabía |
 | Duración real de cada job de CI  | `gh api .../actions/runs/<id>/jobs` sobre la última corrida: 0 · 1 · 3 · 3 min      |
 | Protección de deployment apagada | `curl` sin sesión: producción **200**, preview del último commit **200**            |
@@ -612,8 +612,8 @@ fue la misma de la Fase 4: renderizar y mirar. Se corrigieron los cinco y se vol
 
 ### §4 — una tercera promesa aplazada, en el sitio que ninguna fase toca
 
-`.env.example:10` decía: *«El proveedor LLM y sus keys se añaden en el sprint que active IA (ver su
-ADR)»*. Heredada de la plantilla del kit.
+`.env.example:10` decía: _«El proveedor LLM y sus keys se añaden en el sprint que active IA (ver su
+ADR)»_. Heredada de la plantilla del kit.
 
 Es la **tercera forma** de promesa aplazada de este sprint, y la primera con una propiedad que las
 otras dos no tienen: **no caduca en un sprint — es falsa para siempre.** La regla dura nº1 veta la IA
@@ -622,7 +622,7 @@ aparece. Un archivo de ejemplo que le reserva sitio a una key que jamás va a ex
 contrario de lo que el producto es.
 
 **Ninguna de las dos barridas de la Fase 0 la encontró**, y la razón es el patrón que la orden mandó
-leer antes de planear: *un gate de fase no ve lo que la fase no toca*. Las dos barridas peinaron
+leer antes de planear: _un gate de fase no ve lo que la fase no toca_. Las dos barridas peinaron
 documentos y copy de pantalla; `.env.example` no es ninguna de las dos cosas. Y **ningún sprint del
 ciclo lo abrió jamás**, porque ningún sprint necesitó una variable de entorno: es un archivo que se
 estampó una vez, se lee como andamiaje y nadie vuelve a mirar. Se pagó en esta fase, que es
@@ -631,8 +631,8 @@ párrafos de distancia.
 
 ### Desviación del plan — `/design-sync` no lo puede correr el constructor
 
-El plan asignaba a esta fase *«`/design-sync` — el design system consolidado se publica como activo
-estable»*. La skill está marcada **`disable-model-invocation`**: reservada a invocación explícita del
+El plan asignaba a esta fase _«`/design-sync` — el design system consolidado se publica como activo
+estable»_. La skill está marcada **`disable-model-invocation`**: reservada a invocación explícita del
 usuario, y con instrucción expresa de **no replicar su flujo por otros medios**.
 
 Así que la fase entrega lo que sí le corresponde y deja el resto en manos del usuario, sin
@@ -649,19 +649,19 @@ simularlo:
 
 ### Verificación de la Fase 5
 
-| Criterio del plan                              | Resultado                                                                     |
-| ---------------------------------------------- | ----------------------------------------------------------------------------- |
-| El BLUEPRINT abre **sin internet**             | ✅ renderizado con `offline: true`: **0 peticiones externas, 0 fallos**        |
-| Con su SVG dentro                              | ✅ embebido en el documento; el único `url()` es `url(#punta)`, interno        |
-| Autocontenido                                  | ✅ cero `<script>`, `<link>`, `<img>`, `@import`; los 5 `href` son navegación  |
-| Declara dominio                                | ✅ subdominio del hosting, sin DNS de terceros, con dónde se administra        |
-| Declara protección de deployment               | ✅ apagada en prod **y** previews, verificado desde afuera y sin sesión        |
-| Costo real desglosado                          | ✅ US$0,00, con el límite de cada free tier y el margen real                   |
-| Punto único de falla con su mitigación         | ✅ la frase de paso del usuario — y por qué no puede tener mitigación técnica  |
-| Tabla completa, incluidas las casillas vacías  | ✅ 14 filas; las 6 que dicen NINGUNO/NO APLICA llevan su razón, no un guion    |
-| Legible en los dos temas                       | ✅ claro y oscuro, revisados como imagen                                       |
-| `/design-sync` corrido                         | ⏸ **lo corre el usuario** — ver la desviación de arriba                       |
-| `pnpm typecheck` · `pnpm lint` · `pnpm test`   | ✅ limpios, **724 verdes, 1 saltada** (la fase no tocó código de producto)     |
+| Criterio del plan                             | Resultado                                                                     |
+| --------------------------------------------- | ----------------------------------------------------------------------------- |
+| El BLUEPRINT abre **sin internet**            | ✅ renderizado con `offline: true`: **0 peticiones externas, 0 fallos**       |
+| Con su SVG dentro                             | ✅ embebido en el documento; el único `url()` es `url(#punta)`, interno       |
+| Autocontenido                                 | ✅ cero `<script>`, `<link>`, `<img>`, `@import`; los 5 `href` son navegación |
+| Declara dominio                               | ✅ subdominio del hosting, sin DNS de terceros, con dónde se administra       |
+| Declara protección de deployment              | ✅ apagada en prod **y** previews, verificado desde afuera y sin sesión       |
+| Costo real desglosado                         | ✅ US$0,00, con el límite de cada free tier y el margen real                  |
+| Punto único de falla con su mitigación        | ✅ la frase de paso del usuario — y por qué no puede tener mitigación técnica |
+| Tabla completa, incluidas las casillas vacías | ✅ 14 filas; las 6 que dicen NINGUNO/NO APLICA llevan su razón, no un guion   |
+| Legible en los dos temas                      | ✅ claro y oscuro, revisados como imagen                                      |
+| `/design-sync` corrido                        | ⏸ **lo corre el usuario** — ver la desviación de arriba                       |
+| `pnpm typecheck` · `pnpm lint` · `pnpm test`  | ✅ limpios, **724 verdes, 1 saltada** (la fase no tocó código de producto)    |
 
 ---
 
@@ -677,7 +677,7 @@ en la Fase 1, así que sus pruebas siguen siendo válidas sobre el documento que
 habría sido borrar la regresión de todo lo que el certificado heredó y sigue debiendo cumplir
 (autocontenido, sin una sola fila, huella de entrada correcta).
 
-**El paso que casi se pierde:** la disciplina acumulativa no es solo *añadir* — es **degradar**. Las
+**El paso que casi se pierde:** la disciplina acumulativa no es solo _añadir_ — es **degradar**. Las
 32 pruebas que el S3 estrenó seguían marcadas `nuevo`, así que el filtro «Lo que cambió» decía
 **44** cuando la respuesta correcta era **11**. No lo vi leyendo el archivo: lo delató el propio
 botón al renderizarlo, porque el número no cuadraba con las once que acababa de escribir. Se
@@ -686,16 +686,16 @@ el sprint de **origen**, y la corrección ya está contada en el historial.
 
 ### El filtro ⭐ como un solo recorrido
 
-El plan pedía que el gate se leyera *«como un solo recorrido ordenado, no como cuatro listas
-pegadas»*. El problema real era de lectura, no de orden: **el orden del documento ya era el del
+El plan pedía que el gate se leyera _«como un solo recorrido ordenado, no como cuatro listas
+pegadas»_. El problema real era de lectura, no de orden: **el orden del documento ya era el del
 camino** —aduana → diagnóstico → taller → regreso → bitácora—, pero con 26 pruebas repartidas por 20
 bloques y cada una luciendo el sprint que la trajo, lo que se veía era el sprint, no la ruta.
 
 Se resolvió sin mover nada de sitio. Con el filtro ⭐ activo la guía entra en **modo recorrido**:
 cada prueba visible recibe su número —`PARADA 7 DE 26 · LA LLAVE`—, el contador pasa a decir
 «paradas», y una cabecera nombra el camino entero. Los chips de origen se atenúan pero **no se
-esconden**: hacen falta para la regresión. La cabecera lo dice con todas las letras: *«sigue los
-números, no los sprints»*.
+esconden**: hacen falta para la regresión. La cabecera lo dice con todas las letras: _«sigue los
+números, no los sprints»_.
 
 Reordenar las secciones por ruta fue la primera idea y **se descartó por falsa**: la mitad de los
 bloques declaran `Empieza en: /` porque ahí se carga el archivo, aunque el trabajo ocurra en
@@ -703,12 +703,12 @@ bloques declaran `Empieza en: /` porque ahí se carga el archivo, aunque el trab
 
 ### Las once pruebas nuevas
 
-| Bloque                          | Qué cubre                                                                     |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| **W** · El certificado (3)      | el estado «todavía no puede existir» explicado con palabras · las dos huellas etiquetadas, sin internet · ⭐ **recalcularlas a mano** |
-| **X** · El riesgo estimado (3)  | «no calculable» con su razón · modelo y supuesto en la misma línea · ⭐ **distinguir exacto de estimado** |
-| **Y** · La bitácora (4)         | se llega por clic · tres entradas en orden con sus dos huellas · ⭐ **cerrar el navegador entero** · ilegible en disco |
-| **Z** · El ciclo completo (1)   | ⭐ el juicio sobre las cinco pantallas y sobre si el ciclo responde la pregunta de los seis meses |
+| Bloque                         | Qué cubre                                                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **W** · El certificado (3)     | el estado «todavía no puede existir» explicado con palabras · las dos huellas etiquetadas, sin internet · ⭐ **recalcularlas a mano** |
+| **X** · El riesgo estimado (3) | «no calculable» con su razón · modelo y supuesto en la misma línea · ⭐ **distinguir exacto de estimado**                             |
+| **Y** · La bitácora (4)        | se llega por clic · tres entradas en orden con sus dos huellas · ⭐ **cerrar el navegador entero** · ilegible en disco                |
+| **Z** · El ciclo completo (1)  | ⭐ el juicio sobre las cinco pantallas y sobre si el ciclo responde la pregunta de los seis meses                                     |
 
 **Desviación del plan (menor):** el plan estimaba «6–8» nuevas y salieron **11**. El sprint entregó
 tres funcionalidades, no una, y cada una necesita sus estados —el certificado que aún no existe, el
@@ -725,9 +725,9 @@ sin eso la promesa de «dentro de seis meses» no está probada, solo afirmada.
 
 Renderizando el modo recorrido aparecieron dos:
 
-- La cabecera decía *«cada parada dice dónde ocurre»*. **No lo dice**: el chip lleva el número y el
+- La cabecera decía _«cada parada dice dónde ocurre»_. **No lo dice**: el chip lleva el número y el
   bloque; la ruta está en el «Empieza en:» del bloque. Corregida para que describa lo que hay.
-- El kit decía *«genera los tres que usa esta guía»* y **lista seis comandos** desde el S2. Heredada
+- El kit decía _«genera los tres que usa esta guía»_ y **lista seis comandos** desde el S2. Heredada
   y falsa durante dos sprints.
 
 En una guía cuyo bloque estrella pregunta si el lector distingue lo exacto de lo estimado, dejar dos
@@ -735,15 +735,15 @@ frases que no describen lo que hay habría sido la peor clase de incoherencia.
 
 ### Verificación de la guía
 
-| Criterio                                  | Resultado                                                     |
-| ----------------------------------------- | -------------------------------------------------------------- |
-| Abre **sin internet**                     | ✅ `offline: true`: **0 peticiones externas, 0 errores**       |
-| Acumulativa, ninguna eliminada            | ✅ 114 heredadas (44 S1 + 38 S2 + 32 S3) + 11 nuevas = **125** |
-| Filtro «Lo que cambió en S4»              | ✅ **11** — tras degradar las 32 del S3 a regresión            |
-| Gate ⭐ del ciclo                          | ✅ **26 paradas**, numeradas 1→26 de corrido                   |
-| `localStorage` versionado                 | ✅ `guia-anonimizador:s003:` → `s004:`; probada la persistencia |
-| Los dos temas                             | ✅ claro y oscuro, revisados como imagen                        |
-| Formato                                   | ✅ `prettier --check` limpio (la guía en `main` ya lo estaba)   |
+| Criterio                       | Resultado                                                       |
+| ------------------------------ | --------------------------------------------------------------- |
+| Abre **sin internet**          | ✅ `offline: true`: **0 peticiones externas, 0 errores**        |
+| Acumulativa, ninguna eliminada | ✅ 114 heredadas (44 S1 + 38 S2 + 32 S3) + 11 nuevas = **125**  |
+| Filtro «Lo que cambió en S4»   | ✅ **11** — tras degradar las 32 del S3 a regresión             |
+| Gate ⭐ del ciclo              | ✅ **26 paradas**, numeradas 1→26 de corrido                    |
+| `localStorage` versionado      | ✅ `guia-anonimizador:s003:` → `s004:`; probada la persistencia |
+| Los dos temas                  | ✅ claro y oscuro, revisados como imagen                        |
+| Formato                        | ✅ `prettier --check` limpio (la guía en `main` ya lo estaba)   |
 
 ### La última milla, y lo que encontró
 
@@ -757,17 +757,17 @@ Se corrió contra la preview de la rama, en contextos de navegador limpios, sin 
 **por fuera de la app**, con `crypto` de Node sobre los archivos descargados, y se buscaron en el
 HTML del certificado:
 
-| Comprobación                                | Resultado                         |
-| ------------------------------------------- | --------------------------------- |
+| Comprobación                                | Resultado                                 |
+| ------------------------------------------- | ----------------------------------------- |
 | Huella de **salida** recalculada por fuera  | `f30f231b2c7cb21e617ee1f9…` ✅ la declara |
 | Huella de **entrada** recalculada por fuera | `50ad22651a462bb3d5ebf08f…` ✅ la declara |
-| ¿Son distintas?                             | ✅                                |
-| ¿Trae el comando para comprobarlas?         | ✅ macOS/Linux **y** Windows      |
-| ¿Autocontenido?                             | ✅ 32 KB, sin un solo `src` externo |
+| ¿Son distintas?                             | ✅                                        |
+| ¿Trae el comando para comprobarlas?         | ✅ macOS/Linux **y** Windows              |
+| ¿Autocontenido?                             | ✅ 32 KB, sin un solo `src` externo       |
 
 **La bitácora, sellada y reabierta en un navegador sin memoria:** 515 bytes, **sin el nombre del
-archivo en claro** y **sin la frase de paso en los bytes**. Con frase equivocada devuelve *«La frase
-no abre esta bitácora. También sale este mensaje si el archivo se dañó o lo modificaron»* — que dice
+archivo en claro** y **sin la frase de paso en los bytes**. Con frase equivocada devuelve _«La frase
+no abre esta bitácora. También sale este mensaje si el archivo se dañó o lo modificaron»_ — que dice
 qué pudo pasar, no solo que falló.
 
 #### El hallazgo: la preview hace UNA petición externa, y la CSP la para
@@ -776,23 +776,23 @@ Durante el flujo apareció **una** petición fuera del origen:
 `vercel.live/_next-live/feedback/feedback.js`. Es la barra de comentarios que **Vercel inyecta en
 las previews**. Medido en los dos entornos:
 
-| | Peticiones externas | Estado |
-| --- | --- | --- |
-| **Preview** | 1 | **bloqueada por la CSP** (`errorText: csp`, con su aviso en consola) |
-| **Producción** | 0 | Vercel ni siquiera la inyecta — verificado en el HTML servido |
+|                | Peticiones externas | Estado                                                               |
+| -------------- | ------------------- | -------------------------------------------------------------------- |
+| **Preview**    | 1                   | **bloqueada por la CSP** (`errorText: csp`, con su aviso en consola) |
+| **Producción** | 0                   | Vercel ni siquiera la inyecta — verificado en el HTML servido        |
 
-**Es exactamente lo que el `next.config.ts` afirma y nadie había visto ocurrir:** *«el test prueba
-que no pasa; esto hace que no pueda pasar»*. `script-src 'self'` le prohibió al navegador cargar un
+**Es exactamente lo que el `next.config.ts` afirma y nadie había visto ocurrir:** _«el test prueba
+que no pasa; esto hace que no pueda pasar»_. `script-src 'self'` le prohibió al navegador cargar un
 script **del propio proveedor del hosting**. El cinturón funciona contra alguien con más poder que
 un bug nuestro.
 
 **Y el e2e de la garantía de red no podía verlo**, porque corre contra `localhost` con `pnpm start`,
-donde Vercel no inyecta nada. Otra vez el patrón del sprint: *lo que ninguna fase mira, no lo mira
-nadie* — aquí, lo que ningún **entorno de prueba** reproduce.
+donde Vercel no inyecta nada. Otra vez el patrón del sprint: _lo que ninguna fase mira, no lo mira
+nadie_ — aquí, lo que ningún **entorno de prueba** reproduce.
 
 **Lo que se hizo con el hallazgo, y por qué importa para el gate.** La prueba ⭐ `j1` pide abrir las
-herramientas de desarrollo y comprobar que nada sale; su «Repórtame sí o sí» decía *«una sola
-petición a un dominio que no sea el de Velo… es fallo de bloqueo absoluto»*. **El usuario iba a ver
+herramientas de desarrollo y comprobar que nada sale; su «Repórtame sí o sí» decía _«una sola
+petición a un dominio que no sea el de Velo… es fallo de bloqueo absoluto»_. **El usuario iba a ver
 justo eso en rojo y a reportar un fallo que no existe** — o peor, a dudar de la promesa central del
 producto en mitad del gate. El bloque J gana ahora una nota que dice qué va a ver, que sale
 bloqueada, que producción ni la lleva, y que **el bloqueo ES la prueba**; y el «Repórtame» se afina
@@ -819,17 +819,17 @@ Alto). El gate ⭐ queda **pendiente por decisión del usuario**.
 **Los tres, fuera del código del sprint.** Es la tercera auditoría final seguida que encuentra ahí
 sus hallazgos principales; ya no es casualidad.
 
-| # | Hallazgo | Pago |
-| --- | --- | --- |
+| #      | Hallazgo                                                                                                                                                                                                                                                                                                                                                                                        | Pago                                                                                                                                                                                                                                                                |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **A1** | **`design-system.md` congelado en el S1.** Cero menciones de `taller`, `transformar`, `regreso`, `certificado`, `política`. Declaraba **5 componentes canon** —y su propio texto decía «los cuatro que el S1 necesita», contradiciéndose— cuando en `src/components/` hay **21**. Y la línea 205 prometía que lo estimado «llega en el S2»: **la única promesa aplazada viva de todo el repo**. | §3 rehecho separando **las cinco primitivas** de los **compuestos por pantalla** (16, cada uno con su archivo verificado); §4 gana las tres pantallas que le faltaban y corrige «cómo funciona en 3 pasos», que hoy son 4 más dos bloques; §5 pasa de 4 reglas a 7. |
-| **A2** | **`CLAUDE.md` decía que la app está en el Sprint 001** y que «en S1 NO se transforma nada». Sin tocar desde el estampado. | Sustituido por el estado as-built del H1: cuatro sprints, cinco rutas, 14 funcionalidades, con el puntero al BLUEPRINT. |
-| **A3** | **Ningún test abría un archivo cifrado _golden_.** El S4 refactorizó la cripto del S3 a `lib/archivo-cifrado.ts`; la cabecera no cambió —leída byte a byte del diff— pero **nada lo comprobaba**. | `tests/unit/formato-de-archivo-cifrado.test.ts`, con un `.velo` y un `.velolog` sellados el 2026-08-15 y guardados en base64. |
+| **A2** | **`CLAUDE.md` decía que la app está en el Sprint 001** y que «en S1 NO se transforma nada». Sin tocar desde el estampado.                                                                                                                                                                                                                                                                       | Sustituido por el estado as-built del H1: cuatro sprints, cinco rutas, 14 funcionalidades, con el puntero al BLUEPRINT.                                                                                                                                             |
+| **A3** | **Ningún test abría un archivo cifrado _golden_.** El S4 refactorizó la cripto del S3 a `lib/archivo-cifrado.ts`; la cabecera no cambió —leída byte a byte del diff— pero **nada lo comprobaba**.                                                                                                                                                                                               | `tests/unit/formato-de-archivo-cifrado.test.ts`, con un `.velo` y un `.velolog` sellados el 2026-08-15 y guardados en base64.                                                                                                                                       |
 
 **Por qué A1 es el más grave de los tres, aunque no toque código.** `/design-sync` —entregable de
-cierre de ciclo— habría publicado como *«design system consolidado»* un documento que describe **1
+cierre de ciclo— habría publicado como _«design system consolidado»_ un documento que describe **1
 de 5 pantallas**; el gate ⭐ pide juzgar el sistema entero contra él; y `/deploy-check` §7 exige
 «fidelidad a design-system.md». Además, **la regla de diseño que este sprint inventó no estaba
-escrita en ninguna parte**: *ninguna cifra estimada usa la tipografía del titular exacto* vivía en
+escrita en ninguna parte**: _ninguna cifra estimada usa la tipografía del titular exacto_ vivía en
 un comentario y un test. Ahora es la regla §5.3, con su razón.
 
 Lo bueno que también dijo el hallazgo: **los §1 y §2 —personalidad y tokens— llegaron intactos
@@ -844,21 +844,21 @@ Sin este pago, la primera sesión del H2 habría arrancado leyendo que Velo no t
 Un test de regresión que no falle cuando debe no prueba nada. Se comprobó **rompiendo el formato a
 propósito** —la sal de 16 bytes a 15 en `archivo-cifrado.ts`— y midiendo quién se entera:
 
-| | Resultado con la cabecera rota |
-| --- | --- |
-| `formato-de-archivo-cifrado.test.ts` (nuevo) | **2 tests en rojo** ✅ |
-| `boveda.test.ts` — los 28 de ida y vuelta | **28 en verde** ❌ |
+|                                              | Resultado con la cabecera rota |
+| -------------------------------------------- | ------------------------------ |
+| `formato-de-archivo-cifrado.test.ts` (nuevo) | **2 tests en rojo** ✅         |
+| `boveda.test.ts` — los 28 de ida y vuelta    | **28 en verde** ❌             |
 
 Ese contraste **es** el hallazgo: sellar y abrir con el mismo código no puede detectar un cambio de
 formato, porque el cambio se aplica a los dos lados a la vez. El archivo del test lo dice donde hará
-falta leerlo: *si este test se pone rojo, la pregunta no es «cómo arreglo el test», es «acabo de
-romper todos los archivos de los usuarios, ¿lo hago a propósito?»* — y si la respuesta es sí, el
+falta leerlo: _si este test se pone rojo, la pregunta no es «cómo arreglo el test», es «acabo de
+romper todos los archivos de los usuarios, ¿lo hago a propósito?»_ — y si la respuesta es sí, el
 camino es subir `VERSION_DEL_ARCHIVO` y escribir la migración.
 
 ### Lo que se revisó y salió limpio
 
 **La regla más dura del sprint se sostiene en los tres sitios donde podía romperse:** el certificado
-lleva solo cifras exactas y lo dice (*«por registro — no estimadas»*), la entrada de bitácora guarda
+lleva solo cifras exactas y lo dice (_«por registro — no estimadas»_), la entrada de bitácora guarda
 `unicosAntes`/`unicosDespues` exactos, y la pantalla los separa en paneles con tipografía distinta y
 un test que lo vigila. **El estimado no se compone con el exacto en ningún sitio.**
 
@@ -868,11 +868,11 @@ e2e del certificado comprueba que la cédula del fixture **no** aparece en el do
 
 ### Deuda declarada, con pago asignado
 
-| Sev. | Deuda | Pago |
-| --- | --- | --- |
-| **Medio** | `src/lib/bitacora.ts` al **25,49 %** de sentencias y **0 % de ramas**. El umbral pasa porque se mide sobre el agregado de `lib` (87,02 %); los hermanos están al 85–92 %. Cero ramas = ninguna ruta de error del store tiene test unitario, y las rutas de error de la bitácora son justo lo que el usuario encuentra meses después. Cubierto por e2e, así que es hueco de prueba, no de comportamiento. | Primer sprint del H2 |
-| **Bajo** | `layout.tsx` metadata no nombra el certificado ni la bitácora. No es falsa, está incompleta — y es lo que ve un buscador o un enlace compartido. | Primer sprint del H2 |
-| **Bajo** | `next/font` con dependencia de red en tiempo de build (2 casos, heredado del S3). | Primer sprint del H2, con `next/font/local` |
+| Sev.      | Deuda                                                                                                                                                                                                                                                                                                                                                                                                    | Pago                                        |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| **Medio** | `src/lib/bitacora.ts` al **25,49 %** de sentencias y **0 % de ramas**. El umbral pasa porque se mide sobre el agregado de `lib` (87,02 %); los hermanos están al 85–92 %. Cero ramas = ninguna ruta de error del store tiene test unitario, y las rutas de error de la bitácora son justo lo que el usuario encuentra meses después. Cubierto por e2e, así que es hueco de prueba, no de comportamiento. | Primer sprint del H2                        |
+| **Bajo**  | `layout.tsx` metadata no nombra el certificado ni la bitácora. No es falsa, está incompleta — y es lo que ve un buscador o un enlace compartido.                                                                                                                                                                                                                                                         | Primer sprint del H2                        |
+| **Bajo**  | `next/font` con dependencia de red en tiempo de build (2 casos, heredado del S3).                                                                                                                                                                                                                                                                                                                        | Primer sprint del H2, con `next/font/local` |
 
 ---
 
@@ -924,3 +924,52 @@ botón que el usuario busca.
 **Verificación:** typecheck y lint limpios · **732 unitarias** verdes · **117 e2e passed, 3 skipped,
 cero flaky** — el mismo total que antes del cambio · sin desplazamiento horizontal a 420 px · los
 dos temas revisados como imagen.
+
+---
+
+## `/deploy-check` — el cierre
+
+Los diez puntos, con su evidencia. **Siete ya los corre el CI sobre este mismo commit**; los que
+faltaban se midieron aquí.
+
+### El número que nadie había tomado: el bundle
+
+El único punto del checklist sin evidencia en todo el sprint. Se midió **construyendo las dos
+ramas**: `origin/main` en un worktree aparte, con `pnpm install --frozen-lockfile` y `pnpm build`, y
+sumando los bytes de `.next/static`.
+
+|                 | `main` (84324c8) | rama (da9a92a) | Δ          |
+| --------------- | ---------------- | -------------- | ---------- |
+| JS              | 1.870,5 KB       | 1.943,1 KB     | **+3,9 %** |
+| CSS             | 35,3 KB          | 36,4 KB        | +3,0 %     |
+| `static/` total | 2.304 KB         | 2.392 KB       | +3,8 %     |
+
+Presupuesto: **+10 %**. El sprint añadió una ruta entera, un motor de estimación, un generador de
+certificados y 19 iconos SVG inline, y cabe con holgura.
+
+**Turbopack ya no imprime el desglose por ruta** en el output de `next build` (Next 16), y
+`app-build-manifest.json` no existe en esa salida. La medición agregada responde la pregunta del
+checklist; el reparto por ruta lo cubre Lighthouse, que mide las cinco por separado y todas ≥90.
+
+### Los diez puntos
+
+| #   | Punto             | Estado                                                                                                                                                                                                         |
+| --- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Tests             | ✅ **732 unitarias** (1 saltada) · **117 e2e** (3 saltadas), cero flaky · cobertura **95,83 %** global, `engine/` 98,77 %                                                                                      |
+| 2   | Type safety       | ✅ `pnpm typecheck` limpio · **cero `@ts-ignore` y cero `any` nuevos** en el diff                                                                                                                              |
+| 3   | Lint y formato    | ✅ `pnpm lint` limpio · `prettier --check` limpio · `reduced-motion` con e2e de visibilidad real                                                                                                               |
+| 4   | Build             | ✅ `pnpm build` exitoso · bundle **+3,9 %**                                                                                                                                                                    |
+| 5   | Security          | ✅ `pnpm audit --audit-level high`: **sin vulnerabilidades** · gitleaks en cada commit · **sin variables de entorno nuevas** (y `.env.example` perdió la línea que prometía keys de LLM)                       |
+| 6   | Observabilidad    | ✅ **N/A por diseño**: no hay endpoints. Los errores de la bitácora **descartan el texto de la excepción**, que puede citar contenido descifrado                                                               |
+| 7   | A11y y diseño     | ⏳ axe limpio en dos temas × dos tamaños · teclado completo · checklist `diseno-ui` corrido — **falta la aprobación visual del usuario (gate ⭐)**                                                             |
+| 8   | Performance       | ✅ Lighthouse ≥90 en las **cinco** rutas · sin queries N+1 (no hay BD) · sin imágenes que servir                                                                                                               |
+| 9   | Documentación     | ✅ `README` · `MANUAL-DE-USO.md` con las dos secciones nuevas y **sin promesas vivas** · ADR-007 y ADR-008. `CHANGELOG.md` es **del kit**, no de la app: ningún sprint lo toca, la historia vive en `sprints/` |
+| 10  | Cierre del sprint | ✅ bitácora al día · **`SPRINT_004-summary.md` escrito**, con la auditoría, los dos entregables de ciclo y el gate ⭐ registrado como pendiente                                                                |
+
+### Decisión: **MERGE OK**, con una casilla que no me toca a mí
+
+Nueve de diez cerrados. El **punto 7 queda condicionado**: la aprobación visual del usuario es
+exactamente el gate ⭐, y el usuario decidió no correrlo ahora. **No se marca como cumplido.**
+
+El summary lo registra como pendiente en vez de disimularlo, y el `/deploy-check` prohíbe que el
+merge lo haga el constructor: **lo hace el usuario, a mano, cuando quiera**.
