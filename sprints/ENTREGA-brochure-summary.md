@@ -340,6 +340,26 @@ lo conducía `window.scrollBy` a secas, que es programático y el smooth lo anim
 reposición. Una rueda real es scroll nativo y no pasa por ahí: el conductor del test tiene que
 ser `behavior: "instant"`, o mide un defecto que ningún dedo puede producir.
 
+## El merge fantasma del PR #13 — un incidente de infraestructura, registrado
+
+El PR #13 se atascó del lado de GitHub: la rama recibía los push (el ref remoto avanzaba,
+verificado con `git ls-remote`), pero el PR **nunca volvió a registrar una cabeza nueva** ni
+disparó Actions — ni con push normal, ni con amend + force-push, con la página de estado de
+GitHub en verde. Al mergearse, el squash se llevó **la cabeza vieja** (`3b5e280`): `main` y
+producción quedaron con la primera ronda del gate —sin capturas, con el tercio medido sobre la
+tarjeta y con el salto de subida— mientras todo lo aprobado seguía a salvo en la rama.
+
+Se detectó comparando el estado del PR contra el ref remoto (la rutina de verificar en vez de
+asumir), y se respondió así: **PR #14** con los tres commits restantes (GitHub sí registró la
+cabeza correcta esta vez), re-limpieza del `homepage` que el deploy del merge volvió a ensuciar,
+y un merge de `main` a la rama con estrategia `ours` — correcto aquí y solo aquí porque el único
+delta de `main` (el squash) es versión vieja de los mismos cuatro archivos que la rama lleva en
+versión aprobada; se verificó contra el merge-base antes de usarla.
+
+La lección para el método: **un PR mergeado no es evidencia de qué se mergeó** — después de un
+merge, la verificación es contra `main` (`git show origin/main:<archivo> | wc -c`), no contra el
+estado del PR.
+
 ## Lo que solo se vio MIRANDO — la pasada de capturas
 
 Cuatro defectos que ningún gate automático habría cazado, todos encontrados leyendo las capturas
