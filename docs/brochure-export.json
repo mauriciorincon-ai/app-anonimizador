@@ -192,10 +192,10 @@
     {
       "clave": "pruebas_e2e",
       "etiqueta": "Pruebas de extremo a extremo",
-      "valor": 145,
+      "valor": 153,
       "unidad": "pruebas",
       "fuente": "medido",
-      "detalle": "Salida de `pnpm test:e2e` el 2026-08-21, en escritorio y móvil, incluidas axe en los dos temas, la garantía de red y las del despliegue por recorrido del brochure. Tres se omiten cuando no está el archivo sintético de 500.000 filas."
+      "detalle": "Salida de `pnpm test:e2e` el 2026-08-22, en escritorio y móvil, incluidas axe en los dos temas, la garantía de red y las del despliegue por recorrido del brochure —entre ellas la que exige que la página no mueva el scroll por su cuenta—. Tres se omiten cuando no está el archivo sintético de 500.000 filas."
     },
     {
       "clave": "cobertura_lineas",
@@ -248,10 +248,10 @@
     {
       "clave": "peso_brochure",
       "etiqueta": "Peso de este brochure",
-      "valor": 102356,
+      "valor": 484920,
       "unidad": "bytes",
       "fuente": "medido",
-      "detalle": "Archivo autocontenido, sin una sola petición externa. `wc -c docs/BROCHURE.html` el 2026-08-21. No embebe tipografías: usa las del sistema, y ese es el precio declarado de que abra con doble clic."
+      "detalle": "Archivo autocontenido, sin una sola petición externa. `wc -c docs/BROCHURE.html` el 2026-08-22. De esos bytes, 360 KB son las diez capturas de la app —cinco pantallas en tema claro y oscuro, en WebP dentro de `data:` URI—: es lo que cuesta que el brochure enseñe el producto y siga abriéndose con doble clic sin internet. No embebe tipografías: usa las del sistema."
     },
     {
       "clave": "decisiones_registradas",

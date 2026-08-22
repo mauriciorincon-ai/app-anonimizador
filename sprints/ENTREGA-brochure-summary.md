@@ -2,7 +2,7 @@
 entrega: brochure-conoce
 app: anonimizador (Velo)
 tipo: entrega puntual (no es sprint — orden ENTREGA-BROCHURE de la planeadora, kit v1.19.0)
-estado: mergeada (PR #12) y probada en producción sin sesión. Adenda del gate visual: las tarjetas se despliegan con el recorrido (PR aparte).
+estado: mergeada (PR #12) y probada en producción sin sesión. Cinco rondas del gate visual en PR aparte (#13); la regla final: una tarjeta está abierta exactamente mientras está a la vista, y ningún repliegue mueve un píxel de lo visible.
 fecha: 2026-08-21
 rama: entrega/brochure-conoce
 ---
@@ -133,8 +133,10 @@ que falla si se desincronizan. Contadas contra `docs/MANUAL-DE-USO.md`:
 **La regla, tal como la fijó:**
 
 1. Las tarjetas se despliegan **a medida que se baja**, no de entrada.
-2. **No antes de que se vea al menos un tercio** de la tarjeta. Si se abriera asomando por el
-   borde inferior, crecería fuera de pantalla y el gesto no lo vería nadie.
+2. **No antes de que se vea al menos un tercio.** Si se abriera asomando por el borde inferior,
+   crecería fuera de pantalla y el gesto no lo vería nadie. _(Un tercio **de qué** es justo lo
+   que esta ronda leyó mal — se midió sobre la tarjeta y tenía que medirse sobre la pantalla:
+   ver la tercera ronda, abajo.)_
 3. **Con una animación que muestre que se desplegó** — no aparecer ya abierta.
 4. **Solo hacia abajo**: al subir se recogen, y volver atrás encuentra la página como estaba.
 5. El **toque siempre manda**: lo que la persona abre o cierra a mano, el recorrido no lo vuelve
@@ -149,16 +151,214 @@ asoman**, no al 15 %: así, cuando llegan al tercio ya se asentaron y la medida 
 Las dos coreografías tienen que estar separadas o se estorban.
 
 **Sobre el salto de scroll**, que es el defecto clásico de este patrón (1.291 px en el piloto):
-los dos movimientos ocurren **fuera de cuadro a propósito**. Al bajar, la tarjeta se abre cuando
-entra por el borde inferior, así que crece hacia abajo y no empuja lo que se está leyendo; al
-subir, se cierra cuando ya salió por ese mismo borde, así que encoge por debajo de la pantalla.
-Dos e2e lo fijan: la cabecera de una tarjeta no se mueve **ni al abrirla con el dedo ni cuando
-la abre el recorrido** (< 2 px y < 3 px medidos).
+al bajar, la tarjeta se abre cuando entra por el borde inferior, así que crece hacia abajo y no
+empuja lo que se está leyendo. Dos e2e lo fijan: la cabecera de una tarjeta no se mueve **ni al
+abrirla con el dedo ni cuando la abre el recorrido** (< 2 px y < 3 px medidos). _(La otra mitad
+—la de subir— se creía resuelta aquí y no lo estaba: ver la segunda ronda del gate, abajo.)_
 
 **Y una corrección de método:** la primera versión de esa medición vigilaba `scrollY`, y estaba
 mal. Cuando algo crece por encima del borde superior, el navegador corrige `scrollY` **a
 propósito** para dejar el contenido quieto; penalizar ese ajuste es castigar justo al mecanismo
 que salva la lectura. Se mide lo que se ve, no el número del scroll.
+
+## Segunda ronda del gate visual — las capturas, y el salto de verdad
+
+> Dos observaciones del usuario sobre la preview del PR #13, el 2026-08-22: **(1)** las tarjetas
+> necesitan imágenes de la app, no solo texto — «queda muy cargado»; **(2)** «de bajada está
+> bien, pero de subida pega saltos que quedan terribles en la navegabilidad».
+
+**El salto de subida era real, y la primera ronda lo dio por resuelto sin medirlo.** El texto de
+arriba afirmaba que al subir la tarjeta «se cierra cuando ya salió por el borde inferior». El
+código no hacía eso: cerraba cualquier tarjeta que cayera por debajo del tercio yendo hacia
+arriba, **incluida la que asoma por el borde de ARRIBA**. Y ahí está la diferencia entera:
+quitarle alto a algo que está por encima de la línea de lectura sube de golpe todo lo que hay
+debajo, que es justo lo que la persona está mirando. La prueba nueva, corrida contra el código
+anterior, midió **955 px de salto en un solo empujón** — el orden de magnitud del piloto.
+
+La regla que lo arregla se puede decir en una línea: **una tarjeta solo puede encoger si eso no
+mueve nada de lo visible**, y eso depende de dónde está respecto al borde superior.
+
+- Las que **salieron por abajo** se cierran normal: encogen donde nadie mira.
+- Las que quedaron **enteras arriba** se cierran de golpe, sin transición, y **se compensa el
+  scroll con el alto exacto que perdieron**, en el mismo cuadro. _(Esto se RETIRÓ en la cuarta
+  ronda: la compensación es exacta sobre el papel e imposible en un navegador con
+  `scroll-behavior: smooth`. Ver abajo.)_
+- Ninguna tarjeta **visible** se cierra sola. La única que puede quedar abierta al subir es
+  aquella sobre la que se dio la vuelta, y cerrarla sería exactamente el salto que se corrige.
+
+La compensación se hace a mano en vez de dejársela al anclaje de scroll del navegador: el
+navegador la intenta, pero cuadro a cuadro y sobre una altura en plena transición. Medir el alto
+y restarlo es exacto y, sobre todo, **se puede probar** — la prueba mide la cabecera de una
+tarjeta visible y exige que baje exactamente lo que se empujó el scroll, ni un píxel más.
+
+**Las capturas.** Cada tarjeta abre ahora con una pantalla real de Velo: `/diagnostico`, la
+política, la vista previa del velado, el balance y el regreso. Se producen con
+`scripts/capturas-brochure.mjs`, que recorre la app **por la UI** con datos del generador
+sintético seeded —ni un dato real, regla dura 5—, comprime a WebP y las incrusta como `data:`
+URI para que el archivo siga abriéndose con doble clic sin internet. Cinco decisiones que
+costaron sus vueltas:
+
+1. **Se captura estrecho (880 px), no ancho.** Una captura de 1400 px reducida a una tarjeta de
+   620 deja de ser una pantalla y se vuelve una textura: se adivina la forma y no se lee una
+   palabra.
+2. **Se encuadra la ventana, no el documento.** Recortar el documento dejaba el encabezado fijo
+   de la app flotando en mitad de la imagen, tapando un rótulo: un elemento `sticky` se pinta
+   donde el scroll lo dejó y una captura de página entera lo congela ahí.
+3. **El encabezado de la app queda fuera del encuadre.** Es semitransparente —en la app está
+   bien, se ve pasar el contenido por detrás—, pero en una imagen quieta eso es un titular
+   fantasma partido por la mitad y parece un error de dibujo. Lo que sitúa cada captura es el
+   rótulo con la ruta que el brochure le pone encima.
+4. **Los dos temas, siempre.** El brochure sigue `prefers-color-scheme`; una captura clara sobre
+   papel oscuro sería un rectángulo encendido en mitad de la lectura.
+5. **La estrella hace el viaje entero antes de disparar.** La captura de la tarjeta 5 anonimiza
+   con bóveda, guarda los dos archivos, se los pasa a un tercero de mentiras que añade una
+   columna y reordena las filas, y los trae de vuelta: lo que se ve es «587 de 587 valores
+   volvieron, cero ambiguas». La primera versión era el formulario vacío pidiendo la bóveda —
+   correcta y muda: no enseñaba el round-trip, enseñaba un formulario.
+
+**Lo que costó en peso, declarado:** el brochure pasa de 102 KB a **483 KB**, de los cuales
+360 KB son las diez capturas. Es el precio de que la pieza enseñe el producto sin pedirle un
+archivo a nadie. No toca el presupuesto de rendimiento: Lighthouse corre sobre las cinco rutas
+de la app (`lighthouse-urls.json`), no sobre `/conoce`.
+
+## Tercera ronda del gate visual — el tercio era de la tarjeta, y tenía que ser de la pantalla
+
+> «No se ve la animación de despliegue de las tarjetas; cuando llegan a la pantalla que estoy
+> viendo ya están desplegadas.» — el usuario, sobre la preview, el 2026-08-22.
+
+Tenía razón, y el error estaba en la lectura de su propia regla. El tercio se medía **sobre la
+tarjeta cerrada**, que son 83 px de cabecera: un tercio de 83 px son **28 px**. Con ese umbral,
+la tarjeta se desplegaba en cuanto asomaba por el borde inferior, crecía fuera de cuadro, y
+cuando por fin llegaba a la altura de los ojos ya estaba abierta. La regla se cumplía al pie de
+la letra y el resultado era exactamente el contrario del que se pedía: **la apertura ocurría y
+nadie la presenciaba**.
+
+Peor: el criterio anterior de «no mover lo que se está leyendo» empujaba en la misma dirección
+equivocada. Abrir la tarjeta pegada al borde inferior era, en efecto, la posición más segura
+para el scroll — y la más invisible para el ojo. Dos objetivos que parecían el mismo y no lo
+eran.
+
+**El tercio que importa es el de la PANTALLA.** La tarjeta se despliega cuando su cabecera cruza
+hacia arriba la línea de los dos tercios, es decir cuando le queda **un tercio de pantalla por
+debajo**: ese hueco es el sitio donde se la ve crecer. Sigue creciendo hacia abajo, así que lo
+ya leído tampoco se mueve — las dos cosas se cumplen a la vez, solo que ahora sí se ven.
+
+Dos cambios más de la misma ronda:
+
+- **El despliegue pasó de `IntersectionObserver` a medir rectángulos** en el mismo repaso por
+  cuadro que ya hacía el recogido. Lo que manda no es «cuánto de la tarjeta se ve» —la medida
+  que engañaba— sino dónde está su cabecera respecto a la pantalla: eso es una resta, se lee de
+  un vistazo y se prueba sin pelear con umbrales. Son cinco rectángulos por cuadro y solo se
+  escribe cuando algo cambia de estado.
+- **La transición pasó de 0,42 s a 0,55 s.** Desde que la tarjeta lleva una captura dentro, lo
+  que se despliega mide más de mil píxeles, y a la velocidad anterior el crecimiento pasaba como
+  un borrón. Lo que se quiere ver es la tarjeta abriéndose, no el resultado.
+
+La prueba nueva —«no se despliega hasta que le queda un tercio de pantalla por debajo»— se
+demostró **en rojo** contra la regla anterior antes de ponerse verde: con el umbral viejo, la
+tarjeta ya estaba abierta asomando por el borde inferior.
+
+## Cuarta ronda del gate visual — la compensación de scroll era una apuesta
+
+> «Cuando voy por la tercera tarjeta y me voy a devolver se cierran todas y me manda a la
+> sección siguiente. Mientras esté en mi pantalla debe estar desplegada la que ya desplegó, y al
+> subir no debe dar ese salto.» — el usuario, el 2026-08-22.
+
+La segunda ronda había resuelto el salto **compensando**: al recoger las tarjetas que quedaban
+por encima del borde superior, se les medía el alto perdido y se devolvía el scroll con
+`window.scrollBy` en el mismo cuadro. Sobre el papel es exacto. En un navegador de verdad no lo
+es, y por una razón que estaba escrita tres pantallas más arriba en el mismo archivo: **la
+página lleva `scroll-behavior: smooth`**. El encogido era instantáneo y la compensación se
+**animaba**. Con dos tarjetas abiertas arriba eso son unos tres mil píxeles que se van de golpe
+y vuelven despacio — subiendo desde la tercera tarjeta, la página se iba a la sección siguiente.
+Y con la inercia de un trackpad, además, el `scrollBy` competía con un desplazamiento que el
+navegador ya tenía en marcha.
+
+**La lección, que es la que vale para las demás apps:** cualquier compensación de scroll es una
+apuesta a que nada más toque el scroll en ese cuadro. No compensar nunca no se puede perder.
+
+Así que se retiró entera, y la regla quedó en una sola frase demostrable: **ninguna tarjeta
+cambia de alto por encima del borde inferior de la pantalla, salvo creciendo hacia abajo desde
+un punto que ya está en cuadro.**
+
+- **Abrir:** solo bajando, y solo cuando la cabecera ha cruzado la línea de los dos tercios
+  (`0 ≤ top ≤ dos tercios`). Crece hacia abajo desde su cabecera: nada de lo ya leído se mueve.
+- **Cerrar:** solo cuando la tarjeta está **entera por debajo del borde inferior** (`top ≥ alto
+  de pantalla`). Encoger ahí no puede mover un píxel de lo que hay encima.
+
+El efecto es exactamente lo que se pidió: **la que ya se desplegó sigue desplegada mientras esté
+en pantalla**, subiendo o bajando; se recoge cuando se pasa de largo por ella; y volver arriba
+del todo sigue encontrando la página recogida, porque para llegar arriba hay que pasarlas todas.
+
+**Dos pruebas nuevas, las dos demostradas en rojo contra la versión anterior real** (no contra
+una imitación: se hizo `git show` del archivo del commit anterior y se corrieron encima):
+
+1. _«al subir, la que está en pantalla sigue desplegada y solo se recoge al pasar de largo»_ —
+   recorre la subida entera y vigila las dos mitades del invariante en cada paso. Contra la
+   versión anterior: **«la tarjeta 5 se cerró estando en pantalla»**, que es literalmente la
+   queja.
+2. _«la página nunca mueve el scroll por su cuenta»_ — envuelve `window.scrollBy` y
+   `window.scrollTo` antes de cargar, conduce el recorrido con la referencia original y exige
+   que el registro quede vacío. **No mide el resultado sino la causa**, y esa es la diferencia:
+   las pruebas de la ronda anterior medían después de dejar asentar, y ningún e2e reproduce la
+   inercia de un dedo — por eso la CI estuvo verde con el defecto dentro. Contra la versión
+   anterior: **«el brochure movió el scroll por su cuenta durante el recorrido»**.
+
+## Quinta ronda del gate visual — la tarjeta se repliega al quedar atrás
+
+> «No se repliega: cuando subo, la tarjeta que ha salido de la visual no se repliega.» — el
+> usuario, el 2026-08-22, sobre la regla de la cuarta ronda.
+
+La cuarta ronda quitó el salto dejando las tarjetas de arriba abiertas para siempre — y eso
+contradecía la regla original del usuario: «si me devuelvo, ya estaban cerradas». Al subir se
+encontraba cada tarjeta todavía desplegada, con sus mil cuatrocientos píxeles por recorrer de
+nuevo. Las dos exigencias (se repliegan al salir de la vista, y nada visible salta) parecían
+pelearse; la salida fue ver que el error de la ronda 2 nunca fue compensar: **fue compensar
+ANIMADO**.
+
+**La regla final, en una frase: una tarjeta está abierta exactamente mientras está a la vista.**
+
+- **Abre** bajando, cuando su cabecera cruza la línea de los dos tercios.
+- **Se repliega por abajo** (al subir y pasarla de largo) con su transición: encoge fuera de
+  cuadro.
+- **Se repliega por arriba** (al dejarla atrás bajando) de golpe, sin transición, **reponiendo
+  el scroll con el alto exacto que pierde en el mismo cuadro y en modo `instant`** — que ignora
+  `scroll-behavior: smooth` por contrato. Eso es lo que la ronda 2 no hizo: repuso con
+  `scrollBy` a secas, el smooth lo animó, y la página se iba sola.
+- `overflow-anchor: none` en el `<html>`: con el anclaje nativo encendido, Chrome compensaría
+  TAMBIÉN y la página se movería lo que sobra; Safari no ancla nunca. Apagarlo deja a todos los
+  navegadores con una sola corrección, la propia, que es la que está probada.
+
+Así, al devolverse no queda **nada** que cerrar por encima —ya se cerraron al quedar atrás— y la
+subida no tiene ni un cambio de alto sobre la línea de lectura. Las dos exigencias a la vez.
+
+**Las pruebas de esta ronda** («la que quedó atrás bajando ya está recogida» y «bajar tampoco
+mueve ni un renglón») se demostraron en rojo contra el archivo del commit anterior real: la
+primera falló con «la tarjeta 1 siguió abierta después de quedar atrás», que es literalmente la
+queja. Y una lección de método al escribirlas: el primer rojo del test de bajada era **falso** —
+lo conducía `window.scrollBy` a secas, que es programático y el smooth lo anima, tragándose la
+reposición. Una rueda real es scroll nativo y no pasa por ahí: el conductor del test tiene que
+ser `behavior: "instant"`, o mide un defecto que ningún dedo puede producir.
+
+## El merge fantasma del PR #13 — un incidente de infraestructura, registrado
+
+El PR #13 se atascó del lado de GitHub: la rama recibía los push (el ref remoto avanzaba,
+verificado con `git ls-remote`), pero el PR **nunca volvió a registrar una cabeza nueva** ni
+disparó Actions — ni con push normal, ni con amend + force-push, con la página de estado de
+GitHub en verde. Al mergearse, el squash se llevó **la cabeza vieja** (`3b5e280`): `main` y
+producción quedaron con la primera ronda del gate —sin capturas, con el tercio medido sobre la
+tarjeta y con el salto de subida— mientras todo lo aprobado seguía a salvo en la rama.
+
+Se detectó comparando el estado del PR contra el ref remoto (la rutina de verificar en vez de
+asumir), y se respondió así: **PR #14** con los tres commits restantes (GitHub sí registró la
+cabeza correcta esta vez), re-limpieza del `homepage` que el deploy del merge volvió a ensuciar,
+y un merge de `main` a la rama con estrategia `ours` — correcto aquí y solo aquí porque el único
+delta de `main` (el squash) es versión vieja de los mismos cuatro archivos que la rama lleva en
+versión aprobada; se verificó contra el merge-base antes de usarla.
+
+La lección para el método: **un PR mergeado no es evidencia de qué se mergeó** — después de un
+merge, la verificación es contra `main` (`git show origin/main:<archivo> | wc -c`), no contra el
+estado del PR.
 
 ## Lo que solo se vio MIRANDO — la pasada de capturas
 
@@ -215,7 +415,7 @@ El test del contrato se demostró rojo en sus cuatro afirmaciones antes de dejar
 | Comprobación                                  | Resultado                                                                                               |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `pnpm test`                                   | **740 pruebas** en 42 archivos (1 archivo y 1 prueba omitidos por diseño) · cobertura de líneas 96,17 % |
-| `pnpm test:e2e`                               | **145 pruebas** (3 omitidas), 28 de ellas de `/conoce`                                                  |
+| `pnpm test:e2e`                               | **153 pruebas** (3 omitidas), 36 de ellas de `/conoce`                                                  |
 | `pnpm typecheck` · `pnpm lint` · `pnpm build` | limpios                                                                                                 |
 | `pnpm gate:anti-ia`                           | cero SDKs de IA generativa                                                                              |
 | Barrido de cero enlaces + `homepageUrl`       | vacío · `""`                                                                                            |
