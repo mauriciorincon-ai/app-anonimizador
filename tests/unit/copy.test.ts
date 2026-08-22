@@ -14,7 +14,10 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const RAICES = ["src", "docs/MANUAL-DE-USO.md"];
+// El brochure entra al barrido desde la entrega de la pieza: es el documento MÁS público de la
+// app —se sirve en /conoce y se abre con doble clic— y donde una frase de más se pagaría más
+// caro. Es exactamente donde el impulso de vender aprieta.
+const RAICES = ["src", "docs/MANUAL-DE-USO.md", "docs/BROCHURE.html"];
 
 /** Las tres del CLAUDE.md, más las variantes con las que se cuelan en la práctica. */
 const PROHIBIDAS: readonly { patron: RegExp; porque: string }[] = [

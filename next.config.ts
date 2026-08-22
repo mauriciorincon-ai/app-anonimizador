@@ -58,6 +58,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:ruta*", headers: CABECERAS }];
   },
+
+  // `/conoce` sirve el brochure vivo. Es un HTML autocontenido de `docs/` que
+  // `scripts/copiar-brochure.mjs` deja en `public/conoce.html` durante `dev` y `build`, y no
+  // una página de Next: el documento tiene que poder abrirse con doble clic sin servidor, y
+  // partirlo en componentes rompería justo eso. La reescritura le da la ruta limpia, sin
+  // `.html`. La CSP de arriba lo sirve tal cual — su estilo y su script van en línea, y
+  // `'unsafe-inline'` ya está declarado con su razón.
+  async rewrites() {
+    return [{ source: "/conoce", destination: "/conoce.html" }];
+  },
 };
 
 export default nextConfig;

@@ -121,7 +121,8 @@ Las 8 desviaciones del plan están en la bitácora, con su razón. Ninguna toca 
 
 ## Para el gate ⭐ del usuario
 
-- **Preview:** https://app-anonimizador-git-sprint-001-el-diagnostico-mauricio-rincon.vercel.app
+- **Preview:** la dirección de esta preview no se publica en el repositorio (registro privado en la
+  orden de la casa planeadora).
 - **Guía:** `docs/GUIA-DE-PRUEBA.html` — gate mínimo ⭐ de **8 pruebas, ~18 min**. Solo entró lo
   que ninguna automatización puede verificar: el juicio sobre el lenguaje y el diseño, el reporte
   abierto **con el wifi apagado**, la huella comprobada **en tu propia terminal**, y si el flujo de

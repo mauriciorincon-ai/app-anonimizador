@@ -136,11 +136,24 @@ sprints/ · decisions/
     sprint, kit de prueba enlazado.
 11. **PROHIBIDO entregar por artifacts** — todo entregable es archivo del repo (HTML
     autocontenido o MD).
-12. **Brochure vivo** (`docs/BROCHURE.html` + `/conoce`, molde v2): se PRODUCE (storyboard con
-    clímax aprobado antes del HTML + banco de técnicas del kit) — entregable del cierre de
-    ciclo (S3), anclado al design-system de esta app.
+12. **Brochure vivo** (`docs/BROCHURE.html` + ruta `/conoce`, molde v2): se PRODUCE (storyboard
+    con clímax **aprobado por el usuario** antes de la primera línea de HTML + banco de
+    técnicas del kit), anclado al design-system de esta app. Tiene **dos estados**: **INICIAL**
+    (declarado en la propia pieza) mientras las pruebas del usuario no han cerrado, y
+    **SELLADO** cuando el gate ⭐ las cierra. Junto al HTML viaja **`docs/brochure-export.json`**
+    (contrato `brochure-export` v1.0.0), y **todo PR que toque features lo actualiza en el
+    mismo PR** — la cifra del pie del brochure, la del export y el `MANUAL-DE-USO.md` no pueden
+    desincronizarse (hay test de contrato que lo verifica).
 13. **Última milla** (método v1.11.0): todo link de producción se prueba DESDE AFUERA, SIN
-    sesión (curl/incógnito); dominio + protección de deployment documentados en el BLUEPRINT.
+    sesión (curl/incógnito) — y **sin publicarlo** (regla 14); dominio + protección de
+    deployment documentados en el BLUEPRINT **sin escribir la dirección**.
+14. **Cero enlaces — la producción se MUESTRA, jamás se ENTREGA** (kit v1.19.0): ningún archivo
+    de este repo público ni ningún campo de GitHub (incluido **homepage**) publica URLs de
+    producción o de preview. Las direcciones son **dato privado**: viven en la orden de la casa
+    planeadora, que es el registro privado. En su lugar: el brochure como contenido, la ruta
+    `/conoce` nombrada sin URL absoluta, y el CTA público de **lista de espera**. El campo
+    `homepage` del repo lo **REESCRIBE la GitHub App de Vercel tras cada deploy de producción**:
+    se re-limpia después de cada merge a `main` y se declara como limpieza recurrente.
 
 ## Estándares (los 6+1, gates en CI)
 

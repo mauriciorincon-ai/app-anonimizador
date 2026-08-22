@@ -8,9 +8,14 @@ con el dedo**, y te las devuelve **anonimizadas**.
 
 Todo ocurre **dentro del navegador**. No hay servidor, no hay carga, no hay copia.
 
-- 🔗 **Producción:** <https://app-anonimizador.vercel.app> — pública desde el Sprint 001.
+- ✨ **Conoce Velo en 3 minutos:** [el brochure](docs/BROCHURE.html) — se abre con doble clic, y en
+  la aplicación desplegada vive en la ruta `/conoce`.
 - 📖 [Manual de uso](docs/MANUAL-DE-USO.md) · 🧪 [Guía de prueba](docs/GUIA-DE-PRUEBA.html) ·
   🎨 [Sistema de diseño](design-system.md)
+
+> **Acceso.** Velo está desplegado y funcionando, pero todavía **no se publica su dirección**: el
+> acceso va por **lista de espera** mientras se completa la ronda de pruebas. Mientras tanto, se
+> corre en local con las instrucciones de más abajo.
 
 ---
 
