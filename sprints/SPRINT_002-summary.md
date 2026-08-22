@@ -59,7 +59,7 @@ sprint pasado.
 | **Determinismo**   | ✅     | `determinismo-transformacion.test.ts`, en las dos direcciones.                                                                                                                                                       |
 | **Observabilidad** | ✅     | El sanitizador de `reportError` se amplió a **política y llave** en el mismo commit en que nacieron los tipos.                                                                                                       |
 | **Seguridad**      | ✅     | `pnpm audit` limpio · doble cinturón gitleaks activo en cada commit del sprint · CSP sin `unsafe-eval` (y Zod configurado `jitless` para no violarla).                                                               |
-| **Performance**    | ✅     | Lighthouse móvil: `/` **93 · 100 · 100 · 100** · `/transformar` **93 · 100 · 100 · 100**. El gate se puso **rojo en el PR** con 0,88 en `/transformar` y tenía razón: ver abajo.                                                               |
+| **Performance**    | ✅     | Lighthouse móvil: `/` **93 · 100 · 100 · 100** · `/transformar` **93 · 100 · 100 · 100**. El gate se puso **rojo en el PR** con 0,88 en `/transformar` y tenía razón: ver abajo.                                     |
 | **UX + A11y**      | ⏳     | axe limpio en **dos temas × dos tamaños** · teclado completo en la tabla editable · `prefers-reduced-motion` con e2e que mide **opacidad calculada**. **Falta el gate visual ⭐ del usuario — diferido, ver abajo.** |
 | **IA embebida**    | ✅     | **N/A estructural**, por ausencia verificada.                                                                                                                                                                        |
 | **Guía + manual**  | ✅     | `docs/GUIA-DE-PRUEBA.html` **v2 acumulativa: 82 pruebas** (44 heredadas + 38 nuevas, ninguna eliminada) · `docs/MANUAL-DE-USO.md` · `README.md`.                                                                     |
@@ -164,7 +164,8 @@ patrón predice, y lo que 519 pruebas verdes no podían ver. Los dos primeros se
 
 ## Para el gate ⭐ del ciclo (S3)
 
-- **Preview:** https://app-anonimizador-git-sprint-002-el-disfraz-mauricio-rincon.vercel.app
+- **Preview:** la dirección de esta preview no se publica en el repositorio (registro privado en la
+  orden de la casa planeadora).
 - **Guía:** `docs/GUIA-DE-PRUEBA.html` — filtro **«Gate mínimo ⭐ del ciclo»**: **14 pruebas, ~40
   min**. Entró solo lo que ninguna automatización puede verificar: el juicio sobre el lenguaje y el
   diseño, el peso relativo entre la advertencia y la cifra en el balance, el segundo que tarda la
