@@ -241,6 +241,123 @@ test("la que se despliega SOLA tampoco se mueve de su sitio", async ({
   ).toBeLessThan(3);
 });
 
+test("subir no mueve ni un renglón de lo que se está leyendo", async ({
+  page,
+}) => {
+  // ESTE es el defecto que trajo el gate visual: bajando iba bien, subiendo «pegaba saltos».
+  //
+  // La causa: al subir se cerraban tarjetas que ya habían pasado por encima del borde superior.
+  // Quitarle alto a algo que está ARRIBA de la línea de lectura sube de golpe todo lo que hay
+  // debajo — o sea, todo lo que se está mirando. Ahora esas se cierran de golpe y se compensa
+  // el scroll con el alto exacto que pierden.
+  //
+  // Se mide lo que se VE, nunca `scrollY`: el navegador ajusta `scrollY` a propósito para dejar
+  // el contenido quieto, así que penalizar ese ajuste sería castigar al mecanismo que salva la
+  // lectura. La referencia es la cabecera de una tarjeta visible, que no se anima sola.
+  await page.goto("/conoce");
+  await recorrer(page, "abajo");
+
+  const paso = Math.round((page.viewportSize()?.height ?? 800) / 3);
+
+  for (let vuelta = 0; vuelta < 60; vuelta++) {
+    const arriba = await page.evaluate(() => window.scrollY);
+    // Cerca del tope el scroll se topa y el empujón deja de ser el pedido: ahí ya no se mide.
+    if (arriba <= paso * 2) break;
+
+    const antes = await page.evaluate(() => {
+      const visible = Array.from(
+        document.querySelectorAll(".tarjeta-cabeza"),
+      ).find((c) => {
+        const r = c.getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= window.innerHeight;
+      });
+      (window as unknown as { __ref?: Element }).__ref = visible;
+      return visible ? visible.getBoundingClientRect().top : null;
+    });
+
+    await page.evaluate((p) => window.scrollBy(0, -p), paso);
+    await page.waitForTimeout(140);
+
+    if (antes === null) continue;
+
+    const despues = await page.evaluate(() => {
+      const ref = (window as unknown as { __ref?: Element }).__ref;
+      return ref ? ref.getBoundingClientRect().top : null;
+    });
+
+    // La referencia tiene que haber bajado EXACTAMENTE lo que se empujó el scroll. Cualquier
+    // píxel de más es una tarjeta que encogió por encima sin compensar.
+    expect(
+      Math.abs((despues ?? 0) - (antes + paso)),
+      `algo se movió solo al subir (empujón ${vuelta + 1})`,
+    ).toBeLessThan(4);
+  }
+});
+
+test("al primer gesto hacia arriba, las que quedaron atrás ya están recogidas", async ({
+  page,
+}) => {
+  // La otra mitad de la regla: «si me devuelvo, ya estaban cerradas». No se cierran cuando la
+  // persona llega a ellas —eso sería cerrarlas en su cara—, sino apenas empieza a subir, que es
+  // cuando están todas fuera de cuadro y cerrarlas no cuesta un solo píxel de movimiento.
+  await page.goto("/conoce");
+  await recorrer(page, "abajo");
+
+  const botones = page.locator(".tarjeta-boton");
+  for (let i = 0; i < 5; i++) {
+    await expect(botones.nth(i)).toHaveAttribute("aria-expanded", "true");
+  }
+
+  await page.evaluate(() => window.scrollBy(0, -120));
+  await page.waitForTimeout(300);
+
+  // Las cuatro que quedaron atrás. La quinta es donde se dio la vuelta: sigue en pantalla y
+  // cerrarla sería el salto que esta corrección viene a quitar.
+  for (let i = 0; i < 4; i++) {
+    await expect(
+      botones.nth(i),
+      `la tarjeta ${i + 1} seguía abierta tras empezar a subir`,
+    ).toHaveAttribute("aria-expanded", "false");
+  }
+});
+
+test("cada tarjeta enseña una pantalla de la app, en los dos temas", async ({
+  page,
+}) => {
+  await page.goto("/conoce");
+  const figuras = page.locator(".tarjeta .captura");
+  await expect(figuras).toHaveCount(5);
+
+  for (let i = 0; i < 5; i++) {
+    const figura = figuras.nth(i);
+    await expect(figura.locator(".ruta")).toHaveText(/^\/[a-z]/);
+
+    const img = figura.locator("img");
+    // Autocontenida: la imagen viaja DENTRO del archivo. El brochure se abre con doble clic sin
+    // internet, y una captura pedida a un servidor sería un archivo roto encima de la mesa.
+    expect(await img.getAttribute("src")).toMatch(/^data:image\/webp;base64,/);
+    // Y la variante oscura, que evita el rectángulo encendido en mitad del papel oscuro.
+    await expect(figura.locator('source[media*="dark"]')).toHaveCount(1);
+
+    // Informativa, no decorativa: sin `alt` la captura es un agujero para quien no la ve.
+    const alt = (await img.getAttribute("alt")) ?? "";
+    expect(
+      alt.length,
+      `la captura ${i + 1} llegó sin texto alternativo`,
+    ).toBeGreaterThan(40);
+
+    // Las dos medidas puestas, o el navegador no reserva el hueco y la página salta al cargar.
+    expect(Number(await img.getAttribute("width"))).toBeGreaterThan(0);
+    expect(Number(await img.getAttribute("height"))).toBeGreaterThan(0);
+
+    // Y que descodifique de verdad: un `data:` URI truncado da 0 y no falla en ninguna otra parte.
+    expect(
+      await img.evaluate((n) => (n as HTMLImageElement).naturalWidth),
+      `la captura ${i + 1} no se descodificó`,
+    ).toBeGreaterThan(500);
+  }
+});
+
 test("se abre con el teclado", async ({ page }) => {
   await page.goto("/conoce");
   const tercera = page.locator(".tarjeta-boton").nth(2);

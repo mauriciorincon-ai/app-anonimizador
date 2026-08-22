@@ -2,7 +2,7 @@
 entrega: brochure-conoce
 app: anonimizador (Velo)
 tipo: entrega puntual (no es sprint — orden ENTREGA-BROCHURE de la planeadora, kit v1.19.0)
-estado: mergeada (PR #12) y probada en producción sin sesión. Adenda del gate visual: las tarjetas se despliegan con el recorrido (PR aparte).
+estado: mergeada (PR #12) y probada en producción sin sesión. Dos rondas del gate visual en PR aparte (#13): el despliegue por recorrido, y luego las capturas de la app más el salto de subida.
 fecha: 2026-08-21
 rama: entrega/brochure-conoce
 ---
@@ -149,16 +149,75 @@ asoman**, no al 15 %: así, cuando llegan al tercio ya se asentaron y la medida 
 Las dos coreografías tienen que estar separadas o se estorban.
 
 **Sobre el salto de scroll**, que es el defecto clásico de este patrón (1.291 px en el piloto):
-los dos movimientos ocurren **fuera de cuadro a propósito**. Al bajar, la tarjeta se abre cuando
-entra por el borde inferior, así que crece hacia abajo y no empuja lo que se está leyendo; al
-subir, se cierra cuando ya salió por ese mismo borde, así que encoge por debajo de la pantalla.
-Dos e2e lo fijan: la cabecera de una tarjeta no se mueve **ni al abrirla con el dedo ni cuando
-la abre el recorrido** (< 2 px y < 3 px medidos).
+al bajar, la tarjeta se abre cuando entra por el borde inferior, así que crece hacia abajo y no
+empuja lo que se está leyendo. Dos e2e lo fijan: la cabecera de una tarjeta no se mueve **ni al
+abrirla con el dedo ni cuando la abre el recorrido** (< 2 px y < 3 px medidos). _(La otra mitad
+—la de subir— se creía resuelta aquí y no lo estaba: ver la segunda ronda del gate, abajo.)_
 
 **Y una corrección de método:** la primera versión de esa medición vigilaba `scrollY`, y estaba
 mal. Cuando algo crece por encima del borde superior, el navegador corrige `scrollY` **a
 propósito** para dejar el contenido quieto; penalizar ese ajuste es castigar justo al mecanismo
 que salva la lectura. Se mide lo que se ve, no el número del scroll.
+
+## Segunda ronda del gate visual — las capturas, y el salto de verdad
+
+> Dos observaciones del usuario sobre la preview del PR #13, el 2026-08-22: **(1)** las tarjetas
+> necesitan imágenes de la app, no solo texto — «queda muy cargado»; **(2)** «de bajada está
+> bien, pero de subida pega saltos que quedan terribles en la navegabilidad».
+
+**El salto de subida era real, y la primera ronda lo dio por resuelto sin medirlo.** El texto de
+arriba afirmaba que al subir la tarjeta «se cierra cuando ya salió por el borde inferior». El
+código no hacía eso: cerraba cualquier tarjeta que cayera por debajo del tercio yendo hacia
+arriba, **incluida la que asoma por el borde de ARRIBA**. Y ahí está la diferencia entera:
+quitarle alto a algo que está por encima de la línea de lectura sube de golpe todo lo que hay
+debajo, que es justo lo que la persona está mirando. La prueba nueva, corrida contra el código
+anterior, midió **955 px de salto en un solo empujón** — el orden de magnitud del piloto.
+
+La regla que lo arregla se puede decir en una línea: **una tarjeta solo puede encoger si eso no
+mueve nada de lo visible**, y eso depende de dónde está respecto al borde superior.
+
+- Las que **salieron por abajo** se cierran normal: encogen donde nadie mira.
+- Las que quedaron **enteras arriba** se cierran de golpe, sin transición, y **se compensa el
+  scroll con el alto exacto que perdieron**, en el mismo cuadro. La página queda recogida sin
+  que un píxel de lo visible se mueva — que es lo que hace cierta la promesa de «me devuelvo y
+  ya estaban cerradas».
+- Ninguna tarjeta **visible** se cierra sola. La única que puede quedar abierta al subir es
+  aquella sobre la que se dio la vuelta, y cerrarla sería exactamente el salto que se corrige.
+
+La compensación se hace a mano en vez de dejársela al anclaje de scroll del navegador: el
+navegador la intenta, pero cuadro a cuadro y sobre una altura en plena transición. Medir el alto
+y restarlo es exacto y, sobre todo, **se puede probar** — la prueba mide la cabecera de una
+tarjeta visible y exige que baje exactamente lo que se empujó el scroll, ni un píxel más.
+
+**Las capturas.** Cada tarjeta abre ahora con una pantalla real de Velo: `/diagnostico`, la
+política, la vista previa del velado, el balance y el regreso. Se producen con
+`scripts/capturas-brochure.mjs`, que recorre la app **por la UI** con datos del generador
+sintético seeded —ni un dato real, regla dura 5—, comprime a WebP y las incrusta como `data:`
+URI para que el archivo siga abriéndose con doble clic sin internet. Cinco decisiones que
+costaron sus vueltas:
+
+1. **Se captura estrecho (880 px), no ancho.** Una captura de 1400 px reducida a una tarjeta de
+   620 deja de ser una pantalla y se vuelve una textura: se adivina la forma y no se lee una
+   palabra.
+2. **Se encuadra la ventana, no el documento.** Recortar el documento dejaba el encabezado fijo
+   de la app flotando en mitad de la imagen, tapando un rótulo: un elemento `sticky` se pinta
+   donde el scroll lo dejó y una captura de página entera lo congela ahí.
+3. **El encabezado de la app queda fuera del encuadre.** Es semitransparente —en la app está
+   bien, se ve pasar el contenido por detrás—, pero en una imagen quieta eso es un titular
+   fantasma partido por la mitad y parece un error de dibujo. Lo que sitúa cada captura es el
+   rótulo con la ruta que el brochure le pone encima.
+4. **Los dos temas, siempre.** El brochure sigue `prefers-color-scheme`; una captura clara sobre
+   papel oscuro sería un rectángulo encendido en mitad de la lectura.
+5. **La estrella hace el viaje entero antes de disparar.** La captura de la tarjeta 5 anonimiza
+   con bóveda, guarda los dos archivos, se los pasa a un tercero de mentiras que añade una
+   columna y reordena las filas, y los trae de vuelta: lo que se ve es «587 de 587 valores
+   volvieron, cero ambiguas». La primera versión era el formulario vacío pidiendo la bóveda —
+   correcta y muda: no enseñaba el round-trip, enseñaba un formulario.
+
+**Lo que costó en peso, declarado:** el brochure pasa de 102 KB a **483 KB**, de los cuales
+360 KB son las diez capturas. Es el precio de que la pieza enseñe el producto sin pedirle un
+archivo a nadie. No toca el presupuesto de rendimiento: Lighthouse corre sobre las cinco rutas
+de la app (`lighthouse-urls.json`), no sobre `/conoce`.
 
 ## Lo que solo se vio MIRANDO — la pasada de capturas
 
@@ -215,7 +274,7 @@ El test del contrato se demostró rojo en sus cuatro afirmaciones antes de dejar
 | Comprobación                                  | Resultado                                                                                               |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `pnpm test`                                   | **740 pruebas** en 42 archivos (1 archivo y 1 prueba omitidos por diseño) · cobertura de líneas 96,17 % |
-| `pnpm test:e2e`                               | **145 pruebas** (3 omitidas), 28 de ellas de `/conoce`                                                  |
+| `pnpm test:e2e`                               | **151 pruebas** (3 omitidas), 34 de ellas de `/conoce`                                                  |
 | `pnpm typecheck` · `pnpm lint` · `pnpm build` | limpios                                                                                                 |
 | `pnpm gate:anti-ia`                           | cero SDKs de IA generativa                                                                              |
 | Barrido de cero enlaces + `homepageUrl`       | vacío · `""`                                                                                            |
