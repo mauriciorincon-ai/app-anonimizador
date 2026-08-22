@@ -454,13 +454,6 @@
       .tarjeta[data-abierta] .detalle-interior {
         visibility: visible;
       }
-      /* Recoger SIN transición: lo usa el guion para cerrar de golpe las tarjetas que ya
-     quedaron arriba de la pantalla, en el mismo cuadro en que compensa el scroll. Animar ese
-     cierre sería animar algo que nadie ve, y cada cuadro de la animación movería la lectura. */
-      .tarjeta[data-sin-transicion] .detalle,
-      .tarjeta[data-sin-transicion] .detalle-interior {
-        transition: none;
-      }
       .detalle-cuerpo {
         padding: 2px 16px 18px;
         border-top: 1px solid var(--borde);
@@ -2879,21 +2872,31 @@
         // una resta, se lee de un vistazo y se puede probar. Son cinco rectángulos por cuadro,
         // y solo se escribe cuando algo cambia de estado.
         //
-        //  · Al BAJAR se abre cuando la cabecera cruza la línea de los dos tercios: queda un
-        //    tercio de pantalla por debajo, que es donde se la ve crecer. Y crece hacia abajo,
-        //    contra el borde inferior: nada de lo que ya se leyó se mueve.
-        //  · Al SUBIR no se cierra ninguna tarjeta VISIBLE. Cerrar una que asoma por el borde
-        //    de arriba era el salto: al quitarle alto por encima de la línea de lectura, todo
-        //    lo de abajo —o sea, todo lo que se está mirando— sube de golpe.
-        //     · Las que salieron por abajo se cierran normal: encogen donde nadie mira.
-        //     · Las que quedaron enteras arriba se cierran de golpe y **se compensa el scroll
-        //       con el alto exacto que perdieron**, en el mismo cuadro. La página queda
-        //       recogida sin que un píxel de lo visible se mueva — que es lo que hace cierta la
-        //       promesa de «me devuelvo y ya estaban cerradas».
+        // ── La regla, que ahora es UNA y se puede demostrar ────────────────────────────────
         //
-        // La compensación se hace a mano y no se le deja al anclaje de scroll del navegador:
-        // el navegador la intenta, pero cuadro a cuadro y sobre una altura que está en plena
-        // transición. Medir el alto y restarlo es exacto, y además se puede probar.
+        // **Ninguna tarjeta cambia de alto por encima del borde inferior de la pantalla, salvo
+        // creciendo hacia abajo desde un punto que ya está en cuadro.** De ahí sale todo:
+        //
+        //  · ABRIR: solo bajando, y solo cuando la cabecera ha cruzado la línea de los dos
+        //    tercios (`0 <= top <= linea`). Queda un tercio de pantalla por debajo, que es donde
+        //    se la ve crecer; y como crece hacia abajo desde su cabecera, nada de lo ya leído se
+        //    mueve. El `top >= 0` es el que impide abrir una cuya cabecera ya se fue por arriba.
+        //  · CERRAR: solo cuando la tarjeta está ENTERA por debajo del borde inferior
+        //    (`top >= vh`). Encoger ahí no puede mover un píxel de lo que hay encima.
+        //
+        // Lo que se quitó, y por qué. Antes se recogían también las tarjetas que quedaban por
+        // encima del borde superior, compensando el scroll con el alto exacto que perdían. La
+        // idea era buena y la ejecución imposible: esta página tiene `scroll-behavior: smooth`,
+        // así que el `scrollBy` de la compensación se ANIMABA mientras el encogido era
+        // instantáneo — y con dos tarjetas abiertas arriba eso son tres mil píxeles que se van
+        // de golpe y vuelven despacio. Subiendo desde la tercera tarjeta, la página salía
+        // disparada a la sección siguiente. Cualquier compensación es una apuesta a que nada más
+        // toque el scroll en ese cuadro; no compensar nunca no se puede perder.
+        //
+        // El efecto de quitarlo es además el que se pidió: **la tarjeta que ya se desplegó sigue
+        // desplegada mientras esté en pantalla**, subiendo o bajando. Se recoge cuando se sale
+        // por abajo, o sea cuando ya se pasó de largo por ella — y volver arriba del todo sigue
+        // encontrando la página recogida, porque para llegar arriba hay que pasarlas todas.
         var yPrevia = window.scrollY;
         var bajando = true;
 
@@ -2904,59 +2907,16 @@
         function repasar() {
           var vh = pantalla();
           var linea = vh * (1 - TERCIO);
-          var vistas = [];
           tarjetas.forEach(function (t) {
             if (t.hasAttribute("data-manual")) return;
-            vistas.push({
-              t: t,
-              caja: t.getBoundingClientRect(),
-              abierta: t.hasAttribute("data-abierta"),
-            });
-          });
+            var caja = t.getBoundingClientRect();
+            var abierta = t.hasAttribute("data-abierta");
 
-          if (bajando) {
-            vistas.forEach(function (v) {
-              // `top >= 0`: si la cabecera ya se fue por encima del borde superior, abrirla
-              // empujaría hacia abajo justo lo que se está leyendo. Se queda cerrada; cuando se
-              // vuelva a pasar por su sitio, se abrirá.
-              if (!v.abierta && v.caja.top >= 0 && v.caja.top <= linea) {
-                fijar(v.t, true);
-              }
-            });
-            return;
-          }
-
-          var arriba = [];
-          var abajo = [];
-          vistas.forEach(function (v) {
-            if (!v.abierta) return;
-            if (v.caja.bottom <= 0) arriba.push(v.t);
-            else if (v.caja.top >= vh) abajo.push(v.t);
-          });
-
-          if (arriba.length) {
-            var antes = arriba.map(function (t) {
-              return t.getBoundingClientRect().height;
-            });
-            arriba.forEach(function (t) {
-              t.setAttribute("data-sin-transicion", "");
+            if (!abierta) {
+              if (bajando && caja.top >= 0 && caja.top <= linea) fijar(t, true);
+            } else if (caja.top >= vh) {
               fijar(t, false);
-            });
-            var perdido = 0;
-            arriba.forEach(function (t, i) {
-              perdido += antes[i] - t.getBoundingClientRect().height;
-            });
-            if (perdido) window.scrollBy(0, -perdido);
-            requestAnimationFrame(function () {
-              arriba.forEach(function (t) {
-                t.removeAttribute("data-sin-transicion");
-              });
-            });
-          }
-          // Estas van después y sin compensar: encogen por debajo del borde inferior, donde
-          // encoger no mueve nada de lo que hay encima.
-          abajo.forEach(function (t) {
-            fijar(t, false);
+            }
           });
         }
 

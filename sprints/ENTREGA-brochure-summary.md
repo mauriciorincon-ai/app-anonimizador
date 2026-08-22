@@ -2,7 +2,7 @@
 entrega: brochure-conoce
 app: anonimizador (Velo)
 tipo: entrega puntual (no es sprint — orden ENTREGA-BROCHURE de la planeadora, kit v1.19.0)
-estado: mergeada (PR #12) y probada en producción sin sesión. Tres rondas del gate visual en PR aparte (#13): el despliegue por recorrido, las capturas de la app y el salto de subida, y el tercio medido sobre la pantalla.
+estado: mergeada (PR #12) y probada en producción sin sesión. Cuatro rondas del gate visual en PR aparte (#13): el despliegue por recorrido, las capturas de la app, el tercio medido sobre la pantalla, y la retirada de la compensación de scroll.
 fecha: 2026-08-21
 rama: entrega/brochure-conoce
 ---
@@ -180,9 +180,9 @@ mueve nada de lo visible**, y eso depende de dónde está respecto al borde supe
 
 - Las que **salieron por abajo** se cierran normal: encogen donde nadie mira.
 - Las que quedaron **enteras arriba** se cierran de golpe, sin transición, y **se compensa el
-  scroll con el alto exacto que perdieron**, en el mismo cuadro. La página queda recogida sin
-  que un píxel de lo visible se mueva — que es lo que hace cierta la promesa de «me devuelvo y
-  ya estaban cerradas».
+  scroll con el alto exacto que perdieron**, en el mismo cuadro. _(Esto se RETIRÓ en la cuarta
+  ronda: la compensación es exacta sobre el papel e imposible en un navegador con
+  `scroll-behavior: smooth`. Ver abajo.)_
 - Ninguna tarjeta **visible** se cierra sola. La única que puede quedar abierta al subir es
   aquella sobre la que se dio la vuelta, y cerrarla sería exactamente el salto que se corrige.
 
@@ -258,6 +258,52 @@ La prueba nueva —«no se despliega hasta que le queda un tercio de pantalla po
 demostró **en rojo** contra la regla anterior antes de ponerse verde: con el umbral viejo, la
 tarjeta ya estaba abierta asomando por el borde inferior.
 
+## Cuarta ronda del gate visual — la compensación de scroll era una apuesta
+
+> «Cuando voy por la tercera tarjeta y me voy a devolver se cierran todas y me manda a la
+> sección siguiente. Mientras esté en mi pantalla debe estar desplegada la que ya desplegó, y al
+> subir no debe dar ese salto.» — el usuario, el 2026-08-22.
+
+La segunda ronda había resuelto el salto **compensando**: al recoger las tarjetas que quedaban
+por encima del borde superior, se les medía el alto perdido y se devolvía el scroll con
+`window.scrollBy` en el mismo cuadro. Sobre el papel es exacto. En un navegador de verdad no lo
+es, y por una razón que estaba escrita tres pantallas más arriba en el mismo archivo: **la
+página lleva `scroll-behavior: smooth`**. El encogido era instantáneo y la compensación se
+**animaba**. Con dos tarjetas abiertas arriba eso son unos tres mil píxeles que se van de golpe
+y vuelven despacio — subiendo desde la tercera tarjeta, la página se iba a la sección siguiente.
+Y con la inercia de un trackpad, además, el `scrollBy` competía con un desplazamiento que el
+navegador ya tenía en marcha.
+
+**La lección, que es la que vale para las demás apps:** cualquier compensación de scroll es una
+apuesta a que nada más toque el scroll en ese cuadro. No compensar nunca no se puede perder.
+
+Así que se retiró entera, y la regla quedó en una sola frase demostrable: **ninguna tarjeta
+cambia de alto por encima del borde inferior de la pantalla, salvo creciendo hacia abajo desde
+un punto que ya está en cuadro.**
+
+- **Abrir:** solo bajando, y solo cuando la cabecera ha cruzado la línea de los dos tercios
+  (`0 ≤ top ≤ dos tercios`). Crece hacia abajo desde su cabecera: nada de lo ya leído se mueve.
+- **Cerrar:** solo cuando la tarjeta está **entera por debajo del borde inferior** (`top ≥ alto
+  de pantalla`). Encoger ahí no puede mover un píxel de lo que hay encima.
+
+El efecto es exactamente lo que se pidió: **la que ya se desplegó sigue desplegada mientras esté
+en pantalla**, subiendo o bajando; se recoge cuando se pasa de largo por ella; y volver arriba
+del todo sigue encontrando la página recogida, porque para llegar arriba hay que pasarlas todas.
+
+**Dos pruebas nuevas, las dos demostradas en rojo contra la versión anterior real** (no contra
+una imitación: se hizo `git show` del archivo del commit anterior y se corrieron encima):
+
+1. _«al subir, la que está en pantalla sigue desplegada y solo se recoge al pasar de largo»_ —
+   recorre la subida entera y vigila las dos mitades del invariante en cada paso. Contra la
+   versión anterior: **«la tarjeta 5 se cerró estando en pantalla»**, que es literalmente la
+   queja.
+2. _«la página nunca mueve el scroll por su cuenta»_ — envuelve `window.scrollBy` y
+   `window.scrollTo` antes de cargar, conduce el recorrido con la referencia original y exige
+   que el registro quede vacío. **No mide el resultado sino la causa**, y esa es la diferencia:
+   las pruebas de la ronda anterior medían después de dejar asentar, y ningún e2e reproduce la
+   inercia de un dedo — por eso la CI estuvo verde con el defecto dentro. Contra la versión
+   anterior: **«el brochure movió el scroll por su cuenta durante el recorrido»**.
+
 ## Lo que solo se vio MIRANDO — la pasada de capturas
 
 Cuatro defectos que ningún gate automático habría cazado, todos encontrados leyendo las capturas
@@ -313,7 +359,7 @@ El test del contrato se demostró rojo en sus cuatro afirmaciones antes de dejar
 | Comprobación                                  | Resultado                                                                                               |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `pnpm test`                                   | **740 pruebas** en 42 archivos (1 archivo y 1 prueba omitidos por diseño) · cobertura de líneas 96,17 % |
-| `pnpm test:e2e`                               | **151 pruebas** (3 omitidas), 34 de ellas de `/conoce`                                                  |
+| `pnpm test:e2e`                               | **153 pruebas** (3 omitidas), 36 de ellas de `/conoce`                                                  |
 | `pnpm typecheck` · `pnpm lint` · `pnpm build` | limpios                                                                                                 |
 | `pnpm gate:anti-ia`                           | cero SDKs de IA generativa                                                                              |
 | Barrido de cero enlaces + `homepageUrl`       | vacío · `""`                                                                                            |
