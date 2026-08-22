@@ -215,7 +215,7 @@ El test del contrato se demostró rojo en sus cuatro afirmaciones antes de dejar
 | Comprobación                                  | Resultado                                                                                               |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `pnpm test`                                   | **740 pruebas** en 42 archivos (1 archivo y 1 prueba omitidos por diseño) · cobertura de líneas 96,17 % |
-| `pnpm test:e2e`                               | **137 pruebas** (3 omitidas), 20 de ellas de `/conoce`                                                  |
+| `pnpm test:e2e`                               | **145 pruebas** (3 omitidas), 28 de ellas de `/conoce`                                                  |
 | `pnpm typecheck` · `pnpm lint` · `pnpm build` | limpios                                                                                                 |
 | `pnpm gate:anti-ia`                           | cero SDKs de IA generativa                                                                              |
 | Barrido de cero enlaces + `homepageUrl`       | vacío · `""`                                                                                            |
