@@ -28,3 +28,6 @@ ds-bundle/
 .design-sync/learnings/
 .design-sync/node_modules
 .design-sync/entrada.css
+
+# El brochure canónico vive en docs/; esta copia la genera scripts/copiar-brochure.mjs.
+/public/conoce.html

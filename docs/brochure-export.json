@@ -1,0 +1,308 @@
+{
+  "_schema": {
+    "_lee_esto_primero": "Este bloque documenta el formato y no es dato de la app. Se conserva en cada export para que el esquema viaje con el archivo: quien lo consuma no necesita buscar otro documento. Las apps que adopten este formato copian este bloque tal cual y rellenan el resto.",
+    "_origen": "Definido por app-dash-agent-ai en su entrega de brochure (2026-08-19). Es el PRIMER export del portafolio; las demás apps lo adoptan.",
+    "_consumidor": "La vitrina de hoja-de-vida. Renderiza la ficha de cada app sin abrir su repositorio.",
+    "_regla_madre": "Toda cifra de `metricas[]` lleva su etiqueta de `fuente`. Es la regla dura 3 de Dash Agent AI aplicada a su propia ficha: una app que exige procedencia a cada número de su pantalla no puede publicar cifras sueltas sobre sí misma. Se recomienda al resto del portafolio.",
+    "schema_version": "semver del FORMATO, no de la app. Cambio mayor = campo eliminado o con significado distinto; menor = campo nuevo opcional; parche = documentación.",
+    "app.estado": "\"inicial\" mientras el brochure describe la construcción cerrada; \"sellado\" cuando el gate de pruebas del usuario terminó. `sellado_en` es null hasta entonces.",
+    "funcionalidades.total": "El número que el brochure declara en su pie. `fuente_del_conteo` dice contra qué documento se cuadró — sin eso, el total es una afirmación.",
+    "funcionalidades.descartadas": "Las que se construyeron o se planearon y NO existen. Van aquí con su razón y su fecha para que nadie las cuente como pendientes ni como entregadas.",
+    "metricas[].fuente": "Una de cuatro: \"medido\" (salió de un contador o un comando), \"calculada\" (medido operado con una tarifa o una regla, y se dice cuál), \"declarado\" (lo fijó una persona), \"estimacion\" (deducido). Una cifra sin fuente no entra.",
+    "enlaces.produccion": "null cuando la app no tiene URL pública. `razon` explica por qué, y es lo que la vitrina muestra en lugar del enlace. Nunca se rellena con un enlace de repositorio ni con una promesa."
+  },
+
+  "schema_version": "1.0.0",
+  "actualizado": "2026-08-21",
+
+  "app": {
+    "slug": "anonimizador",
+    "nombre": "Velo",
+    "ciclo": "H1",
+    "estado": "inicial",
+    "sellado_en": null,
+    "sprints_cerrados": 4,
+    "version_repo": "0.1.0"
+  },
+
+  "promesa": {
+    "tagline": "Velo para entregar. Desvelo para recuperar.",
+    "intro": "La aduana de tus datos: revisa tus tablas antes de que salgan hacia una IA, una herramienta en la nube o el computador de un tercero, te dice a quién señalan con el dedo, te las devuelve tratadas — y cuando el trabajo vuelve, recupera los valores originales. Todo ocurre dentro del navegador: no hay servidor, no hay carga, no hay copia.",
+    "para_quien": "Para quien tiene que entregar datos de personas a un tercero —un consultor, una herramienta, un modelo— y hoy elige entre mandar el archivo tal cual o no mandarlo. En Colombia, además, con la Ley 1581 de 2012 encima.",
+    "diferencial": "El mercado hace media travesía: micro-herramientas que anonimizan en un solo sentido, o suites empresariales inaccesibles. Velo es la única que hace el viaje completo dentro del navegador —entregas sin entregar, y recuperas con tu bóveda— con validadores que citan su fuente oficial, certificado con las dos huellas, y cero inteligencia artificial: el mismo archivo produce siempre el mismo resultado, byte por byte."
+  },
+
+  "funcionalidades": {
+    "total": 14,
+    "fuente_del_conteo": "docs/MANUAL-DE-USO.md",
+    "descartadas": [],
+    "grupos": [
+      {
+        "orden": 1,
+        "estrella": false,
+        "nombre": "Mira lo que te delata",
+        "linea": "Trae la tabla y Velo te dice a quién señala, y por qué.",
+        "features": [
+          {
+            "id": "C1",
+            "nombre": "Carga de CSV y Excel, por arrastre y por teclado",
+            "que_hace": "CSV sin tope, porque se lee por partes y nunca existe entero en memoria; Excel hasta 150 MB, porque hay que abrirlo completo. El progreso dice la etapa real —tomando la huella, leyendo, reconociendo columnas, midiendo el riesgo— y no dibuja una barra donde no hay fracción que mostrar.",
+            "seccion_manual": "1. Trae tu tabla"
+          },
+          {
+            "id": "C2",
+            "nombre": "Detección por columna con las cuatro categorías de la Ley 1581",
+            "que_hace": "Identificador directo, dato sensible del artículo 5, cuasi-identificador y no personal, con tres niveles de certeza: confirmado por un dígito de verificación oficial (NIT con el mod 11 de la DIAN, tarjetas con Luhn, IBAN con el 97-10), reconocido por su forma, o sin confirmar cuando la pista es el nombre de la columna. Cada validador cita su fuente en el código.",
+            "seccion_manual": "2. Lee el diagnóstico · Columna por columna"
+          },
+          {
+            "id": "C13",
+            "nombre": "Reporte del diagnóstico, autocontenido y con huella",
+            "que_hace": "Un HTML que se abre con doble clic sin internet y sin instalar nada, con lo detectado, las categorías, las cifras de riesgo y el SHA-256 del archivo. No lleva ni una fila de la tabla: las muestras van enmascaradas y las columnas sensibles no llevan ninguna.",
+            "seccion_manual": "3. Llévate el reporte"
+          }
+        ]
+      },
+      {
+        "orden": 2,
+        "estrella": false,
+        "nombre": "Decide qué se le hace",
+        "linea": "La política es tuya, y es un archivo que puedes volver a usar.",
+        "features": [
+          {
+            "id": "C3",
+            "nombre": "Política por columna, exportable como archivo",
+            "que_hace": "Una fila por columna con su técnica. La política no se guarda en ningún sitio —lleva los nombres de las columnas, que son datos del usuario— así que se exporta e importa como archivo, con su propio hash SHA-256 como identidad: dos archivos que compartan los ocho caracteres del nombre recibieron el mismo tratamiento.",
+            "seccion_manual": "4. Transforma: el taller · La política"
+          },
+          {
+            "id": "C14",
+            "nombre": "Políticas de fábrica: Habeas Data y HIPAA Safe Harbor",
+            "que_hace": "Habeas Data (Ley 1581 de 2012 y Decreto 1377 de 2013, con las técnicas de la guía AGN + SIC y un objetivo de grupo mínimo de 5) o HIPAA Safe Harbor (los 18 identificadores de 45 CFR §164.514(b)(2), que manda borrar y no seudonimizar). Cada una declara cuántos de sus puntos reconoce por contenido, cuántos solo por el nombre y cuántos quedan para la persona. Al tocar una regla, Velo avisa de que ya no es esa política.",
+            "seccion_manual": "4. Transforma: el taller · La política"
+          }
+        ]
+      },
+      {
+        "orden": 3,
+        "estrella": false,
+        "nombre": "Vela con exactitud",
+        "linea": "Conserva la forma, pierde la identidad — y los cruces sobreviven.",
+        "features": [
+          {
+            "id": "C4",
+            "nombre": "Cuatro familias de técnicas",
+            "que_hace": "Enmascarar, seudonimizar (HMAC-SHA256 con llave derivada por PBKDF2 de 600.000 vueltas), generalizar y suprimir, elegidas columna por columna, con vista previa de lo que va a recibir la otra persona antes de escribir nada.",
+            "seccion_manual": "4. Transforma: el taller · Antes y después"
+          },
+          {
+            "id": "C10",
+            "nombre": "Formato conservado con el dígito de verificación recalculado",
+            "que_hace": "Un NIT sigue siendo un NIT: el seudónimo mantiene la forma y su dígito de verificación se recalcula con el mod 11 de la DIAN. No es cifrado que preserva formato —FF3 está roto y el código dice por qué— y las colisiones que el formato provoca se cuentan y se declaran.",
+            "seccion_manual": "4. Transforma: el taller · La política"
+          },
+          {
+            "id": "C9",
+            "nombre": "Seudónimos estables entre entregas",
+            "que_hace": "La misma frase de paso y la misma sal producen los mismos seudónimos, así que el archivo de marzo se puede cruzar con el de abril sin tener los datos reales delante. Perder la frase es perder la vuelta, y se dice antes.",
+            "seccion_manual": "4. Transforma: el taller · La llave"
+          }
+        ]
+      },
+      {
+        "orden": 4,
+        "estrella": false,
+        "nombre": "Mide el riesgo de verdad",
+        "linea": "Lo exacto y lo estimado, en dos planos que nunca se suman.",
+        "features": [
+          {
+            "id": "C5",
+            "nombre": "k-anonimato con Mondrian y consejero de cruces",
+            "que_hace": "El consejero muestra qué columnas delatan solas y qué combinaciones son las más delatoras, con su k real, y declara cuántas evaluó y qué quedó fuera con su motivo. «Generalizar hasta alcanzar el k» reparte con Mondrian (LeFevre et al., ICDE 2006) sobre las columnas marcadas, con l-diversity y t-closeness medidas — y sin borrar filas para lograrlo.",
+            "seccion_manual": "2. Lee el diagnóstico · El consejero de cruces"
+          },
+          {
+            "id": "C6",
+            "nombre": "Riesgo exacto y riesgo poblacional estimado, separados",
+            "que_hace": "Las cifras del archivo se cuentan registro por registro y van marcadas «cifra exacta» (modelo prosecutor). El riesgo de la población sale de un modelo con su supuesto, va marcado «estimado» con su fuente al lado —Benedetti–Franconi (1998) y Zayatz (1991)— y solo aparece si la persona declara la población. Nunca se promedian entre sí.",
+            "seccion_manual": "4. Transforma: el taller · El riesgo estimado"
+          },
+          {
+            "id": "C7",
+            "nombre": "Balance de antes y después, con la advertencia arriba de la cifra",
+            "que_hace": "Qué cambió, cuánto riesgo se redujo y cuánta utilidad se perdió — con una regla dura: si queda algo sin tratar, eso se lee antes que cualquier porcentaje, y la cifra pierde el tratamiento de titular hasta que nada la desmienta.",
+            "seccion_manual": "4. Transforma: el taller · Antes y después"
+          }
+        ]
+      },
+      {
+        "orden": 5,
+        "estrella": true,
+        "nombre": "Entrega, recupera, deja constancia",
+        "linea": "El viaje completo — y todo lo que hiciste queda anotado.",
+        "features": [
+          {
+            "id": "C8",
+            "nombre": "La bóveda cifrada y el regreso",
+            "que_hace": "Un seudónimo no vuelve por sí solo, y eso es lo que lo hace seguro de entregar. La bóveda —archivo aparte, cifrado con AES-GCM y llave derivada por PBKDF2 de 600.000 vueltas— sí lo deshace. La restauración es por VALOR, jamás por posición, y reconoce las columnas por su contenido: sobrevive a que el tercero reordene filas, añada columnas, borre otras y corrija valores a mano. Las cuatro cosas que le pueden pasar a una celda se cuentan todas, y las ambiguas se declaran ANTES de restaurar.",
+            "seccion_manual": "5. La bóveda · 6. El regreso"
+          },
+          {
+            "id": "C11",
+            "nombre": "Certificado del tratamiento con las dos huellas",
+            "que_hace": "El documento que viaja con el archivo: qué se le hizo, el balance con sus advertencias, la utilidad perdida, el hash completo de la política, y las huellas del archivo que entró y del que sale. Con la segunda, quien lo recibe comprueba que el documento habla de su copia en vez de creerlo — con la orden exacta para macOS, Linux y Windows. No es una firma digital, y lo dice.",
+            "seccion_manual": "4. Transforma: el taller · El certificado"
+          },
+          {
+            "id": "C12",
+            "nombre": "Bitácora cifrada de los tratamientos",
+            "que_hace": "Qué se trató, cuándo, con qué política y con qué riesgo antes y después — las dos proporciones y no la resta entre ellas, porque una bitácora se lee meses después sin ninguna pantalla al lado que la matice. Va cifrada porque un nombre de archivo ya cuenta de qué va su contenido, en archivo propio y con su propia frase de paso.",
+            "seccion_manual": "7. La bitácora"
+          }
+        ]
+      }
+    ]
+  },
+
+  "metricas": [
+    {
+      "clave": "funcionalidades",
+      "etiqueta": "Funcionalidades del MVP",
+      "valor": 14,
+      "unidad": "funcionalidades",
+      "fuente": "medido",
+      "detalle": "Contadas contra docs/MANUAL-DE-USO.md, con la tabla de mapeo en sprints/ENTREGA-brochure-summary.md. El brochure y la ruta /conoce documentan la app y no se cuentan a sí mismos."
+    },
+    {
+      "clave": "pantallas",
+      "etiqueta": "Pantallas de la app",
+      "valor": 5,
+      "unidad": "pantallas",
+      "fuente": "medido",
+      "detalle": "Archivos page.tsx bajo src/app/: la aduana, el diagnóstico, el taller, el regreso y la bitácora. La ruta /conoce sirve este brochure y no es una pantalla del producto."
+    },
+    {
+      "clave": "pruebas_unitarias",
+      "etiqueta": "Pruebas unitarias y de integración",
+      "valor": 740,
+      "unidad": "pruebas",
+      "fuente": "medido",
+      "detalle": "Salida de `pnpm test` el 2026-08-21: 740 pruebas en 42 archivos. Un archivo y una prueba quedan omitidos por diseño."
+    },
+    {
+      "clave": "pruebas_e2e",
+      "etiqueta": "Pruebas de extremo a extremo",
+      "valor": 137,
+      "unidad": "pruebas",
+      "fuente": "medido",
+      "detalle": "Salida de `pnpm test:e2e` el 2026-08-21, en escritorio y móvil, incluidas axe en los dos temas y la garantía de red. Tres se omiten cuando no está el archivo sintético de 500.000 filas."
+    },
+    {
+      "clave": "cobertura_lineas",
+      "etiqueta": "Cobertura de líneas",
+      "valor": 96.17,
+      "unidad": "%",
+      "fuente": "medido",
+      "detalle": "v8 sobre src/engine y src/lib, con umbral de 80 % por glob en vitest.config.ts. 1.609 de 1.673 líneas."
+    },
+    {
+      "clave": "dependencias_runtime",
+      "etiqueta": "Dependencias en tiempo de ejecución",
+      "valor": 8,
+      "unidad": "paquetes",
+      "fuente": "medido",
+      "detalle": "next, react, react-dom, papaparse, xlsx, zod, pino y @sentry/nextjs. Ninguna es un SDK de IA generativa, y un job del CI audita package.json y el lockfile contra tres familias vetadas: una dependencia transitiva cuenta igual que una directa."
+    },
+    {
+      "clave": "llamadas_de_red_con_datos",
+      "etiqueta": "Llamadas de red que llevan datos del usuario",
+      "valor": 0,
+      "unidad": "llamadas",
+      "fuente": "medido",
+      "detalle": "Un e2e intercepta TODAS las peticiones del navegador durante el flujo completo con un archivo cargado y falla si aparece una sola fuera del propio origen, con cuerpo, o con un nombre de columna en la URL. Además, la CSP declara connect-src 'self': el navegador no puede abrir una conexión a otro sitio aunque se colara el código que lo intentara."
+    },
+    {
+      "clave": "servicios_de_backend",
+      "etiqueta": "Servicios de backend",
+      "valor": 0,
+      "unidad": "servicios",
+      "fuente": "medido",
+      "detalle": "Sin base de datos, sin API con datos y sin proveedor externo. El hosting sirve la aplicación; los datos viven y mueren en la pestaña, y al recargar no queda nada."
+    },
+    {
+      "clave": "costo_operacion_mensual",
+      "etiqueta": "Costo de operación mensual",
+      "valor": 0,
+      "unidad": "USD",
+      "fuente": "calculada",
+      "detalle": "Suma de servicios contratados: ninguno. No hay servidor, base de datos, telemetría de pago ni proveedor de IA que facturar; el hosting corre en plan gratuito."
+    },
+    {
+      "clave": "filas_procesadas",
+      "etiqueta": "Filas procesadas sin bloquear la pestaña",
+      "valor": 500000,
+      "unidad": "filas",
+      "fuente": "medido",
+      "detalle": "500.000 filas por 24 columnas —unos 130 MB— en unos pocos segundos y con cero tareas largas en el hilo principal, medido por un e2e permanente. El trabajo pesado ocurre en un hilo aparte."
+    },
+    {
+      "clave": "peso_brochure",
+      "etiqueta": "Peso de este brochure",
+      "valor": 98330,
+      "unidad": "bytes",
+      "fuente": "medido",
+      "detalle": "Archivo autocontenido, sin una sola petición externa. `wc -c docs/BROCHURE.html` el 2026-08-21. No embebe tipografías: usa las del sistema, y ese es el precio declarado de que abra con doble clic."
+    },
+    {
+      "clave": "decisiones_registradas",
+      "etiqueta": "Decisiones de arquitectura registradas",
+      "valor": 8,
+      "unidad": "ADR",
+      "fuente": "medido",
+      "detalle": "Archivos de decisions/, desde «cero IA generativa» hasta «el estimado no se compone con el exacto»."
+    }
+  ],
+
+  "stack": [
+    {
+      "nombre": "Next.js",
+      "papel": "la aplicación entera; el hosting la sirve y no recibe un solo dato"
+    },
+    {
+      "nombre": "TypeScript",
+      "papel": "modo estricto en todo el repositorio"
+    },
+    {
+      "nombre": "Web Workers",
+      "papel": "la frontera: los datos crudos viven ahí y hacia la interfaz solo cruzan conteos, nombres de columna y muestras enmascaradas"
+    },
+    {
+      "nombre": "Web Crypto",
+      "papel": "HMAC-SHA256 para los seudónimos y AES-GCM con PBKDF2 de 600.000 vueltas para la bóveda y la bitácora; cero dependencias de criptografía"
+    },
+    {
+      "nombre": "PapaParse y SheetJS",
+      "papel": "CSV en streaming y Excel con su tope declarado y medido"
+    },
+    {
+      "nombre": "Vitest y Playwright",
+      "papel": "las pruebas, incluidas las permanentes de determinismo, de honestidad del lenguaje y de la garantía de red"
+    }
+  ],
+
+  "privacidad": {
+    "red_saliente_con_datos": false,
+    "datos_persisten_en_servidor": false,
+    "usa_ia": false,
+    "detalle": "El archivo se abre dentro de la pestaña, en un hilo aparte, y ahí se queda: no hay subida, no hay servidor que lo reciba y no queda copia al cerrar. La garantía tiene tres capas —un e2e que intercepta todas las peticiones del navegador durante el flujo completo, una CSP con connect-src 'self' que impide abrir cualquier conexión ajena, y un test de código fuente que veta fetch, localStorage e indexedDB en el motor—. La bóveda y la bitácora son la única excepción al «nada persiste», y son archivos cifrados que el usuario descarga y custodia con una acción explícita. Sin IA generativa en ninguna parte del producto: por eso el mismo archivo con la misma política y la misma llave produce siempre la misma salida, byte por byte, y por eso el resultado es auditable."
+  },
+
+  "enlaces": {
+    "produccion": null,
+    "razon": "Velo está desplegado y funcionando, pero su dirección todavía no se publica: el acceso va por lista de espera mientras se completa la ronda de pruebas.",
+    "repositorio": null,
+    "razon_repositorio": "El repositorio no se enlaza desde la vitrina (regla de cero enlaces del portafolio).",
+    "brochure_archivo": "docs/BROCHURE.html",
+    "brochure_ruta_local": "/conoce"
+  }
+}
