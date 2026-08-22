@@ -928,11 +928,26 @@
         .tarjeta[data-abierta] .feature:nth-child(3) {
           transition-delay: 0.18s;
         }
+        /* Apertura ANUNCIADA: el marco se enciende un instante en el acento y se asienta en
+       un tono intermedio. Sin esto, una tarjeta que se abre sola al entrar por el borde
+       inferior parece que «ya estaba» — el destello es lo que dice que acaba de pasar. */
         .tarjeta {
           transition: border-color var(--mov-2) var(--curva);
         }
         .tarjeta[data-abierta] {
           border-color: color-mix(in srgb, var(--acento) 40%, var(--borde));
+          animation: anunciar 0.85s var(--curva) both;
+        }
+        @keyframes anunciar {
+          0% {
+            border-color: var(--borde);
+          }
+          22% {
+            border-color: var(--acento);
+          }
+          100% {
+            border-color: color-mix(in srgb, var(--acento) 40%, var(--borde));
+          }
         }
         .tarjeta-boton {
           transition: transform var(--mov-1) var(--curva);
@@ -1446,7 +1461,8 @@
 
           <p class="lema">Velo para entregar. Desvelo para recuperar.</p>
           <p class="baja">
-            Recórrelo capa por capa — cada tarjeta se abre solo si tú quieres
+            Baja sin prisa: cada tarjeta se abre al llegar a ella, y tú mandas
+            sobre cualquiera
             <span class="flecha" aria-hidden="true">↓</span>
           </p>
         </header>
@@ -1457,8 +1473,8 @@
             Qué hace, en el orden en que lo vas a usar
           </h2>
           <p class="suave revela">
-            Cinco pasos, catorce cosas. Ábrelas a tu ritmo: nadie lee lo que no
-            pidió.
+            Cinco pasos, catorce cosas. Se van abriendo a medida que bajas y se
+            recogen si te devuelves; si tocas una, manda tu toque.
           </p>
           <div class="hairline" aria-hidden="true"></div>
           <div class="tarjetas">
@@ -2577,20 +2593,34 @@
 
         // ── G2 · Las tarjetas ──────────────────────────────────────────────────────────────
         //
-        // Se abren SOLO con el toque. El molde permite que se abran solas al bajar y llegó a
-        // estar así, con la primera como invitación; se quitó al releer el criterio de la
-        // entrega —«nada de la capa 2 visible sin abrir su tarjeta»— y, sobre todo, la propia
-        // portada: «cada tarjeta se abre solo si tú quieres». Una página que se contradice a
-        // sí misma en la primera pantalla no es una página serena.
-        var tarjetas = document.querySelectorAll(".tarjeta-boton");
-        tarjetas.forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            var tarjeta = btn.closest(".tarjeta");
-            var abierta = tarjeta.hasAttribute("data-abierta");
-            if (abierta) tarjeta.removeAttribute("data-abierta");
-            else tarjeta.setAttribute("data-abierta", "");
-            btn.setAttribute("aria-expanded", String(!abierta));
-          });
+        // El recorrido las va abriendo: **hacia abajo, y solo cuando ya se ve al menos un
+        // tercio de la tarjeta**. Al subir se cierran, así que volver atrás encuentra la
+        // página recogida y bajar otra vez la vuelve a desplegar. El toque SIEMPRE manda: una
+        // tarjeta que la persona abrió o cerró a mano queda marcada y el recorrido no la
+        // vuelve a tocar.
+        //
+        // Por qué el umbral es un tercio y no la primera línea visible: una tarjeta que se
+        // abre asomando por el borde inferior crece fuera de la pantalla y el gesto no se ve
+        // — la apertura ocurre, pero nadie la presencia. Con un tercio dentro, la cabecera ya
+        // está en cuadro y el despliegue se lee como lo que es.
+        var UMBRAL = 1 / 3;
+        var tarjetas = document.querySelectorAll(".tarjeta");
+
+        function fijar(tarjeta, abierta) {
+          var btn = tarjeta.querySelector(".tarjeta-boton");
+          if (tarjeta.hasAttribute("data-abierta") === abierta) return;
+          if (abierta) tarjeta.setAttribute("data-abierta", "");
+          else tarjeta.removeAttribute("data-abierta");
+          btn.setAttribute("aria-expanded", String(abierta));
+        }
+
+        tarjetas.forEach(function (tarjeta) {
+          tarjeta
+            .querySelector(".tarjeta-boton")
+            .addEventListener("click", function () {
+              tarjeta.setAttribute("data-manual", "");
+              fijar(tarjeta, !tarjeta.hasAttribute("data-abierta"));
+            });
         });
 
         if (!("IntersectionObserver" in window)) {
@@ -2603,19 +2633,29 @@
         }
 
         // ── G3 · Coreografía de entrada ────────────────────────────────────────────────────
-        var obs = new IntersectionObserver(
-          function (entradas) {
-            entradas.forEach(function (e) {
-              if (!e.isIntersecting) return;
-              e.target.classList.add("visto");
-              obs.unobserve(e.target);
-            });
-          },
-          { threshold: 0.15 },
-        );
-        document.querySelectorAll(".revela, .hairline").forEach(function (el) {
-          obs.observe(el);
-        });
+        function entrar(selector, umbral) {
+          var o = new IntersectionObserver(
+            function (entradas) {
+              entradas.forEach(function (e) {
+                if (!e.isIntersecting) return;
+                e.target.classList.add("visto");
+                o.unobserve(e.target);
+              });
+            },
+            { threshold: umbral },
+          );
+          document.querySelectorAll(selector).forEach(function (el) {
+            o.observe(el);
+          });
+        }
+        entrar(".revela:not(.tarjeta), .hairline", 0.15);
+        // Las tarjetas entran en cuanto ASOMAN, no al 15 %, y el motivo no es de ritmo: su
+        // entrada las desplaza 18 px hacia abajo, y una caja desplazada 18 px miente sobre
+        // cuánto de ella se ve. Con el umbral común, una tarjeta de 83 px se quedaba a 0,4 px
+        // de visibilidad medida —no entraba, y por no entrar seguía desplazada— y el tercio
+        // que gobierna el despliegue se calculaba sobre una posición falsa. Arrancando en
+        // cuanto asoma, para cuando llega al tercio ya se asentó y la medida es la de verdad.
+        entrar(".tarjeta.revela", 0);
 
         // Escenas que corren UNA vez al entrar: el velo de E05 y las flechas de E06.
         var unaVez = new IntersectionObserver(
@@ -2631,6 +2671,49 @@
         ["escena-velar", "lamina-aduana"].forEach(function (id) {
           var el = document.getElementById(id);
           if (el) unaVez.observe(el);
+        });
+
+        // ── G2 · La dirección del recorrido abre y cierra las tarjetas ─────────────────────
+        //
+        // Corre TAMBIÉN con movimiento reducido: desplegar una tarjeta es contenido, no
+        // decoración. Lo que cambia ahí es cómo se abre —de golpe, sin transición— y de eso
+        // ya se encarga el cinturón de `prefers-reduced-motion` de la hoja de estilos.
+        //
+        // Sobre el salto de scroll: los dos movimientos ocurren FUERA de cuadro a propósito.
+        // Al bajar, una tarjeta se abre cuando entra por el borde inferior, así que crece
+        // hacia abajo y no empuja nada de lo que se está leyendo. Al subir, se cierra cuando
+        // ya salió por ese mismo borde, así que encoge por debajo de la pantalla. La cabecera
+        // de la tarjeta nunca se mueve bajo el dedo.
+        var yPrevia = window.scrollY;
+        var bajando = true;
+        window.addEventListener(
+          "scroll",
+          function () {
+            var y = window.scrollY;
+            if (y !== yPrevia) bajando = y > yPrevia;
+            yPrevia = y;
+          },
+          { passive: true },
+        );
+
+        var despliegue = new IntersectionObserver(
+          function (entradas) {
+            entradas.forEach(function (e) {
+              if (e.target.hasAttribute("data-manual")) return;
+              if (e.intersectionRatio >= UMBRAL) {
+                if (bajando) fijar(e.target, true);
+              } else if (!bajando) {
+                fijar(e.target, false);
+              }
+            });
+          },
+          // El 0 además del tercio: una tarjeta ya abierta es más alta que el tercio de sí
+          // misma que cabe en pantalla, así que al subir no volvería a cruzar el umbral y se
+          // quedaría abierta para siempre. El cruce por cero es el que la recoge.
+          { threshold: [0, UMBRAL] },
+        );
+        tarjetas.forEach(function (tarjeta) {
+          despliegue.observe(tarjeta);
         });
 
         if (quieto) return; // en reduced-motion nada más se mueve, y el CSS ya lo dejó todo puesto

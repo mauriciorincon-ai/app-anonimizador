@@ -2,7 +2,7 @@
 entrega: brochure-conoce
 app: anonimizador (Velo)
 tipo: entrega puntual (no es sprint — orden ENTREGA-BROCHURE de la planeadora, kit v1.19.0)
-estado: construida y verificada en local (740 unit · 137 e2e · typecheck · lint · build). Falta CI verde en el PR → **sala de proyección del usuario sobre la preview** → merge → última milla.
+estado: mergeada (PR #12) y probada en producción sin sesión. Adenda del gate visual: las tarjetas se despliegan con el recorrido (PR aparte).
 fecha: 2026-08-21
 rama: entrega/brochure-conoce
 ---
@@ -16,7 +16,7 @@ rama: entrega/brochure-conoce
 ## Qué se entregó
 
 1. **`docs/BROCHURE.html`** — el brochure canónico, autocontenido: cero CDNs, cero `fetch`, cero
-   `src`/`href` externos. Abre con doble clic sin internet, en claro y en oscuro. **98.330 bytes**
+   `src`/`href` externos. Abre con doble clic sin internet, en claro y en oscuro. **102.356 bytes**
    (el piloto del pipeline: 122 KB).
 2. **Ruta pública `/conoce`** sirviendo ese mismo archivo, por el mecanismo probado en habla:
    `scripts/copiar-brochure.mjs` lo copia a `public/conoce.html` encadenado en `dev` y `build`
@@ -27,7 +27,8 @@ rama: entrega/brochure-conoce
 4. **`sprints/ENTREGA-brochure-storyboard.md`** — el guion aprobado, en el repo como contrato
    versionado de la pieza.
 5. **Dos gates nuevos**: `tests/unit/brochure-export.test.ts` (el contrato) y
-   `tests/e2e/conoce.spec.ts` (20 pruebas, incluida la de reduced-motion obligatoria).
+   `tests/e2e/conoce.spec.ts` (28 pruebas, incluidas la de reduced-motion obligatoria y las
+   cuatro del despliegue por recorrido).
 6. **Fase 0 — barrido de cero enlaces**, con las reglas 13 y 14 incorporadas al `CLAUDE.md`.
 
 ## Fase 0 — registro del barrido
@@ -119,10 +120,45 @@ que falla si se desincronizan. Contadas contra `docs/MANUAL-DE-USO.md`:
   verificación público —lo dice el propio validador del repo— así que demostrar «el DV se
   recalcula» con una cédula habría sido una maqueta que miente. El NIT del ejemplo lleva su DV
   real, calculado con el mod 11 de la DIAN.
-- **Las tarjetas no se abren solas.** El molde lo permite y la primera llegó a hacerlo como
-  invitación; se quitó al releer el criterio 3 de la orden y, sobre todo, el copy de la propia
-  portada: _«cada tarjeta se abre solo si tú quieres»_. Hay un e2e que recorre la página entera y
-  falla si alguna se abrió sin que la tocaran.
+- **Las tarjetas se despliegan con el recorrido** (ver la adenda, abajo). En la primera versión
+  se abrían solo con el toque, por el criterio 3 de la orden; el gate visual del usuario lo
+  revirtió y fijó la regla definitiva.
+
+## Adenda del gate visual — el despliegue por recorrido
+
+> Decisión del usuario el 2026-08-21, tras ver la pieza en producción. **Deroga el criterio 3
+> de la orden** («nada de la capa 2 visible sin abrir su tarjeta») para todo el portafolio: es
+> un patrón que él venía corrigiendo app por app y que quiere estandarizar.
+
+**La regla, tal como la fijó:**
+
+1. Las tarjetas se despliegan **a medida que se baja**, no de entrada.
+2. **No antes de que se vea al menos un tercio** de la tarjeta. Si se abriera asomando por el
+   borde inferior, crecería fuera de pantalla y el gesto no lo vería nadie.
+3. **Con una animación que muestre que se desplegó** — no aparecer ya abierta.
+4. **Solo hacia abajo**: al subir se recogen, y volver atrás encuentra la página como estaba.
+5. El **toque siempre manda**: lo que la persona abre o cierra a mano, el recorrido no lo vuelve
+   a tocar.
+
+**Lo que costó descubrir, y vale para las demás apps.** La coreografía de entrada de la tarjeta
+la desplaza 18 px hacia abajo, y una caja desplazada **miente sobre cuánto de ella se ve**: con
+el umbral de entrada común (15 %), una tarjeta de 83 px se quedaba a 0,4 px de visibilidad
+medida —no entraba, y por no entrar seguía desplazada— y el tercio que gobierna el despliegue se
+calculaba sobre una posición falsa. La entrada de las tarjetas pasó a dispararse **en cuanto
+asoman**, no al 15 %: así, cuando llegan al tercio ya se asentaron y la medida es la de verdad.
+Las dos coreografías tienen que estar separadas o se estorban.
+
+**Sobre el salto de scroll**, que es el defecto clásico de este patrón (1.291 px en el piloto):
+los dos movimientos ocurren **fuera de cuadro a propósito**. Al bajar, la tarjeta se abre cuando
+entra por el borde inferior, así que crece hacia abajo y no empuja lo que se está leyendo; al
+subir, se cierra cuando ya salió por ese mismo borde, así que encoge por debajo de la pantalla.
+Dos e2e lo fijan: la cabecera de una tarjeta no se mueve **ni al abrirla con el dedo ni cuando
+la abre el recorrido** (< 2 px y < 3 px medidos).
+
+**Y una corrección de método:** la primera versión de esa medición vigilaba `scrollY`, y estaba
+mal. Cuando algo crece por encima del borde superior, el navegador corrige `scrollY` **a
+propósito** para dejar el contenido quieto; penalizar ese ajuste es castigar justo al mecanismo
+que salva la lectura. Se mide lo que se ve, no el número del scroll.
 
 ## Lo que solo se vio MIRANDO — la pasada de capturas
 
