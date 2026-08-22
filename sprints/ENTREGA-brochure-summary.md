@@ -2,7 +2,7 @@
 entrega: brochure-conoce
 app: anonimizador (Velo)
 tipo: entrega puntual (no es sprint — orden ENTREGA-BROCHURE de la planeadora, kit v1.19.0)
-estado: mergeada (PR #12) y probada en producción sin sesión. Dos rondas del gate visual en PR aparte (#13): el despliegue por recorrido, y luego las capturas de la app más el salto de subida.
+estado: mergeada (PR #12) y probada en producción sin sesión. Tres rondas del gate visual en PR aparte (#13): el despliegue por recorrido, las capturas de la app y el salto de subida, y el tercio medido sobre la pantalla.
 fecha: 2026-08-21
 rama: entrega/brochure-conoce
 ---
@@ -133,8 +133,10 @@ que falla si se desincronizan. Contadas contra `docs/MANUAL-DE-USO.md`:
 **La regla, tal como la fijó:**
 
 1. Las tarjetas se despliegan **a medida que se baja**, no de entrada.
-2. **No antes de que se vea al menos un tercio** de la tarjeta. Si se abriera asomando por el
-   borde inferior, crecería fuera de pantalla y el gesto no lo vería nadie.
+2. **No antes de que se vea al menos un tercio.** Si se abriera asomando por el borde inferior,
+   crecería fuera de pantalla y el gesto no lo vería nadie. _(Un tercio **de qué** es justo lo
+   que esta ronda leyó mal — se midió sobre la tarjeta y tenía que medirse sobre la pantalla:
+   ver la tercera ronda, abajo.)_
 3. **Con una animación que muestre que se desplegó** — no aparecer ya abierta.
 4. **Solo hacia abajo**: al subir se recogen, y volver atrás encuentra la página como estaba.
 5. El **toque siempre manda**: lo que la persona abre o cierra a mano, el recorrido no lo vuelve
@@ -218,6 +220,43 @@ costaron sus vueltas:
 360 KB son las diez capturas. Es el precio de que la pieza enseñe el producto sin pedirle un
 archivo a nadie. No toca el presupuesto de rendimiento: Lighthouse corre sobre las cinco rutas
 de la app (`lighthouse-urls.json`), no sobre `/conoce`.
+
+## Tercera ronda del gate visual — el tercio era de la tarjeta, y tenía que ser de la pantalla
+
+> «No se ve la animación de despliegue de las tarjetas; cuando llegan a la pantalla que estoy
+> viendo ya están desplegadas.» — el usuario, sobre la preview, el 2026-08-22.
+
+Tenía razón, y el error estaba en la lectura de su propia regla. El tercio se medía **sobre la
+tarjeta cerrada**, que son 83 px de cabecera: un tercio de 83 px son **28 px**. Con ese umbral,
+la tarjeta se desplegaba en cuanto asomaba por el borde inferior, crecía fuera de cuadro, y
+cuando por fin llegaba a la altura de los ojos ya estaba abierta. La regla se cumplía al pie de
+la letra y el resultado era exactamente el contrario del que se pedía: **la apertura ocurría y
+nadie la presenciaba**.
+
+Peor: el criterio anterior de «no mover lo que se está leyendo» empujaba en la misma dirección
+equivocada. Abrir la tarjeta pegada al borde inferior era, en efecto, la posición más segura
+para el scroll — y la más invisible para el ojo. Dos objetivos que parecían el mismo y no lo
+eran.
+
+**El tercio que importa es el de la PANTALLA.** La tarjeta se despliega cuando su cabecera cruza
+hacia arriba la línea de los dos tercios, es decir cuando le queda **un tercio de pantalla por
+debajo**: ese hueco es el sitio donde se la ve crecer. Sigue creciendo hacia abajo, así que lo
+ya leído tampoco se mueve — las dos cosas se cumplen a la vez, solo que ahora sí se ven.
+
+Dos cambios más de la misma ronda:
+
+- **El despliegue pasó de `IntersectionObserver` a medir rectángulos** en el mismo repaso por
+  cuadro que ya hacía el recogido. Lo que manda no es «cuánto de la tarjeta se ve» —la medida
+  que engañaba— sino dónde está su cabecera respecto a la pantalla: eso es una resta, se lee de
+  un vistazo y se prueba sin pelear con umbrales. Son cinco rectángulos por cuadro y solo se
+  escribe cuando algo cambia de estado.
+- **La transición pasó de 0,42 s a 0,55 s.** Desde que la tarjeta lleva una captura dentro, lo
+  que se despliega mide más de mil píxeles, y a la velocidad anterior el crecimiento pasaba como
+  un borrón. Lo que se quiere ver es la tarjeta abriéndose, no el resultado.
+
+La prueba nueva —«no se despliega hasta que le queda un tercio de pantalla por debajo»— se
+demostró **en rojo** contra la regla anterior antes de ponerse verde: con el umbral viejo, la
+tarjeta ya estaba abierta asomando por el borde inferior.
 
 ## Lo que solo se vio MIRANDO — la pasada de capturas
 

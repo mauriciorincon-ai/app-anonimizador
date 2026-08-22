@@ -248,7 +248,7 @@
     {
       "clave": "peso_brochure",
       "etiqueta": "Peso de este brochure",
-      "valor": 483492,
+      "valor": 484245,
       "unidad": "bytes",
       "fuente": "medido",
       "detalle": "Archivo autocontenido, sin una sola petición externa. `wc -c docs/BROCHURE.html` el 2026-08-22. De esos bytes, 360 KB son las diez capturas de la app —cinco pantallas en tema claro y oscuro, en WebP dentro de `data:` URI—: es lo que cuesta que el brochure enseñe el producto y siga abriéndose con doble clic sin internet. No embebe tipografías: usa las del sistema."

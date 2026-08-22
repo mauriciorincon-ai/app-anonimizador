@@ -109,14 +109,18 @@ test("llegan cerradas, se despliegan al bajar y se recogen al subir", async ({
 });
 
 /**
- * Deja la primera tarjeta asomando exactamente la fracción pedida por el borde inferior.
+ * Deja la cabecera de la primera tarjeta a la fracción pedida de la ALTURA DE LA PANTALLA.
+ *
+ * Que la referencia sea la pantalla y no la tarjeta es justo lo que se corrigió: un tercio de
+ * una tarjeta cerrada son 28 px, y con esa medida el despliegue ocurría asomando por el borde
+ * inferior, fuera de la vista.
  *
  * Va en dos tiempos a propósito: la tarjeta llega a la pantalla desplazada 18 px por su
  * coreografía de entrada, así que medir su sitio antes de que se asiente da un número falso
  * —y el error se paga entero al posicionar—. Primero se la hace asomar para que entre, se
  * espera a que termine, y solo entonces se mide y se coloca.
  */
-async function asomar(page: import("@playwright/test").Page, fraccion: number) {
+async function colocar(page: import("@playwright/test").Page, alto: number) {
   await page.evaluate(() => {
     const t = document.querySelector(".tarjeta") as HTMLElement;
     const arriba = t.getBoundingClientRect().top + window.scrollY;
@@ -127,27 +131,37 @@ async function asomar(page: import("@playwright/test").Page, fraccion: number) {
   await page.evaluate((f) => {
     const t = document.querySelector(".tarjeta") as HTMLElement;
     const caja = t.getBoundingClientRect();
-    window.scrollTo(
-      0,
-      caja.top + window.scrollY - window.innerHeight + caja.height * f,
-    );
-  }, fraccion);
-  await page.waitForTimeout(400);
+    window.scrollTo(0, caja.top + window.scrollY - window.innerHeight * f);
+  }, alto);
+  await page.waitForTimeout(500);
 }
 
-test("no se despliega ninguna antes de que se vea un tercio de ella", async ({
+test("no se despliega hasta que le queda un tercio de pantalla por debajo", async ({
   page,
 }) => {
+  // El defecto que esta prueba impide es el que trajo la tercera ronda del gate: «cuando llegan
+  // a la pantalla que estoy viendo ya están desplegadas». Pasaba porque el tercio se medía
+  // sobre la tarjeta CERRADA —83 px de cabecera, un tercio son 28— así que se abría asomando
+  // por el borde inferior y crecía donde nadie la veía.
   await page.goto("/conoce");
   const primera = page.locator(".tarjeta").first();
 
-  // Asomando apenas por el borde inferior: mucho menos de un tercio.
-  await asomar(page, 0.12);
-  await expect(primera).not.toHaveAttribute("data-abierta", "");
+  // Asomando por el borde inferior. Antes esto ya la abría.
+  await colocar(page, 0.95);
+  await expect(
+    primera,
+    "se desplegó asomando por el borde inferior",
+  ).not.toHaveAttribute("data-abierta", "");
 
-  // Un empujón más y ya se ve de sobra el tercio: ahí sí.
-  await page.evaluate(() => window.scrollBy(0, 120));
-  await page.waitForTimeout(400);
+  // Bien dentro de la pantalla, pero todavía sin el tercio por debajo: sigue cerrada.
+  await colocar(page, 0.8);
+  await expect(
+    primera,
+    "se desplegó sin espacio debajo para verse crecer",
+  ).not.toHaveAttribute("data-abierta", "");
+
+  // Y al cruzar la línea de los dos tercios, con un tercio de pantalla por debajo, se despliega.
+  await colocar(page, 0.6);
   await expect(primera).toHaveAttribute("data-abierta", "");
 });
 
@@ -220,16 +234,18 @@ test("la que se despliega SOLA tampoco se mueve de su sitio", async ({
   await page.goto("/conoce");
   const boton = page.locator(".tarjeta-boton").first();
 
-  // Un 22 %: bastante por debajo del tercio, y con la entrada ya asentada — sus 18 px de
-  // movimiento se contarían si no como causados por el despliegue. Lo dijo esta prueba en rojo.
-  await asomar(page, 0.22);
+  // Al 80 % de la pantalla: dentro, pero todavía sin el tercio por debajo, y con la entrada ya
+  // asentada — sus 18 px de movimiento se contarían si no como causados por el despliegue. Lo
+  // dijo esta prueba en rojo.
+  await colocar(page, 0.8);
   await expect(page.locator(".tarjeta").first()).not.toHaveAttribute(
     "data-abierta",
     "",
   );
   const antes = (await boton.boundingBox())?.y ?? 0;
 
-  const empujon = 140;
+  // Un cuarto de pantalla: la deja al 55 %, cruzada la línea de los dos tercios.
+  const empujon = Math.round((page.viewportSize()?.height ?? 800) * 0.25);
   await page.evaluate((p) => window.scrollBy(0, p), empujon);
   await expect(boton).toHaveAttribute("aria-expanded", "true");
   await page.waitForTimeout(800);

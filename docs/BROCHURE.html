@@ -438,7 +438,10 @@
       .detalle {
         display: grid;
         grid-template-rows: 0fr;
-        transition: grid-template-rows 0.42s var(--curva);
+        /* 0,55 s y no 0,42: desde que la tarjeta lleva una captura dentro, lo que se despliega
+       mide más de mil píxeles, y a la velocidad anterior el crecimiento pasaba como un
+       borrón. Lo que se quiere ver es la tarjeta ABRIÉNDOSE, no el resultado. */
+        transition: grid-template-rows 0.55s var(--curva);
       }
       .tarjeta[data-abierta] .detalle {
         grid-template-rows: 1fr;
@@ -446,7 +449,7 @@
       .detalle-interior {
         overflow: hidden;
         visibility: hidden;
-        transition: visibility 0.42s;
+        transition: visibility 0.55s;
       }
       .tarjeta[data-abierta] .detalle-interior {
         visibility: visible;
@@ -2782,17 +2785,19 @@
 
         // ── G2 · Las tarjetas ──────────────────────────────────────────────────────────────
         //
-        // El recorrido las va abriendo: **hacia abajo, y solo cuando ya se ve al menos un
-        // tercio de la tarjeta**. Al subir se cierran, así que volver atrás encuentra la
-        // página recogida y bajar otra vez la vuelve a desplegar. El toque SIEMPRE manda: una
-        // tarjeta que la persona abrió o cerró a mano queda marcada y el recorrido no la
-        // vuelve a tocar.
+        // El recorrido las va abriendo: **hacia abajo, y solo cuando ya han subido lo bastante
+        // como para que el despliegue SE VEA**. Al subir se recogen, así que volver atrás
+        // encuentra la página como estaba. El toque SIEMPRE manda: una tarjeta que la persona
+        // abrió o cerró a mano queda marcada y el recorrido no la vuelve a tocar.
         //
-        // Por qué el umbral es un tercio y no la primera línea visible: una tarjeta que se
-        // abre asomando por el borde inferior crece fuera de la pantalla y el gesto no se ve
-        // — la apertura ocurre, pero nadie la presencia. Con un tercio dentro, la cabecera ya
-        // está en cuadro y el despliegue se lee como lo que es.
-        var UMBRAL = 1 / 3;
+        // **El tercio es de la PANTALLA, no de la tarjeta.** La primera versión medía un tercio
+        // de la tarjeta cerrada —83 px de cabecera, o sea 28 px— y con eso se abría asomando por
+        // el borde inferior: crecía fuera de cuadro y, cuando por fin llegaba a la altura de los
+        // ojos, ya estaba abierta. La apertura ocurría y nadie la presenciaba. Ahora la tarjeta
+        // se despliega cuando su cabecera ha cruzado hacia arriba la línea de los dos tercios,
+        // es decir cuando queda **un tercio de pantalla por debajo de ella**: ese hueco es el
+        // sitio donde se la ve crecer.
+        var TERCIO = 1 / 3;
         var tarjetas = document.querySelectorAll(".tarjeta");
 
         function fijar(tarjeta, abierta) {
@@ -2868,20 +2873,22 @@
         // decoración. Lo que cambia ahí es cómo se abre —de golpe, sin transición— y de eso
         // ya se encarga el cinturón de `prefers-reduced-motion` de la hoja de estilos.
         //
-        // Sobre el salto de scroll, que es donde estaba el defecto: **una tarjeta solo puede
-        // encoger si eso no mueve lo que se está leyendo**, y eso depende enteramente de dónde
-        // está respecto al borde de arriba de la pantalla.
+        // Va con rectángulos y no con IntersectionObserver, y el cambio no es de gusto: lo que
+        // manda aquí no es «cuánto de la tarjeta se ve» —la medida que engañaba, porque una
+        // tarjeta cerrada son 83 px— sino DÓNDE está su cabecera respecto a la pantalla. Eso es
+        // una resta, se lee de un vistazo y se puede probar. Son cinco rectángulos por cuadro,
+        // y solo se escribe cuando algo cambia de estado.
         //
-        //  · Al BAJAR se abre con un tercio a la vista: su cabecera ya está en cuadro y crece
-        //    hacia abajo, contra el borde inferior. Nada de lo leído se mueve.
-        //  · Al SUBIR, cerrar una tarjeta que asoma por el borde de arriba es lo que pegaba el
-        //    salto: al quitarle alto por encima de la línea de lectura, todo lo de abajo —o
-        //    sea, todo lo que se está mirando— sube de golpe. Así que ya no se cierra ninguna
-        //    tarjeta visible: se recogen las que quedaron ENTERAS fuera de cuadro.
+        //  · Al BAJAR se abre cuando la cabecera cruza la línea de los dos tercios: queda un
+        //    tercio de pantalla por debajo, que es donde se la ve crecer. Y crece hacia abajo,
+        //    contra el borde inferior: nada de lo que ya se leyó se mueve.
+        //  · Al SUBIR no se cierra ninguna tarjeta VISIBLE. Cerrar una que asoma por el borde
+        //    de arriba era el salto: al quitarle alto por encima de la línea de lectura, todo
+        //    lo de abajo —o sea, todo lo que se está mirando— sube de golpe.
         //     · Las que salieron por abajo se cierran normal: encogen donde nadie mira.
-        //     · Las que quedaron arriba se cierran de golpe y **se compensa el scroll con el
-        //       alto exacto que perdieron**, en el mismo cuadro. La página queda recogida sin
-        //       que un solo píxel de lo visible se haya movido — que es lo que hace cierta la
+        //     · Las que quedaron enteras arriba se cierran de golpe y **se compensa el scroll
+        //       con el alto exacto que perdieron**, en el mismo cuadro. La página queda
+        //       recogida sin que un píxel de lo visible se mueva — que es lo que hace cierta la
         //       promesa de «me devuelvo y ya estaban cerradas».
         //
         // La compensación se hace a mano y no se le deja al anclaje de scroll del navegador:
@@ -2890,31 +2897,66 @@
         var yPrevia = window.scrollY;
         var bajando = true;
 
-        function recogerLasDeArriba() {
-          var recoger = [];
+        function pantalla() {
+          return window.innerHeight || document.documentElement.clientHeight;
+        }
+
+        function repasar() {
+          var vh = pantalla();
+          var linea = vh * (1 - TERCIO);
+          var vistas = [];
           tarjetas.forEach(function (t) {
             if (t.hasAttribute("data-manual")) return;
-            if (!t.hasAttribute("data-abierta")) return;
-            if (t.getBoundingClientRect().bottom <= 0) recoger.push(t);
-          });
-          if (!recoger.length) return;
-
-          var antes = recoger.map(function (t) {
-            return t.getBoundingClientRect().height;
-          });
-          recoger.forEach(function (t) {
-            t.setAttribute("data-sin-transicion", "");
-            fijar(t, false);
-          });
-          var perdido = 0;
-          recoger.forEach(function (t, i) {
-            perdido += antes[i] - t.getBoundingClientRect().height;
-          });
-          if (perdido) window.scrollBy(0, -perdido);
-          requestAnimationFrame(function () {
-            recoger.forEach(function (t) {
-              t.removeAttribute("data-sin-transicion");
+            vistas.push({
+              t: t,
+              caja: t.getBoundingClientRect(),
+              abierta: t.hasAttribute("data-abierta"),
             });
+          });
+
+          if (bajando) {
+            vistas.forEach(function (v) {
+              // `top >= 0`: si la cabecera ya se fue por encima del borde superior, abrirla
+              // empujaría hacia abajo justo lo que se está leyendo. Se queda cerrada; cuando se
+              // vuelva a pasar por su sitio, se abrirá.
+              if (!v.abierta && v.caja.top >= 0 && v.caja.top <= linea) {
+                fijar(v.t, true);
+              }
+            });
+            return;
+          }
+
+          var arriba = [];
+          var abajo = [];
+          vistas.forEach(function (v) {
+            if (!v.abierta) return;
+            if (v.caja.bottom <= 0) arriba.push(v.t);
+            else if (v.caja.top >= vh) abajo.push(v.t);
+          });
+
+          if (arriba.length) {
+            var antes = arriba.map(function (t) {
+              return t.getBoundingClientRect().height;
+            });
+            arriba.forEach(function (t) {
+              t.setAttribute("data-sin-transicion", "");
+              fijar(t, false);
+            });
+            var perdido = 0;
+            arriba.forEach(function (t, i) {
+              perdido += antes[i] - t.getBoundingClientRect().height;
+            });
+            if (perdido) window.scrollBy(0, -perdido);
+            requestAnimationFrame(function () {
+              arriba.forEach(function (t) {
+                t.removeAttribute("data-sin-transicion");
+              });
+            });
+          }
+          // Estas van después y sin compensar: encogen por debajo del borde inferior, donde
+          // encoger no mueve nada de lo que hay encima.
+          abajo.forEach(function (t) {
+            fijar(t, false);
           });
         }
 
@@ -2925,40 +2967,16 @@
             var y = window.scrollY;
             if (y !== yPrevia) bajando = y > yPrevia;
             yPrevia = y;
-            // Solo al subir, y una vez por cuadro: son cinco rectángulos y casi siempre no hay
-            // nada que recoger, pero medir en cada evento de scroll sí se notaría.
-            if (!bajando && !revisando) {
+            if (!revisando) {
               revisando = true;
               requestAnimationFrame(function () {
                 revisando = false;
-                recogerLasDeArriba();
+                repasar();
               });
             }
           },
           { passive: true },
         );
-
-        var despliegue = new IntersectionObserver(
-          function (entradas) {
-            entradas.forEach(function (e) {
-              var t = e.target;
-              if (t.hasAttribute("data-manual")) return;
-              if (bajando) {
-                if (e.intersectionRatio >= UMBRAL) fijar(t, true);
-              } else if (!e.isIntersecting && e.boundingClientRect.top >= 0) {
-                // Salió ENTERA por el borde de abajo: encoger ahí no mueve nada de lo visible.
-                fijar(t, false);
-              }
-            });
-          },
-          // El 0 además del tercio: una tarjeta ya abierta es más alta que el tercio de sí
-          // misma que cabe en pantalla, así que al subir no volvería a cruzar el umbral. El
-          // cruce por cero es el que avisa de que ya salió de cuadro.
-          { threshold: [0, UMBRAL] },
-        );
-        tarjetas.forEach(function (tarjeta) {
-          despliegue.observe(tarjeta);
-        });
 
         if (quieto) return; // en reduced-motion nada más se mueve, y el CSS ya lo dejó todo puesto
 
