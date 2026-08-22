@@ -93,6 +93,12 @@
       }
       html {
         scroll-behavior: smooth;
+        /* El anclaje de scroll nativo, apagado a propósito: cuando una tarjeta se recoge por
+       encima del borde superior, el guion repone el alto exacto en modo instantáneo. Con el
+       anclaje encendido, Chrome compensaría TAMBIÉN — dos correcciones para un solo cambio, y
+       la página se movería lo que sobra. Safari no ancla nunca: apagarlo aquí deja a todos
+       los navegadores con la misma corrección, la nuestra, que es la que está probada. */
+        overflow-anchor: none;
       }
       body {
         margin: 0;
@@ -453,6 +459,14 @@
       }
       .tarjeta[data-abierta] .detalle-interior {
         visibility: visible;
+      }
+      /* Recoger SIN transición: para la tarjeta que quedó por encima de la pantalla. Su cierre
+     va acompañado de la reposición del scroll en el mismo cuadro, y eso solo es atómico si el
+     alto cambia de una vez — una transición repartiría el encogido en 30 cuadros y la
+     reposición, hecha una sola vez, quedaría desfasada 29. */
+      .tarjeta[data-sin-transicion] .detalle,
+      .tarjeta[data-sin-transicion] .detalle-interior {
+        transition: none;
       }
       .detalle-cuerpo {
         padding: 2px 16px 18px;
@@ -1524,7 +1538,7 @@
           </h2>
           <p class="suave revela">
             Cinco pasos, catorce cosas. Se van abriendo a medida que bajas y se
-            recogen si te devuelves; si tocas una, manda tu toque.
+            recogen en cuanto quedan atrás; si tocas una, manda tu toque.
           </p>
           <div class="hairline" aria-hidden="true"></div>
           <div class="tarjetas">
@@ -2874,29 +2888,28 @@
         //
         // ── La regla, que ahora es UNA y se puede demostrar ────────────────────────────────
         //
-        // **Ninguna tarjeta cambia de alto por encima del borde inferior de la pantalla, salvo
-        // creciendo hacia abajo desde un punto que ya está en cuadro.** De ahí sale todo:
+        // **Una tarjeta está abierta exactamente mientras está a la vista** — se despliega
+        // bajando, cuando su cabecera cruza la línea de los dos tercios, y se repliega en
+        // cuanto sale ENTERA de la pantalla, por el borde que sea. Devolverse encuentra la
+        // página ya recogida. Y ningún repliegue mueve un píxel de lo visible:
         //
-        //  · ABRIR: solo bajando, y solo cuando la cabecera ha cruzado la línea de los dos
-        //    tercios (`0 <= top <= linea`). Queda un tercio de pantalla por debajo, que es donde
-        //    se la ve crecer; y como crece hacia abajo desde su cabecera, nada de lo ya leído se
-        //    mueve. El `top >= 0` es el que impide abrir una cuya cabecera ya se fue por arriba.
-        //  · CERRAR: solo cuando la tarjeta está ENTERA por debajo del borde inferior
-        //    (`top >= vh`). Encoger ahí no puede mover un píxel de lo que hay encima.
+        //  · ABRIR: solo bajando, con `0 <= top <= linea`. Queda un tercio de pantalla por
+        //    debajo, que es donde se la ve crecer; y crece hacia abajo desde su cabecera, así
+        //    que nada de lo ya leído se mueve.
+        //  · CERRAR por ABAJO (`top >= vh`, al subir y pasarla de largo): con su transición.
+        //    Encoge por debajo del borde inferior, donde encoger no mueve nada.
+        //  · CERRAR por ARRIBA (`bottom <= 0`, al dejarla atrás bajando): de golpe, sin
+        //    transición, **reponiendo el scroll con el alto exacto que pierde, en la misma
+        //    pasada y en modo instantáneo**. Quitar alto por encima de la línea de lectura
+        //    subiría todo lo visible; la reposición lo deja clavado.
         //
-        // Lo que se quitó, y por qué. Antes se recogían también las tarjetas que quedaban por
-        // encima del borde superior, compensando el scroll con el alto exacto que perdían. La
-        // idea era buena y la ejecución imposible: esta página tiene `scroll-behavior: smooth`,
-        // así que el `scrollBy` de la compensación se ANIMABA mientras el encogido era
-        // instantáneo — y con dos tarjetas abiertas arriba eso son tres mil píxeles que se van
-        // de golpe y vuelven despacio. Subiendo desde la tercera tarjeta, la página salía
-        // disparada a la sección siguiente. Cualquier compensación es una apuesta a que nada más
-        // toque el scroll en ese cuadro; no compensar nunca no se puede perder.
-        //
-        // El efecto de quitarlo es además el que se pidió: **la tarjeta que ya se desplegó sigue
-        // desplegada mientras esté en pantalla**, subiendo o bajando. Se recoge cuando se sale
-        // por abajo, o sea cuando ya se pasó de largo por ella — y volver arriba del todo sigue
-        // encontrando la página recogida, porque para llegar arriba hay que pasarlas todas.
+        // La historia de esa reposición, porque ya falló una vez y la lección es concreta: la
+        // ronda 2 compensaba con `window.scrollBy(0, -perdido)` — y esta página tiene
+        // `scroll-behavior: smooth`, así que el encogido era instantáneo y la compensación se
+        // ANIMABA. Tres mil píxeles que se van de golpe y vuelven despacio. El error no era
+        // compensar: era compensar ANIMADO. Aquí va con `behavior: "instant"`, que ignora el
+        // smooth por contrato, y el `overflow-anchor: none` del <html> apaga el anclaje nativo
+        // del navegador para que no compense ÉL también y lo mueva dos veces.
         var yPrevia = window.scrollY;
         var bajando = true;
 
@@ -2914,8 +2927,29 @@
 
             if (!abierta) {
               if (bajando && caja.top >= 0 && caja.top <= linea) fijar(t, true);
-            } else if (caja.top >= vh) {
+              return;
+            }
+            if (caja.top >= vh) {
+              // Salió por abajo: se recoge con su transición, fuera de la vista.
               fijar(t, false);
+            } else if (caja.bottom <= 0) {
+              // Salió por arriba: se recoge de golpe y se repone el alto en el mismo cuadro.
+              t.setAttribute("data-sin-transicion", "");
+              fijar(t, false);
+              var perdido = caja.height - t.getBoundingClientRect().height;
+              if (perdido) {
+                window.scrollBy({
+                  top: -perdido,
+                  left: 0,
+                  behavior: "instant",
+                });
+                // La reposición dispara su propio evento de scroll con la Y más chica; sin
+                // esto, el detector de dirección lo leería como «subiendo» un cuadro.
+                yPrevia = window.scrollY;
+              }
+              requestAnimationFrame(function () {
+                t.removeAttribute("data-sin-transicion");
+              });
             }
           });
         }

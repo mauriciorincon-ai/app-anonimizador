@@ -2,7 +2,7 @@
 entrega: brochure-conoce
 app: anonimizador (Velo)
 tipo: entrega puntual (no es sprint — orden ENTREGA-BROCHURE de la planeadora, kit v1.19.0)
-estado: mergeada (PR #12) y probada en producción sin sesión. Cuatro rondas del gate visual en PR aparte (#13): el despliegue por recorrido, las capturas de la app, el tercio medido sobre la pantalla, y la retirada de la compensación de scroll.
+estado: mergeada (PR #12) y probada en producción sin sesión. Cinco rondas del gate visual en PR aparte (#13); la regla final: una tarjeta está abierta exactamente mientras está a la vista, y ningún repliegue mueve un píxel de lo visible.
 fecha: 2026-08-21
 rama: entrega/brochure-conoce
 ---
@@ -303,6 +303,42 @@ una imitación: se hizo `git show` del archivo del commit anterior y se corriero
    las pruebas de la ronda anterior medían después de dejar asentar, y ningún e2e reproduce la
    inercia de un dedo — por eso la CI estuvo verde con el defecto dentro. Contra la versión
    anterior: **«el brochure movió el scroll por su cuenta durante el recorrido»**.
+
+## Quinta ronda del gate visual — la tarjeta se repliega al quedar atrás
+
+> «No se repliega: cuando subo, la tarjeta que ha salido de la visual no se repliega.» — el
+> usuario, el 2026-08-22, sobre la regla de la cuarta ronda.
+
+La cuarta ronda quitó el salto dejando las tarjetas de arriba abiertas para siempre — y eso
+contradecía la regla original del usuario: «si me devuelvo, ya estaban cerradas». Al subir se
+encontraba cada tarjeta todavía desplegada, con sus mil cuatrocientos píxeles por recorrer de
+nuevo. Las dos exigencias (se repliegan al salir de la vista, y nada visible salta) parecían
+pelearse; la salida fue ver que el error de la ronda 2 nunca fue compensar: **fue compensar
+ANIMADO**.
+
+**La regla final, en una frase: una tarjeta está abierta exactamente mientras está a la vista.**
+
+- **Abre** bajando, cuando su cabecera cruza la línea de los dos tercios.
+- **Se repliega por abajo** (al subir y pasarla de largo) con su transición: encoge fuera de
+  cuadro.
+- **Se repliega por arriba** (al dejarla atrás bajando) de golpe, sin transición, **reponiendo
+  el scroll con el alto exacto que pierde en el mismo cuadro y en modo `instant`** — que ignora
+  `scroll-behavior: smooth` por contrato. Eso es lo que la ronda 2 no hizo: repuso con
+  `scrollBy` a secas, el smooth lo animó, y la página se iba sola.
+- `overflow-anchor: none` en el `<html>`: con el anclaje nativo encendido, Chrome compensaría
+  TAMBIÉN y la página se movería lo que sobra; Safari no ancla nunca. Apagarlo deja a todos los
+  navegadores con una sola corrección, la propia, que es la que está probada.
+
+Así, al devolverse no queda **nada** que cerrar por encima —ya se cerraron al quedar atrás— y la
+subida no tiene ni un cambio de alto sobre la línea de lectura. Las dos exigencias a la vez.
+
+**Las pruebas de esta ronda** («la que quedó atrás bajando ya está recogida» y «bajar tampoco
+mueve ni un renglón») se demostraron en rojo contra el archivo del commit anterior real: la
+primera falló con «la tarjeta 1 siguió abierta después de quedar atrás», que es literalmente la
+queja. Y una lección de método al escribirlas: el primer rojo del test de bajada era **falso** —
+lo conducía `window.scrollBy` a secas, que es programático y el smooth lo anima, tragándose la
+reposición. Una rueda real es scroll nativo y no pasa por ahí: el conductor del test tiene que
+ser `behavior: "instant"`, o mide un defecto que ningún dedo puede producir.
 
 ## Lo que solo se vio MIRANDO — la pasada de capturas
 

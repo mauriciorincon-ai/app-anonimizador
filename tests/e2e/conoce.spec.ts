@@ -77,7 +77,7 @@ async function recorrer(
   await page.waitForTimeout(300);
 }
 
-test("llegan cerradas, se despliegan al bajar y se recogen al subir", async ({
+test("llegan cerradas, cada una se despliega en su turno y quedar atrás las recoge", async ({
   page,
 }) => {
   await page.goto("/conoce");
@@ -89,16 +89,35 @@ test("llegan cerradas, se despliegan al bajar y se recogen al subir", async ({
     await expect(botones.nth(i)).toHaveAttribute("aria-expanded", "false");
   }
 
-  // Bajando, el recorrido las va abriendo — las cinco, en su turno.
-  await recorrer(page, "abajo");
-  for (let i = 0; i < 5; i++) {
-    await expect(
-      botones.nth(i),
-      `la tarjeta ${i + 1} no se desplegó al bajar`,
-    ).toHaveAttribute("aria-expanded", "true");
+  // Bajando, cada tarjeta tiene su turno: se abre al llegar a ella y se recoge al dejarla
+  // atrás. En el fondo de la página NO están las cinco abiertas —esa era la regla vieja—,
+  // así que lo que se afirma es el ciclo de vida: todas se abrieron en algún momento.
+  const alto = page.viewportSize()?.height ?? 800;
+  const paso = Math.round(alto / 2);
+  const abiertas = [false, false, false, false, false];
+  for (let i = 0; i < 200; i++) {
+    const fin = await page.evaluate((p) => {
+      window.scrollBy(0, p);
+      return (
+        window.scrollY + window.innerHeight >= document.body.scrollHeight - 2
+      );
+    }, paso);
+    await page.waitForTimeout(90);
+    const estados = await page.evaluate(() =>
+      Array.from(document.querySelectorAll(".tarjeta")).map((t) =>
+        t.hasAttribute("data-abierta"),
+      ),
+    );
+    estados.forEach((abierta, j) => {
+      if (abierta) abiertas[j] = true;
+    });
+    if (fin) break;
   }
+  abiertas.forEach((visto, i) => {
+    expect(visto, `la tarjeta ${i + 1} nunca se desplegó al bajar`).toBe(true);
+  });
 
-  // Y subiendo se recogen: volver al principio encuentra la página como estaba.
+  // Y subiendo, volver al principio encuentra la página como estaba.
   await recorrer(page, "arriba");
   for (let i = 0; i < 5; i++) {
     await expect(
@@ -177,13 +196,21 @@ test("el toque manda: lo que la persona cierra no se vuelve a abrir solo", async
   await boton.click();
   await expect(boton).toHaveAttribute("aria-expanded", "false");
 
-  // Recorrer entera la página no la contradice.
+  // Bajar hasta que el recorrido abra la segunda no la contradice: la segunda se abre sola
+  // y la primera, que la persona cerró, sigue cerrada aunque pase por su umbral.
+  const segunda = page.locator(".tarjeta").nth(1);
+  const paso = Math.round((page.viewportSize()?.height ?? 800) / 2);
+  for (let i = 0; i < 60; i++) {
+    if (await segunda.evaluate((t) => t.hasAttribute("data-abierta"))) break;
+    await page.evaluate((p) => window.scrollBy(0, p), paso);
+    await page.waitForTimeout(90);
+  }
+  await expect(segunda).toHaveAttribute("data-abierta", "");
+  await expect(boton).toHaveAttribute("aria-expanded", "false");
+
+  // Y al fondo de la página sigue cerrada: dejarla atrás no la toca, porque ya era suya.
   await recorrer(page, "abajo");
   await expect(boton).toHaveAttribute("aria-expanded", "false");
-  await expect(page.locator(".tarjeta-boton").nth(1)).toHaveAttribute(
-    "aria-expanded",
-    "true",
-  );
 });
 
 test("una tarjeta que se despliega no mueve su propia cabecera", async ({
@@ -260,12 +287,11 @@ test("la que se despliega SOLA tampoco se mueve de su sitio", async ({
 test("subir no mueve ni un renglón de lo que se está leyendo", async ({
   page,
 }) => {
-  // ESTE es el defecto que trajo el gate visual: bajando iba bien, subiendo «pegaba saltos».
+  // El defecto que trajo la cuarta ronda del gate: bajando iba bien, subiendo «pegaba saltos».
   //
-  // La causa: al subir se cerraban tarjetas que ya habían pasado por encima del borde superior.
-  // Quitarle alto a algo que está ARRIBA de la línea de lectura sube de golpe todo lo que hay
-  // debajo — o sea, todo lo que se está mirando. Ahora esas se cierran de golpe y se compensa
-  // el scroll con el alto exacto que pierden.
+  // Con la regla vigente, al subir no queda nada que cerrar por encima —las tarjetas se
+  // recogieron al quedar atrás, bajando— y lo único que se cierra es lo que sale por debajo,
+  // donde encoger no mueve nada. Esta prueba lo fija midiendo la subida entera.
   //
   // Se mide lo que se VE, nunca `scrollY`: el navegador ajusta `scrollY` a propósito para dejar
   // el contenido quieto, así que penalizar ese ajuste sería castigar al mecanismo que salva la
@@ -310,28 +336,52 @@ test("subir no mueve ni un renglón de lo que se está leyendo", async ({
   }
 });
 
-test("al subir, la que está en pantalla sigue desplegada y solo se recoge al pasar de largo", async ({
+test("la que quedó atrás bajando ya está recogida, sin que se vea el cierre", async ({
   page,
 }) => {
-  // La regla del gate, en su forma final: «mientras esté en mi pantalla debe estar desplegada la
-  // que ya desplegó». Una versión anterior recogía al empezar a subir TODAS las que quedaban por
-  // encima del borde superior, compensando el scroll a mano; con `scroll-behavior: smooth` esa
-  // compensación se animaba mientras el encogido era instantáneo, y subir desde la tercera
-  // tarjeta mandaba la página a la sección siguiente.
-  //
-  // Ahora ninguna tarjeta cambia de alto por encima del borde INFERIOR: se recogen al salir por
-  // abajo, o sea cuando ya se pasó de largo por ellas. Esta prueba recorre la subida entera y
-  // vigila las dos mitades del invariante en cada paso.
+  // LA queja de la quinta ronda del gate: «cuando subo, la tarjeta que ha salido de la visual
+  // no se repliega». La regla que la responde: una tarjeta está abierta exactamente mientras
+  // está a la vista — al salir ENTERA por el borde de arriba se recoge en ese momento, de
+  // golpe, con el scroll repuesto en el mismo cuadro. Así, cuando la persona se devuelve, las
+  // encuentra ya cerradas: no hay nada que cerrar durante la subida, que es donde saltaba.
   await page.goto("/conoce");
-  await recorrer(page, "abajo");
-
-  const botones = page.locator(".tarjeta-boton");
-  for (let i = 0; i < 5; i++) {
-    await expect(botones.nth(i)).toHaveAttribute("aria-expanded", "true");
-  }
 
   const paso = Math.round((page.viewportSize()?.height ?? 800) / 2);
-  for (let vuelta = 0; vuelta < 120; vuelta++) {
+  for (let vuelta = 0; vuelta < 200; vuelta++) {
+    const fin = await page.evaluate((p) => {
+      window.scrollBy(0, p);
+      return (
+        window.scrollY + window.innerHeight >= document.body.scrollHeight - 2
+      );
+    }, paso);
+    await page.waitForTimeout(110);
+
+    const estado = await page.evaluate(() =>
+      Array.from(document.querySelectorAll(".tarjeta")).map((t) => {
+        const r = t.getBoundingClientRect();
+        return {
+          abierta: t.hasAttribute("data-abierta"),
+          arriba: r.bottom <= -2,
+          enPantalla: r.bottom > 0 && r.top < window.innerHeight,
+        };
+      }),
+    );
+
+    estado.forEach((e, i) => {
+      if (e.arriba) {
+        expect(
+          e.abierta,
+          `la tarjeta ${i + 1} siguió abierta después de quedar atrás (paso ${vuelta + 1})`,
+        ).toBe(false);
+      }
+    });
+    if (fin) break;
+  }
+
+  // Y la vuelta las encuentra así: subiendo, una tarjeta abierta y a la vista se queda
+  // abierta mientras se vea, y las que reaparecen por arriba llegan ya cerradas.
+  let previas: { abierta: boolean; enPantalla: boolean }[] | null = null;
+  for (let vuelta = 0; vuelta < 200; vuelta++) {
     if ((await page.evaluate(() => window.scrollY)) <= 0) break;
     await page.evaluate((p) => window.scrollBy(0, -p), paso);
     await page.waitForTimeout(110);
@@ -342,91 +392,104 @@ test("al subir, la que está en pantalla sigue desplegada y solo se recoge al pa
         return {
           abierta: t.hasAttribute("data-abierta"),
           enPantalla: r.bottom > 0 && r.top < window.innerHeight,
-          debajo: r.top >= window.innerHeight,
         };
       }),
     );
 
     estado.forEach((e, i) => {
-      if (e.enPantalla) {
+      const antes = previas?.[i];
+      if (antes?.abierta && antes.enPantalla && e.enPantalla) {
         expect(
           e.abierta,
-          `la tarjeta ${i + 1} se cerró estando en pantalla (empujón ${vuelta + 1})`,
+          `la tarjeta ${i + 1} se cerró en la cara del lector al subir (paso ${vuelta + 1})`,
         ).toBe(true);
       }
-      if (e.debajo) {
+      if (!antes?.enPantalla && e.enPantalla && !antes?.abierta) {
         expect(
           e.abierta,
-          `la tarjeta ${i + 1} siguió abierta después de pasarla de largo`,
+          `la tarjeta ${i + 1} reapareció abierta al subir`,
         ).toBe(false);
       }
     });
+    previas = estado;
   }
 });
 
-test("la página nunca mueve el scroll por su cuenta", async ({ page }) => {
-  // El invariante estructural del que cuelga todo lo demás, y la lección más cara de este gate.
+test("bajar tampoco mueve ni un renglón, ni cuando una tarjeta se recoge atrás", async ({
+  page,
+}) => {
+  // La pareja del test de subida, y la que vigila la reposición del scroll. Cuando una tarjeta
+  // sale por el borde de arriba se recoge de golpe y el guion repone el alto exacto con
+  // `behavior: "instant"` — la ronda 2 fracasó aquí por reponer con el `scrollBy` a secas, que
+  // con `scroll-behavior: smooth` se ANIMA: el encogido era instantáneo y la reposición llegaba
+  // despacio, y la página se iba sola a la sección siguiente. La CI estuvo verde con eso dentro
+  // porque las pruebas median tras dejar asentar; esta mide EN CADA PASO, sobre lo visible.
   //
-  // La versión anterior recogía las tarjetas que quedaban por encima del borde superior y
-  // devolvía el scroll a mano con el alto exacto que perdían. Sobre el papel era exacto. En un
-  // navegador de verdad no: la página lleva `scroll-behavior: smooth`, así que ese `scrollBy` se
-  // ANIMABA mientras el encogido era instantáneo — y con inercia de trackpad, además, competía
-  // con un desplazamiento que el navegador ya tenía en marcha. Subiendo desde la tercera
-  // tarjeta, la página se iba a la sección siguiente.
-  //
-  // Las pruebas de arriba no lo cazaban porque miden después de dejar asentar, y ningún e2e
-  // reproduce la inercia de un dedo. Esta sí lo caza, porque no mide el resultado sino la
-  // causa: **el guion no puede tocar el scroll**. Si no lo toca, no hay nada que se le pueda ir.
-  await page.addInitScript(() => {
-    const w = window as unknown as {
-      __movidas: string[];
-      __scrollBy: (x: number, y: number) => void;
-    };
-    w.__movidas = [];
-    // El original, para que la prueba pueda conducir sin registrarse a sí misma.
-    w.__scrollBy = window.scrollBy.bind(window);
-    const vigilar = (nombre: string, original: unknown) =>
-      function (this: unknown, ...args: unknown[]) {
-        w.__movidas.push(nombre);
-        return (original as (...a: unknown[]) => unknown).apply(this, args);
-      };
-    window.scrollBy = vigilar("scrollBy", window.scrollBy) as typeof scrollBy;
-    window.scrollTo = vigilar("scrollTo", window.scrollTo) as typeof scrollTo;
-  });
-
+  // Se mide lo que se ve, nunca `scrollY`: la reposición legítima MUEVE `scrollY` a propósito;
+  // lo que no se puede mover es la referencia que el lector tiene delante.
   await page.goto("/conoce");
 
-  const paso = Math.round((page.viewportSize()?.height ?? 800) / 2);
-  const conducir = (signo: number) =>
-    page.evaluate(
-      ([p, s]) =>
-        (
-          window as unknown as { __scrollBy: (x: number, y: number) => void }
-        ).__scrollBy(0, (p as number) * (s as number)),
-      [paso, signo] as const,
-    );
+  const paso = Math.round((page.viewportSize()?.height ?? 800) / 3);
 
-  for (let i = 0; i < 120; i++) {
-    await conducir(1);
-    await page.waitForTimeout(70);
-    const fondo = await page.evaluate(
-      () =>
-        window.scrollY + window.innerHeight >= document.body.scrollHeight - 2,
-    );
+  for (let vuelta = 0; vuelta < 200; vuelta++) {
+    const candidata = await page.evaluate(() => {
+      // Referencia: una cabecera visible cuya entrada YA terminó (transform en reposo). Una a
+      // medio alzar se mueve sola 18 px y culparía al scroll de su propia coreografía.
+      const visible = Array.from(
+        document.querySelectorAll(".tarjeta-cabeza"),
+      ).find((c) => {
+        const r = c.getBoundingClientRect();
+        const transformada = getComputedStyle(
+          c.closest(".tarjeta") as Element,
+        ).transform;
+        return (
+          r.top >= 0 &&
+          r.bottom <= window.innerHeight &&
+          (transformada === "none" ||
+            transformada === "matrix(1, 0, 0, 1, 0, 0)")
+        );
+      });
+      (window as unknown as { __ref?: Element }).__ref = visible;
+      return visible ? visible.getBoundingClientRect().top : null;
+    });
+
+    // Guarda de quietud: si una tarjeta de más arriba sigue desplegándose (0,55 s), la
+    // referencia baja sola, por diseño — culpar de eso al scroll sería otro falso rojo. Solo
+    // se mide el paso cuando la referencia demostró estar quieta.
+    await page.waitForTimeout(120);
+    const antes = await page.evaluate(() => {
+      const ref = (window as unknown as { __ref?: Element }).__ref;
+      return ref ? ref.getBoundingClientRect().top : null;
+    });
+    const quieta =
+      candidata !== null && antes !== null && Math.abs(antes - candidata) < 1;
+
+    // Se conduce en modo instantáneo, como una rueda: el scroll del usuario es nativo y no
+    // pasa por `scroll-behavior: smooth`. Un `scrollBy` a secas sí pasa — se anima hacia su
+    // destino y esa animación se tragaría la reposición, midiendo un defecto que el dedo de
+    // una persona no puede producir.
+    const fondo = await page.evaluate((p) => {
+      window.scrollBy({ top: p, left: 0, behavior: "instant" });
+      return (
+        window.scrollY + window.innerHeight >= document.body.scrollHeight - 2
+      );
+    }, paso);
+    await page.waitForTimeout(140);
+
+    if (quieta && antes !== null) {
+      const despues = await page.evaluate(() => {
+        const ref = (window as unknown as { __ref?: Element }).__ref;
+        return ref ? ref.getBoundingClientRect().top : null;
+      });
+      // La referencia tiene que haber subido EXACTAMENTE el empujón. Un píxel de más es una
+      // tarjeta que se recogió arriba sin reponer el alto — o lo repuso animado.
+      expect(
+        Math.abs((despues ?? 0) - (antes - paso)),
+        `algo se movió solo al bajar (empujón ${vuelta + 1})`,
+      ).toBeLessThan(4);
+    }
     if (fondo) break;
   }
-  for (let i = 0; i < 120; i++) {
-    await conducir(-1);
-    await page.waitForTimeout(70);
-    if ((await page.evaluate(() => window.scrollY)) <= 0) break;
-  }
-
-  expect(
-    await page.evaluate(
-      () => (window as unknown as { __movidas: string[] }).__movidas,
-    ),
-    "el brochure movió el scroll por su cuenta durante el recorrido",
-  ).toEqual([]);
 });
 
 test("cada tarjeta enseña una pantalla de la app, en los dos temas", async ({
