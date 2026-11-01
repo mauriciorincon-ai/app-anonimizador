@@ -9,14 +9,29 @@
 //      quién lo abre, y cuándo. `tests/unit/reporte.test.ts` lo verifica barriendo el HTML.
 //   2. **Ninguna fila del archivo.** Van nombres de columna, tipos, categorías, cifras y muestras
 //      YA enmascaradas. Lo dice el propio reporte, para que quien lo reciba no tenga que confiar.
-//   3. **Determinista.** Mismo informe + misma fecha ⇒ mismo archivo, byte por byte. La fecha se
-//      inyecta desde afuera precisamente por eso: es lo único que cambiaría solo.
+//   3. **Determinista.** Mismo informe + misma fecha + mismo idioma ⇒ mismo archivo, byte por byte.
+//      La fecha y el idioma se inyectan desde afuera precisamente por eso: la fecha es lo único que
+//      cambiaría solo, y el idioma (que además queda escrito dentro del documento) lo elige quien
+//      lo descarga. Cada idioma es una redacción propia, no una traducción mecánica del otro.
 //
 // Y una regla de escritura: todo lo que venga del archivo del usuario —el nombre del archivo, los
 // nombres de columna, las muestras— se escapa. Este documento lo va a abrir alguien más, y una
 // columna llamada `<script>` no puede convertirse en un script.
 
-import type { Idioma } from "@/lib/idioma";
+import { numero, porcentaje, unoEn } from "@/lib/formato";
+import {
+  decir,
+  formatoNumerico,
+  interpolar,
+  LOCALE,
+  plural,
+  tramos,
+  type Datos,
+  type Idioma,
+  type Texto,
+} from "@/lib/idioma";
+import { decirMensaje } from "@/lib/idioma/mensajes";
+import { DOCUMENTOS as D } from "@/lib/idioma/textos/documentos";
 
 import type { BalanceDelTratamiento, Salvedad } from "./balance";
 import type { Diagnostico, HallazgoDeColumna } from "./clasificador";
@@ -66,19 +81,6 @@ export interface DatosDelReporte {
   tratamiento?: DatosDelTratamiento;
 }
 
-const ETIQUETAS_DE_CATEGORIA: Record<CategoriaLey1581, string> = {
-  "identificador-directo": "Identificador directo",
-  "cuasi-identificador": "Cuasi-identificador",
-  "dato-sensible": "Dato sensible · Ley 1581 art. 5",
-  "no-personal": "No personal",
-};
-
-const ETIQUETAS_DE_CERTEZA: Record<HallazgoDeColumna["certeza"], string> = {
-  "algoritmo-oficial": "Confirmado por el algoritmo oficial",
-  estructural: "Reconocido por su forma",
-  "sin-confirmar": "Sin confirmar — se apoya en el nombre de la columna",
-};
-
 /** Escapa lo que venga del archivo del usuario. Sin excepciones ni "es solo un número". */
 export function escapar(texto: string): string {
   return texto
@@ -89,30 +91,65 @@ export function escapar(texto: string): string {
     .replaceAll("'", "&#39;");
 }
 
-const ENTERO = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
-
-function numero(valor: number): string {
-  return ENTERO.format(valor);
+/**
+ * Un texto del catálogo, como HTML.
+ *
+ * El texto del catálogo es de confianza; los DATOS que se interpolan en él no. Por eso el énfasis
+ * se resuelve sobre la plantilla (antes de llenarla) y cada dato de cadena se escapa — una columna
+ * llamada `**x**` o `<script>` es un nombre, nunca marcado. Los datos cuyo nombre termina en
+ * `_html` ya son HTML armado aquí (listas de `<code>`) y pasan tal cual.
+ */
+function h(texto: Texto, idioma: Idioma, datos: Datos = {}): string {
+  const seguros: Record<string, string | number> = {};
+  for (const [nombre, valor] of Object.entries(datos))
+    seguros[nombre] =
+      typeof valor === "string" && !nombre.endsWith("_html")
+        ? escapar(valor)
+        : valor;
+  return tramos(texto[idioma])
+    .map((tramo) => {
+      const cuerpo = interpolar(escapar(tramo.texto), idioma, seguros);
+      if (tramo.tipo === "negrita") return `<b>${cuerpo}</b>`;
+      if (tramo.tipo === "codigo") return `<code>${cuerpo}</code>`;
+      if (tramo.tipo === "alerta") return `<b class="alerta">${cuerpo}</b>`;
+      return cuerpo;
+    })
+    .join("");
 }
 
-/** Misma regla que `src/lib/formato.ts`: un porcentaje que redondea a cero se dice con palabras. */
-function porcentaje(proporcion: number): string {
-  const valor = proporcion * 100;
-  if (valor > 0 && valor < 0.05) return "menos de 0,1 %";
-  const decimales = valor > 0 && valor < 10 ? 1 : 0;
-  return `${new Intl.NumberFormat("es-CO", {
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-  }).format(valor)} %`;
+/** Una lista de nombres de columna como `<code>a</code> · <code>b</code>`. */
+function listaDeCodigo(nombres: readonly string[], separador = " · "): string {
+  return nombres.map((n) => `<code>${escapar(n)}</code>`).join(separador);
 }
 
-function megabytes(valor: number): string {
+/** Un decimal fijo con la convención del idioma (los bits y la V de Cramér). */
+function decimales(valor: number, cuantos: number, idioma: Idioma): string {
+  return formatoNumerico(idioma, {
+    minimumFractionDigits: cuantos,
+    maximumFractionDigits: cuantos,
+  }).format(valor);
+}
+
+function megabytes(valor: number, idioma: Idioma): string {
   if (valor < 1024 * 1024) {
-    return `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(valor / 1024)} KB`;
+    return `${formatoNumerico(idioma, { maximumFractionDigits: 0 }).format(valor / 1024)} KB`;
   }
   const mb = valor / (1024 * 1024);
-  return `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: mb < 10 ? 1 : 0 }).format(mb)} MB`;
+  return `${formatoNumerico(idioma, { maximumFractionDigits: mb < 10 ? 1 : 0 }).format(mb)} MB`;
 }
+
+const CATEGORIA: Record<CategoriaLey1581, Texto> = {
+  "identificador-directo": D.columnas.categorias.identificadorDirecto,
+  "cuasi-identificador": D.columnas.categorias.cuasiIdentificador,
+  "dato-sensible": D.columnas.categorias.datoSensible,
+  "no-personal": D.columnas.categorias.noPersonal,
+};
+
+const CERTEZA: Record<HallazgoDeColumna["certeza"], Texto> = {
+  "algoritmo-oficial": D.columnas.certezas.algoritmoOficial,
+  estructural: D.columnas.certezas.estructural,
+  "sin-confirmar": D.columnas.certezas.sinConfirmar,
+};
 
 // El sello, dibujado a mano en el propio documento. Ver `src/components/sello.tsx`: si viniera de
 // una URL, la marca que promete que nada salió del navegador estaría hecha de algo que sí salió.
@@ -123,6 +160,15 @@ const SELLO = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true
 
 // Tipografía del sistema: una fuente web obligaría a una petición, y embeberla en base64 hincharía
 // el archivo por pura decoración. Georgia y la mono del sistema conservan el carácter sin costo.
+// Dos decisiones de estas reglas que merecen su porqué (viven aquí y no como comentarios dentro del CSS,
+// porque un comentario dentro de la plantilla viajaría escrito en cada documento descargado — también en
+// el inglés — y un documento no debe llevar notas del código que lo armó):
+//   · `td.col` tiene un ancho mínimo que no es cosmético: sin él la columna se estrecha tanto que un
+//     nombre como cedula_titular se parte a la mitad ("cedula_ti / tular") y deja de ser reconocible, que
+//     es justo lo único que esa celda tiene que lograr. `overflow-wrap` parte solo si de verdad no cabe.
+//   · Las salvedades van antes que la cifra, y se ven antes que la cifra. Que la descalificante pese más
+//     que la que solo matiza no es decoración: es la diferencia entre "esto desmiente el número" y "esto
+//     lo acompaña".
 const ESTILOS = `
 :root{--papel:#fbf9f4;--superficie:#fff;--borde:#e2dccf;--tinta:#1a211d;--tinta-suave:#4f5a55;
 --tinta-tenue:#626b66;--acento:#0d6b57;--acento-tenue:#e4f0eb;--alerta:#9e3222;--alerta-tenue:#f8e9e5;
@@ -149,10 +195,6 @@ dd small{font-weight:400;color:var(--tinta-suave)}
 table{width:100%;border-collapse:collapse;font-size:.85rem}
 th,td{text-align:left;vertical-align:top;padding:8px 10px 8px 0;border-bottom:1px solid var(--borde)}
 th{font-family:ui-monospace,Menlo,monospace;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta-tenue);font-weight:400}
-/* El ancho mínimo no es cosmético: sin él la columna se estrecha tanto que un nombre como
-   cedula_titular se parte a la mitad ("cedula_ti / tular") y deja de ser reconocible, que es
-   justo lo único que esa celda tiene que lograr. overflow-wrap parte solo si de verdad no cabe.
-   (Sin comillas invertidas aquí dentro: esto vive en una plantilla de JavaScript.) */
 td.col{font-family:ui-monospace,Menlo,monospace;min-width:11rem;overflow-wrap:break-word;word-break:normal}
 .chip{display:inline-block;border-radius:8px;padding:2px 7px;font-size:.72rem;font-weight:600;white-space:nowrap}
 .c-identificador-directo{background:var(--alerta-tenue);color:var(--alerta)}
@@ -166,9 +208,6 @@ ul.limpia li{border:1px solid var(--borde);border-radius:8px;padding:7px 10px;ma
 display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;font-size:.85rem}
 ul.limpia li b{font-variant-numeric:tabular-nums}
 .sola{border-color:var(--alerta);background:var(--alerta-tenue)}
-/* Las salvedades van antes que la cifra, y se ven antes que la cifra. Que la descalificante pese
-   más que la que solo matiza no es decoración: es la diferencia entre "esto desmiente el número"
-   y "esto lo acompaña". */
 ul.salvedades li{display:block;line-height:1.5;border-left-width:3px}
 ul.salvedades li.s-descalifica{border-color:var(--alerta);background:var(--alerta-tenue)}
 ul.salvedades li.s-matiza{border-color:var(--aviso);background:var(--aviso-tenue)}
@@ -185,7 +224,7 @@ function tonoDelRiesgo(riesgo: RiesgoExacto): string {
   return "";
 }
 
-function filaDeColumna(columna: HallazgoDeColumna): string {
+function filaDeColumna(columna: HallazgoDeColumna, idioma: Idioma): string {
   const porQue = columna.evidencia
     .map((evidencia) => {
       if (evidencia.origen === "validador") {
@@ -193,27 +232,30 @@ function filaDeColumna(columna: HallazgoDeColumna): string {
           evidencia.muestreados > 0
             ? evidencia.aciertos / evidencia.muestreados
             : 0;
-        return `<p class="por-que">${porcentaje(proporcion)} de los ${numero(
-          evidencia.muestreados,
-        )} valores revisados cumplen.<br><code>${escapar(evidencia.fuente)}</code></p>`;
+        return `<p class="por-que">${h(D.columnas.cumplen, idioma, {
+          pct: porcentaje(proporcion, idioma),
+          n: evidencia.muestreados,
+        })}<br><code>${escapar(decirMensaje(evidencia.fuente, idioma))}</code></p>`;
       }
-      return `<p class="por-que">${escapar(evidencia.nota)}</p>`;
+      return `<p class="por-que">${escapar(decirMensaje(evidencia.nota, idioma))}</p>`;
     })
     .join("");
 
   const muestra =
     columna.muestra === null
-      ? "<em>columna vacía</em>"
+      ? `<em>${h(D.columnas.vacia, idioma)}</em>`
       : columna.muestra.omitida
-        ? "<em>sin muestra</em>"
+        ? `<em>${h(D.columnas.sinMuestra, idioma)}</em>`
         : `<code>${escapar(columna.muestra.texto)}</code>`;
 
   return `<tr>
-<td class="col">${escapar(columna.nombre)}<br><small style="color:var(--tinta-tenue)">${numero(
-    columna.cardinalidad,
-  )} valores distintos</small></td>
-<td><b>${escapar(columna.etiqueta)}</b><br><small>${ETIQUETAS_DE_CERTEZA[columna.certeza]}</small>${porQue}</td>
-<td><span class="chip c-${columna.categoria}">${ETIQUETAS_DE_CATEGORIA[columna.categoria]}</span></td>
+<td class="col">${escapar(columna.nombre)}<br><small style="color:var(--tinta-tenue)">${h(
+    D.columnas.valoresDistintos,
+    idioma,
+    { n: columna.cardinalidad },
+  )}</small></td>
+<td><b>${escapar(decirMensaje(columna.etiqueta, idioma))}</b><br><small>${h(CERTEZA[columna.certeza], idioma)}</small>${porQue}</td>
+<td><span class="chip c-${columna.categoria}">${h(CATEGORIA[columna.categoria], idioma)}</span></td>
 <td>${muestra}</td>
 </tr>`;
 }
@@ -222,95 +264,125 @@ function seccionDeRiesgo(
   riesgo: RiesgoExacto,
   identificadoresDirectos: number,
   hayTratamiento: boolean,
+  idioma: Idioma,
 ): string {
   // Con un tratamiento en el documento, esta sección deja de ser «el riesgo» y pasa a ser «el
   // riesgo del archivo que entró». Sin decirlo, sus cifras se leerían como las del archivo que se
   // descarga — la misma composición que este sprint tiene prohibida, cometida por omisión.
-  const deQue = hayTratamiento ? " · el archivo ORIGINAL" : "";
+  const deQue = hayTratamiento ? decir(D.riesgo.deQueOriginal, idioma) : "";
   if (riesgo.qis.length === 0) {
     return `<section>
-<p class="etiqueta">Riesgo de reidentificación${deQue}</p>
-<h2>No hay ningún cruce que medir</h2>
-<p>Velo no clasificó ninguna columna como cuasi-identificador, así que no existe una combinación
-sobre la cual contar clases de equivalencia. Eso no vuelve anónimo el archivo: quiere decir que no
-se reconocieron columnas cruzables.</p>
+<p class="etiqueta">${h(D.riesgo.etiquetaSinCruce, idioma, { deQue })}</p>
+<h2>${h(D.riesgo.sinCruceTitulo, idioma)}</h2>
+<p>${h(D.riesgo.sinCruceTexto, idioma)}</p>
 </section>`;
   }
 
   return `<section>
-<p class="etiqueta">Riesgo de reidentificación · cifras exactas${deQue}</p>
-<h2>Cuánta gente queda sola${hayTratamiento ? " en el archivo original" : ""}</h2>
-<p class="cifrota ${tonoDelRiesgo(riesgo)}">${porcentaje(riesgo.proporcionUnicos)}</p>
-<p>de los registros son <b>únicos</b>: nadie más comparte su combinación de valores en las columnas
-cruzadas. Son ${numero(riesgo.unicos)} de ${numero(riesgo.filas)} registros.</p>${
+<p class="etiqueta">${h(D.riesgo.etiqueta, idioma, { deQue })}</p>
+<h2>${h(hayTratamiento ? D.riesgo.tituloOriginal : D.riesgo.titulo, idioma)}</h2>
+<p class="cifrota ${tonoDelRiesgo(riesgo)}">${porcentaje(riesgo.proporcionUnicos, idioma)}</p>
+<p>${h(D.riesgo.unicos, idioma, { unicos: riesgo.unicos, filas: riesgo.filas })}</p>${
     identificadoresDirectos > 0
-      ? `\n<p class="por-que">Esta cifra <b>no cuenta</b> ${numero(identificadoresDirectos)} ${
-          identificadoresDirectos === 1
-            ? "columna que identifica"
-            : "columnas que identifican"
-        } sin ayuda de ninguna otra: a esas personas no hay que cruzarlas con nada para saber quiénes son.</p>`
+      ? `\n<p class="por-que">${h(
+          plural(
+            identificadoresDirectos,
+            D.riesgo.noCuentaUna,
+            D.riesgo.noCuentaVarias,
+          ),
+          idioma,
+          { n: identificadoresDirectos },
+        )}</p>`
       : ""
   }
 <dl class="datos">
-<div><dt>Grupo más pequeño (k)</dt><dd>${numero(riesgo.kMinimo)} <small>${
-    riesgo.kMinimo === 1 ? "persona" : "personas"
-  }</small></dd></div>
-<div><dt>Riesgo del más expuesto</dt><dd>1 en ${numero(Math.round(1 / riesgo.riesgoMaximo))}</dd></div>
-<div><dt>Riesgo promedio</dt><dd>1 en ${numero(Math.round(1 / riesgo.riesgoPromedio))}</dd></div>
-<div><dt>Grupos distintos</dt><dd>${numero(riesgo.clases)}</dd></div>
+<div><dt>${h(D.riesgo.grupoMasPequeno, idioma)}</dt><dd>${numero(riesgo.kMinimo, idioma)} <small>${h(
+    plural(riesgo.kMinimo, D.riesgo.persona, D.riesgo.personas),
+    idioma,
+  )}</small></dd></div>
+<div><dt>${h(D.riesgo.masExpuesto, idioma)}</dt><dd>${unoEn(riesgo.riesgoMaximo, idioma)}</dd></div>
+<div><dt>${h(D.riesgo.promedio, idioma)}</dt><dd>${unoEn(riesgo.riesgoPromedio, idioma)}</dd></div>
+<div><dt>${h(D.riesgo.gruposDistintos, idioma)}</dt><dd>${numero(riesgo.clases, idioma)}</dd></div>
 </dl>
-<p class="por-que" style="margin-top:14px">Columnas cruzadas: ${riesgo.qis
-    .map((qi) => `<code>${escapar(qi)}</code>`)
-    .join(" · ")}</p>
-<p class="por-que">Modelo <b>prosecutor</b>: se supone que quien ataca ya sabe que la persona está
-en la tabla y solo busca cuál de las filas es. Es el escenario más adverso, y el único que se puede
-calcular exacto sobre los datos. Todas las cifras de esta sección son exactas, contadas registro
-por registro — no estimadas.</p>
+<p class="por-que" style="margin-top:14px">${h(
+    D.riesgo.columnasCruzadas,
+    idioma,
+    {
+      lista_html: listaDeCodigo(riesgo.qis),
+    },
+  )}</p>
+<p class="por-que">${h(D.riesgo.modelo, idioma)}</p>
 </section>`;
 }
 
-function seccionDelAdvisor(advisor: AdvisorDeQis, filas: number): string {
+function seccionDelAdvisor(
+  advisor: AdvisorDeQis,
+  filas: number,
+  idioma: Idioma,
+): string {
   const solas = advisor.identificanSolas.length
-    ? `<h2 style="margin-top:18px;font-size:1.05rem">Columnas que delatan solas</h2>
+    ? `<h2 style="margin-top:18px;font-size:1.05rem">${h(D.advisor.solasTitulo, idioma)}</h2>
 <ul class="limpia">${advisor.identificanSolas
         .map(
           (columna) =>
-            `<li class="sola"><code>${escapar(columna.nombre)}</code><span><b>${porcentaje(
-              columna.proporcionUnicos,
-            )}</b> solos · ${numero(columna.unicos)} de ${numero(filas)}</span></li>`,
+            `<li class="sola"><code>${escapar(columna.nombre)}</code><span>${h(
+              D.advisor.sola,
+              idioma,
+              {
+                pct: porcentaje(columna.proporcionUnicos, idioma),
+                unicos: columna.unicos,
+                filas,
+              },
+            )}</span></li>`,
         )
         .join("")}</ul>`
     : "";
 
   const combinaciones = advisor.combinaciones.length
-    ? `<h2 style="margin-top:18px;font-size:1.05rem">Combinaciones más delatoras</h2>
+    ? `<h2 style="margin-top:18px;font-size:1.05rem">${h(D.advisor.combinacionesTitulo, idioma)}</h2>
 <ul class="limpia">${advisor.combinaciones
         .slice(0, 10)
         .map(
           (combinacion) =>
-            `<li><code>${combinacion.columnas.map(escapar).join(" + ")}</code><span><b>${porcentaje(
-              combinacion.proporcionUnicos,
-            )}</b> solos · grupo más pequeño: ${numero(combinacion.k)}</span></li>`,
+            `<li><code>${combinacion.columnas.map(escapar).join(" + ")}</code><span>${h(
+              D.advisor.combinacion,
+              idioma,
+              {
+                pct: porcentaje(combinacion.proporcionUnicos, idioma),
+                k: combinacion.k,
+              },
+            )}</span></li>`,
         )
         .join("")}</ul>`
-    : "<p>No quedaron columnas suficientes para proponer un cruce.</p>";
+    : `<p>${h(D.advisor.sinCombinaciones, idioma)}</p>`;
 
   const excluidas = advisor.excluidas.length
-    ? `<p class="por-que" style="margin-top:14px">Quedaron fuera: ${advisor.excluidas
-        .map((e) => `<code>${escapar(e.nombre)}</code> (${escapar(e.motivo)})`)
-        .join("; ")}.</p>`
+    ? `<p class="por-que" style="margin-top:14px">${h(
+        D.advisor.quedaronFuera,
+        idioma,
+        {
+          lista_html: advisor.excluidas
+            .map((e) =>
+              h(D.advisor.excluida, idioma, {
+                nombre: e.nombre,
+                motivo: decirMensaje(e.motivo, idioma),
+              }),
+            )
+            .join("; "),
+        },
+      )}</p>`
     : "";
 
   return `<section>
-<p class="etiqueta">Consejero de cruces</p>
+<p class="etiqueta">${h(D.advisor.etiqueta, idioma)}</p>
 ${solas}
 ${combinaciones}
-<p class="por-que" style="margin-top:14px">Velo evaluó ${numero(
-    advisor.combinacionesEvaluadas,
-  )} combinaciones de las ${numero(advisor.candidatos.length)} columnas candidatas. El tope es
-${numero(advisor.tope.candidatosMaximos)} columnas y grupos de hasta ${numero(
-    advisor.tope.tamanoMaximo,
-  )}: no es el universo entero de cruces posibles.</p>
+<p class="por-que" style="margin-top:14px">${h(D.advisor.evaluo, idioma, {
+    evaluadas: advisor.combinacionesEvaluadas,
+    candidatas: advisor.candidatos.length,
+    maximo: advisor.tope.candidatosMaximos,
+    tamano: advisor.tope.tamanoMaximo,
+  })}</p>
 ${excluidas}
 </section>`;
 }
@@ -320,111 +392,130 @@ ${excluidas}
 // El orden de este bloque ES el contrato, no una preferencia de maquetación: las salvedades se
 // escriben ANTES que la cifra de reducción. Un lector que se detenga en el primer párrafo tiene que
 // haber leído lo que descalifica el número, no el número. `tests/unit/reporte.test.ts` compara las
-// posiciones en el documento — un test de composición, no de cifra.
+// posiciones en el documento — un test de composición, no de cifra. El orden es el mismo en los
+// dos idiomas: lo fija esta función, no el catálogo.
 
-function itemDeSalvedad(salvedad: Salvedad): string {
+function itemDeSalvedad(salvedad: Salvedad, idioma: Idioma): string {
+  const S = D.tratamiento.salvedades;
   const cuerpo = (() => {
     switch (salvedad.tipo) {
       case "identificadores-sin-tratar":
-        return `La política deja <b>intactas</b> ${numero(salvedad.columnas.length)}
-${salvedad.columnas.length === 1 ? "columna que señala" : "columnas que señalan"} a la persona sin
-ayuda de ninguna otra: ${salvedad.columnas
-          .map((c) => `<code>${escapar(c)}</code>`)
-          .join(
-            " · ",
-          )}. Mientras estén en el archivo, ninguna cifra de esta página describe datos
-tratados.`;
+        return h(
+          plural(
+            salvedad.columnas.length,
+            S.identificadoresSinTratarUna,
+            S.identificadoresSinTratarVarias,
+          ),
+          idioma,
+          {
+            n: salvedad.columnas.length,
+            lista_html: listaDeCodigo(salvedad.columnas),
+          },
+        );
       case "reparto-sin-k":
-        return `${
-          salvedad.columnas.length === 1
-            ? "Una columna salió <b>intacta</b>"
-            : `${numero(salvedad.columnas.length)} columnas salieron <b>intactas</b>`
-        }: la política las marcó para generalización automática y no fijó un grupo mínimo (k), así
-que no había hasta dónde generalizar. ${salvedad.columnas
-          .map((c) => `<code>${escapar(c)}</code>`)
-          .join(" · ")}.`;
+        return h(
+          plural(
+            salvedad.columnas.length,
+            S.repartoSinKUna,
+            S.repartoSinKVarias,
+          ),
+          idioma,
+          {
+            n: salvedad.columnas.length,
+            lista_html: listaDeCodigo(salvedad.columnas),
+          },
+        );
       case "unicos-restantes":
-        return `Después del tratamiento, <b>${numero(salvedad.cuantos)}</b> registros
-(${porcentaje(salvedad.proporcion)}) siguen <b>solos</b> en su combinación de valores: nadie más
-en la tabla comparte la suya.`;
+        return h(S.unicosRestantes, idioma, {
+          cuantos: salvedad.cuantos,
+          proporcion: porcentaje(salvedad.proporcion, idioma),
+        });
       case "k-no-alcanzado":
-        return `La política pidió grupos de al menos <b>${numero(salvedad.kObjetivo)}</b> y el
-reparto llegó a <b>${numero(salvedad.kAlcanzado)}</b>. El archivo no cumple el k que declara.`;
+        return h(S.kNoAlcanzado, idioma, {
+          objetivo: salvedad.kObjetivo,
+          alcanzado: salvedad.kAlcanzado,
+        });
       case "k-del-reparto-no-es-el-del-archivo":
-        return `El reparto alcanzó k=<b>${numero(salvedad.kDelReparto)}</b> sobre las columnas que
-generaliza, pero el archivo completo tiene grupos de <b>${numero(salvedad.kDelArchivo)}</b>: hay
-cuasi-identificadores fuera del reparto que parten esos grupos. <b>El número que vale es el del
-archivo</b>, no el del reparto.`;
+        return h(S.kDelRepartoNoEsDelArchivo, idioma, {
+          reparto: salvedad.kDelReparto,
+          archivo: salvedad.kDelArchivo,
+        });
       case "clases-homogeneas":
-        return `<b>${numero(salvedad.filas)}</b> registros están en grupos donde todo el mundo
-comparte el mismo valor de <code>${escapar(salvedad.atributo)}</code>. Dar con el grupo basta para
-saber el dato, aunque no se sepa cuál de las filas es la persona.`;
+        return h(S.clasesHomogeneas, idioma, {
+          filas: salvedad.filas,
+          atributo: salvedad.atributo,
+        });
       case "colisiones-de-seudonimo":
-        return `En <code>${escapar(salvedad.columna)}</code>, <b>${numero(salvedad.cuantas)}</b>
-${salvedad.cuantas === 1 ? "par de valores distintos recibió" : "pares de valores distintos recibieron"}
-el mismo seudónimo. Conservar el formato reduce el espacio disponible y algunos chocan: dos
-entidades distintas se ven como una.`;
+        return h(
+          plural(salvedad.cuantas, S.colisionesUna, S.colisionesVarias),
+          idioma,
+          { columna: salvedad.columna, cuantas: salvedad.cuantas },
+        );
     }
   })();
   return `<li class="s-${salvedad.gravedad}">${cuerpo}</li>`;
 }
 
-export function seccionDelTratamiento(datos: DatosDelTratamiento): string {
+export function seccionDelTratamiento(
+  datos: DatosDelTratamiento,
+  idioma: Idioma,
+): string {
   const { balance, hashDePolitica, suprimidas } = datos;
   const { antes, despues, reduccion, salvedades } = balance;
+  const T = D.tratamiento;
 
   const bloqueDeSalvedades = salvedades.length
-    ? `<ul class="salvedades limpia">${salvedades.map(itemDeSalvedad).join("")}</ul>`
-    : `<p class="por-que">Velo no encontró salvedades que matizar sobre las columnas que revisó.
-Eso no vuelve anónimo el archivo: quiere decir que las comprobaciones que Velo sabe hacer salieron
-limpias.</p>`;
+    ? `<ul class="salvedades limpia">${salvedades.map((s) => itemDeSalvedad(s, idioma)).join("")}</ul>`
+    : `<p class="por-que">${h(T.sinSalvedades, idioma)}</p>`;
 
   const cifra = (() => {
     if (reduccion === null) {
-      return `<p>Antes del tratamiento no había ningún registro único en las columnas cruzadas, así
-que no hay reducción que medir. La cifra que importa es la de abajo: cuántos hay <b>ahora</b>.</p>`;
+      return `<p>${h(T.sinReduccion, idioma)}</p>`;
     }
     if (balance.esTitular) {
-      return `<p class="cifrota">−<b class="reduccion">${porcentaje(reduccion)}</b></p>
-<p>de registros únicos respecto del archivo original, sobre las ${numero(antes.qis.length)} columnas
-cruzadas. Pasó de ${numero(antes.unicos)} a ${numero(despues.unicos)} de ${numero(antes.filas)}
-registros.</p>`;
+      return `<p class="cifrota">−<b class="reduccion">${porcentaje(reduccion, idioma)}</b></p>
+<p>${h(T.reduccionTitular, idioma, {
+        qis: antes.qis.length,
+        antes: antes.unicos,
+        despues: despues.unicos,
+        filas: antes.filas,
+      })}</p>`;
     }
-    return `<p>La proporción de registros únicos bajó de ${porcentaje(antes.proporcionUnicos)} a
-${porcentaje(despues.proporcionUnicos)} — una reducción del
-<b class="reduccion">${porcentaje(reduccion)}</b>. <b class="alerta">Esa cifra no describe un
-archivo tratado</b> mientras siga en pie lo de arriba: se refiere solo al cruce de
-cuasi-identificadores, y no cuenta nada de lo que quedó sin tocar.</p>`;
+    return `<p>${h(T.reduccionConSalvedades, idioma, {
+      antes: porcentaje(antes.proporcionUnicos, idioma),
+      despues: porcentaje(despues.proporcionUnicos, idioma),
+      reduccion_html: `<b class="reduccion">${porcentaje(reduccion, idioma)}</b>`,
+    })}</p>`;
   })();
 
   return `<section>
-<p class="etiqueta">Balance del tratamiento</p>
-<h2>Qué cambió, y qué sigue igual</h2>
+<p class="etiqueta">${h(T.etiqueta, idioma)}</p>
+<h2>${h(T.titulo, idioma)}</h2>
 ${bloqueDeSalvedades}
 ${cifra}
 <dl class="datos" style="margin-top:16px">
-<div><dt>Registros únicos, antes</dt><dd>${numero(antes.unicos)} <small>${porcentaje(
+<div><dt>${h(T.unicosAntes, idioma)}</dt><dd>${numero(antes.unicos, idioma)} <small>${porcentaje(
     antes.proporcionUnicos,
+    idioma,
   )}</small></dd></div>
-<div><dt>Registros únicos, después</dt><dd class="${
+<div><dt>${h(T.unicosDespues, idioma)}</dt><dd class="${
     despues.unicos > 0 ? "alerta" : ""
-  }">${numero(despues.unicos)} <small>${porcentaje(despues.proporcionUnicos)}</small></dd></div>
-<div><dt>Grupo más pequeño, antes</dt><dd>${numero(antes.kMinimo)}</dd></div>
-<div><dt>Grupo más pequeño, después</dt><dd>${numero(despues.kMinimo)}</dd></div>
+  }">${numero(despues.unicos, idioma)} <small>${porcentaje(despues.proporcionUnicos, idioma)}</small></dd></div>
+<div><dt>${h(T.grupoAntes, idioma)}</dt><dd>${numero(antes.kMinimo, idioma)}</dd></div>
+<div><dt>${h(T.grupoDespues, idioma)}</dt><dd>${numero(despues.kMinimo, idioma)}</dd></div>
 </dl>
-<p class="por-que" style="margin-top:14px">Las dos medidas salen del mismo cálculo del S1, corrido
-sobre el archivo original y sobre el que se descarga. Las columnas cruzadas «después» son las de
-«antes» menos ${
-    suprimidas.length
-      ? `las suprimidas (${suprimidas.map((s) => `<code>${escapar(s)}</code>`).join(" · ")})`
-      : "ninguna, porque no se suprimió ninguna columna"
-  }: quien reciba el archivo no las tendrá.</p>
-<p class="por-que">Identidad del tratamiento (SHA-256 de la política aplicada):</p>
+<p class="por-que" style="margin-top:14px">${h(T.mismoCalculo, idioma, {
+    suprimidas_html: suprimidas.length
+      ? h(T.suprimidasLista, idioma, { lista_html: listaDeCodigo(suprimidas) })
+      : h(T.ningunaSuprimida, idioma),
+  })}</p>
+<p class="por-que">${h(D.comun.huellaDelTratamiento, idioma)}</p>
 <p class="huella">${escapar(hashDePolitica)}</p>
 </section>`;
 }
 
-function seccionDeUtilidad(utilidad: Utilidad): string {
+function seccionDeUtilidad(utilidad: Utilidad, idioma: Idioma): string {
+  const U = D.utilidad;
   const perdidas = utilidad.columnas.filter((c) => c.estado !== "intacta");
   const filas = perdidas
     .map(
@@ -432,11 +523,11 @@ function seccionDeUtilidad(utilidad: Utilidad): string {
 <td class="col">${escapar(columna.nombre)}</td>
 <td>${
         columna.estado === "suprimida"
-          ? "<b>suprimida</b>"
-          : `${numero(columna.cardinalidadAntes)} → <b>${numero(columna.cardinalidadDespues)}</b>`
+          ? `<b>${h(U.suprimida, idioma)}</b>`
+          : `${numero(columna.cardinalidadAntes, idioma)} → <b>${numero(columna.cardinalidadDespues, idioma)}</b>`
       }</td>
-<td>${columna.bitsAntes.toFixed(1)} → <b>${columna.bitsDespues.toFixed(1)}</b> bits</td>
-<td>${porcentaje(columna.celdasCambiadas)}</td>
+<td>${decimales(columna.bitsAntes, 1, idioma)} → <b>${decimales(columna.bitsDespues, 1, idioma)}</b> ${h(U.bits, idioma)}</td>
+<td>${porcentaje(columna.celdasCambiadas, idioma)}</td>
 </tr>`,
     )
     .join("");
@@ -445,49 +536,55 @@ function seccionDeUtilidad(utilidad: Utilidad): string {
     .slice(0, 8)
     .map(
       (cruce) =>
-        `<li><code>${escapar(cruce.columnas[0])} + ${escapar(cruce.columnas[1])}</code><span>V ${cruce.antes.toFixed(
+        `<li><code>${escapar(cruce.columnas[0])} + ${escapar(cruce.columnas[1])}</code><span>V ${decimales(
+          cruce.antes,
           2,
-        )} → <b>${cruce.despues.toFixed(2)}</b></span></li>`,
+          idioma,
+        )} → <b>${decimales(cruce.despues, 2, idioma)}</b></span></li>`,
     )
     .join("");
 
   return `<section>
-<p class="etiqueta">Lo que el archivo perdió</p>
-<h2>El otro lado de la balanza</h2>
-<p>Cada bit de riesgo que se quita sale de un bit de información que alguien iba a usar. Estas son
-las cifras del intercambio; qué tanto duele cada una lo sabe quien conoce para qué era el archivo.</p>
+<p class="etiqueta">${h(U.etiqueta, idioma)}</p>
+<h2>${h(U.titulo, idioma)}</h2>
+<p>${h(U.intro, idioma)}</p>
 <dl class="datos">
-<div><dt>Información total, antes</dt><dd>${utilidad.bitsAntes.toFixed(1)} <small>bits</small></dd></div>
-<div><dt>Información total, después</dt><dd>${utilidad.bitsDespues.toFixed(1)} <small>bits</small></dd></div>
-<div><dt>Columnas tocadas</dt><dd>${numero(perdidas.length)} <small>de ${numero(
-    utilidad.columnas.length,
+<div><dt>${h(U.informacionAntes, idioma)}</dt><dd>${decimales(utilidad.bitsAntes, 1, idioma)} <small>${h(U.bits, idioma)}</small></dd></div>
+<div><dt>${h(U.informacionDespues, idioma)}</dt><dd>${decimales(utilidad.bitsDespues, 1, idioma)} <small>${h(U.bits, idioma)}</small></dd></div>
+<div><dt>${h(U.columnasTocadas, idioma)}</dt><dd>${numero(perdidas.length, idioma)} <small>${h(
+    U.deTotal,
+    idioma,
+    {
+      total: utilidad.columnas.length,
+    },
   )}</small></dd></div>
 </dl>
 ${
   filas
     ? `<table style="margin-top:16px">
-<thead><tr><th>Columna</th><th>Valores distintos</th><th>Información</th><th>Celdas cambiadas</th></tr></thead>
+<thead><tr><th>${h(U.columna, idioma)}</th><th>${h(U.valoresDistintos, idioma)}</th><th>${h(U.informacion, idioma)}</th><th>${h(U.celdasCambiadas, idioma)}</th></tr></thead>
 <tbody>${filas}</tbody></table>`
-    : '<p class="por-que" style="margin-top:14px">Ninguna columna cambió.</p>'
+    : `<p class="por-que" style="margin-top:14px">${h(U.ningunaCambio, idioma)}</p>`
 }
 ${
   cruces
-    ? `<h2 style="margin-top:18px;font-size:1.05rem">Relaciones entre columnas</h2>
-<p class="por-que">V de Cramér antes y después, de la que más se perdió a la que menos. Una relación
-que desaparece se lleva con ella el análisis que dependía de ella — y eso no se ve mirando las
-columnas por separado.</p>
+    ? `<h2 style="margin-top:18px;font-size:1.05rem">${h(U.relacionesTitulo, idioma)}</h2>
+<p class="por-que">${h(U.relacionesTexto, idioma)}</p>
 <ul class="limpia">${cruces}</ul>`
     : ""
 }
 ${
   utilidad.fueraDelCruce.length
-    ? `<p class="por-que" style="margin-top:14px">Fuera del cruce: ${utilidad.fueraDelCruce
-        .map((f) => `<code>${escapar(f.nombre)}</code> (${escapar(f.motivo)})`)
-        .join("; ")}. El tope es ${numero(
-        utilidad.tope.columnasMaximas,
-      )} columnas de hasta ${numero(
-        utilidad.tope.cardinalidadMaxima,
-      )} valores distintos: no es el universo entero de cruces posibles.</p>`
+    ? `<p class="por-que" style="margin-top:14px">${h(U.fueraDelCruce, idioma, {
+        lista_html: utilidad.fueraDelCruce
+          .map(
+            (f) =>
+              `<code>${escapar(f.nombre)}</code> (${escapar(decirMensaje(f.motivo, idioma))})`,
+          )
+          .join("; "),
+        columnas: utilidad.tope.columnasMaximas,
+        cardinalidad: utilidad.tope.cardinalidadMaxima,
+      })}</p>`
     : ""
 }
 </section>`;
@@ -504,38 +601,69 @@ ${
  * Va **después** del tratamiento y antes del detalle por columna: primero qué se hizo, luego cómo
  * comprobarlo, y solo entonces la letra pequeña.
  */
-function seccionDeVerificacion(tratamiento: DatosDelTratamiento): string {
+function seccionDeVerificacion(
+  tratamiento: DatosDelTratamiento,
+  idioma: Idioma,
+): string {
+  const V = D.verificacion;
   const nombre = escapar(tratamiento.nombreDeSalida);
   return `
 <section>
-<p class="etiqueta">Cómo comprobar esto tú mismo</p>
-<h2>No hace falta creerle a este documento</h2>
-<p style="margin:0 0 10px">Abre una terminal en la carpeta donde está el archivo tratado y corre la
-línea que corresponda a tu sistema. Devuelve una cadena larga de letras y números:</p>
+<p class="etiqueta">${h(V.etiqueta, idioma)}</p>
+<h2>${h(V.titulo, idioma)}</h2>
+<p style="margin:0 0 10px">${h(V.intro, idioma)}</p>
 <table>
-<thead><tr><th>Sistema</th><th>Comando</th></tr></thead>
+<thead><tr><th>${h(V.sistema, idioma)}</th><th>${h(V.comando, idioma)}</th></tr></thead>
 <tbody>
 <tr><td>macOS</td><td><code>shasum -a 256 ${nombre}</code></td></tr>
 <tr><td>Linux</td><td><code>sha256sum ${nombre}</code></td></tr>
 <tr><td>Windows</td><td><code>certutil -hashfile ${nombre} SHA256</code></td></tr>
 </tbody>
 </table>
-<p style="margin:12px 0 0"><b>Si esa cadena es igual a la huella de salida de arriba</b>, el archivo
-que tienes es exactamente el que produjo este tratamiento: ni una coma cambiada desde entonces.</p>
-<p class="por-que"><b>Si NO coincide, este certificado no habla de tu copia.</b> Puede ser inocente
-—el archivo se abrió y se volvió a guardar en Excel, que reescribe el CSV— o puede no serlo. En
-cualquier caso, lo que este documento afirma no está probado sobre lo que tienes en la mano, y eso
-es justamente lo que la huella sirve para detectar.</p>
-<p class="por-que"><b>Qué NO demuestra.</b> Que las dos huellas cuadren prueba que los archivos son
-los que dice el documento. No prueba quién los produjo: Velo no firma con una identidad, y este
-certificado no es una firma digital ni un sello de tiempo. Prueba integridad y correspondencia, que
-es lo que necesita un auditor para saber de qué copia se está hablando.</p>
+<p style="margin:12px 0 0">${h(V.coincide, idioma)}</p>
+<p class="por-que">${h(V.noCoincide, idioma)}</p>
+<p class="por-que">${h(V.queNoDemuestra, idioma)}</p>
 </section>`;
 }
 
+/**
+ * Las palabras que van en el NOMBRE de cada documento descargado. El nombre sigue al idioma del
+ * documento: quien lo guarda en inglés encuentra `velo-certificate-…` en su carpeta, no un nombre
+ * en un idioma que no lee. (Son identificadores de archivo, no frases: sin tildes ni espacios.)
+ */
+const NOMBRES_DE_DOCUMENTO: Record<
+  Idioma,
+  { reporte: string; certificado: string; informe: string; sinNombre: string }
+> = {
+  es: {
+    reporte: "velo-diagnostico",
+    certificado: "velo-certificado",
+    informe: "velo-regreso",
+    sinNombre: "archivo",
+  },
+  en: {
+    reporte: "velo-diagnosis",
+    certificado: "velo-certificate",
+    informe: "velo-return",
+    sinNombre: "file",
+  },
+};
+
+function baseDelNombre(nombreDelArchivo: string, idioma: Idioma): string {
+  const base = nombreDelArchivo
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^\p{L}\p{N}._-]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return base || NOMBRES_DE_DOCUMENTO[idioma].sinNombre;
+}
+
 /** Nombre sugerido para el archivo descargado. Sin caracteres que peleen con un sistema de archivos. */
-export function nombreDelReporte(nombreDelArchivo: string): string {
-  return `velo-diagnostico-${baseDelNombre(nombreDelArchivo)}.html`;
+export function nombreDelReporte(
+  nombreDelArchivo: string,
+  idioma: Idioma,
+): string {
+  return `${NOMBRES_DE_DOCUMENTO[idioma].reporte}-${baseDelNombre(nombreDelArchivo, idioma)}.html`;
 }
 
 /**
@@ -543,117 +671,97 @@ export function nombreDelReporte(nombreDelArchivo: string): string {
  * autoridades distintas, y acabar con dos `velo-diagnostico-…` en la misma carpeta sería obligar a
  * abrirlos para saber cuál es cuál.
  */
-export function nombreDelCertificado(nombreDelArchivo: string): string {
-  return `velo-certificado-${baseDelNombre(nombreDelArchivo)}.html`;
+export function nombreDelCertificado(
+  nombreDelArchivo: string,
+  idioma: Idioma,
+): string {
+  return `${NOMBRES_DE_DOCUMENTO[idioma].certificado}-${baseDelNombre(nombreDelArchivo, idioma)}.html`;
 }
 
-function baseDelNombre(nombreDelArchivo: string): string {
-  const base = nombreDelArchivo
-    .replace(/\.[^.]+$/, "")
-    .replace(/[^\p{L}\p{N}._-]+/gu, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-  return base || "archivo";
+export function nombreDelInforme(
+  nombreDelArchivo: string,
+  idioma: Idioma,
+): string {
+  return `${NOMBRES_DE_DOCUMENTO[idioma].informe}-${baseDelNombre(nombreDelArchivo, idioma)}.html`;
 }
 
 export function construirReporte(datos: DatosDelReporte): string {
-  const { archivo, diagnostico, riesgo, advisor, fecha, tratamiento } = datos;
+  const { archivo, diagnostico, riesgo, advisor, fecha, tratamiento, idioma } =
+    datos;
   const resumen = diagnostico.resumen;
   const hayTratamiento = tratamiento !== undefined;
+  const I = D.identidad;
 
   return `<!doctype html>
-<html lang="es-CO">
+<html lang="${LOCALE[idioma]}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${hayTratamiento ? "Certificado" : "Diagnóstico"} de ${escapar(archivo.nombre)} — Velo</title>
+<title>${h(hayTratamiento ? D.titulo.certificado : D.titulo.diagnostico, idioma, { archivo: archivo.nombre })}</title>
 <style>${ESTILOS}</style>
 </head>
 <body>
 <div class="hoja">
-<p class="sello">${SELLO}Nada salió de ese navegador</p>
-<p class="etiqueta" style="margin-top:18px">${
-    hayTratamiento
-      ? "Certificado de tratamiento de datos personales"
-      : "Diagnóstico de datos personales"
-  }</p>
+<p class="sello">${SELLO}${h(D.comun.sello, idioma)}</p>
+<p class="etiqueta" style="margin-top:18px">${h(hayTratamiento ? D.encabezado.certificado : D.encabezado.diagnostico, idioma)}</p>
 <h1>${escapar(archivo.nombre)}</h1>
-<p style="color:var(--tinta-suave);margin:4px 0 0">${numero(diagnostico.filas)} filas ·
-${numero(diagnostico.columnas.length)} columnas · ${megabytes(archivo.bytes)} · ${escapar(fecha)}</p>
+<p style="color:var(--tinta-suave);margin:4px 0 0">${h(
+    D.comun.filasColumnas,
+    idioma,
+    {
+      filas: diagnostico.filas,
+      columnas: diagnostico.columnas.length,
+      tamano: megabytes(archivo.bytes, idioma),
+      fecha,
+    },
+  )}</p>
 
 <section>
-<p class="etiqueta">Identidad de los archivos</p>
-<h2>Este ${hayTratamiento ? "certificado" : "reporte"} habla de ${
-    hayTratamiento ? "dos archivos concretos" : "un archivo concreto"
-  }</h2>
-<p style="margin:0 0 6px">SHA-256 del archivo ${
-    hayTratamiento ? "que ENTRÓ a Velo" : "analizado"
-  }:</p>
+<p class="etiqueta">${h(I.etiqueta, idioma)}</p>
+<h2>${h(hayTratamiento ? I.tituloCertificado : I.tituloReporte, idioma)}</h2>
+<p style="margin:0 0 6px">${h(hayTratamiento ? I.huellaDeEntrada : I.huellaAnalizada, idioma)}</p>
 <p class="huella">${escapar(archivo.sha256)}</p>
 ${
   tratamiento
-    ? `<p style="margin:14px 0 6px">SHA-256 del archivo que SALIÓ —el tratado, el que se entrega—,
-<code>${escapar(tratamiento.nombreDeSalida)}</code>:</p>
+    ? `<p style="margin:14px 0 6px">${h(I.huellaDeSalida, idioma, { nombre: tratamiento.nombreDeSalida })}</p>
 <p class="huella">${escapar(tratamiento.sha256DeSalida)}</p>
-<p class="por-que"><b>Son dos archivos distintos y por eso son dos huellas distintas.</b> La de
-arriba identifica el original, la copia sobre la que se midió todo lo de abajo; la de aquí
-identifica lo que se entrega. Tener las dos es lo que hace que este documento se pueda
-<b>comprobar</b> en vez de solo creer.</p>`
-    : `<p class="por-que">Quien reciba este documento puede comprobar que corresponde a su copia
-ejecutando <code>sha256sum</code> (Linux), <code>shasum -a 256</code> (macOS) o
-<code>Get-FileHash</code> (Windows) sobre el archivo y comparando el texto de arriba.</p>`
+<p class="por-que">${h(I.dosArchivos, idioma)}</p>`
+    : `<p class="por-que">${h(I.comoComprobar, idioma)}</p>`
 }
 <dl class="datos" style="margin-top:14px">
-<div><dt>Identificadores directos</dt><dd>${numero(resumen["identificador-directo"])}</dd></div>
-<div><dt>Datos sensibles (art. 5)</dt><dd>${numero(resumen["dato-sensible"])}</dd></div>
-<div><dt>Cuasi-identificadores</dt><dd>${numero(resumen["cuasi-identificador"])}</dd></div>
-<div><dt>No personales</dt><dd>${numero(resumen["no-personal"])}</dd></div>
+<div><dt>${h(I.directos, idioma)}</dt><dd>${numero(resumen["identificador-directo"], idioma)}</dd></div>
+<div><dt>${h(I.sensibles, idioma)}</dt><dd>${numero(resumen["dato-sensible"], idioma)}</dd></div>
+<div><dt>${h(I.cuasi, idioma)}</dt><dd>${numero(resumen["cuasi-identificador"], idioma)}</dd></div>
+<div><dt>${h(I.noPersonales, idioma)}</dt><dd>${numero(resumen["no-personal"], idioma)}</dd></div>
 </dl>
 </section>
 
-${tratamiento ? seccionDelTratamiento(tratamiento) : ""}
+${tratamiento ? seccionDelTratamiento(tratamiento, idioma) : ""}
 
-${seccionDeRiesgo(riesgo, resumen["identificador-directo"], hayTratamiento)}
+${seccionDeRiesgo(riesgo, resumen["identificador-directo"], hayTratamiento, idioma)}
 
 <section>
-<p class="etiqueta">Columna por columna</p>
-<h2>Qué hay en la tabla, y por qué</h2>
+<p class="etiqueta">${h(D.columnas.etiqueta, idioma)}</p>
+<h2>${h(D.columnas.titulo, idioma)}</h2>
 <table>
-<thead><tr><th>Columna</th><th>Qué se encontró</th><th>Categoría</th><th>Muestra</th></tr></thead>
-<tbody>${diagnostico.columnas.map(filaDeColumna).join("")}</tbody>
+<thead><tr><th>${h(D.columnas.columna, idioma)}</th><th>${h(D.columnas.queSeEncontro, idioma)}</th><th>${h(D.columnas.categoria, idioma)}</th><th>${h(D.columnas.muestra, idioma)}</th></tr></thead>
+<tbody>${diagnostico.columnas.map((c) => filaDeColumna(c, idioma)).join("")}</tbody>
 </table>
 </section>
 
-${tratamiento ? seccionDeUtilidad(tratamiento.utilidad) : ""}
+${tratamiento ? seccionDeUtilidad(tratamiento.utilidad, idioma) : ""}
 
-${tratamiento ? seccionDeVerificacion(tratamiento) : ""}
+${tratamiento ? seccionDeVerificacion(tratamiento, idioma) : ""}
 
-${seccionDelAdvisor(advisor, diagnostico.filas)}
+${seccionDelAdvisor(advisor, diagnostico.filas, idioma)}
 
 <footer>
-<p><b>Qué lleva este documento y qué no.</b> Lleva nombres de columna, tipos detectados,
-categorías, cifras agregadas y muestras <b>enmascaradas</b> (por ejemplo <code>103***89</code>).
-No lleva ninguna fila del archivo, y las columnas de datos sensibles del artículo 5 no llevan
-muestra siquiera.</p>
-<p><b>Qué significan las cifras.</b> Todas son exactas: se contaron registro por registro sobre el
-archivo completo. No hay muestreo ni estimación. La detección de tipos, en cambio, se hizo sobre
-una muestra de hasta 5.000 valores por columna, y cada columna dice con qué certeza se concluyó.</p>
-<p><b>Qué NO afirma Velo.</b> Este ${
-    hayTratamiento ? "documento" : "diagnóstico"
-  } mide el riesgo de reidentificación; no lo elimina y
-no declara el archivo anónimo. El modelo k-anonimato es atacable y se degrada al añadir columnas.
-Un identificador propio de una organización puede señalar a una persona sin que ningún algoritmo
-público lo reconozca.</p>${
-    hayTratamiento
-      ? `\n<p><b>Sobre el tratamiento.</b> Las cifras de reducción se calculan sobre las columnas que
-Velo reconoció como cuasi-identificadores, y solo sobre ellas. Una columna que Velo no supo leer no
-entra a ninguna de estas cuentas — ni a la de antes ni a la de después—, así que la reducción no
-describe el archivo entero sino el cruce medido. Las salvedades del balance no son advertencias de
-cortesía: cada una nombra algo que la cifra no cubre.</p>`
-      : ""
+<p>${h(D.pie.contenido, idioma)}</p>
+<p>${h(D.pie.cifras, idioma)}</p>
+<p>${h(hayTratamiento ? D.pie.noAfirmaDocumento : D.pie.noAfirmaDiagnostico, idioma)}</p>${
+    hayTratamiento ? `\n<p>${h(D.pie.sobreElTratamiento, idioma)}</p>` : ""
   }
-<p>Generado por <b>Velo</b> — la aduana de datos. El análisis ocurrió íntegramente dentro del
-navegador de quien cargó el archivo: no hubo servidor, ni carga, ni copia.</p>
+<p>${h(D.comun.generado, idioma)}</p>
 </footer>
 </div>
 </body>
@@ -685,184 +793,196 @@ export interface DatosDelInformeDeRegreso {
   idioma: Idioma;
 }
 
-function itemDeSalvedadDelRegreso(salvedad: SalvedadDelRegreso): string {
+function itemDeSalvedadDelRegreso(
+  salvedad: SalvedadDelRegreso,
+  idioma: Idioma,
+): string {
+  const S = D.regreso.salvedades;
   const cuerpo = (() => {
     switch (salvedad.tipo) {
       case "celdas-ambiguas":
-        return `<b>${numero(salvedad.cuantas)}</b> ${
-          salvedad.cuantas === 1 ? "celda volvió" : "celdas volvieron"
-        } <b>sin resolver</b> (${porcentaje(salvedad.proporcion)} de las que tenían contenido). Su
-seudónimo corresponde a <b>más de un valor original</b>: conservar el formato reduce el espacio
-disponible y dos valores distintos chocaron en el mismo seudónimo. Velo <b>no eligió por ti</b> —
-esas celdas conservan el seudónimo, para que se puedan resolver a mano. Escribir uno de los dos
-candidatos habría devuelto el dato de otra persona sin que nada lo indicara.`;
+        return h(
+          plural(salvedad.cuantas, S.celdasAmbiguasUna, S.celdasAmbiguasVarias),
+          idioma,
+          {
+            cuantas: salvedad.cuantas,
+            proporcion: porcentaje(salvedad.proporcion, idioma),
+          },
+        );
       case "boveda-no-corresponde":
-        return `<b>Ninguna columna de la bóveda apareció en este archivo.</b> O la bóveda es de otro
-tratamiento, o el archivo devuelto no es el que salió de Velo. No se restauró nada, y eso es lo
-correcto: restaurar a medias sin decirlo sería peor que no restaurar.`;
+        return h(S.bovedaNoCorresponde, idioma);
       case "columnas-sin-aparecer":
-        return `La bóveda guarda ${
-          salvedad.columnas.length === 1
-            ? "una columna que no apareció"
-            : "columnas que no aparecieron"
-        } en el archivo devuelto: ${salvedad.columnas
-          .map((c) => `<code>${escapar(c)}</code>`)
-          .join(" · ")}. El tercero
-${salvedad.columnas.length === 1 ? "la borró" : "las borró"} o
-${salvedad.columnas.length === 1 ? "la cambió" : "las cambió"} tanto que ya no se
-${salvedad.columnas.length === 1 ? "reconoce" : "reconocen"}. <b>El porcentaje de abajo no
-${salvedad.columnas.length === 1 ? "la cuenta" : "las cuenta"}</b>: describe solo lo que sí volvió.`;
+        return h(
+          plural(
+            salvedad.columnas.length,
+            S.columnasSinAparecerUna,
+            S.columnasSinAparecerVarias,
+          ),
+          idioma,
+          { lista_html: listaDeCodigo(salvedad.columnas) },
+        );
       case "columna-a-medias":
-        return `<code>${escapar(salvedad.columna)}</code> tiene valores de la bóveda, pero solo el
-<b>${porcentaje(salvedad.proporcion)}</b> de los suyos — por debajo del mínimo para darla por
-reconocida, así que salió <b>intacta</b>. Si esperabas que volviera, revisa cuánto la editó el
-tercero.`;
+        return h(S.columnaAMedias, idioma, {
+          columna: salvedad.columna,
+          proporcion: porcentaje(salvedad.proporcion, idioma),
+        });
       case "celdas-desconocidas":
-        return `<b>${numero(salvedad.cuantas)}</b> ${
-          salvedad.cuantas === 1 ? "celda no estaba" : "celdas no estaban"
-        } en la bóveda
-(${porcentaje(salvedad.proporcion)} de las que tenían contenido): el tercero
-${salvedad.cuantas === 1 ? "la escribió o la cambió" : "las escribió o las cambió"}. Salieron tal
-como ${salvedad.cuantas === 1 ? "él la dejó" : "él las dejó"} — su trabajo no se toca.`;
+        return h(
+          plural(
+            salvedad.cuantas,
+            S.celdasDesconocidasUna,
+            S.celdasDesconocidasVarias,
+          ),
+          idioma,
+          {
+            cuantas: salvedad.cuantas,
+            proporcion: porcentaje(salvedad.proporcion, idioma),
+          },
+        );
     }
   })();
   return `<li class="s-${salvedad.gravedad}">${cuerpo}</li>`;
 }
 
-function filaDeColumnaRestaurada(columna: ColumnaRestaurada): string {
+function filaDeColumnaRestaurada(
+  columna: ColumnaRestaurada,
+  idioma: Idioma,
+): string {
   const { celdas } = columna;
+  const R = D.regreso;
   return `<tr>
 <td><code>${escapar(columna.columna)}</code></td>
 <td>${
     columna.deLaBoveda === null
-      ? `<span class="alerta">No reconocida</span> <small>${numero(columna.coincidencias)} de ${numero(
-          columna.distintos,
-        )} valores</small>`
+      ? `<span class="alerta">${h(R.noReconocida, idioma)}</span> <small>${h(
+          R.valoresDeTotal,
+          idioma,
+          {
+            n: columna.coincidencias,
+            total: columna.distintos,
+          },
+        )}</small>`
       : `<code>${escapar(columna.deLaBoveda)}</code> <small>${porcentaje(
           columna.proporcionReconocida,
+          idioma,
         )}</small>`
   }</td>
-<td>${numero(celdas.restauradas)}</td>
-<td class="${celdas.ambiguas > 0 ? "alerta" : ""}">${numero(celdas.ambiguas)}</td>
-<td>${numero(celdas.desconocidas)}</td>
+<td>${numero(celdas.restauradas, idioma)}</td>
+<td class="${celdas.ambiguas > 0 ? "alerta" : ""}">${numero(celdas.ambiguas, idioma)}</td>
+<td>${numero(celdas.desconocidas, idioma)}</td>
 </tr>`;
-}
-
-export function nombreDelInforme(nombreDelArchivo: string): string {
-  const base = nombreDelArchivo
-    .replace(/\.[^.]+$/, "")
-    .replace(/[^\p{L}\p{N}._-]+/gu, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-  return `velo-regreso-${base || "archivo"}.html`;
 }
 
 export function construirInformeDeRestauracion(
   datos: DatosDelInformeDeRegreso,
 ): string {
-  const { archivo, restauracion, huellaDeBoveda, hashDePolitica, fecha } =
-    datos;
+  const {
+    archivo,
+    restauracion,
+    huellaDeBoveda,
+    hashDePolitica,
+    fecha,
+    idioma,
+  } = datos;
   const { totales, salvedades, proporcionRestaurada, esTitular } = restauracion;
   const conContenido =
     totales.restauradas + totales.ambiguas + totales.desconocidas;
+  const R = D.regreso;
 
   const bloqueDeSalvedades = salvedades.length
-    ? `<ul class="salvedades limpia">${salvedades.map(itemDeSalvedadDelRegreso).join("")}</ul>`
-    : `<p class="por-que">Todas las celdas que la bóveda cubría volvieron a su valor original, sin
-ambigüedades y sin celdas cambiadas por el tercero.</p>`;
+    ? `<ul class="salvedades limpia">${salvedades.map((s) => itemDeSalvedadDelRegreso(s, idioma)).join("")}</ul>`
+    : `<p class="por-que">${h(R.todoVolvio, idioma)}</p>`;
 
   // La cifra va DESPUÉS de las salvedades, siempre. No es una preferencia de maquetación: el
   // porcentaje solo es la frase que este documento no puede permitirse.
   const cifra = (() => {
     if (proporcionRestaurada === null) {
-      return `<p>No hubo ninguna celda que restaurar, así que no hay porcentaje que dar. Lo que
-importa es lo de arriba.</p>`;
+      return `<p>${h(R.sinCeldas, idioma)}</p>`;
     }
     if (esTitular) {
-      return `<p class="cifrota"><b class="reduccion">${porcentaje(proporcionRestaurada)}</b></p>
-<p>de las celdas con contenido volvieron a su valor original:
-${numero(totales.restauradas)} de ${numero(conContenido)}.</p>`;
+      return `<p class="cifrota"><b class="reduccion">${porcentaje(proporcionRestaurada, idioma)}</b></p>
+<p>${h(R.cifraTitular, idioma, { restauradas: totales.restauradas, total: conContenido })}</p>`;
     }
-    return `<p>Volvieron a su valor original <b>${numero(totales.restauradas)}</b> de
-${numero(conContenido)} celdas con contenido — el
-<b class="reduccion">${porcentaje(proporcionRestaurada)}</b>. <b class="alerta">Esa cifra no
-describe un archivo recuperado del todo</b> mientras siga en pie lo de arriba.</p>`;
+    return `<p>${h(R.cifraConSalvedades, idioma, {
+      restauradas: totales.restauradas,
+      total: conContenido,
+      pct_html: `<b class="reduccion">${porcentaje(proporcionRestaurada, idioma)}</b>`,
+    })}</p>`;
   })();
 
   return `<!doctype html>
-<html lang="es-CO">
+<html lang="${LOCALE[idioma]}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>El regreso de ${escapar(archivo.nombre)} — Velo</title>
+<title>${h(D.titulo.regreso, idioma, { archivo: archivo.nombre })}</title>
 <style>${ESTILOS}</style>
 </head>
 <body>
 <div class="hoja">
-<p class="sello">${SELLO}Nada salió de ese navegador</p>
-<p class="etiqueta" style="margin-top:18px">Informe de restauración</p>
+<p class="sello">${SELLO}${h(D.comun.sello, idioma)}</p>
+<p class="etiqueta" style="margin-top:18px">${h(R.etiqueta, idioma)}</p>
 <h1>${escapar(archivo.nombre)}</h1>
-<p style="color:var(--tinta-suave);margin:4px 0 0">${numero(restauracion.tabla.filas)} filas ·
-${numero(restauracion.columnas.length)} columnas · ${megabytes(archivo.bytes)} · ${escapar(fecha)}</p>
+<p style="color:var(--tinta-suave);margin:4px 0 0">${h(
+    D.comun.filasColumnas,
+    idioma,
+    {
+      filas: restauracion.tabla.filas,
+      columnas: restauracion.columnas.length,
+      tamano: megabytes(archivo.bytes, idioma),
+      fecha,
+    },
+  )}</p>
 
 <section>
-<p class="etiqueta">Qué hay que saber antes de la cifra</p>
-<h2>Qué volvió, y qué no</h2>
+<p class="etiqueta">${h(R.antesDeLaCifra, idioma)}</p>
+<h2>${h(R.titulo, idioma)}</h2>
 ${bloqueDeSalvedades}
 ${cifra}
 <dl class="datos" style="margin-top:16px">
-<div><dt>Celdas restauradas</dt><dd>${numero(totales.restauradas)}</dd></div>
-<div><dt>Celdas ambiguas</dt><dd class="${totales.ambiguas > 0 ? "alerta" : ""}">${numero(
+<div><dt>${h(R.celdasRestauradas, idioma)}</dt><dd>${numero(totales.restauradas, idioma)}</dd></div>
+<div><dt>${h(R.celdasAmbiguas, idioma)}</dt><dd class="${totales.ambiguas > 0 ? "alerta" : ""}">${numero(
     totales.ambiguas,
+    idioma,
   )}</dd></div>
-<div><dt>Celdas que cambió el tercero</dt><dd>${numero(totales.desconocidas)}</dd></div>
-<div><dt>Columnas reconocidas</dt><dd>${numero(
-    restauracion.columnas.filter((c) => c.deLaBoveda !== null).length,
-  )} de ${numero(restauracion.columnas.length)}</dd></div>
+<div><dt>${h(R.celdasCambiadas, idioma)}</dt><dd>${numero(totales.desconocidas, idioma)}</dd></div>
+<div><dt>${h(R.columnasReconocidas, idioma)}</dt><dd>${h(
+    R.reconocidasDe,
+    idioma,
+    {
+      n: restauracion.columnas.filter((c) => c.deLaBoveda !== null).length,
+      total: restauracion.columnas.length,
+    },
+  )}</dd></div>
 </dl>
 </section>
 
 <section>
-<p class="etiqueta">Identidad</p>
-<h2>Este informe habla de un archivo y una bóveda concretos</h2>
-<p style="margin:0 0 6px">SHA-256 del archivo devuelto, tal como llegó:</p>
+<p class="etiqueta">${h(R.identidadEtiqueta, idioma)}</p>
+<h2>${h(R.identidadTitulo, idioma)}</h2>
+<p style="margin:0 0 6px">${h(R.huellaDevuelto, idioma)}</p>
 <p class="huella">${escapar(archivo.sha256)}</p>
-<p style="margin:14px 0 6px">Huella de la bóveda usada:</p>
+<p style="margin:14px 0 6px">${h(R.huellaBoveda, idioma)}</p>
 <p class="huella">${escapar(huellaDeBoveda)}</p>
-<p style="margin:14px 0 6px">Identidad del tratamiento que la produjo:</p>
+<p style="margin:14px 0 6px">${h(R.identidadTratamiento, idioma)}</p>
 <p class="huella">${escapar(hashDePolitica)}</p>
 </section>
 
 <section>
-<p class="etiqueta">Columna por columna</p>
-<h2>De dónde salió cada una</h2>
+<p class="etiqueta">${h(D.columnas.etiqueta, idioma)}</p>
+<h2>${h(R.deDondeSalio, idioma)}</h2>
 <table>
-<thead><tr><th>Columna</th><th>Correspondencia</th><th>Restauradas</th><th>Ambiguas</th><th>Cambiadas</th></tr></thead>
-<tbody>${restauracion.columnas.map(filaDeColumnaRestaurada).join("")}</tbody>
+<thead><tr><th>${h(D.columnas.columna, idioma)}</th><th>${h(R.correspondencia, idioma)}</th><th>${h(R.restauradas, idioma)}</th><th>${h(R.ambiguas, idioma)}</th><th>${h(R.cambiadas, idioma)}</th></tr></thead>
+<tbody>${restauracion.columnas.map((c) => filaDeColumnaRestaurada(c, idioma)).join("")}</tbody>
 </table>
 </section>
 
 <footer>
-${
-  totales.ambiguas > 0
-    ? `<p><b class="alerta">Sobre las ${numero(totales.ambiguas)} celdas ambiguas.</b> Se repite aquí
-a propósito: este documento se lee fuera de la pantalla que lo generó, y el porcentaje de arriba se
-puede citar solo. Esas celdas <b>no volvieron</b>: su seudónimo correspondía a más de un valor
-original y Velo conservó el seudónimo en vez de elegir. Cualquier cifra de este informe que se cite
-sin ellas dice más de lo que ocurrió.</p>`
-    : ""
-}
-<p><b>Qué lleva este documento y qué no.</b> Lleva nombres de columna, cifras agregadas y huellas.
-<b>No lleva ninguna celda del archivo</b>: ni seudónimos, ni valores restaurados.</p>
-<p><b>Cómo se restauró.</b> Por <b>valor</b>, nunca por posición: cada valor se buscó en la
-correspondencia de su columna, así que reordenar filas, añadir columnas o borrarlas no afecta el
-resultado. Las columnas se reconocieron por su <b>contenido</b>, no por su nombre — el tercero pudo
-renombrarlas.</p>
-<p><b>Qué NO afirma Velo.</b> Que una celda se haya restaurado significa que su seudónimo estaba en
-la bóveda con un único original. No significa que el valor sea correcto hoy: si el dato cambió en el
-mundo real desde que se anonimizó, vuelve como estaba entonces.</p>
-<p>Generado por <b>Velo</b> — la aduana de datos. La restauración ocurrió íntegramente dentro del
-navegador de quien cargó el archivo: no hubo servidor, ni carga, ni copia.</p>
+${totales.ambiguas > 0 ? `<p>${h(R.sobreAmbiguas, idioma, { n: totales.ambiguas })}</p>` : ""}
+<p>${h(R.contenido, idioma)}</p>
+<p>${h(R.comoSeRestauro, idioma)}</p>
+<p>${h(R.noAfirma, idioma)}</p>
+<p>${h(R.generado, idioma)}</p>
 </footer>
 </div>
 </body>
