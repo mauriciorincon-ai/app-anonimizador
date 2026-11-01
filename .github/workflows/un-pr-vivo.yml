@@ -1,0 +1,31 @@
+# Regla dura del usuario (2026-10-11, kit v2.1.0): UN SOLO PR VIVO POR APP.
+# Falla en el PR recién abierto si en el repo hay más de un PR abierto y el cuerpo de ESTE PR no
+# empieza con «complementa #N: <por qué no cabe en #N>». Dependabot cuenta. Regla 15: se demostró
+# en rojo abriendo un segundo PR sin la línea (ver CHANGELOG v2.1.0).
+name: un-pr-vivo
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+permissions:
+  pull-requests: read
+jobs:
+  un-pr-vivo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Un solo PR vivo por app (regla 18 del núcleo)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ESTE: ${{ github.event.pull_request.number }}
+          CUERPO: ${{ github.event.pull_request.body }}
+        run: |
+          abiertos=$(gh pr list --repo "$REPO" --state open --json number --jq 'map(.number)')
+          n=$(echo "$abiertos" | jq 'length')
+          echo "PRs abiertos: $abiertos"
+          if [ "$n" -le 1 ]; then echo "✓ un solo PR vivo"; exit 0; fi
+          if printf '%s' "$CUERPO" | head -n 1 | grep -qE '^complementa #[0-9]+:'; then
+            echo "✓ segundo PR declarado como complementario: $(printf '%s' "$CUERPO" | head -n 1)"; exit 0
+          fi
+          echo "✗ Hay $n PRs abiertos ($abiertos) y el #$ESTE no empieza con «complementa #N: <razón>»."
+          echo "  Regla dura: UN SOLO PR VIVO POR APP. Procesa o cierra el otro, o sigue en su rama."
+          exit 1
