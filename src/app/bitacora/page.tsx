@@ -2,6 +2,9 @@
 
 import dynamic from "next/dynamic";
 
+import { Rico } from "@/components/texto";
+import { BITACORA } from "@/lib/idioma/textos/bitacora";
+
 // P8 — `/bitacora`: la memoria de lo que has tratado.
 //
 // **El encabezado se pinta aquí y NO dentro del componente diferido.** Es la lección que el S3 midió
@@ -23,7 +26,7 @@ const Bitacora = dynamic(
     ssr: false,
     loading: () => (
       <p className="text-tinta-suave" role="status">
-        Abriendo…
+        <Rico texto={BITACORA.pagina.abriendo} />
       </p>
     ),
   },
@@ -32,15 +35,14 @@ const Bitacora = dynamic(
 export default function PaginaDeBitacora() {
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <p className="etiqueta">La bitácora</p>
+      <p className="etiqueta">
+        <Rico texto={BITACORA.pagina.etiqueta} />
+      </p>
       <h1 className="font-display text-tinta mt-2 text-[clamp(1.75rem,5vw,2.25rem)] leading-tight font-semibold text-balance">
-        Qué has tratado, y cuándo
+        <Rico texto={BITACORA.pagina.titulo} />
       </h1>
       <p className="text-tinta-suave mt-3 leading-relaxed text-pretty">
-        Tu historial de tratamientos, en un archivo cifrado que guardas tú: qué
-        anonimizaste, cuándo, con qué política y con qué riesgo resultante. Va
-        cifrado porque el nombre de un archivo ya cuenta de qué va su contenido.
-        Como la bóveda, vive donde tú decidas — no en este navegador.
+        <Rico texto={BITACORA.pagina.intro} />
       </p>
       <div className="mt-8 min-h-[30rem]">
         <Bitacora />

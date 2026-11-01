@@ -17,7 +17,7 @@
 //   4. El informe, con sus salvedades encima de la cifra.
 //   5. Las descargas.
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import Link from "next/link";
 
 import { Boton, clasesDeBoton } from "@/components/boton";
@@ -33,7 +33,10 @@ import {
 } from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import { MarcaDeSello } from "@/components/sello";
+import { Rico, useT } from "@/components/texto";
 import { numero, porcentaje } from "@/lib/formato";
+import { LOCALE, plural, type Texto } from "@/lib/idioma";
+import { REGRESO } from "@/lib/idioma/textos/regreso";
 import {
   abrirLaBoveda,
   cargarDevuelto,
@@ -44,54 +47,28 @@ import {
   useRegreso,
   type EstadoDelRegreso,
 } from "@/lib/regreso";
-import type {
-  MotivoDeBoveda,
-  MotivoDeError,
-  ResumenDelRegreso,
-} from "@/workers/contrato";
+import type { MotivoDeError, ResumenDelRegreso } from "@/workers/contrato";
 
 const MINIMO = 12;
 
-/** Cada fallo con su frase. «Archivo inválido» no le dice a nadie qué hacer. */
-const FALLOS_DE_BOVEDA: Record<MotivoDeBoveda, string> = {
-  "no-es-una-boveda":
-    "Ese archivo no es una bóveda de Velo. Busca el que termina en .velo.",
-  "version-distinta":
-    "Esa bóveda la hizo otra versión de Velo y esta no sabe leerla.",
-  "frase-incorrecta":
-    "La frase no abre esta bóveda. También sale este mensaje si el archivo se dañó o lo modificaron.",
-  "costo-inaceptable":
-    "La bóveda declara un costo de descifrado fuera de lo razonable: está dañada o la modificaron.",
-  "contenido-invalido":
-    "La bóveda se abrió, pero su contenido no tiene la forma que Velo espera.",
-  "lectura-fallida": "No se pudo leer el archivo.",
-};
-
 /**
- * Cada fallo del archivo devuelto con su frase, por el mismo motivo que los de la bóveda.
+ * Cada fallo del archivo devuelto con su frase (`REGRESO.devuelto.fallos`), por el mismo motivo que
+ * los de la bóveda.
  *
  * Hasta la auditoría de este sprint el estado guardaba el motivo y la pantalla pintaba siempre
  * «comprueba que sea un CSV» — cierto para uno de los casos y desorientador para el resto: a quien
  * suelta un archivo vacío se le decía que revisara el formato, que es lo único que NO tenía mal.
  *
- * El caso de Excel se dice aquí y no se soporta a medias: `.xlsx` es un zip y PapaParse lo lee como
+ * El caso de Excel se dice allí y no se soporta a medias: `.xlsx` es un zip y PapaParse lo lee como
  * texto binario, así que el fallo llega como archivo ilegible o vacío según el caso. Guiar a CSV es
  * la respuesta honesta —la misma que el S1 dio para la entrada— y no cuesta código nuevo.
  */
-const FALLOS_DEL_DEVUELTO: Partial<Record<MotivoDeError, string>> = {
-  "archivo-vacio":
-    "Ese archivo no tiene filas que restaurar. Comprueba que sea el que te devolvieron y que no esté vacío.",
-  "formato-no-soportado":
-    "Velo no sabe leer ese formato aquí. El archivo devuelto tiene que ser CSV: si te lo devolvieron en Excel, ábrelo y guárdalo como CSV.",
-  "lectura-fallida":
-    "No se pudo leer ese archivo. Tiene que ser un CSV: si te lo devolvieron en Excel, ábrelo y guárdalo como CSV.",
-};
-
-const FALLO_DEL_DEVUELTO_POR_DEFECTO =
-  "No se pudo usar ese archivo. Tiene que ser el CSV que te devolvió el tercero.";
+const FALLOS_DEL_DEVUELTO: Partial<Record<MotivoDeError, Texto>> =
+  REGRESO.devuelto.fallos;
 
 export function Regreso() {
   const estado = useRegreso();
+  const { t } = useT();
 
   return (
     <>
@@ -119,12 +96,10 @@ export function Regreso() {
           onClick={descartarRegreso}
         >
           <IconoReiniciar />
-          Empezar de nuevo
+          {t(REGRESO.reiniciar.boton)}
         </button>
         <p className="text-tinta-tenue mt-3 max-w-prose text-[0.8125rem] leading-relaxed">
-          Al salir de aquí no queda nada. La bóveda y el archivo viven en la
-          memoria de esta pestaña y mueren con ella: no hay copia en este
-          navegador, ni en un servidor.
+          <Rico texto={REGRESO.reiniciar.nota} />
         </p>
       </div>
     </>
@@ -132,6 +107,8 @@ export function Regreso() {
 }
 
 function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
+  const { t, idioma } = useT();
+  const idDeFrase = useId();
   const entrada = useRef<HTMLInputElement>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [frase, setFrase] = useState("");
@@ -141,36 +118,33 @@ function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
     const { resumen } = boveda;
     return (
       <Panel
-        etiqueta="Paso 1 · la bóveda"
-        titulo="Bóveda abierta"
-        nota={
-          <>
-            La huella es el SHA-256 de su contenido. Sirve para reconocer que es
-            la bóveda de aquel tratamiento y no otra.
-          </>
-        }
+        etiqueta={t(REGRESO.boveda.paso)}
+        titulo={t(REGRESO.boveda.abierta.titulo)}
+        nota={<Rico texto={REGRESO.boveda.abierta.nota} />}
       >
         <dl className="grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="etiqueta">Huella de la bóveda</dt>
+            <dt className="etiqueta">{t(REGRESO.boveda.abierta.huella)}</dt>
             <dd className="text-tinta mt-1 font-mono text-[0.8125rem] break-all">
               {resumen.huella}
             </dd>
           </div>
           <div>
-            <dt className="etiqueta">Llave del proyecto</dt>
+            <dt className="etiqueta">{t(REGRESO.boveda.abierta.llave)}</dt>
             <dd className="text-tinta mt-1 font-mono text-[0.9375rem]">
               {resumen.huellaDeLlave}
             </dd>
           </div>
           <div>
-            <dt className="etiqueta">Correspondencias</dt>
+            <dt className="etiqueta">
+              {t(REGRESO.boveda.abierta.correspondencias)}
+            </dt>
             <dd className="text-tinta mt-1 text-[0.9375rem]">
-              {numero(resumen.pares)}
+              {numero(resumen.pares, idioma)}
             </dd>
           </div>
           <div>
-            <dt className="etiqueta">Columnas que puede devolver</dt>
+            <dt className="etiqueta">{t(REGRESO.boveda.abierta.columnas)}</dt>
             <dd className="text-tinta mt-1 text-[0.9375rem]">
               {resumen.columnas.map((nombre, i) => (
                 <span key={nombre}>
@@ -189,14 +163,9 @@ function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
 
   return (
     <Panel
-      etiqueta="Paso 1 · la bóveda"
-      titulo="El archivo que guardaste al anonimizar"
-      nota={
-        <>
-          Termina en <code className="font-mono">.velo</code>. Va cifrado: sin
-          su frase de paso no se abre, ni aquí ni en ninguna parte.
-        </>
-      }
+      etiqueta={t(REGRESO.boveda.paso)}
+      titulo={t(REGRESO.boveda.sinAbrir.titulo)}
+      nota={<Rico texto={REGRESO.boveda.sinAbrir.nota} />}
     >
       <div className="flex flex-wrap items-center gap-3">
         <Boton
@@ -205,14 +174,14 @@ function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
           onClick={() => entrada.current?.click()}
         >
           <IconoArchivador />
-          Elegir la bóveda
+          {t(REGRESO.boveda.sinAbrir.elegir)}
         </Boton>
         <input
           ref={entrada}
           type="file"
           accept=".velo,application/octet-stream"
           className="sr-only"
-          aria-label="Elegir el archivo de bóveda"
+          aria-label={t(REGRESO.boveda.sinAbrir.ariaArchivo)}
           onChange={(evento) => {
             setArchivo(evento.target.files?.[0] ?? null);
             evento.target.value = "";
@@ -224,20 +193,20 @@ function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
           </p>
         ) : (
           <p className="text-tinta-tenue text-[0.875rem]">
-            Ningún archivo elegido todavía.
+            {t(REGRESO.ningunArchivo)}
           </p>
         )}
       </div>
 
       <div className="mt-5">
         <label
-          htmlFor="frase-de-la-boveda"
+          htmlFor={idDeFrase}
           className="text-tinta block text-[0.9375rem]"
         >
-          Frase de paso de la bóveda
+          {t(REGRESO.boveda.sinAbrir.frase)}
         </label>
         <input
-          id="frase-de-la-boveda"
+          id={idDeFrase}
           type="password"
           value={frase}
           disabled={abriendo}
@@ -259,11 +228,13 @@ function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
           }}
         >
           <IconoAbrir />
-          {abriendo ? "Abriendo…" : "Abrir la bóveda"}
+          {abriendo
+            ? t(REGRESO.boveda.sinAbrir.abriendo)
+            : t(REGRESO.boveda.sinAbrir.abrir)}
         </Boton>
         {abriendo ? (
           <p role="status" className="text-tinta-suave text-[0.875rem]">
-            Derivando la llave de cifrado y comprobando el archivo.
+            <Rico texto={REGRESO.boveda.sinAbrir.derivando} />
           </p>
         ) : null}
       </div>
@@ -273,7 +244,7 @@ function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
           role="alert"
           className="text-alerta mt-4 text-[0.875rem] leading-relaxed"
         >
-          {FALLOS_DE_BOVEDA[boveda.motivo]}
+          <Rico texto={REGRESO.boveda.fallos[boveda.motivo]} />
         </p>
       ) : null}
     </Panel>
@@ -281,20 +252,15 @@ function PanelDeBoveda({ estado }: { estado: EstadoDelRegreso }) {
 }
 
 function PanelDelDevuelto({ estado }: { estado: EstadoDelRegreso }) {
+  const { t } = useT();
   const entrada = useRef<HTMLInputElement>(null);
   const { devuelto } = estado;
 
   return (
     <Panel
-      etiqueta="Paso 2 · el archivo devuelto"
-      titulo="Lo que te devolvió el tercero"
-      nota={
-        <>
-          CSV. Puede traer las filas en otro orden, columnas nuevas, columnas
-          borradas y valores corregidos: nada de eso estorba, porque la
-          restauración es <strong>por valor</strong> y no por posición.
-        </>
-      }
+      etiqueta={t(REGRESO.devuelto.paso)}
+      titulo={t(REGRESO.devuelto.titulo)}
+      nota={<Rico texto={REGRESO.devuelto.nota} />}
     >
       <div className="flex flex-wrap items-center gap-3">
         <Boton
@@ -303,14 +269,14 @@ function PanelDelDevuelto({ estado }: { estado: EstadoDelRegreso }) {
           onClick={() => entrada.current?.click()}
         >
           <IconoTabla />
-          Elegir el archivo devuelto
+          {t(REGRESO.devuelto.elegir)}
         </Boton>
         <input
           ref={entrada}
           type="file"
           accept=".csv,text/csv"
           className="sr-only"
-          aria-label="Elegir el archivo que devolvió el tercero"
+          aria-label={t(REGRESO.devuelto.ariaArchivo)}
           onChange={(evento) => {
             const elegido = evento.target.files?.[0];
             if (elegido) cargarDevuelto(elegido);
@@ -319,12 +285,13 @@ function PanelDelDevuelto({ estado }: { estado: EstadoDelRegreso }) {
         />
         {devuelto.fase === "analizando" ? (
           <p role="status" className="text-tinta-suave text-[0.875rem]">
-            Leyendo <code className="font-mono">{devuelto.nombre}</code>…
+            {t(REGRESO.devuelto.leyendo)}{" "}
+            <code className="font-mono">{devuelto.nombre}</code>…
           </p>
         ) : null}
         {devuelto.fase === "sin-archivo" ? (
           <p className="text-tinta-tenue text-[0.875rem]">
-            Ningún archivo elegido todavía.
+            {t(REGRESO.ningunArchivo)}
           </p>
         ) : null}
       </div>
@@ -332,8 +299,27 @@ function PanelDelDevuelto({ estado }: { estado: EstadoDelRegreso }) {
       {devuelto.fase === "listo" ? (
         <p className="text-tinta mt-4 text-[0.9375rem] leading-relaxed">
           <code className="font-mono text-[0.8125rem]">{devuelto.nombre}</code>{" "}
-          · {numero(devuelto.filas)} filas · {numero(devuelto.columnas)}{" "}
-          columnas.
+          <Rico
+            texto={REGRESO.devuelto.resumen}
+            datos={{
+              filas: devuelto.filas,
+              unidadFilas: t(
+                plural(
+                  devuelto.filas,
+                  REGRESO.unidades.fila,
+                  REGRESO.unidades.filas,
+                ),
+              ),
+              columnas: devuelto.columnas,
+              unidadColumnas: t(
+                plural(
+                  devuelto.columnas,
+                  REGRESO.unidades.columna,
+                  REGRESO.unidades.columnas,
+                ),
+              ),
+            }}
+          />
         </p>
       ) : null}
 
@@ -342,8 +328,12 @@ function PanelDelDevuelto({ estado }: { estado: EstadoDelRegreso }) {
           role="alert"
           className="text-alerta mt-4 text-[0.875rem] leading-relaxed"
         >
-          {FALLOS_DEL_DEVUELTO[devuelto.motivo] ??
-            FALLO_DEL_DEVUELTO_POR_DEFECTO}
+          <Rico
+            texto={
+              FALLOS_DEL_DEVUELTO[devuelto.motivo] ??
+              REGRESO.devuelto.falloPorDefecto
+            }
+          />
         </p>
       ) : null}
     </Panel>
@@ -358,75 +348,66 @@ function PanelDelDevuelto({ estado }: { estado: EstadoDelRegreso }) {
  * cuando ya pagó — y es exactamente la composición engañosa que este producto persigue.
  */
 function PanelDeConfirmacion({ estado }: { estado: EstadoDelRegreso }) {
+  const { t } = useT();
   if (estado.boveda.fase !== "abierta") return null;
   const { colisiones } = estado.boveda.resumen;
   const restaurando = estado.restauracion.fase === "restaurando";
 
   return (
     <Panel
-      etiqueta="Paso 3 · antes de restaurar"
+      etiqueta={t(REGRESO.confirmacion.paso)}
       titulo={
         colisiones > 0
-          ? "Hay valores que no van a poder volver"
-          : "Todo listo para restaurar"
+          ? t(REGRESO.confirmacion.tituloConColisiones)
+          : t(REGRESO.confirmacion.tituloListo)
       }
     >
       {colisiones > 0 ? (
         <div className="text-tinta space-y-2 text-[0.9375rem] leading-relaxed">
           <p>
-            <strong className="font-medium">
-              {numero(colisiones)}{" "}
-              {colisiones === 1
-                ? "seudónimo de esta bóveda corresponde"
-                : "seudónimos de esta bóveda corresponden"}{" "}
-              a más de un valor original.
-            </strong>{" "}
-            Conservar el formato reduce el espacio disponible y dos valores
-            distintos chocaron en el mismo seudónimo.
+            <Rico
+              texto={plural(
+                colisiones,
+                REGRESO.confirmacion.colisionUna,
+                REGRESO.confirmacion.colisionVarias,
+              )}
+              datos={{ n: colisiones }}
+            />
           </p>
           <p className="text-tinta-suave">
-            Las celdas que los usen van a salir <strong>sin resolver</strong>,
-            con el seudónimo intacto. Velo no elige por ti: escribir uno de los
-            dos candidatos devolvería el dato de otra persona sin que nada lo
-            indicara.
+            <Rico texto={REGRESO.confirmacion.sinResolver} />
           </p>
         </div>
       ) : (
         <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-          Ningún seudónimo de esta bóveda corresponde a dos valores, así que no
-          hay celdas ambiguas que resolver. Lo que no vuelva será porque el
-          tercero lo cambió.
+          <Rico texto={REGRESO.confirmacion.sinColisiones} />
         </p>
       )}
 
       <div className="mt-5">
         <Boton type="button" disabled={restaurando} onClick={restaurarAhora}>
           <IconoVolver />
-          {restaurando ? "Restaurando…" : "Restaurar los valores originales"}
+          {restaurando
+            ? t(REGRESO.confirmacion.restaurando)
+            : t(REGRESO.confirmacion.restaurar)}
         </Boton>
       </div>
 
       {estado.restauracion.fase === "fallo" ? (
         <p role="alert" className="text-alerta mt-4 text-[0.875rem]">
-          La restauración falló. Comprueba que el archivo devuelto sea el que
-          corresponde a esta bóveda.
+          <Rico texto={REGRESO.confirmacion.fallo} />
         </p>
       ) : null}
     </Panel>
   );
 }
 
-const RECONOCIMIENTO: Record<ResumenDelRegreso["reconocimiento"], string> = {
-  completo: "Todas las columnas de la bóveda aparecieron",
-  parcial: "Algunas columnas de la bóveda no aparecieron",
-  ninguno: "Esta bóveda no corresponde a este archivo",
-};
-
 /**
  * El informe en pantalla. **Las salvedades van arriba de la cifra**, igual que en el documento
  * exportado: el orden es la decisión, no el adorno.
  */
 function InformeEnPantalla({ resumen }: { resumen: ResumenDelRegreso }) {
+  const { t, idioma } = useT();
   const conContenido =
     resumen.totales.restauradas +
     resumen.totales.ambiguas +
@@ -434,8 +415,8 @@ function InformeEnPantalla({ resumen }: { resumen: ResumenDelRegreso }) {
 
   return (
     <Panel
-      etiqueta="Paso 4 · el resultado"
-      titulo={RECONOCIMIENTO[resumen.reconocimiento]}
+      etiqueta={t(REGRESO.resultado.paso)}
+      titulo={t(REGRESO.resultado.reconocimiento[resumen.reconocimiento])}
     >
       {resumen.salvedades.length > 0 ? (
         <ul className="space-y-3">
@@ -448,61 +429,71 @@ function InformeEnPantalla({ resumen }: { resumen: ResumenDelRegreso }) {
                   : "text-tinta-suave"
               }`}
             >
-              {textoDeSalvedad(salvedad)}
+              <Salvedad salvedad={salvedad} />
             </li>
           ))}
         </ul>
       ) : (
         <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-          Todas las celdas que la bóveda cubría volvieron a su valor original.
+          <Rico texto={REGRESO.resultado.sinSalvedades} />
         </p>
       )}
 
       {resumen.proporcionRestaurada === null ? (
         <p className="text-tinta mt-5 text-[0.9375rem] leading-relaxed">
-          No hubo ninguna celda que restaurar.
+          <Rico texto={REGRESO.resultado.nadaQueRestaurar} />
         </p>
       ) : resumen.esTitular ? (
         <p className="text-tinta mt-5 text-[1.5rem] leading-tight font-semibold">
-          {porcentaje(resumen.proporcionRestaurada)}
+          {porcentaje(resumen.proporcionRestaurada, idioma)}
           <span className="text-tinta-suave block text-[0.9375rem] font-normal">
-            de las celdas con contenido volvieron a su valor original:{" "}
-            {numero(resumen.totales.restauradas)} de {numero(conContenido)}.
+            <Rico
+              texto={REGRESO.resultado.titular}
+              datos={{
+                restauradas: resumen.totales.restauradas,
+                total: conContenido,
+              }}
+            />
           </span>
         </p>
       ) : (
         <p className="text-tinta mt-5 text-[0.9375rem] leading-relaxed">
-          Volvieron {numero(resumen.totales.restauradas)} de{" "}
-          {numero(conContenido)} celdas con contenido —{" "}
-          {porcentaje(resumen.proporcionRestaurada)}—.{" "}
+          <Rico
+            texto={REGRESO.resultado.conSalvedades.cifra}
+            datos={{
+              restauradas: resumen.totales.restauradas,
+              total: conContenido,
+              porcentaje: porcentaje(resumen.proporcionRestaurada, idioma),
+            }}
+          />{" "}
           <strong className="text-alerta font-medium">
-            Esa cifra no describe un archivo recuperado del todo
+            <Rico texto={REGRESO.resultado.conSalvedades.aviso} />
           </strong>{" "}
-          mientras siga en pie lo de arriba.
+          <Rico texto={REGRESO.resultado.conSalvedades.mientras} />
         </p>
       )}
 
       <dl className="border-borde mt-5 grid gap-4 border-t pt-4 sm:grid-cols-3">
         <div>
-          <dt className="etiqueta">Restauradas</dt>
+          <dt className="etiqueta">{t(REGRESO.resultado.restauradas)}</dt>
           <dd className="text-tinta mt-1 text-[0.9375rem]">
-            {numero(resumen.totales.restauradas)}
+            {numero(resumen.totales.restauradas, idioma)}
           </dd>
         </div>
         <div>
-          <dt className="etiqueta">Ambiguas</dt>
+          <dt className="etiqueta">{t(REGRESO.resultado.ambiguas)}</dt>
           <dd
             className={`mt-1 text-[0.9375rem] ${
               resumen.totales.ambiguas > 0 ? "text-alerta" : "text-tinta"
             }`}
           >
-            {numero(resumen.totales.ambiguas)}
+            {numero(resumen.totales.ambiguas, idioma)}
           </dd>
         </div>
         <div>
-          <dt className="etiqueta">Las cambió el tercero</dt>
+          <dt className="etiqueta">{t(REGRESO.resultado.cambiadas)}</dt>
           <dd className="text-tinta mt-1 text-[0.9375rem]">
-            {numero(resumen.totales.desconocidas)}
+            {numero(resumen.totales.desconocidas, idioma)}
           </dd>
         </div>
       </dl>
@@ -510,53 +501,89 @@ function InformeEnPantalla({ resumen }: { resumen: ResumenDelRegreso }) {
   );
 }
 
-function textoDeSalvedad(
-  salvedad: ResumenDelRegreso["salvedades"][number],
-): string {
+/**
+ * Una salvedad, dicha en el idioma de la pantalla. El motor las entrega como datos estructurados
+ * (`SalvedadDelRegreso`) y es aquí donde se componen. El nombre de una columna del usuario va TAL
+ * CUAL, fuera del catálogo: pasarlo por el énfasis (`**`, `` ` ``) podría comerse caracteres de un
+ * nombre que no es nuestro.
+ */
+function Salvedad({
+  salvedad,
+}: {
+  salvedad: ResumenDelRegreso["salvedades"][number];
+}) {
+  const { idioma } = useT();
+  const S = REGRESO.resultado.salvedades;
+
   switch (salvedad.tipo) {
     case "celdas-ambiguas":
-      return `${numero(salvedad.cuantas)} ${
-        salvedad.cuantas === 1 ? "celda volvió" : "celdas volvieron"
-      } sin resolver: su seudónimo corresponde a más de un valor original y Velo conservó el seudónimo en vez de elegir.`;
+      return (
+        <Rico
+          texto={plural(
+            salvedad.cuantas,
+            S.celdasAmbiguasUna,
+            S.celdasAmbiguasVarias,
+          )}
+          datos={{ n: salvedad.cuantas }}
+        />
+      );
     case "boveda-no-corresponde":
-      return "Ninguna columna de la bóveda apareció en este archivo. O la bóveda es de otro tratamiento, o este no es el archivo que salió de Velo.";
-    case "columnas-sin-aparecer":
-      return `La bóveda guarda ${
-        salvedad.columnas.length === 1
-          ? "una columna que no apareció"
-          : "columnas que no aparecieron"
-      } en el archivo devuelto: ${salvedad.columnas.join(" · ")}. El porcentaje no ${
-        salvedad.columnas.length === 1 ? "la cuenta" : "las cuenta"
-      }.`;
+      return <Rico texto={S.bovedaNoCorresponde} />;
+    case "columnas-sin-aparecer": {
+      const una = salvedad.columnas.length === 1;
+      return (
+        <>
+          <Rico
+            texto={
+              una
+                ? S.columnasSinAparecerUnaAntes
+                : S.columnasSinAparecerVariasAntes
+            }
+          />{" "}
+          {salvedad.columnas.join(" · ")}
+          <Rico
+            texto={
+              una
+                ? S.columnasSinAparecerUnaDespues
+                : S.columnasSinAparecerVariasDespues
+            }
+          />
+        </>
+      );
+    }
     case "columna-a-medias":
-      return `${salvedad.columna} tiene valores de la bóveda, pero solo el ${porcentaje(
-        salvedad.proporcion,
-      )} de los suyos: por debajo del mínimo para restaurarla, así que salió intacta.`;
+      return (
+        <>
+          {salvedad.columna}{" "}
+          <Rico
+            texto={S.columnaAMedias}
+            datos={{ proporcion: porcentaje(salvedad.proporcion, idioma) }}
+          />
+        </>
+      );
     case "celdas-desconocidas":
-      return `${numero(salvedad.cuantas)} ${
-        salvedad.cuantas === 1 ? "celda no estaba" : "celdas no estaban"
-      } en la bóveda: el tercero ${
-        salvedad.cuantas === 1
-          ? "la escribió o la cambió"
-          : "las escribió o las cambió"
-      }. Salieron tal cual.`;
+      return (
+        <Rico
+          texto={plural(
+            salvedad.cuantas,
+            S.celdasDesconocidasUna,
+            S.celdasDesconocidasVarias,
+          )}
+          datos={{ n: salvedad.cuantas }}
+        />
+      );
   }
 }
 
 function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
+  const { t, idioma } = useT();
   const preparando = estado.etapa === "escribiendo";
 
   return (
     <Panel
-      etiqueta="Paso 5 · llévatelo"
-      titulo="El archivo restaurado y su informe"
-      nota={
-        <>
-          El informe no lleva ninguna celda: solo nombres de columna, cifras y
-          huellas. El archivo restaurado sí lleva tus datos — trátalo como el
-          original, porque lo es.
-        </>
-      }
+      etiqueta={t(REGRESO.descargas.paso)}
+      titulo={t(REGRESO.descargas.titulo)}
+      nota={<Rico texto={REGRESO.descargas.nota} />}
     >
       <div className="flex flex-wrap items-center gap-3">
         {estado.archivo ? (
@@ -566,7 +593,7 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
             className={clasesDeBoton("principal")}
           >
             <IconoDescargar />
-            Guardar el archivo restaurado
+            {t(REGRESO.descargas.guardarArchivo)}
           </a>
         ) : (
           <Boton
@@ -575,7 +602,9 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
             onClick={prepararRestaurado}
           >
             <IconoDocumento />
-            {preparando ? "Preparando…" : "Preparar el archivo restaurado"}
+            {preparando
+              ? t(REGRESO.descargas.preparando)
+              : t(REGRESO.descargas.prepararArchivo)}
           </Boton>
         )}
 
@@ -586,7 +615,7 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
             className={clasesDeBoton("discreto")}
           >
             <IconoDescargar />
-            Guardar el informe
+            {t(REGRESO.descargas.guardarInforme)}
           </a>
         ) : (
           <Boton
@@ -597,28 +626,27 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
               prepararInformeDelRegreso(
                 // La fecha se inyecta desde afuera para que el documento sea reproducible: es lo
                 // único que cambiaría solo entre dos generaciones del mismo informe.
-                new Intl.DateTimeFormat("es-CO", { dateStyle: "long" }).format(
-                  new Date(),
-                ),
+                new Intl.DateTimeFormat(LOCALE[idioma], {
+                  dateStyle: "long",
+                }).format(new Date()),
               )
             }
           >
             <IconoDocumento />
-            Preparar el informe
+            {t(REGRESO.descargas.prepararInforme)}
           </Boton>
         )}
       </div>
 
       <p className="text-tinta-suave mt-4 text-[0.875rem] leading-relaxed">
         <MarcaDeSello clase="text-tinta-tenue mr-1.5 inline size-4 align-[-2px]" />
-        Los dos se arman dentro de esta pestaña. No hubo servidor, ni carga, ni
-        copia.
+        <Rico texto={REGRESO.descargas.sello} />
       </p>
 
       <div className="border-borde mt-5 border-t pt-4">
         <Link href="/" className={clasesDeBoton("discreto")}>
           <IconoAtras />
-          Volver a la aduana
+          {t(REGRESO.descargas.volver)}
         </Link>
       </div>
     </Panel>

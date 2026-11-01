@@ -11,10 +11,12 @@
 //   · El regreso tiene **su propio worker**: descartar la sesión del taller no puede llevárselo, ni
 //     al revés.
 
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { Regreso } from "@/components/regreso";
+import { fijarIdioma } from "@/lib/idioma/estado";
 import {
   abrirLaBoveda,
   cargarDevuelto,
@@ -225,11 +227,13 @@ describe("lo que cruza del worker a la página", () => {
     WorkerDeMentira.ultimo!.responde({
       tipo: "boveda-rechazada",
       motivo: "frase-incorrecta",
-      detalle: "La frase no abre esta bóveda.",
+      // El worker no manda frases: manda una clave del catálogo del motor.
+      detalle: { clave: "cifrado.fraseNoAbre.boveda" },
     });
     expect(regreso.boveda).toMatchObject({
       fase: "rechazada",
       motivo: "frase-incorrecta",
+      detalle: { clave: "cifrado.fraseNoAbre.boveda" },
     });
     expect(regreso.etapa).toBeNull();
   });
@@ -292,6 +296,8 @@ describe("el asa opaca del archivo restaurado (ADR-005)", () => {
     expect(worker.enviados.at(-1)).toMatchObject({
       tipo: "construir-informe-del-regreso",
       fecha: "12 de agosto de 2026",
+      // Y el idioma también: el informe se escribe en el de la pantalla donde se pidió.
+      idioma: "es",
     });
   });
 
@@ -375,5 +381,155 @@ describe("las órdenes del regreso antes de tener worker", () => {
     expect(regreso.restauracion).toMatchObject({ fase: "fallo" });
     expect(regreso.boveda.fase).toBe("abierta");
     expect(regreso.devuelto.fase).toBe("listo");
+  });
+});
+
+// ── En inglés ───────────────────────────────────────────────────────────────────────────────────
+// La misma pantalla, con el mismo contrato de honestidad: el aviso de ambigüedad antes del botón, la
+// cifra de restauración nunca sin lo que la matiza, y los números a la inglesa.
+
+const RESUMEN_CON_SALVEDADES: ResumenDelRegreso = {
+  columnas: [],
+  reconocimiento: "parcial",
+  totales: { restauradas: 900, ambiguas: 100, desconocidas: 0 },
+  proporcionRestaurada: 0.9,
+  salvedades: [
+    {
+      gravedad: "descalifica",
+      tipo: "celdas-ambiguas",
+      cuantas: 100,
+      proporcion: 0.1,
+    },
+    {
+      gravedad: "descalifica",
+      tipo: "columnas-sin-aparecer",
+      columnas: ["cedula", "nit"],
+    },
+  ],
+  esTitular: false,
+  filas: 1_000,
+};
+
+describe("el regreso en inglés", () => {
+  it("avisa de lo que no va a volver ANTES de restaurar, con las cifras a la inglesa", () => {
+    fijarIdioma("en");
+    render(<Regreso />);
+    act(() => abrirLaBoveda(archivoDe("velo-boveda.velo"), FRASE));
+    const worker = WorkerDeMentira.ultimo!;
+    worker.responde({ tipo: "boveda-abierta", resumen: RESUMEN_DE_BOVEDA });
+    act(() => cargarDevuelto(archivoDe("devuelto.csv")));
+    worker.responde({
+      tipo: "devuelto-listo",
+      nombre: "devuelto.csv",
+      bytes: 2048,
+      filas: 446_006,
+      columnas: 3,
+      sha256: "c".repeat(64),
+    });
+
+    expect(screen.getByText("446,006")).toBeInTheDocument();
+    expect(screen.getByText(/446,006 rows · 3 columns\./)).toBeInTheDocument();
+    const aviso = screen.getByText(
+      "100 pseudonyms in this vault match more than one original value.",
+    );
+    const restaurar = screen.getByRole("button", {
+      name: "Restore the original values",
+    });
+    // El aviso va antes del botón: contarle el precio cuando ya pagó es la composición engañosa.
+    expect(
+      aviso.compareDocumentPosition(restaurar) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("la cifra de restauración nunca va sin lo que la matiza, y no promete de más", () => {
+    fijarIdioma("en");
+    render(<Regreso />);
+    act(() => abrirLaBoveda(archivoDe("velo-boveda.velo"), FRASE));
+    const worker = WorkerDeMentira.ultimo!;
+    worker.responde({ tipo: "boveda-abierta", resumen: RESUMEN_DE_BOVEDA });
+    act(() => cargarDevuelto(archivoDe("devuelto.csv")));
+    worker.responde({
+      tipo: "devuelto-listo",
+      nombre: "devuelto.csv",
+      bytes: 2048,
+      filas: 1_000,
+      columnas: 3,
+      sha256: "c".repeat(64),
+    });
+    act(() => restaurarAhora());
+    worker.responde({ tipo: "restaurado", resumen: RESUMEN_CON_SALVEDADES });
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Some of the vault's columns did not appear",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/100 cells came back unresolved/),
+    ).toBeInTheDocument();
+    // El nombre de las columnas del usuario va tal cual, sin pasar por el énfasis.
+    expect(
+      screen.getByText(
+        /did not appear in the returned file: cedula · nit\. The percentage does not count them\./,
+      ),
+    ).toBeInTheDocument();
+    // La cifra lleva su denominador y, pegado, el aviso de que no describe un archivo recuperado.
+    expect(
+      screen.getByText(/900 of 1,000 cells with content came back \(90%\)\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "That figure does not describe a file recovered in full",
+      ),
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(
+      /fully recovered|100% restored|completely restored/i,
+    );
+  });
+
+  it("una bóveda rechazada se explica en inglés, y en español sigue igual", () => {
+    fijarIdioma("en");
+    render(<Regreso />);
+    act(() => abrirLaBoveda(archivoDe("cualquiera.csv"), FRASE));
+    WorkerDeMentira.ultimo!.responde({
+      tipo: "boveda-rechazada",
+      motivo: "frase-incorrecta",
+      detalle: { clave: "cifrado.fraseNoAbre.boveda" },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "That passphrase does not open this vault. You also get this message if the file was damaged or has been modified.",
+    );
+
+    act(() => fijarIdioma("es"));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "La frase no abre esta bóveda. También sale este mensaje si el archivo se dañó o lo modificaron.",
+    );
+  });
+
+  it("el informe se pide en el idioma de la pantalla, con la fecha a la inglesa", () => {
+    fijarIdioma("en");
+    render(<Regreso />);
+    act(() => abrirLaBoveda(archivoDe("velo-boveda.velo"), FRASE));
+    const worker = WorkerDeMentira.ultimo!;
+    worker.responde({ tipo: "boveda-abierta", resumen: RESUMEN_DE_BOVEDA });
+    act(() => cargarDevuelto(archivoDe("devuelto.csv")));
+    worker.responde({
+      tipo: "devuelto-listo",
+      nombre: "devuelto.csv",
+      bytes: 2048,
+      filas: 1_000,
+      columnas: 3,
+      sha256: "c".repeat(64),
+    });
+    act(() => restaurarAhora());
+    worker.responde({ tipo: "restaurado", resumen: RESUMEN_CON_SALVEDADES });
+
+    fireEvent.click(screen.getByRole("button", { name: "Prepare the report" }));
+    expect(worker.enviados.at(-1)).toMatchObject({
+      tipo: "construir-informe-del-regreso",
+      idioma: "en",
+      fecha: expect.stringMatching(/^[A-Z][a-z]+ \d{1,2}, \d{4}$/),
+    });
   });
 });
