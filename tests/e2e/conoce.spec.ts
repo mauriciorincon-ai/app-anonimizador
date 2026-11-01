@@ -644,11 +644,15 @@ test("el pie declara el conteo y el estado del brochure", async ({ page }) => {
 
 test("no hace una sola petición fuera de su propio origen", async ({
   page,
+  baseURL,
 }) => {
+  // El origen sale de `baseURL` y no de un puerto escrito a mano: la garantía de red de /conoce no
+  // depende de en qué puerto se levantó el servidor (devolución 026, punto 4).
+  const origen = new URL(baseURL!).origin;
   const forasteras: string[] = [];
   await page.route("**/*", (ruta) => {
     const url = new URL(ruta.request().url());
-    if (url.origin !== "http://localhost:3000" && url.protocol !== "data:") {
+    if (url.origin !== origen && url.protocol !== "data:") {
       forasteras.push(url.href);
     }
     return ruta.continue();
