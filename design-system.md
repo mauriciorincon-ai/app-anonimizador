@@ -226,10 +226,15 @@ El estado vacío es la primera impresión de Velo, no un hueco por llenar.
 | `/regreso`     | Sin bóveda ni archivo devuelto: las dos casillas vacías y qué es cada una                                                                                                                                                      | Descifrando la bóveda · restaurando por valor                                                                            | Frase incorrecta · bóveda que no es de este archivo · Excel devuelto (dice: guárdalo como CSV)      | Archivo restaurado + su resumen, con las colisiones declaradas antes de restaurar          |
 | `/bitacora`    | **Sin archivo**: «abre la bitácora que guardaste», o empieza la primera. Es la pantalla a la que se llega meses después.                                                                                                       | Descifrando · cifrando                                                                                                   | Frase incorrecta · archivo dañado · **la bóveda soltada donde va la bitácora** (dice dónde se abre) | Entradas en orden, plegadas, con sus dos huellas                                           |
 
-**Microcopy**: español llano de Colombia, sin jerga legal innecesaria y sin inglés residual. Los
-errores dicen **qué hacer**, no qué falló. Y las tres frases prohibidas de la regla dura nº4
-—"anonimato garantizado", "100% seguro", "imposible de reidentificar"— no aparecen en ningún copy,
-ni en un tooltip.
+**Microcopy**: en los dos idiomas (ADR-009) y redactado para quien lo lee: español llano de
+Colombia e inglés llano de EE. UU., sin jerga legal innecesaria y **sin idioma residual** (ni inglés
+en la versión española ni español en la inglesa; lo que viene de los archivos del usuario es suyo y
+se muestra tal cual). Los errores dicen **qué hacer**, no qué falló. Y las tres frases prohibidas de
+la regla dura nº4 —"anonimato garantizado", "100% seguro", "imposible de reidentificar"— no
+aparecen en ningún copy, ni en un tooltip, **en ninguno de los dos idiomas** (sus equivalentes en
+inglés están vetados por `tests/unit/copy.test.ts`). **El conmutador de idioma** (ES · EN) vive en
+el encabezado junto al sello: el idioma activo se marca con subrayado y peso de letra además de
+`aria-pressed` (el color nunca va solo), y cada botón lleva su propio `lang`.
 
 ---
 
@@ -267,7 +272,7 @@ Contra la lista del skill `diseno-ui`, y con los propios de esta app:
 
 - ❌ shadcn/ui sin personalizar · ❌ gradiente violeta/azul · ❌ emojis como iconografía ·
   ❌ grid de tarjetas idénticas como respuesta a todo · ❌ sombras pesadas · ❌ hero centrado con
-  dos botones · ❌ radios XL uniformes · ❌ inglés residual o texto de plantilla.
+  dos botones · ❌ radios XL uniformes · ❌ idioma residual (inglés en la versión española, español en la inglesa) o texto de plantilla.
 - ❌ **Rojo de semáforo para el riesgo** (alarmista: el lacre `--alerta` lo reemplaza).
 - ❌ **Iconos de candado, escudo o llave** como refuerzo de la promesa: el sello ya lo dice, y el
   candado es el cliché exacto de la seguridad que no se sostiene con hechos.

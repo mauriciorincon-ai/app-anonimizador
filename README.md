@@ -10,7 +10,7 @@ Todo ocurre **dentro del navegador**. No hay servidor, no hay carga, no hay copi
 
 - ✨ **Conoce Velo en 3 minutos:** [el brochure](docs/BROCHURE.html) — se abre con doble clic, y en
   la aplicación desplegada vive en la ruta `/conoce`.
-- 📖 [Manual de uso](docs/MANUAL-DE-USO.md) · 🧪 [Guía de prueba](docs/GUIA-DE-PRUEBA.html) ·
+- 📖 [Manual de uso](docs/MANUAL-DE-USO.md) ([English](docs/MANUAL-DE-USO.en.md)) · 🧪 [Guía de prueba](docs/GUIA-DE-PRUEBA.html) ·
   🎨 [Sistema de diseño](design-system.md)
 
 > **Acceso.** Velo está desplegado y funcionando, pero todavía **no se publica su dirección**: el
@@ -28,7 +28,7 @@ No son preferencias de estilo. Cada una es un **gate mecánico** que puede poner
 | **Cero IA generativa, para siempre**    | `scripts/gate-anti-ia.mjs` audita `package.json` **y el lockfile** contra tres familias vetadas de SDKs; una dependencia transitiva cuenta igual que una directa. Es un job propio del CI y un check requerido para mergear. ([ADR-001](decisions/001-cero-ia.md))                                                                                          |
 | **Los datos jamás salen del navegador** | Un e2e intercepta _todas_ las peticiones durante el flujo completo con un archivo cargado y falla si aparece una sola fuera del propio origen, con cuerpo, o con un nombre de columna en la URL. Además, la CSP le prohíbe al navegador conectarse a cualquier otro sitio, y un test de código fuente veta `fetch`, `localStorage`, `indexedDB` y compañía. |
 | **Determinismo byte-idéntico**          | El mismo archivo produce el mismo diagnóstico, siempre. Hay un test que lo corre dos veces y compara la salida serializada, otro que verifica que el tamaño de los trozos del parser no cambia el resultado, y un barrido del código del motor que prohíbe `Math.random`, `Date.now`, `new Date()` y `localeCompare`.                                       |
-| **Honestidad medida**                   | Las cifras exactas se presentan como exactas y llevan su denominador; los topes se declaran donde se aplican. Un test barre la interfaz buscando las frases prohibidas («anonimato garantizado», «100 % seguro», «imposible de reidentificar»).                                                                                                             |
+| **Honestidad medida**                   | Las cifras exactas se presentan como exactas y llevan su denominador; los topes se declaran donde se aplican. Un test barre la interfaz buscando las frases prohibidas («anonimato garantizado», «100 % seguro», «imposible de reidentificar» y sus equivalentes en inglés).                                                                                |
 
 Y una quinta que gobierna el repositorio: **ni un dato real, en ninguna parte**. Todos los archivos
 de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
@@ -37,7 +37,7 @@ de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
 
 ## Qué hace hoy
 
-**Sprints 001–004 · El diagnóstico, el disfraz, el regreso y el cierre.** Velo lee, mide,
+**Sprints 001–005 · El diagnóstico, el disfraz, el regreso, el cierre y el idioma.** Velo lee, mide,
 **transforma, devuelve** y ahora **deja constancia**. El círculo está cerrado —entregas sin
 entregar, y recuperas— y además queda por escrito.
 
@@ -46,6 +46,12 @@ mismo** — es un HMAC, no un cifrado. Lo que el S3 añade es que puedes pedirle
 correspondencia en una **bóveda cifrada aparte**, un archivo que tú custodias. Sin esa bóveda y su
 frase de paso, el seudónimo no vuelve; con ella, sí.
 
+- **En español y en inglés** (Sprint 005): las cinco pantallas, los avisos de las llaves, el
+  certificado, el informe del regreso y el brochure. Cambia con los botones **ES** / **EN** del
+  encabezado, o con `?lang=` en la dirección; Velo no recuerda la elección. El inglés está redactado,
+  no traducido, y dos pruebas lo vigilan: una de paridad (ninguna frase con una sola cara) y un
+  barrido del código (ninguna frase escrita a mano fuera de los catálogos). Ver el
+  [ADR-009](decisions/009-bilingue-es-en.md) y el [manual en inglés](docs/MANUAL-DE-USO.en.md).
 - **El regreso**: cargas la bóveda y el archivo que te devolvieron, y los valores originales
   vuelven. Por **valor**, no por posición: sobrevive a que el tercero reordene filas, añada
   columnas, borre otras y corrija valores a mano — y su trabajo se respeta.
