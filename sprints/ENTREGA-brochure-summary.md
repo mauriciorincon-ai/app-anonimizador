@@ -42,14 +42,14 @@ inventario es punto de partida, **el gate es el comando**.)
 | 1   | `README.md:11`                 | El enlace de producción sale; entra el brochure como contenido y un CTA de lista de espera |
 | 2   | `SPRINT_001-summary.md:124`    | «no se publica en el repositorio (registro privado en la orden de la planeadora)»          |
 | 3   | `SPRINT_002-summary.md:167`    | Ídem                                                                                       |
-| 4   | `docs/BLUEPRINT.html:327`      | Texto del SVG → «subdominio \*.vercel.app (registro privado)»                              |
+| 4   | `docs/BLUEPRINT.html:327`      | Texto del SVG → «subdominio de Vercel (registro privado)»                           |
 | 5   | `docs/BLUEPRINT.html:638-639`  | Ancla retirada; texto sin URL                                                              |
 | 6   | `docs/BLUEPRINT.html:769`      | Ídem, sin el subdominio literal                                                            |
 | 7   | `docs/GUIA-DE-PRUEBA.html:450` | La caja de URL se vacía: la dirección la entrega la orden, y se llena EN USO               |
 | 8   | Campo `homepage` del repo      | `gh repo edit … --homepage ""` → `homepageUrl: ""`                                         |
 
 **Verificación:** el grep de la orden sale vacío y `gh repo view --json homepageUrl` devuelve `""`.
-Lo único que queda con la cadena `vercel.app` es el patrón genérico sin dirección del BLUEPRINT,
+Lo único que queda es el nombre del proveedor sin dirección («subdominio de Vercel») en el BLUEPRINT,
 que es el reemplazo aprobado.
 
 > ⚠️ **Limpieza RECURRENTE, no puntual.** La GitHub App de Vercel **reescribe el campo `homepage`
