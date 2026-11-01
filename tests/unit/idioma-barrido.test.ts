@@ -83,7 +83,15 @@ const PALABRAS_VACIAS = new Set([
 
 function parecePros(texto: string): boolean {
   if (ACENTOS.test(texto)) return true;
-  const palabras = texto
+  // El marcado no es prosa: `class="por-que"` lleva dos palabras vacías del español y no dice nada.
+  // Tampoco lo es un identificador, una ruta o una clase (sin espacios): `k-del-reparto-no-es-el-del-archivo`.
+  const sinMarcado = texto.replace(/<[^>]*>/g, " ").trim();
+  if (/^[\w\-./:#@]*$/.test(sinMarcado)) return false;
+  // Tampoco el CSS: sus selectores llevan nombres en español (`.por-que`, `.c-no-personal`) porque
+  // son identificadores del documento. Un comentario con tildes dentro de él sí se marca (arriba).
+  if (/[{}]/.test(sinMarcado) && /[\w-]+\s*:\s*[^;}]+[;}]/.test(sinMarcado))
+    return false;
+  const palabras = sinMarcado
     .toLowerCase()
     .split(/[^\p{L}]+/u)
     .filter(Boolean);
@@ -289,6 +297,14 @@ const EXCEPCIONES: readonly Excepcion[] = [
     razon:
       "el nombre de cada idioma se escribe en su propio idioma, a propósito (el conmutador)",
   },
+  {
+    archivo: "src/engine/mondrian.ts",
+    contiene: "(o vacío)",
+    razon:
+      "es texto que Velo ESCRIBE EN EL ARCHIVO DE SALIDA del usuario (el rótulo de un intervalo que cubre celdas vacías): " +
+      "la salida depende de entrada, política y llave, nunca del idioma de la interfaz (regla dura nº3, ADR-009). " +
+      "Decisión pendiente del dueño: si algún día el archivo de salida debe poder salir con rótulos en inglés.",
+  },
 ];
 
 function archivos(ruta: string): string[] {
@@ -413,6 +429,31 @@ describe("el barrido ve lo que debe ver", () => {
     expect(
       reglas('console.warn("no se pudo leer la sesión");', "m.ts"),
     ).toEqual([]);
+  });
+
+  it("no marca el marcado HTML ni los identificadores con guiones", () => {
+    const html =
+      'const A = `<p class="por-que"><code>${x}</code></p><td class="col">${y}</td>`;';
+    expect(reglas(html, "m.ts")).toEqual([]);
+    expect(
+      reglas('const B = "k-del-reparto-no-es-el-del-archivo";', "m.ts"),
+    ).toEqual([]);
+  });
+
+  it("pero sí la prosa metida dentro de una plantilla de HTML", () => {
+    expect(
+      reglas(
+        "const A = `<p>No hay nada que mostrar en esta tabla</p>`;",
+        "m.ts",
+      ),
+    ).toEqual(["cadena que parece español"]);
+    // Un comentario CSS dentro de la plantilla viajaría escrito en cada documento descargado.
+    expect(
+      reglas(
+        "const A = `td{width:1px}/* sin él la columna se estrecha */`;",
+        "m.ts",
+      ),
+    ).toEqual(["cadena que parece español"]);
   });
 
   it("deja pasar los nombres propios", () => {

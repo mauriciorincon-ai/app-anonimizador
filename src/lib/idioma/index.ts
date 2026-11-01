@@ -139,9 +139,28 @@ export function interpolar(
   );
 }
 
-/** El texto en un idioma, con sus datos. Sin marcado: `**` y `` ` `` se quitan. */
+/**
+ * Un texto listo para pintar: el énfasis se resuelve sobre la PLANTILLA y los datos se llenan
+ * DESPUÉS, dentro de cada tramo. El orden importa: si los datos se llenaran primero, un nombre de
+ * columna como `**x**` o con comillas invertidas —que es dato del usuario, no marcado— se
+ * leería como énfasis y se comería los caracteres.
+ */
+export function armar(
+  plantilla: string,
+  idioma: Idioma,
+  datos?: Datos,
+): Tramo[] {
+  return tramos(plantilla).map((tramo) => ({
+    tipo: tramo.tipo,
+    texto: interpolar(tramo.texto, idioma, datos),
+  }));
+}
+
+/** El texto en un idioma, con sus datos y sin marcas de énfasis (atributos, títulos, comparaciones). */
 export function decir(texto: Texto, idioma: Idioma, datos?: Datos): string {
-  return sinMarcado(interpolar(texto[idioma], idioma, datos));
+  return armar(texto[idioma], idioma, datos)
+    .map((t) => t.texto)
+    .join("");
 }
 
 /** Los nombres de los marcadores de una plantilla — para comprobar que las dos caras coinciden. */
@@ -153,13 +172,16 @@ export function marcadores(plantilla: string): string[] {
 
 // ── Énfasis dentro de un texto ───────────────────────────────────────────────────────────────
 
-/** Un tramo de texto: llano, en negrita (`**así**`) o código (`` `así` ``). */
+/**
+ * Un tramo de texto: llano, en negrita (`**así**`), código (`` `así` ``) o advertencia (`!!así!!`,
+ * la negrita en el color de alerta — el color nunca va solo: sigue siendo negrita y sigue siendo texto).
+ */
 export interface Tramo {
-  readonly tipo: "texto" | "negrita" | "codigo";
+  readonly tipo: "texto" | "negrita" | "codigo" | "alerta";
   readonly texto: string;
 }
 
-const TRAMO = /\*\*([^*]+)\*\*|`([^`]+)`/g;
+const TRAMO = /\*\*([^*]+)\*\*|`([^`]+)`|!!([^!]+)!!/g;
 
 export function tramos(texto: string): Tramo[] {
   const salida: Tramo[] = [];
@@ -170,7 +192,9 @@ export function tramos(texto: string): Tramo[] {
     salida.push(
       m[1] !== undefined
         ? { tipo: "negrita", texto: m[1] }
-        : { tipo: "codigo", texto: m[2]! },
+        : m[2] !== undefined
+          ? { tipo: "codigo", texto: m[2] }
+          : { tipo: "alerta", texto: m[3]! },
     );
     desde = m.index + m[0].length;
   }

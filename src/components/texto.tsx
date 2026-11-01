@@ -15,26 +15,32 @@
 import { Fragment, type ReactNode } from "react";
 
 import {
+  armar,
   decir,
-  interpolar,
-  tramos,
   type Datos,
   type Idioma,
   type Texto,
+  type Tramo,
 } from "@/lib/idioma";
 import { useIdioma } from "@/lib/idioma/estado";
 import {
+  armarMensaje,
   decirMensaje,
-  interpolarMensaje,
   type MensajeDeMotor,
 } from "@/lib/idioma/mensajes";
 
 /** El énfasis de un texto ya interpolado, como nodos. */
-export function conEnfasis(texto: string): ReactNode {
-  return tramos(texto).map((tramo, i) => {
+export function conEnfasis(tramos: readonly Tramo[]): ReactNode {
+  return tramos.map((tramo, i) => {
     if (tramo.tipo === "negrita")
       return (
         <strong key={i} className="font-medium">
+          {tramo.texto}
+        </strong>
+      );
+    if (tramo.tipo === "alerta")
+      return (
+        <strong key={i} className="text-alerta font-medium">
           {tramo.texto}
         </strong>
       );
@@ -50,13 +56,13 @@ export function conEnfasis(texto: string): ReactNode {
 
 export function Rico({ texto, datos }: { texto: Texto; datos?: Datos }) {
   const idioma = useIdioma();
-  return <>{conEnfasis(interpolar(texto[idioma], idioma, datos))}</>;
+  return <>{conEnfasis(armar(texto[idioma], idioma, datos))}</>;
 }
 
 /** Un mensaje que vino del motor o del worker, con su énfasis. */
 export function RicoMensaje({ mensaje }: { mensaje: MensajeDeMotor }) {
   const idioma = useIdioma();
-  return <>{conEnfasis(interpolarMensaje(mensaje, idioma))}</>;
+  return <>{conEnfasis(armarMensaje(mensaje, idioma))}</>;
 }
 
 export interface Dice {

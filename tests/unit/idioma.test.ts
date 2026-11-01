@@ -18,6 +18,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  armar,
   decir,
   detectarIdioma,
   esTexto,
@@ -46,6 +47,8 @@ const MODULOS = import.meta.glob("../../src/lib/idioma/textos/*.ts", {
 const IGUALES_A_PROPOSITO: Readonly<Record<string, string>> = {
   "comun › conmutador.grupo":
     "es bilingüe a propósito: quien llegó a una pantalla que no entiende debe reconocer dónde se cambia",
+  "documentos › utilidad.bits":
+    "la unidad de información se escribe «bits» en los dos idiomas",
 };
 
 interface Hoja {
@@ -202,6 +205,21 @@ describe("el énfasis", () => {
     expect(sinMarcado("el **riesgo** de `k`")).toBe("el riesgo de k");
     const texto: Texto = { es: "**hola** {n}", en: "**hi** {n}" };
     expect(decir(texto, "en", { n: 2 })).toBe("hi 2");
+  });
+
+  it("el dato del usuario NUNCA se lee como énfasis, aunque lo parezca", () => {
+    // Un nombre de columna es dato, no marcado: `**x**` o `a`b` tienen que llegar enteros. Por eso
+    // el énfasis se resuelve sobre la plantilla y los datos se llenan después, dentro de cada tramo.
+    const texto: Texto = {
+      es: "La columna **{nombre}** sale",
+      en: "Column **{nombre}** leaves",
+    };
+    for (const nombre of ["**x**", "a`b`c", "!!y!!", "{n}"]) {
+      expect(decir(texto, "es", { nombre })).toBe(`La columna ${nombre} sale`);
+      const tr = armar(texto.en, "en", { nombre });
+      expect(tr.map((t) => t.tipo)).toEqual(["texto", "negrita", "texto"]);
+      expect(tr[1]!.texto).toBe(nombre);
+    }
   });
 
   it("describe su forma para compararla entre idiomas", () => {
