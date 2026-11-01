@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest";
 
 import { generarFilas } from "../../docs/kit-de-prueba/generador.mjs";
 import { clasificar } from "../../src/engine/clasificador";
+import { mensaje } from "../../src/lib/idioma";
+import { decirMensaje } from "../../src/lib/idioma/mensajes";
 import {
   ConstructorColumnar,
   type TablaColumnar,
@@ -207,8 +209,10 @@ describe("QI advisor", () => {
   const tabla = tablaDelKit();
   const diagnostico = clasificar(tabla);
   const advisor = aconsejarQis(tabla, diagnostico);
+  // El motor devuelve el motivo como `Mensaje` (clave + datos); aquí se lee en español, que es
+  // el idioma en que se escribieron estas aserciones.
   const excluidasPorNombre = new Map(
-    advisor.excluidas.map((e) => [e.nombre, e.motivo]),
+    advisor.excluidas.map((e) => [e.nombre, decirMensaje(e.motivo, "es")]),
   );
 
   it("calcula el k REAL de una combinación, verificado a mano", () => {
@@ -365,8 +369,11 @@ describe("QI advisor", () => {
 
     expect(consejo.excluidas).toContainEqual({
       nombre: "zona",
-      motivo: "un solo valor distinto: no distingue a nadie",
+      motivo: mensaje("riesgo.excluida.unSoloValor"),
     });
+    expect(decirMensaje(mensaje("riesgo.excluida.unSoloValor"), "es")).toBe(
+      "un solo valor distinto: no distingue a nadie",
+    );
     expect(consejo.candidatos.map((c) => c.nombre)).toEqual(["sucursal"]);
   });
 
@@ -388,7 +395,12 @@ describe("QI advisor", () => {
     expect(acotado.tope).toEqual({ candidatosMaximos: 3, tamanoMaximo: 2 });
     // Las candidatas que quedaron fuera del tope también se declaran.
     expect(
-      acotado.excluidas.some((e) => /fuera de las 3 candidatas/.test(e.motivo)),
+      acotado.excluidas.some(
+        (e) =>
+          e.motivo.clave === "riesgo.excluida.fueraDelTope" &&
+          e.motivo.datos?.n === 3 &&
+          /fuera de las 3 candidatas/.test(decirMensaje(e.motivo, "es")),
+      ),
     ).toBe(true);
   });
 });

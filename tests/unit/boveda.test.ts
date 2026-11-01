@@ -18,6 +18,7 @@ import {
   type IdentidadDeBoveda,
 } from "@/engine/boveda";
 import { abrirBoveda, sellarBoveda } from "@/lib/boveda-archivo";
+import { decirMensaje } from "@/lib/idioma/mensajes";
 import { ITERACIONES_PBKDF2 } from "@/lib/llave";
 
 const IDENTIDAD: IdentidadDeBoveda = {
@@ -173,7 +174,13 @@ describe("la bóveda va y vuelve por texto", () => {
       motivo: "version-distinta",
     });
     if (otraVersion.ok) return;
-    expect(otraVersion.detalle).toContain("99");
+    // El motor no escribe frases: nombra qué pasó y con qué datos. Las dos lenguas lo dicen igual.
+    expect(otraVersion.detalle).toEqual({
+      clave: "boveda.versionDistinta",
+      datos: { version: 99, entiende: VERSION_DE_BOVEDA },
+    });
+    expect(decirMensaje(otraVersion.detalle, "es")).toContain("99");
+    expect(decirMensaje(otraVersion.detalle, "en")).toContain("99");
   });
 
   it("un JSON cualquiera no es una bóveda", () => {
@@ -193,21 +200,24 @@ describe("la bóveda va y vuelve por texto", () => {
     );
     expect(sinColumnas).toMatchObject({ ok: false, motivo: "forma-invalida" });
     if (sinColumnas.ok) return;
-    expect(sinColumnas.detalle).toContain("columnas");
+    expect(sinColumnas.detalle).toEqual({ clave: "boveda.sinColumnas" });
 
     const columnaVacia = deserializarBoveda(
       JSON.stringify({ ...IDENTIDAD, version: 1, columnas: [{}] }),
     );
     expect(columnaVacia).toMatchObject({ ok: false, motivo: "forma-invalida" });
     if (columnaVacia.ok) return;
-    expect(columnaVacia.detalle).toContain("incompleta");
+    expect(columnaVacia.detalle).toEqual({ clave: "boveda.columnaIncompleta" });
 
     const sinHuella = deserializarBoveda(
       JSON.stringify({ salDeLlave: "a", hashDePolitica: "b", columnas: [] }),
     );
     expect(sinHuella).toMatchObject({ ok: false, motivo: "forma-invalida" });
     if (sinHuella.ok) return;
-    expect(sinHuella.detalle).toContain("huellaDeLlave");
+    expect(sinHuella.detalle).toEqual({
+      clave: "boveda.faltaCampo",
+      datos: { campo: "huellaDeLlave" },
+    });
   });
 
   it("el paralelismo roto se rechaza ENTERO: restauraría el original de otro", () => {
@@ -221,7 +231,12 @@ describe("la bóveda va y vuelve por texto", () => {
     );
     expect(manipulada).toMatchObject({ ok: false, motivo: "forma-invalida" });
     if (manipulada.ok) return;
-    expect(manipulada.detalle).toContain("cedula");
+    expect(manipulada.detalle).toEqual({
+      clave: "boveda.columnaDesalineada",
+      datos: { columna: "cedula", seudonimos: 2, originales: 1 },
+    });
+    expect(decirMensaje(manipulada.detalle, "es")).toContain("cedula");
+    expect(decirMensaje(manipulada.detalle, "en")).toContain("cedula");
   });
 });
 
@@ -326,7 +341,10 @@ describe("el archivo .velo", () => {
     const resultado = await abrirBoveda(futuro, FRASE);
     expect(resultado).toMatchObject({ ok: false, motivo: "version-distinta" });
     if (resultado.ok) return;
-    expect(resultado.detalle).toContain("9");
+    expect(resultado.detalle).toEqual({
+      clave: "cifrado.versionDistinta",
+      datos: { version: 9, entiende: 1 },
+    });
   });
 
   it("un contenido de otra versión se distingue de un contenido roto", async () => {

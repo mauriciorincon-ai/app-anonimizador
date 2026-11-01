@@ -14,28 +14,37 @@
 // composición que este sprint tiene prohibida: cada regla correcta, y el conjunto afirmando un
 // cumplimiento que nadie verificó.
 
+import { mensaje } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
+
 import type { CategoriaLey1581, TipoDetectado } from "./validadores/tipos";
 import type { Politica, Tecnica } from "./politica";
 
 /** Cómo Velo alcanza (o no) a reconocer un identificador de la fuente. */
 export type Deteccion =
   | { via: "validador"; tipos: readonly TipoDetectado[] }
-  | { via: "nombre-de-columna"; nota: string }
-  | { via: "ninguna"; porque: string };
+  | { via: "nombre-de-columna"; nota: MensajeDeMotor }
+  | { via: "ninguna"; porque: MensajeDeMotor };
 
 export interface CoberturaDeIdentificador {
   /** La letra del literal en la norma, cuando la norma los enumera. */
   readonly referencia: string;
-  readonly identificador: string;
+  readonly identificador: MensajeDeMotor;
   readonly deteccion: Deteccion;
 }
 
 export interface PoliticaDeFabrica {
   readonly id: "habeas-data" | "hipaa";
+  /** Nombre propio: se escribe igual en los dos idiomas, así que no es un mensaje. */
   readonly nombre: string;
-  readonly fuente: string;
+  /**
+   * Prosa en `MensajeDeMotor`, no en `string`: el motor no escribe frases. Ninguno de estos campos
+   * entra a la `Politica` que se exporta ni a su hash (`construirPolitica` solo copia `id`,
+   * `kObjetivo` y las reglas), así que cambiar de idioma no cambia la identidad de nada.
+   */
+  readonly fuente: MensajeDeMotor;
   /** Qué promete y qué no. Va a la UI tal cual: no es una nota al pie opcional. */
-  readonly advertencia: string;
+  readonly advertencia: MensajeDeMotor;
   readonly porTipo: Partial<Record<TipoDetectado, Tecnica>>;
   readonly porCategoria: Record<CategoriaLey1581, Tecnica>;
   readonly kObjetivo: number | null;
@@ -58,13 +67,8 @@ export interface PoliticaDeFabrica {
 export const HABEAS_DATA: PoliticaDeFabrica = {
   id: "habeas-data",
   nombre: "Habeas Data (Colombia)",
-  fuente:
-    "Ley 1581 de 2012 (art. 4 principios; art. 5 datos sensibles) y Decreto 1377 de 2013, " +
-    "con las técnicas de la guía de anonimización AGN + SIC",
-  advertencia:
-    "Es la interpretación de Velo de la guía, aplicada a las columnas que Velo reconoció. No es " +
-    "una certificación: la SIC no la emite y ningún programa que solo ve una tabla puede decidir " +
-    "si un tratamiento es lícito. Revisa columna por columna antes de entregar.",
+  fuente: mensaje("fabrica.habeas.fuente"),
+  advertencia: mensaje("fabrica.habeas.advertencia"),
   porTipo: {
     cedula: { tipo: "seudonimizar-con-formato", formato: "cedula" },
     nit: { tipo: "seudonimizar-con-formato", formato: "nit" },
@@ -81,16 +85,15 @@ export const HABEAS_DATA: PoliticaDeFabrica = {
   cobertura: [
     {
       referencia: "art. 5",
-      identificador:
-        "Datos sensibles (salud, origen étnico, convicciones, vida sexual, biometría)",
+      identificador: mensaje("fabrica.habeas.cob.sensibles.id"),
       deteccion: {
         via: "nombre-de-columna",
-        nota: "No existe algoritmo que mire «J45.9» y sepa que es un diagnóstico: solo el encabezado lo sugiere, y Velo lo marca con certeza «sin confirmar».",
+        nota: mensaje("fabrica.habeas.cob.sensibles.nota"),
       },
     },
     {
       referencia: "identificadores",
-      identificador: "Cédula, NIT, teléfonos, correo, placa, tarjeta, IBAN, IP",
+      identificador: mensaje("fabrica.habeas.cob.identificadores.id"),
       deteccion: {
         via: "validador",
         tipos: [
@@ -108,7 +111,7 @@ export const HABEAS_DATA: PoliticaDeFabrica = {
     },
     {
       referencia: "identificadores",
-      identificador: "Nombres y apellidos",
+      identificador: mensaje("fabrica.habeas.cob.nombres.id"),
       deteccion: {
         via: "validador",
         tipos: ["nombre"],
@@ -116,12 +119,10 @@ export const HABEAS_DATA: PoliticaDeFabrica = {
     },
     {
       referencia: "—",
-      identificador:
-        "Códigos internos de la organización (historia clínica, afiliado, contrato)",
+      identificador: mensaje("fabrica.habeas.cob.internos.id"),
       deteccion: {
         via: "ninguna",
-        porque:
-          "Un consecutivo propio no tiene forma reconocible ni checksum público. Si tu tabla lleva uno, márcalo tú: Velo no puede saberlo.",
+        porque: mensaje("fabrica.habeas.cob.internos.porque"),
       },
     },
   ],
@@ -143,13 +144,8 @@ export const HABEAS_DATA: PoliticaDeFabrica = {
 export const HIPAA: PoliticaDeFabrica = {
   id: "hipaa",
   nombre: "HIPAA · Safe Harbor",
-  fuente:
-    "45 CFR §164.514(b)(2)(i)(A)–(R) — los 18 identificadores del método Safe Harbor",
-  advertencia:
-    "Safe Harbor exige ELIMINAR los 18 identificadores, no seudonimizarlos: un código derivado " +
-    "del propio valor —como un HMAC— no cumple el §164.514(c). Por eso esta política suprime, y " +
-    "el archivo pierde sus llaves de cruce. Y no es una certificación: Velo no reconoce todos los " +
-    "identificadores por sí solo, así que revisa la tabla de abajo y marca a mano los que le faltan.",
+  fuente: mensaje("fabrica.hipaa.fuente"),
+  advertencia: mensaje("fabrica.hipaa.advertencia"),
   porTipo: {
     // Fechas: Safe Harbor permite el AÑO. Cualquier precisión mayor sale.
     fecha: { tipo: "generalizar-fecha", precision: "anio" },
@@ -164,22 +160,20 @@ export const HIPAA: PoliticaDeFabrica = {
   cobertura: [
     {
       referencia: "A",
-      identificador: "Nombres",
+      identificador: mensaje("fabrica.hipaa.cob.A.id"),
       deteccion: { via: "validador", tipos: ["nombre"] },
     },
     {
       referencia: "B",
-      identificador:
-        "Subdivisiones geográficas menores que un estado (dirección, ciudad, condado, código postal)",
+      identificador: mensaje("fabrica.hipaa.cob.B.id"),
       deteccion: {
         via: "nombre-de-columna",
-        nota: "Velo reconoce el encabezado (dirección, municipio, ciudad), no el valor. La regla de los 20.000 habitantes para los 3 primeros dígitos del ZIP es de censo estadounidense y Velo no la puede verificar.",
+        nota: mensaje("fabrica.hipaa.cob.B.nota"),
       },
     },
     {
       referencia: "C",
-      identificador:
-        "Todos los elementos de fechas salvo el año, y todas las edades por encima de 89",
+      identificador: mensaje("fabrica.hipaa.cob.C.id"),
       deteccion: {
         via: "validador",
         tipos: ["fecha"],
@@ -187,52 +181,49 @@ export const HIPAA: PoliticaDeFabrica = {
     },
     {
       referencia: "D",
-      identificador: "Números de teléfono",
+      identificador: mensaje("fabrica.hipaa.cob.D.id"),
       deteccion: { via: "validador", tipos: ["celular-co", "fijo-co"] },
     },
     {
       referencia: "E",
-      identificador: "Números de fax",
+      identificador: mensaje("fabrica.hipaa.cob.E.id"),
       deteccion: {
         via: "ninguna",
-        porque:
-          "Un fax tiene exactamente la misma forma que un fijo: Velo lo marcará como teléfono, que basta para suprimirlo, pero no puede distinguir cuál es cuál.",
+        porque: mensaje("fabrica.hipaa.cob.E.porque"),
       },
     },
     {
       referencia: "F",
-      identificador: "Direcciones de correo electrónico",
+      identificador: mensaje("fabrica.hipaa.cob.F.id"),
       deteccion: { via: "validador", tipos: ["email"] },
     },
     {
       referencia: "G",
-      identificador: "Números de seguridad social",
+      identificador: mensaje("fabrica.hipaa.cob.G.id"),
       deteccion: {
         via: "ninguna",
-        porque:
-          "El SSN es estadounidense y Velo valida documentos colombianos. Márcalo tú.",
+        porque: mensaje("fabrica.hipaa.cob.G.porque"),
       },
     },
     {
       referencia: "H",
-      identificador: "Números de historia clínica",
+      identificador: mensaje("fabrica.hipaa.cob.H.id"),
       deteccion: {
         via: "ninguna",
-        porque:
-          "Es un consecutivo interno de cada institución: sin forma reconocible ni checksum.",
+        porque: mensaje("fabrica.hipaa.cob.H.porque"),
       },
     },
     {
       referencia: "I",
-      identificador: "Números de afiliado a plan de salud",
+      identificador: mensaje("fabrica.hipaa.cob.I.id"),
       deteccion: {
         via: "ninguna",
-        porque: "Formato propio de cada asegurador.",
+        porque: mensaje("fabrica.hipaa.cob.I.porque"),
       },
     },
     {
       referencia: "J",
-      identificador: "Números de cuenta",
+      identificador: mensaje("fabrica.hipaa.cob.J.id"),
       deteccion: {
         via: "validador",
         tipos: ["iban", "tarjeta"],
@@ -240,64 +231,60 @@ export const HIPAA: PoliticaDeFabrica = {
     },
     {
       referencia: "K",
-      identificador: "Números de certificado o licencia",
+      identificador: mensaje("fabrica.hipaa.cob.K.id"),
       deteccion: {
         via: "ninguna",
-        porque: "Formato propio de cada entidad emisora.",
+        porque: mensaje("fabrica.hipaa.cob.K.porque"),
       },
     },
     {
       referencia: "L",
-      identificador: "Identificadores de vehículo, incluida la placa",
+      identificador: mensaje("fabrica.hipaa.cob.L.id"),
       deteccion: { via: "validador", tipos: ["placa-co"] },
     },
     {
       referencia: "M",
-      identificador: "Identificadores y seriales de dispositivos",
+      identificador: mensaje("fabrica.hipaa.cob.M.id"),
       deteccion: {
         via: "ninguna",
-        porque: "Serial arbitrario del fabricante.",
+        porque: mensaje("fabrica.hipaa.cob.M.porque"),
       },
     },
     {
       referencia: "N",
-      identificador: "URLs",
+      identificador: mensaje("fabrica.hipaa.cob.N.id"),
       deteccion: {
         via: "ninguna",
-        porque:
-          "Velo no trae validador de URL en el S1. Si tu tabla las lleva, márcalas tú.",
+        porque: mensaje("fabrica.hipaa.cob.N.porque"),
       },
     },
     {
       referencia: "O",
-      identificador: "Direcciones IP",
+      identificador: mensaje("fabrica.hipaa.cob.O.id"),
       deteccion: { via: "validador", tipos: ["ip"] },
     },
     {
       referencia: "P",
-      identificador: "Identificadores biométricos (huellas dactilares, de voz)",
+      identificador: mensaje("fabrica.hipaa.cob.P.id"),
       deteccion: {
         via: "nombre-de-columna",
-        nota: "Solo por el encabezado: un vector biométrico en una celda es una cadena sin forma reconocible.",
+        nota: mensaje("fabrica.hipaa.cob.P.nota"),
       },
     },
     {
       referencia: "Q",
-      identificador: "Fotografías de cara completa e imágenes comparables",
+      identificador: mensaje("fabrica.hipaa.cob.Q.id"),
       deteccion: {
         via: "ninguna",
-        porque:
-          "Velo lee tablas, no imágenes. Una columna con rutas a fotos no la reconoce.",
+        porque: mensaje("fabrica.hipaa.cob.Q.porque"),
       },
     },
     {
       referencia: "R",
-      identificador:
-        "Cualquier otro número, característica o código único de identificación",
+      identificador: mensaje("fabrica.hipaa.cob.R.id"),
       deteccion: {
         via: "ninguna",
-        porque:
-          "Es una cláusula de cierre: por definición no tiene forma. Es lo que hace que Safe Harbor no se pueda automatizar del todo, y por eso esta lista existe.",
+        porque: mensaje("fabrica.hipaa.cob.R.porque"),
       },
     },
   ],

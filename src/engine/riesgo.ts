@@ -16,6 +16,9 @@
 // información auxiliar (arXiv:2509.03350) y se degrada con la dimensionalidad. Velo mide riesgo y
 // lo muestra; nunca dice "anonimizado".
 
+import { mensaje } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
+
 import { type ColumnaColumnar, type TablaColumnar } from "./columnar";
 import type { Diagnostico } from "./clasificador";
 
@@ -55,7 +58,8 @@ export interface CombinacionQi {
 
 export interface ColumnaExcluida {
   readonly nombre: string;
-  readonly motivo: string;
+  /** El porqué, como mensaje: el motor no escribe frases, la interfaz las dice en su idioma. */
+  readonly motivo: MensajeDeMotor;
 }
 
 /** Columna que, ella sola, ya deja solo a casi todo el mundo. */
@@ -267,16 +271,14 @@ export function aconsejarQis(
     if (hallazgo.categoria === "identificador-directo") {
       excluidas.push({
         nombre: hallazgo.nombre,
-        motivo:
-          "identificador directo: señala a la persona sin ayuda de ninguna otra columna",
+        motivo: mensaje("riesgo.excluida.identificadorDirecto"),
       });
       continue;
     }
     if (hallazgo.categoria === "dato-sensible") {
       excluidas.push({
         nombre: hallazgo.nombre,
-        motivo:
-          "dato sensible (art. 5): es lo que el atacante quiere averiguar, no la llave",
+        motivo: mensaje("riesgo.excluida.datoSensible"),
       });
       continue;
     }
@@ -285,7 +287,7 @@ export function aconsejarQis(
     if (cardinalidad <= 1) {
       excluidas.push({
         nombre: hallazgo.nombre,
-        motivo: "un solo valor distinto: no distingue a nadie",
+        motivo: mensaje("riesgo.excluida.unSoloValor"),
       });
       continue;
     }
@@ -330,7 +332,7 @@ export function aconsejarQis(
   for (const sobrante of ordenadas.slice(candidatosMaximos)) {
     excluidas.push({
       nombre: sobrante.columna.nombre,
-      motivo: `fuera de las ${candidatosMaximos} candidatas con más valores distintos`,
+      motivo: mensaje("riesgo.excluida.fueraDelTope", { n: candidatosMaximos }),
     });
   }
 

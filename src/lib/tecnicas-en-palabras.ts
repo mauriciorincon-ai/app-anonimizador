@@ -1,4 +1,4 @@
-// Los nombres de las técnicas en castellano llano, en un sitio del que puedan leer dos pantallas.
+// Los nombres de las técnicas en castellano llano —y en inglés—, en un sitio del que puedan leer dos pantallas.
 //
 // Vivían dentro de `vista-previa.tsx`. Salieron cuando la bitácora del S4 necesitó los mismos
 // nombres: importar el componente para llegar al mapa habría arrastrado la vista previa entera al
@@ -9,19 +9,18 @@
 // las etiquetas de pantalla se reescriben mientras que las claves son el identificador estable. La
 // traducción es cosa de quien pinta, no de quien guarda — y por eso el `??` de abajo devuelve la
 // clave tal cual cuando no la conoce, en vez de esconder que hay algo que no sabe nombrar.
+//
+// El nombre de cada técnica vive en el catálogo del motor (`tecnica.<clave>` en
+// `textos/motor-transformar.ts`): aquí solo se busca, en el idioma que pide quien pinta. Una entrada
+// de bitácora guarda la clave, así que se lee en el idioma de la pantalla de ahora, no en el de
+// cuando se anotó.
 
-const NOMBRE_DE_TECNICA: Record<string, string> = {
-  conservar: "sin cambios",
-  suprimir: "quitada",
-  enmascarar: "enmascarada",
-  seudonimizar: "seudónimo",
-  "seudonimizar-con-formato": "seudónimo con formato",
-  "generalizar-rango": "agrupada en rangos",
-  "generalizar-fecha": "fecha recortada",
-  "generalizar-prefijo": "recortada",
-  "generalizar-automatico": "generalizada hasta el k",
-};
+import { decir, type Idioma, type Texto } from "@/lib/idioma";
+import { MOTOR_TRANSFORMAR } from "@/lib/idioma/textos/motor-transformar";
 
-export function nombreDeTecnica(clave: string): string {
-  return NOMBRE_DE_TECNICA[clave] ?? clave;
+const NOMBRES: Readonly<Record<string, Texto>> = MOTOR_TRANSFORMAR;
+
+export function nombreDeTecnica(clave: string, idioma: Idioma): string {
+  const texto = NOMBRES[`tecnica.${clave}`];
+  return texto ? decir(texto, idioma) : clave;
 }

@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import { decirMensaje } from "@/lib/idioma/mensajes";
 import {
   VERSION_DE_POLITICA,
   columnasDeMondrian,
@@ -109,11 +110,30 @@ describe("ida y vuelta como archivo", () => {
     expect(JSON.parse(texto)._hash).toBe(hashDePolitica(BASE));
   });
 
+  it("el archivo exportado NO depende del idioma de la pantalla", async () => {
+    // La nota va en los dos idiomas, siempre en el mismo orden; el resto del archivo no tiene
+    // prosa. Dos personas que exportan la misma política con la interfaz en idiomas distintos
+    // tienen que obtener el mismo archivo, byte por byte (y el mismo hash).
+    const { fijarIdioma } = await import("@/lib/idioma/estado");
+    fijarIdioma("es");
+    const enEspanol = exportarPolitica(BASE);
+    fijarIdioma("en");
+    const enIngles = exportarPolitica(BASE);
+    expect(enIngles).toBe(enEspanol);
+    expect(JSON.parse(enEspanol)._nota).toBe(
+      "El hash se recalcula al importar; el de aquí es informativo. / " +
+        "The hash is recomputed on import; the one here is informational.",
+    );
+    expect(JSON.parse(enIngles)._hash).toBe(hashDePolitica(BASE));
+  });
+
   it("un JSON roto falla diciendo que es un JSON roto", () => {
     const r = importarPolitica("{ esto no es json");
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.motivo).toBe("json-invalido");
+    // El motor no escribe la frase: devuelve su clave, y la pantalla la dice en su idioma.
+    expect(r.detalle).toEqual({ clave: "politica.importar.jsonInvalido" });
   });
 
   it("una política de otra versión lo dice, en vez de listar campos que no cuadran", () => {
@@ -121,8 +141,17 @@ describe("ida y vuelta como archivo", () => {
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.motivo).toBe("version-distinta");
-    expect(r.detalle).toContain("99");
-    expect(r.detalle).toContain(String(VERSION_DE_POLITICA));
+    // Los números viajan crudos en `datos`: formatearlos es cosa de quien los dice.
+    expect(r.detalle).toEqual({
+      clave: "politica.importar.versionDistinta",
+      datos: { version: 99, esperada: VERSION_DE_POLITICA },
+    });
+    expect(decirMensaje(r.detalle, "es")).toBe(
+      `La política es de la versión 99 y esta Velo entiende la ${VERSION_DE_POLITICA}.`,
+    );
+    expect(decirMensaje(r.detalle, "en")).toBe(
+      `The policy is version 99 and this Velo understands version ${VERSION_DE_POLITICA}.`,
+    );
   });
 
   it("una técnica inventada no pasa, y el error dice dónde", () => {
@@ -136,7 +165,19 @@ describe("ida y vuelta como archivo", () => {
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.motivo).toBe("forma-invalida");
-    expect(r.detalle).toContain("reglas");
+    expect(r.detalle.clave).toBe("politica.importar.formaInvalida");
+    expect(String(r.detalle.datos?.ruta)).toContain("reglas");
+    expect(decirMensaje(r.detalle, "es")).toContain("reglas");
+    expect(decirMensaje(r.detalle, "en")).toContain("reglas");
+  });
+
+  it("un JSON que no es ni un objeto dice «la política», no una ruta vacía", () => {
+    const r = importarPolitica("42");
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.detalle.clave).toBe("politica.importar.formaInvalidaRaiz");
+    expect(decirMensaje(r.detalle, "es")).toMatch(/^la política: /);
+    expect(decirMensaje(r.detalle, "en")).toMatch(/^the policy: /);
   });
 
   it("un parámetro fuera de rango no pasa", () => {

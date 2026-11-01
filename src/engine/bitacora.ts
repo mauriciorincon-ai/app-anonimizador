@@ -20,6 +20,8 @@
 
 import { z } from "zod";
 
+import { mensaje } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { sha256 } from "@/lib/sha256";
 import { serializarCanonico } from "./serializacion";
 
@@ -138,7 +140,8 @@ export type ResultadoDeLectura =
   | {
       ok: false;
       motivo: "json-invalido" | "version-distinta" | "forma-invalida";
-      detalle: string;
+      /** Qué pasó, como un `Mensaje`: el motor no conoce el idioma (`motor-regreso.ts`). */
+      detalle: MensajeDeMotor;
     };
 
 /**
@@ -152,7 +155,7 @@ export function deserializarBitacora(texto: string): ResultadoDeLectura {
     return {
       ok: false,
       motivo: "json-invalido",
-      detalle: "El contenido de la bitácora no es un JSON que se pueda leer.",
+      detalle: mensaje("bitacora.jsonIlegible"),
     };
   }
 
@@ -169,7 +172,10 @@ export function deserializarBitacora(texto: string): ResultadoDeLectura {
     return {
       ok: false,
       motivo: "version-distinta",
-      detalle: `La bitácora es de la versión ${(crudo as { version: number }).version} y esta Velo entiende la ${VERSION_DE_BITACORA}.`,
+      detalle: mensaje("bitacora.versionDistinta", {
+        version: (crudo as { version: number }).version,
+        entiende: VERSION_DE_BITACORA,
+      }),
     };
   }
 
@@ -178,8 +184,7 @@ export function deserializarBitacora(texto: string): ResultadoDeLectura {
     return {
       ok: false,
       motivo: "forma-invalida",
-      detalle:
-        "El archivo no contiene una bitácora con la forma que Velo espera.",
+      detalle: mensaje("bitacora.formaInvalida"),
     };
   }
   return { ok: true, bitacora: leida.data };

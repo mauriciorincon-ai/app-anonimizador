@@ -18,6 +18,9 @@
 
 import { z } from "zod";
 
+import { mensaje } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
+import { MOTOR_TRANSFORMAR } from "@/lib/idioma/textos/motor-transformar";
 import { sha256 } from "@/lib/sha256";
 import { serializarCanonico } from "./serializacion";
 
@@ -189,6 +192,16 @@ export function mismaPolitica(a: Politica, b: Politica): boolean {
 // ── Ida y vuelta como archivo ─────────────────────────────────────────────────────────────────
 
 /**
+ * La nota del archivo exportado, en los DOS idiomas y siempre en el mismo orden («es / en»).
+ *
+ * El JSON que alguien exporta tiene que ser idéntico sin importar en qué idioma tenía la pantalla:
+ * dos personas que exportan la misma política y comparan los archivos con `diff` no pueden
+ * encontrar una diferencia que sea solo del idioma de su navegador. (El hash no cambiaría —se
+ * recalcula sin `_nota`—, pero el archivo sí, y el archivo es lo que se versiona.)
+ */
+const NOTA_DEL_ARCHIVO = `${MOTOR_TRANSFORMAR["politica.notaDelArchivo"].es} / ${MOTOR_TRANSFORMAR["politica.notaDelArchivo"].en}`;
+
+/**
  * A texto, ya normalizada y con sangría: este archivo lo va a leer una persona y lo va a comparar
  * con `diff` contra el del mes pasado. El hash va DENTRO, junto a la advertencia de que se
  * recalcula al importar — un hash que se creyera a sí mismo no verificaría nada.
@@ -199,7 +212,7 @@ export function exportarPolitica(politica: Politica): string {
     {
       _velo: "politica de anonimizacion",
       _hash: hashDePolitica(normalizada),
-      _nota: "El hash se recalcula al importar; el de aquí es informativo.",
+      _nota: NOTA_DEL_ARCHIVO,
       ...normalizada,
     },
     null,
@@ -212,7 +225,8 @@ export type ResultadoDeImportacion =
   | {
       ok: false;
       motivo: "json-invalido" | "version-distinta" | "forma-invalida";
-      detalle: string;
+      /** Qué pasó, como mensaje: la pantalla lo dice en su idioma. */
+      detalle: MensajeDeMotor;
     };
 
 /**
@@ -230,7 +244,7 @@ export function importarPolitica(texto: string): ResultadoDeImportacion {
     return {
       ok: false,
       motivo: "json-invalido",
-      detalle: "El archivo no es un JSON que se pueda leer.",
+      detalle: mensaje("politica.importar.jsonInvalido"),
     };
   }
 
@@ -241,19 +255,31 @@ export function importarPolitica(texto: string): ResultadoDeImportacion {
     return {
       ok: false,
       motivo: "version-distinta",
-      detalle: `La política es de la versión ${version} y esta Velo entiende la ${VERSION_DE_POLITICA}.`,
+      detalle: mensaje("politica.importar.versionDistinta", {
+        version,
+        esperada: VERSION_DE_POLITICA,
+      }),
     };
   }
 
   const analisis = politicaSchema.safeParse(crudo);
   if (!analisis.success) {
     const primero = analisis.error.issues[0];
+    // `problema` es el texto de la librería de validación, tal cual: un dato, no copy de Velo.
+    const ruta = primero?.path.join(".") ?? "";
     return {
       ok: false,
       motivo: "forma-invalida",
-      detalle: primero
-        ? `${primero.path.join(".") || "la política"}: ${primero.message}`
-        : "La forma del archivo no corresponde a una política.",
+      detalle: !primero
+        ? mensaje("politica.importar.sinForma")
+        : ruta === ""
+          ? mensaje("politica.importar.formaInvalidaRaiz", {
+              problema: primero.message,
+            })
+          : mensaje("politica.importar.formaInvalida", {
+              ruta,
+              problema: primero.message,
+            }),
     };
   }
   return { ok: true, politica: normalizarPolitica(analisis.data) };

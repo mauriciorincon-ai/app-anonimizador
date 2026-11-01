@@ -20,6 +20,9 @@
 // el archivo. Inventar un supuesto por defecto —«asumamos que es el 1 % de algo»— sería exactamente
 // la mentira que este repo persigue. Sin población declarada NO se calcula, y se dice por qué.
 
+import { mensaje } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
+
 import type { ClasesDeEquivalencia } from "./riesgo";
 
 // ── Vocabulario común ─────────────────────────────────────────────────────────────────────────
@@ -60,9 +63,9 @@ export type Intervalo =
       readonly hasta: number;
       readonly confianza: number;
       /** Qué recoge el intervalo y, sobre todo, qué NO recoge. */
-      readonly cubre: string;
+      readonly cubre: MensajeDeMotor;
     }
-  | { readonly tipo: "no-derivable"; readonly porque: string };
+  | { readonly tipo: "no-derivable"; readonly porque: MensajeDeMotor };
 
 /**
  * Una cifra estimada. **Nunca viaja como `number` suelto.**
@@ -88,7 +91,7 @@ export interface EstimacionRechazada {
   readonly ok: false;
   readonly naturaleza: "estimado";
   readonly motivo: MotivoDeNoEstimar;
-  readonly explicacion: string;
+  readonly explicacion: MensajeDeMotor;
 }
 
 export interface EntradasDeEstimacion {
@@ -103,9 +106,9 @@ export interface EntradasDeEstimacion {
 /** Lo que comparten los dos estimadores: de dónde salen y bajo qué condiciones valen. */
 interface Procedencia {
   readonly naturaleza: "estimado";
-  readonly modelo: string;
-  readonly supuesto: string;
-  readonly fuente: string;
+  readonly modelo: MensajeDeMotor;
+  readonly supuesto: MensajeDeMotor;
+  readonly fuente: MensajeDeMotor;
   readonly poblacion: number;
   readonly fraccionDeMuestreo: number;
 }
@@ -251,9 +254,7 @@ function tablaDeRiesgoIndividual(
   return tabla;
 }
 
-const CUBRE_EL_RIESGO =
-  "recoge la incertidumbre del modelo sobre cuántas personas más comparten esos valores en la población. " +
-  "NO recoge el error de suponer el modelo: si el archivo no es una muestra aleatoria simple de esa población, el intervalo tampoco vale.";
+const CUBRE_EL_RIESGO = mensaje("riesgoEstimado.cubre.riesgo");
 
 /**
  * Intervalo posterior de 1/F para una clase de tamaño `f`.
@@ -270,8 +271,7 @@ function intervaloDeRiesgo(f: number, p: number): Intervalo {
       desde: 1 / f,
       hasta: 1 / f,
       confianza: NIVEL_DE_CONFIANZA,
-      cubre:
-        "en censo no hay incertidumbre de muestreo: el estimado coincide con el riesgo exacto.",
+      cubre: mensaje("riesgoEstimado.cubre.censoRiesgo"),
     };
   }
 
@@ -331,8 +331,7 @@ function intervaloDeRiesgo(f: number, p: number): Intervalo {
 
   return {
     tipo: "no-derivable",
-    porque:
-      "con una fracción de muestreo tan pequeña y una clase tan chica, el modelo reparte la frecuencia poblacional en una cola larguísima y torcida: cualquier banda que Velo dibujara aquí sería más precisa que el conocimiento que la sostiene.",
+    porque: mensaje("riesgoEstimado.porque.colaLarga"),
   };
 }
 
@@ -375,12 +374,9 @@ export function riesgoIndividualEstimado(
   return {
     ok: true,
     naturaleza: "estimado",
-    modelo:
-      "binomial negativa: F_k | f_k ~ f_k + NB(f_k, p); el riesgo es E[1/F_k | f_k]",
-    supuesto:
-      "el archivo es una muestra aleatoria simple de la población declarada, con la misma fracción de muestreo para todas las clases (μ-ARGUS la saca de los pesos de la encuesta; Velo solo ve el archivo)",
-    fuente:
-      "Benedetti & Franconi (1998), el estimador de μ-ARGUS y sdcMicro. Modelo citado literalmente en Rinott & Shlomo (2007), arXiv:0708.0980 §2.2.",
+    modelo: mensaje("riesgoEstimado.individual.modelo"),
+    supuesto: mensaje("riesgoEstimado.individual.supuesto"),
+    fuente: mensaje("riesgoEstimado.individual.fuente"),
     poblacion,
     fraccionDeMuestreo: fraccion,
     claseMasPequena,
@@ -394,8 +390,7 @@ export function riesgoIndividualEstimado(
       valor: acumulado / entradas.filas,
       intervalo: {
         tipo: "no-derivable",
-        porque:
-          "es la esperanza del modelo, no una cantidad medida: fijada la fracción de muestreo, su valor es el que es. Lo que puede fallar aquí es el modelo entero, y el error de un modelo no cabe en un intervalo de confianza.",
+        porque: mensaje("riesgoEstimado.porque.esperanza"),
       },
     },
   };
@@ -485,17 +480,12 @@ export interface UnicosPoblacionales {
 }
 
 const PROCEDENCIA_ZAYATZ = {
-  modelo:
-    "clases de equivalencia + Bayes con muestreo hipergeométrico: Prob(1_p|1_s) = Prob(1_p)·Prob(1_s|1_p) / Σ_C Prob(C_p)·Prob(1_s|C_p)",
-  supuesto:
-    "la distribución de tamaños de clase de la muestra aproxima la de la población, y los datos son REALES: el propio informe advierte que el método puede no funcionar sobre datos simulados con estructuras de clase atípicas",
-  fuente:
-    "Zayatz, L. V. (1991), «Estimation of the Percent of Unique Population Elements on a Microdata File Using the Sample», CENSUS/SRD/RR-91/08, U.S. Bureau of the Census, §III.",
+  modelo: mensaje("riesgoEstimado.poblacional.modelo"),
+  supuesto: mensaje("riesgoEstimado.poblacional.supuesto"),
+  fuente: mensaje("riesgoEstimado.poblacional.fuente"),
 } as const;
 
-const CUBRE_LOS_UNICOS =
-  "recoge cuáles de tus registros únicos resultan serlo también en la población, bajo el modelo. " +
-  "NO recoge el error del método: en la evaluación del propio Zayatz (1991) esta cifra SOBREESTIMA, y tanto más cuanto menor es la fracción de muestreo.";
+const CUBRE_LOS_UNICOS = mensaje("riesgoEstimado.cubre.unicos");
 
 function cifraSinUnicos(): CifraEstimada {
   return {
@@ -503,8 +493,7 @@ function cifraSinUnicos(): CifraEstimada {
     valor: 0,
     intervalo: {
       tipo: "no-derivable",
-      porque:
-        "no hay ni un registro único en el archivo, así que no hay nada de lo que estimar la supervivencia. Ese cero es exacto, no estimado.",
+      porque: mensaje("riesgoEstimado.porque.sinUnicos"),
     },
   };
 }
@@ -532,15 +521,14 @@ function intervaloBinomial(
       confianza: NIVEL_DE_CONFIANZA,
       cubre:
         probabilidad >= 1
-          ? "en censo no hay incertidumbre de muestreo: el estimado coincide con el exacto."
+          ? mensaje("riesgoEstimado.cubre.censoUnicos")
           : CUBRE_LOS_UNICOS,
     };
   }
   if (varianza < 10) {
     return {
       tipo: "no-derivable",
-      porque:
-        "hay muy pocos registros únicos para que una banda signifique algo: la aproximación normal de la binomial pide al menos 10 de varianza y aquí no llega.",
+      porque: mensaje("riesgoEstimado.porque.pocosUnicos"),
     };
   }
 
@@ -567,11 +555,10 @@ export function unicosPoblacionalesEstimados(
       ok: false,
       naturaleza: "estimado",
       motivo: "muestra-demasiado-pequena",
-      explicacion:
-        `El archivo es el ${(fraccion * 100).toFixed(2)} % de la población declarada, y por debajo del ` +
-        `${FRACCION_MINIMA_ZAYATZ * 100} % este método deja de servir: en la evaluación del propio ` +
-        "Zayatz (1991), con una fracción del 1 % las estimaciones llegan a errar por un factor de 10. " +
-        "Velo prefiere no dar la cifra a darla débil.",
+      explicacion: mensaje("riesgoEstimado.rechazo.muestraPequena", {
+        pct: fraccion * 100,
+        minimo: FRACCION_MINIMA_ZAYATZ * 100,
+      }),
     };
   }
 
@@ -650,26 +637,33 @@ type Puerta =
 
 /** Lo que descalifica a los DOS estimadores, dicho una sola vez. */
 function revisarEntradas(entradas: EntradasDeEstimacion): Puerta {
-  const rechazo = (motivo: MotivoDeNoEstimar, explicacion: string): Puerta => ({
+  const rechazo = (
+    motivo: MotivoDeNoEstimar,
+    explicacion: MensajeDeMotor,
+  ): Puerta => ({
     pasa: false,
     rechazo: { ok: false, naturaleza: "estimado", motivo, explicacion },
   });
 
   if (entradas.filas <= 0 || entradas.clases.tamanos.length === 0) {
-    return rechazo("archivo-vacio", "El archivo no tiene filas que medir.");
+    return rechazo(
+      "archivo-vacio",
+      mensaje("riesgoEstimado.rechazo.archivoVacio"),
+    );
   }
   if (entradas.poblacion === null) {
     return rechazo(
       "sin-poblacion-declarada",
-      "Ningún estimador poblacional existe sin saber de qué población salió el archivo, y Velo solo ve el archivo. " +
-        "Declara cuántas personas tiene la población entera y aparecerá la estimación; el riesgo exacto no depende de este dato.",
+      mensaje("riesgoEstimado.rechazo.sinPoblacion"),
     );
   }
   if (entradas.poblacion < entradas.filas) {
     return rechazo(
       "poblacion-menor-que-el-archivo",
-      `La población declarada (${entradas.poblacion}) es menor que el archivo (${entradas.filas} filas). ` +
-        "O el archivo no sale de esa población, o la cifra está mal escrita.",
+      mensaje("riesgoEstimado.rechazo.poblacionMenor", {
+        poblacion: entradas.poblacion,
+        filas: entradas.filas,
+      }),
     );
   }
   return {

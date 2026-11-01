@@ -35,6 +35,19 @@ import {
   type EntradasDeEstimacion,
 } from "../../src/engine/riesgo-estimado";
 import { serializarCanonico } from "../../src/engine/serializacion";
+import { type Idioma } from "../../src/lib/idioma";
+import {
+  decirMensaje,
+  type MensajeDeMotor,
+} from "../../src/lib/idioma/mensajes";
+import { MOTOR_DIAGNOSTICO } from "../../src/lib/idioma/textos/motor-diagnostico";
+
+/**
+ * La prosa del estimador viaja como `Mensaje` (clave + datos crudos); estas aserciones la leen en
+ * el idioma en que se escribieron — español, salvo que se pida otro.
+ */
+const frase = (m: MensajeDeMotor, idioma: Idioma = "es"): string =>
+  decirMensaje(m, idioma);
 
 // ── Instrumentos independientes ───────────────────────────────────────────────────────────────
 
@@ -190,7 +203,7 @@ describe("riesgo individual (Benedetti–Franconi 1998)", () => {
 describe("riesgo individual sobre un archivo", () => {
   it("el máximo es el de la clase más pequeña y el promedio queda por debajo", () => {
     const estimacion = riesgoIndividualEstimado(conTamanos([1, 1, 4, 10], 320));
-    if (!estimacion.ok) throw new Error(estimacion.explicacion);
+    if (!estimacion.ok) throw new Error(frase(estimacion.explicacion));
 
     expect(estimacion.claseMasPequena).toBe(1);
     expect(estimacion.maximo.valor).toBeCloseTo(
@@ -216,7 +229,7 @@ describe("riesgo individual sobre un archivo", () => {
     const tamanos = [1, 1, 1, 2, 3, 5];
     const filas = 13;
     const estimacion = riesgoIndividualEstimado(conTamanos(tamanos, filas));
-    if (!estimacion.ok) throw new Error(estimacion.explicacion);
+    if (!estimacion.ok) throw new Error(frase(estimacion.explicacion));
 
     const exacto = riesgoProsecutor(
       { ids: new Uint32Array(filas), tamanos: Uint32Array.from(tamanos) },
@@ -230,16 +243,17 @@ describe("riesgo individual sobre un archivo", () => {
 
   it("el intervalo del máximo contiene la cifra, y en censo es un punto", () => {
     const conMuestra = riesgoIndividualEstimado(conTamanos([1, 2, 3], 60));
-    if (!conMuestra.ok) throw new Error(conMuestra.explicacion);
+    if (!conMuestra.ok) throw new Error(frase(conMuestra.explicacion));
     const intervalo = conMuestra.maximo.intervalo;
     if (intervalo.tipo !== "derivado") throw new Error("debería ser derivable");
     expect(intervalo.desde).toBeLessThanOrEqual(conMuestra.maximo.valor);
     expect(intervalo.hasta).toBeGreaterThanOrEqual(conMuestra.maximo.valor);
     expect(intervalo.confianza).toBe(0.95);
-    expect(intervalo.cubre).toMatch(/NO recoge/);
+    expect(frase(intervalo.cubre)).toMatch(/NO recoge/);
+    expect(frase(intervalo.cubre, "en")).toMatch(/does NOT capture/);
 
     const censo = riesgoIndividualEstimado(conTamanos([1, 2, 3], 6));
-    if (!censo.ok) throw new Error(censo.explicacion);
+    if (!censo.ok) throw new Error(frase(censo.explicacion));
     const punto = censo.maximo.intervalo;
     if (punto.tipo !== "derivado") throw new Error("debería ser derivable");
     expect(punto.desde).toBe(punto.hasta);
@@ -252,10 +266,12 @@ describe("riesgo individual sobre un archivo", () => {
     // error de un modelo no cabe en una banda de confianza. Inventarla sería el defecto que este
     // módulo persigue.
     const estimacion = riesgoIndividualEstimado(conTamanos([1, 2, 3], 60));
-    if (!estimacion.ok) throw new Error(estimacion.explicacion);
+    if (!estimacion.ok) throw new Error(frase(estimacion.explicacion));
     expect(estimacion.promedio.intervalo.tipo).toBe("no-derivable");
     if (estimacion.promedio.intervalo.tipo !== "no-derivable") return;
-    expect(estimacion.promedio.intervalo.porque.length).toBeGreaterThan(40);
+    expect(frase(estimacion.promedio.intervalo.porque).length).toBeGreaterThan(
+      40,
+    );
   });
 });
 
@@ -275,7 +291,7 @@ describe("el intervalo del riesgo, en sus tres regímenes", () => {
   it("con clases pequeñas enumera la posterior y acierta los cuantiles", () => {
     // La clase más chica es 3, así que no entra por la forma cerrada de f = 1: se enumera.
     const e = riesgoIndividualEstimado(conTamanos([3, 4, 10], 85));
-    if (!e.ok) throw new Error(e.explicacion);
+    if (!e.ok) throw new Error(frase(e.explicacion));
     const intervalo = e.maximo.intervalo;
     if (intervalo.tipo !== "derivado") throw new Error("debería ser derivable");
 
@@ -297,7 +313,7 @@ describe("el intervalo del riesgo, en sus tres regímenes", () => {
     // f = 60 y una fracción minúscula: la cola no cabe en la enumeración, pero la asimetría de la
     // binomial negativa cae con √f y a los 60 la normal es buena.
     const e = riesgoIndividualEstimado(conTamanos([60, 60], 12_000_000));
-    if (!e.ok) throw new Error(e.explicacion);
+    if (!e.ok) throw new Error(frase(e.explicacion));
     const intervalo = e.maximo.intervalo;
     if (intervalo.tipo !== "derivado") throw new Error("debería ser derivable");
 
@@ -318,10 +334,11 @@ describe("el intervalo del riesgo, en sus tres regímenes", () => {
     // Ni enumerable ni acampanada. Aquí la respuesta honesta es que no hay intervalo: cualquiera
     // que Velo pintara sería más preciso que el conocimiento que lo sostiene.
     const e = riesgoIndividualEstimado(conTamanos([3, 4], 7_000_000));
-    if (!e.ok) throw new Error(e.explicacion);
+    if (!e.ok) throw new Error(frase(e.explicacion));
     expect(e.maximo.intervalo.tipo).toBe("no-derivable");
     if (e.maximo.intervalo.tipo !== "no-derivable") return;
-    expect(e.maximo.intervalo.porque).toMatch(/cola/);
+    expect(frase(e.maximo.intervalo.porque)).toMatch(/cola/);
+    expect(frase(e.maximo.intervalo.porque, "en")).toMatch(/tail/);
     // Pero la CIFRA sí existe: no tener banda no es no tener estimación.
     expect(e.maximo.valor).toBeGreaterThan(0);
   });
@@ -419,7 +436,7 @@ describe("únicos poblacionales (Zayatz 1991, §III)", () => {
     const tamanos = [1, 1, 1, 2, 3, 5];
     const filas = 13;
     const e = unicosPoblacionalesEstimados(conTamanos(tamanos, filas));
-    if (!e.ok) throw new Error(e.explicacion);
+    if (!e.ok) throw new Error(frase(e.explicacion));
 
     const exacto = riesgoProsecutor(
       { ids: new Uint32Array(filas), tamanos: Uint32Array.from(tamanos) },
@@ -459,7 +476,7 @@ describe("únicos poblacionales (Zayatz 1991, §III)", () => {
     // no un Wilson, que sirve para el problema contrario.
     const muchosUnicos = [...Array(300).fill(1), ...Array(50).fill(2)];
     const e = unicosPoblacionalesEstimados(conTamanos(muchosUnicos, 800));
-    if (!e.ok) throw new Error(e.explicacion);
+    if (!e.ok) throw new Error(frase(e.explicacion));
 
     const intervalo = e.registros.intervalo;
     if (intervalo.tipo !== "derivado") throw new Error("debería ser derivable");
@@ -477,22 +494,26 @@ describe("únicos poblacionales (Zayatz 1991, §III)", () => {
       centro + 1.959963984540054 * desviacion,
       10,
     );
-    expect(intervalo.cubre).toMatch(/SOBREESTIMA/);
+    expect(frase(intervalo.cubre)).toMatch(/SOBREESTIMA/);
+    expect(frase(intervalo.cubre, "en")).toMatch(/OVERESTIMATES/);
 
     // Con pocos únicos no hay banda: la aproximación normal pide 10 de varianza y no llega.
     const pocos = unicosPoblacionalesEstimados(conTamanos([1, 1, 2, 6], 20));
-    if (!pocos.ok) throw new Error(pocos.explicacion);
+    if (!pocos.ok) throw new Error(frase(pocos.explicacion));
     expect(pocos.registros.intervalo.tipo).toBe("no-derivable");
   });
 
   it("un archivo sin únicos devuelve un cero EXACTO, no estimado", () => {
     const e = unicosPoblacionalesEstimados(conTamanos([2, 3, 5], 20));
-    if (!e.ok) throw new Error(e.explicacion);
+    if (!e.ok) throw new Error(frase(e.explicacion));
     expect(e.unicosEnLaMuestra).toBe(0);
     expect(e.proporcion.valor).toBe(0);
     expect(e.proporcion.intervalo.tipo).toBe("no-derivable");
     if (e.proporcion.intervalo.tipo !== "no-derivable") return;
-    expect(e.proporcion.intervalo.porque).toMatch(/exacto, no estimado/);
+    expect(frase(e.proporcion.intervalo.porque)).toMatch(/exacto, no estimado/);
+    expect(frase(e.proporcion.intervalo.porque, "en")).toMatch(
+      /exact, not estimated/,
+    );
   });
 });
 
@@ -507,7 +528,12 @@ describe("cuándo Velo NO da la cifra", () => {
       expect(e.ok).toBe(false);
       if (e.ok) return;
       expect(e.motivo).toBe("sin-poblacion-declarada");
-      expect(e.explicacion).toMatch(/el riesgo exacto no depende de este dato/);
+      expect(frase(e.explicacion)).toMatch(
+        /el riesgo exacto no depende de este dato/,
+      );
+      expect(frase(e.explicacion, "en")).toMatch(
+        /exact risk does not depend on this figure/,
+      );
     }
   });
 
@@ -522,7 +548,15 @@ describe("cuándo Velo NO da la cifra", () => {
     expect(zayatz.ok).toBe(false);
     if (zayatz.ok) return;
     expect(zayatz.motivo).toBe("muestra-demasiado-pequena");
-    expect(zayatz.explicacion).toMatch(/Zayatz \(1991\)/);
+    expect(frase(zayatz.explicacion)).toMatch(/Zayatz \(1991\)/);
+    expect(frase(zayatz.explicacion, "en")).toMatch(/Zayatz's own evaluation/);
+    // Los números viajan CRUDOS en `datos`: el motor no formatea, la pantalla lo hace por idioma.
+    expect(zayatz.explicacion.datos).toEqual({
+      pct: (filas / poblacion) * 100,
+      minimo: FRACCION_MINIMA_ZAYATZ * 100,
+    });
+    expect(frase(zayatz.explicacion)).toMatch(/5,00 %.*10 %/);
+    expect(frase(zayatz.explicacion, "en")).toMatch(/5\.00%.*10%/);
 
     // Y Benedetti–Franconi SÍ contesta ahí: los dos modelos tienen dominios de validez distintos,
     // y esa asimetría es información, no un fallo que haya que uniformar.
@@ -556,7 +590,7 @@ describe("cuándo Velo NO da la cifra", () => {
 describe("el estimado no se compone con el exacto", () => {
   it("sumar una cifra estimada a una exacta no compila", () => {
     const estimacion = riesgoIndividualEstimado(conTamanos([1, 2, 3], 60));
-    if (!estimacion.ok) throw new Error(estimacion.explicacion);
+    if (!estimacion.ok) throw new Error(frase(estimacion.explicacion));
     const exacto = riesgoProsecutor(clasesDeEquivalencia([], 6), [], 6);
 
     // La regla vive en el TIPO, no en la revisión de código: `maximo` no es un `number`, es una
@@ -576,11 +610,13 @@ describe("el estimado no se compone con el exacto", () => {
       conTamanos([1, 1, 2, 6], 100),
     );
     for (const e of [individual, poblacional]) {
-      if (!e.ok) throw new Error(e.explicacion);
-      expect(e.modelo.length).toBeGreaterThan(20);
-      expect(e.supuesto.length).toBeGreaterThan(40);
-      // La fuente citada en el código, como los validadores del S1 citan a la DIAN.
-      expect(e.fuente).toMatch(/199[18]/);
+      if (!e.ok) throw new Error(frase(e.explicacion));
+      for (const idioma of ["es", "en"] as const) {
+        expect(frase(e.modelo, idioma).length).toBeGreaterThan(20);
+        expect(frase(e.supuesto, idioma).length).toBeGreaterThan(40);
+        // La fuente citada en el código, como los validadores del S1 citan a la DIAN.
+        expect(frase(e.fuente, idioma)).toMatch(/199[18]/);
+      }
     }
   });
 
@@ -596,6 +632,38 @@ describe("el estimado no se compone con el exacto", () => {
     ]) {
       expect(texto).not.toMatch(prohibida);
     }
+  });
+
+  it("la prosa del estimador, en los dos idiomas, tampoco promete de más", () => {
+    // El resultado del motor ya no lleva frases sino claves, así que el recorrido de arriba solo ve
+    // las claves. La prosa vive en el catálogo: se recorre ahí, en español y en inglés.
+    const claves = Object.keys(MOTOR_DIAGNOSTICO).filter((c) =>
+      c.startsWith("riesgoEstimado."),
+    );
+    expect(claves.length).toBeGreaterThan(15);
+    const prohibidas = [
+      /anonimato garantizado/i,
+      /100\s*%\s*seguro/i,
+      /imposible de reidentificar/i,
+      /garantiza/i,
+      /guarantee/i,
+      /100\s*%\s*(safe|secure)/i,
+      /impossible to re-?identify/i,
+      /zero risk/i,
+      /(completely|fully)\s+anonymous/i,
+    ];
+    for (const clave of claves) {
+      const texto = MOTOR_DIAGNOSTICO[clave as keyof typeof MOTOR_DIAGNOSTICO];
+      for (const idioma of ["es", "en"] as const)
+        for (const prohibida of prohibidas)
+          expect(texto[idioma], `${clave} (${idioma})`).not.toMatch(prohibida);
+    }
+  });
+
+  it("el motor no formatea: los mismos datos dan el mismo mensaje, corrida tras corrida", () => {
+    const una = estimarRiesgo(conTamanos([1, 1, 2, 6], 100));
+    const otra = estimarRiesgo(conTamanos([1, 1, 2, 6], 100));
+    expect(serializarCanonico(otra)).toBe(serializarCanonico(una));
   });
 
   it("dos corridas dan el mismo resultado, byte a byte", () => {

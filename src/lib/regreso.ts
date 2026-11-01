@@ -16,6 +16,8 @@
 
 import { useSyncExternalStore } from "react";
 
+import { idiomaActual } from "@/lib/idioma/estado";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { asaDeArchivo, type AsaDeArchivo } from "@/lib/sesion";
 import type {
   EtapaDelWorker,
@@ -30,7 +32,7 @@ export type EstadoDeLaBoveda =
   | { fase: "sin-boveda" }
   | { fase: "abriendo" }
   | { fase: "abierta"; resumen: ResumenDeBoveda }
-  | { fase: "rechazada"; motivo: MotivoDeBoveda; detalle: string };
+  | { fase: "rechazada"; motivo: MotivoDeBoveda; detalle: MensajeDeMotor };
 
 export type EstadoDelDevuelto =
   | { fase: "sin-archivo" }
@@ -186,7 +188,14 @@ export function prepararRestaurado(): void {
 export function prepararInformeDelRegreso(fecha: string): void {
   if (!worker) return;
   publicar({ etapa: "escribiendo" });
-  worker.postMessage({ tipo: "construir-informe-del-regreso", fecha });
+  // El informe se escribe en el idioma de la pantalla donde se pidió. Se lee AQUÍ y no en el
+  // componente porque esto no es React: el idioma es un dato más que viaja al worker, igual que la
+  // fecha, y el documento sigue siendo una función pura de lo que recibe.
+  worker.postMessage({
+    tipo: "construir-informe-del-regreso",
+    fecha,
+    idioma: idiomaActual(),
+  });
 }
 
 function recibir(mensaje: MensajeDelWorker): void {

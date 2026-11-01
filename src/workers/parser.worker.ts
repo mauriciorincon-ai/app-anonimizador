@@ -61,6 +61,7 @@ import {
   sellarBoveda,
   EXTENSION_DE_BOVEDA,
 } from "@/lib/boveda-archivo";
+import { mensaje as mensajeDeMotor, type Idioma } from "@/lib/idioma";
 import { derivarLlave } from "@/lib/llave";
 import { Sha256 } from "@/lib/sha256";
 
@@ -516,7 +517,7 @@ async function abrir(archivo: File, frase: string): Promise<void> {
     enviar({
       tipo: "boveda-rechazada",
       motivo: "lectura-fallida",
-      detalle: "No se pudo leer el archivo.",
+      detalle: mensajeDeMotor("boveda.lecturaFallida"),
     });
     return;
   }
@@ -596,7 +597,7 @@ async function abrirLaBitacora(archivo: File, frase: string): Promise<void> {
     enviar({
       tipo: "bitacora-rechazada",
       motivo: "lectura-fallida",
-      detalle: "No se pudo leer el archivo.",
+      detalle: mensajeDeMotor("bitacora.lecturaFallida"),
     });
     return;
   }
@@ -767,7 +768,7 @@ function construirRestaurado(): void {
   });
 }
 
-function construirInformeDelRegreso(fecha: string): void {
+function construirInformeDelRegreso(fecha: string, idioma: Idioma): void {
   if (!restaurada || !bovedaActual) {
     enviar({ tipo: "error", motivo: "sin-devuelto" });
     return;
@@ -782,12 +783,13 @@ function construirInformeDelRegreso(fecha: string): void {
     huellaDeBoveda: huellaDeBoveda(bovedaActual),
     hashDePolitica: bovedaActual.hashDePolitica,
     fecha,
+    idioma,
   });
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   enviar({
     tipo: "archivo",
     blob,
-    nombre: nombreDelInforme(datosDelDevuelto.nombre),
+    nombre: nombreDelInforme(datosDelDevuelto.nombre, idioma),
     bytes: blob.size,
     proposito: "informe-del-regreso",
   });
@@ -808,7 +810,7 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
   if (mensaje?.tipo === "restaurar") restaurarDevuelto();
   if (mensaje?.tipo === "construir-restaurado") construirRestaurado();
   if (mensaje?.tipo === "construir-informe-del-regreso")
-    construirInformeDelRegreso(mensaje.fecha);
+    construirInformeDelRegreso(mensaje.fecha, mensaje.idioma);
   if (mensaje?.tipo === "estimar-riesgo") estimar(mensaje.poblacion);
   if (mensaje?.tipo === "abrir-bitacora")
     void abrirLaBitacora(mensaje.archivo, mensaje.frase);

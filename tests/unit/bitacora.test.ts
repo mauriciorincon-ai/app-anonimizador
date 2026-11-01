@@ -28,6 +28,7 @@ import {
   sellarBitacora,
 } from "@/lib/bitacora-archivo";
 import { sellarBoveda } from "@/lib/boveda-archivo";
+import { decirMensaje } from "@/lib/idioma/mensajes";
 import { construirBoveda } from "@/engine/boveda";
 
 const FRASE = "una frase larga para la bitacora";
@@ -129,7 +130,13 @@ describe("el viaje completo: sellar, abrir, leer", () => {
     if (abierta.ok) return;
     expect(abierta.motivo).toBe("frase-incorrecta");
     // El mensaje nombra la otra causa posible en vez de afirmar la primera.
-    expect(abierta.detalle).toMatch(/dañó o lo modificaron/);
+    expect(abierta.detalle).toEqual({ clave: "cifrado.fraseNoAbre.bitacora" });
+    expect(decirMensaje(abierta.detalle, "es")).toMatch(
+      /dañó o lo modificaron/,
+    );
+    expect(decirMensaje(abierta.detalle, "en")).toMatch(
+      /damaged or has been modified/,
+    );
   });
 
   it("dos sellados de la MISMA bitácora dan bytes distintos — y eso es correcto", async () => {
@@ -191,7 +198,12 @@ describe("una bóveda no es una bitácora, y se dice sin descifrar nada", () => 
     expect(abierta.ok).toBe(false);
     if (abierta.ok) return;
     expect(abierta.motivo).toBe("no-es-una-bitacora");
-    expect(abierta.detalle).toContain("una bitácora de Velo");
+    // Dice cuál se esperaba y cuál llegó: no es «frase incorrecta».
+    expect(abierta.detalle).toEqual({ clave: "cifrado.noEs.bitacora" });
+    expect(decirMensaje(abierta.detalle, "es")).toContain(
+      "una bitácora de Velo",
+    );
+    expect(decirMensaje(abierta.detalle, "en")).toContain("Velo log");
   });
 
   it("un archivo cualquiera se rechaza igual, y sin gastar tiempo en derivar", async () => {
@@ -218,7 +230,10 @@ describe("leer una bitácora que no cuadra", () => {
     expect(leida.ok).toBe(false);
     if (leida.ok) return;
     expect(leida.motivo).toBe("version-distinta");
-    expect(leida.detalle).toContain("99");
+    expect(leida.detalle).toEqual({
+      clave: "bitacora.versionDistinta",
+      datos: { version: 99, entiende: VERSION_DE_BITACORA },
+    });
   });
 
   it("una entrada a la que le falta un campo invalida el archivo entero", () => {
@@ -284,7 +299,10 @@ describe("un archivo que se descifra pero no es una bitácora", () => {
     // El sobre es de la v1 y se abrió bien; lo que es de otra versión es el CONTENIDO, y el motivo
     // tiene que sobrevivir a la traducción entre las dos capas.
     expect(abierta.motivo).toBe("version-distinta");
-    expect(abierta.detalle).toContain("77");
+    expect(abierta.detalle).toEqual({
+      clave: "bitacora.versionDistinta",
+      datos: { version: 77, entiende: VERSION_DE_BITACORA },
+    });
   });
 });
 

@@ -17,6 +17,9 @@
 // número exige decidir qué columna importa —y eso lo sabe el usuario, no Velo—. Se entregan las
 // cifras y las decide quien conoce para qué era el archivo.
 
+import { mensaje } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
+
 import { type ColumnaColumnar, type TablaColumnar } from "./columnar";
 
 /**
@@ -54,7 +57,8 @@ export interface CorrelacionComparada {
 
 export interface ColumnaFueraDelCruce {
   readonly nombre: string;
-  readonly motivo: string;
+  /** El porqué, como mensaje con datos crudos: el motor no escribe frases ni formatea cifras. */
+  readonly motivo: MensajeDeMotor;
 }
 
 export interface Utilidad {
@@ -209,7 +213,7 @@ export function medirUtilidad(
     if (nueva === undefined) {
       fueraDelCruce.push({
         nombre: original.nombre,
-        motivo: "suprimida: no queda nada con qué cruzarla",
+        motivo: mensaje("utilidad.fuera.suprimida"),
       });
       continue;
     }
@@ -220,7 +224,9 @@ export function medirUtilidad(
     if (cardinalidad > CARDINALIDAD_MAXIMA_DE_CORRELACION) {
       fueraDelCruce.push({
         nombre: original.nombre,
-        motivo: `más de ${CARDINALIDAD_MAXIMA_DE_CORRELACION} valores distintos: la tabla de contingencia quedaría casi vacía y la cifra saldría inflada`,
+        motivo: mensaje("utilidad.fuera.cardinalidad", {
+          tope: CARDINALIDAD_MAXIMA_DE_CORRELACION,
+        }),
       });
       continue;
     }
@@ -238,7 +244,9 @@ export function medirUtilidad(
   for (const sobrante of ordenadas.slice(COLUMNAS_MAXIMAS_DE_CORRELACION)) {
     fueraDelCruce.push({
       nombre: sobrante.columna.nombre,
-      motivo: `fuera de las ${COLUMNAS_MAXIMAS_DE_CORRELACION} columnas con más valores distintos`,
+      motivo: mensaje("utilidad.fuera.sobrante", {
+        tope: COLUMNAS_MAXIMAS_DE_CORRELACION,
+      }),
     });
   }
 
