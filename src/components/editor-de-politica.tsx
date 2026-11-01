@@ -24,6 +24,7 @@ import { useId, useRef, useState } from "react";
 import { Boton } from "@/components/boton";
 import { IconoExportar, IconoImportar } from "@/components/iconos";
 import { Panel } from "@/components/panel";
+import { Rico, useT } from "@/components/texto";
 import type { HallazgoDeColumna } from "@/engine/clasificador";
 import {
   esReversible,
@@ -40,7 +41,11 @@ import {
   resumenDeCobertura,
   type PoliticaDeFabrica,
 } from "@/engine/politicas-de-fabrica";
-import { numero } from "@/lib/formato";
+import type { Texto } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
+import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
+
+const E = TRANSFORMAR.editor;
 
 /**
  * Las opciones del desplegable, en el orden en que se ofrecen: de conservar a suprimir.
@@ -52,66 +57,65 @@ import { numero } from "@/lib/formato";
  * usuario no podía saber cuál había elegido sin volver a abrir el menú. Ningún test lo ve: el DOM
  * tiene el texto completo, y axe no mide anchos.
  */
-const OPCIONES: readonly { valor: string; texto: string; tecnica: Tecnica }[] =
-  [
-    {
-      valor: "conservar",
-      texto: "Dejar como está",
-      tecnica: { tipo: "conservar" },
-    },
-    {
-      valor: "enmascarar",
-      texto: "Enmascarar (103***89)",
-      tecnica: { tipo: "enmascarar" },
-    },
-    {
-      // Ya no dice «irreversible»: desde el S3 la vuelta es una casilla aparte, y el nombre de la
-      // técnica no puede prometer lo contrario de lo que la fila de al lado permite (§4).
-      valor: "seudonimizar",
-      texto: "Seudónimo (hex)",
-      tecnica: { tipo: "seudonimizar", longitud: 16 },
-    },
-    {
-      valor: "seudonimizar-cedula",
-      texto: "Seudónimo de cédula",
-      tecnica: { tipo: "seudonimizar-con-formato", formato: "cedula" },
-    },
-    {
-      valor: "seudonimizar-nit",
-      texto: "Seudónimo de NIT",
-      tecnica: { tipo: "seudonimizar-con-formato", formato: "nit" },
-    },
-    {
-      valor: "generalizar-anio",
-      texto: "Fecha: dejar solo el año",
-      tecnica: { tipo: "generalizar-fecha", precision: "anio" },
-    },
-    {
-      valor: "generalizar-mes",
-      texto: "Fecha: dejar año y mes",
-      tecnica: { tipo: "generalizar-fecha", precision: "mes" },
-    },
-    {
-      valor: "generalizar-rango-10",
-      texto: "Número: agrupar de 10 en 10",
-      tecnica: { tipo: "generalizar-rango", amplitud: 10 },
-    },
-    {
-      valor: "generalizar-prefijo-2",
-      texto: "Dejar los 2 primeros caracteres",
-      tecnica: { tipo: "generalizar-prefijo", caracteres: 2 },
-    },
-    {
-      valor: "generalizar-automatico",
-      texto: "Generalizar hasta alcanzar el k",
-      tecnica: { tipo: "generalizar-automatico" },
-    },
-    {
-      valor: "suprimir",
-      texto: "Quitar la columna",
-      tecnica: { tipo: "suprimir" },
-    },
-  ];
+const OPCIONES: readonly { valor: string; texto: Texto; tecnica: Tecnica }[] = [
+  {
+    valor: "conservar",
+    texto: E.opcion.conservar,
+    tecnica: { tipo: "conservar" },
+  },
+  {
+    valor: "enmascarar",
+    texto: E.opcion.enmascarar,
+    tecnica: { tipo: "enmascarar" },
+  },
+  {
+    // Ya no dice «irreversible»: desde el S3 la vuelta es una casilla aparte, y el nombre de la
+    // técnica no puede prometer lo contrario de lo que la fila de al lado permite (§4).
+    valor: "seudonimizar",
+    texto: E.opcion.seudonimizar,
+    tecnica: { tipo: "seudonimizar", longitud: 16 },
+  },
+  {
+    valor: "seudonimizar-cedula",
+    texto: E.opcion.seudonimizarCedula,
+    tecnica: { tipo: "seudonimizar-con-formato", formato: "cedula" },
+  },
+  {
+    valor: "seudonimizar-nit",
+    texto: E.opcion.seudonimizarNit,
+    tecnica: { tipo: "seudonimizar-con-formato", formato: "nit" },
+  },
+  {
+    valor: "generalizar-anio",
+    texto: E.opcion.generalizarAnio,
+    tecnica: { tipo: "generalizar-fecha", precision: "anio" },
+  },
+  {
+    valor: "generalizar-mes",
+    texto: E.opcion.generalizarMes,
+    tecnica: { tipo: "generalizar-fecha", precision: "mes" },
+  },
+  {
+    valor: "generalizar-rango-10",
+    texto: E.opcion.generalizarRango,
+    tecnica: { tipo: "generalizar-rango", amplitud: 10 },
+  },
+  {
+    valor: "generalizar-prefijo-2",
+    texto: E.opcion.generalizarPrefijo,
+    tecnica: { tipo: "generalizar-prefijo", caracteres: 2 },
+  },
+  {
+    valor: "generalizar-automatico",
+    texto: E.opcion.generalizarAutomatico,
+    tecnica: { tipo: "generalizar-automatico" },
+  },
+  {
+    valor: "suprimir",
+    texto: E.opcion.suprimir,
+    tecnica: { tipo: "suprimir" },
+  },
+];
 
 /** El k que se fija solo al pedir generalización automática. 5 es el mínimo de las dos de fábrica. */
 const K_POR_DEFECTO = 5;
@@ -134,12 +138,7 @@ function valorDe(tecnica: Tecnica): string {
   }
 }
 
-const ETIQUETA_DE_CATEGORIA: Record<string, string> = {
-  "identificador-directo": "Identificador directo",
-  "cuasi-identificador": "Cuasi-identificador",
-  "dato-sensible": "Dato sensible",
-  "no-personal": "No personal",
-};
+const ETIQUETA_DE_CATEGORIA: Record<string, Texto> = E.categoria;
 
 export function EditorDePolitica({
   columnas,
@@ -151,8 +150,12 @@ export function EditorDePolitica({
   onCambio: (politica: Politica) => void;
 }) {
   const idDeK = useId();
+  const { t, m } = useT();
   const entrada = useRef<HTMLInputElement>(null);
-  const [errorAlImportar, setErrorAlImportar] = useState<string | null>(null);
+  // Se guarda el MENSAJE y no la frase: si el idioma cambia con el error a la vista, se repinta.
+  const [errorAlImportar, setErrorAlImportar] = useState<MensajeDeMotor | null>(
+    null,
+  );
 
   function cambiarColumna(nombre: string, valor: string): void {
     const opcion = OPCIONES.find((o) => o.valor === valor);
@@ -268,16 +271,9 @@ export function EditorDePolitica({
 
   return (
     <Panel
-      etiqueta="Paso 1 · la política"
-      titulo="Qué se le hace a cada columna"
-      nota={
-        <>
-          La política no se guarda en ningún lado. Si la quieres para el mes que
-          viene, <strong className="font-medium">expórtala como archivo</strong>{" "}
-          — lleva los nombres de tus columnas, que son datos tuyos, y por eso no
-          entra a la memoria de este navegador.
-        </>
-      }
+      etiqueta={t(E.panel.etiqueta)}
+      titulo={t(E.panel.titulo)}
+      nota={<Rico texto={E.panel.nota} />}
     >
       <div className="flex flex-wrap items-center gap-2">
         {/* Solo el nombre. La cobertura («9 de 18») baja al aviso de origen, donde cabe decir de
@@ -296,7 +292,7 @@ export function EditorDePolitica({
         ))}
         <Boton type="button" variante="discreto" onClick={exportar}>
           <IconoExportar />
-          Exportar
+          {t(E.exportar)}
         </Boton>
         <Boton
           type="button"
@@ -304,14 +300,14 @@ export function EditorDePolitica({
           onClick={() => entrada.current?.click()}
         >
           <IconoImportar />
-          Importar
+          {t(E.importar)}
         </Boton>
         <input
           ref={entrada}
           type="file"
           accept="application/json,.json"
           className="sr-only"
-          aria-label="Importar una política desde un archivo"
+          aria-label={t(E.importarArchivo)}
           onChange={(evento) => {
             const archivo = evento.target.files?.[0];
             if (archivo) void importar(archivo);
@@ -322,7 +318,10 @@ export function EditorDePolitica({
 
       {errorAlImportar ? (
         <p role="alert" className="text-alerta mt-3 text-[0.875rem]">
-          No se pudo importar: {errorAlImportar}
+          <Rico
+            texto={E.errorAlImportar}
+            datos={{ detalle: m(errorAlImportar) }}
+          />
         </p>
       ) : null}
 
@@ -336,16 +335,14 @@ export function EditorDePolitica({
           pasada de capturas, no en un test: ningún axe ni ningún e2e ve un control recortado. */}
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[20rem] border-collapse text-[0.875rem]">
-          <caption className="sr-only">
-            Una fila por columna del archivo, con la técnica que se le aplica
-          </caption>
+          <caption className="sr-only">{t(E.tabla.descripcion)}</caption>
           <thead>
             <tr className="border-borde border-b">
               <th scope="col" className="etiqueta py-2 pr-3 text-left">
-                Columna
+                {t(E.tabla.columna)}
               </th>
               <th scope="col" className="etiqueta py-2 text-left">
-                Qué se le hace
+                {t(E.tabla.queSeLeHace)}
               </th>
             </tr>
           </thead>
@@ -358,22 +355,25 @@ export function EditorDePolitica({
                 >
                   {columna.nombre}
                   <span className="text-tinta-tenue block font-sans text-[0.75rem]">
-                    {ETIQUETA_DE_CATEGORIA[columna.categoria] ??
-                      columna.categoria}
+                    {ETIQUETA_DE_CATEGORIA[columna.categoria]
+                      ? t(ETIQUETA_DE_CATEGORIA[columna.categoria])
+                      : columna.categoria}
                   </span>
                 </th>
                 <td className="py-2">
                   <select
                     className="rounded-1 border-borde-control bg-superficie text-tinta w-full max-w-[18rem] border px-2 py-1.5 text-[0.875rem]"
                     value={valorDe(tecnicaDe(politica, columna.nombre))}
-                    aria-label={`Técnica para la columna ${columna.nombre}`}
+                    aria-label={t(E.tabla.tecnicaDeLaColumna, {
+                      columna: columna.nombre,
+                    })}
                     onChange={(evento) =>
                       cambiarColumna(columna.nombre, evento.target.value)
                     }
                   >
                     {OPCIONES.map((opcion) => (
                       <option key={opcion.valor} value={opcion.valor}>
-                        {opcion.texto}
+                        {t(opcion.texto)}
                       </option>
                     ))}
                   </select>
@@ -392,25 +392,18 @@ export function EditorDePolitica({
       {conVuelta ? (
         <div className="border-borde mt-4 border-t pt-4">
           <p className="text-tinta text-[0.875rem] leading-relaxed">
-            Con al menos una columna reversible, al transformar vas a poder{" "}
-            <strong className="font-medium">guardar una bóveda</strong>: un
-            archivo cifrado con la correspondencia, para recuperar los
-            originales cuando te devuelvan el trabajo.
+            <Rico texto={E.vuelta.aviso} />
           </p>
           {sinVuelta.length > 0 ? (
             <p className="text-tinta-tenue mt-2 text-[0.8125rem] leading-relaxed">
-              Lo que <strong className="font-medium">no</strong> va a volver,
-              tengas o no la bóveda:{" "}
+              <Rico texto={E.vuelta.sinVuelta.antes} />{" "}
               {sinVuelta.map((nombre, i) => (
                 <span key={nombre}>
                   {i > 0 ? " · " : ""}
                   <code className="font-mono">{nombre}</code>
                 </span>
               ))}
-              . Enmascarar, generalizar y quitar una columna{" "}
-              <strong className="font-medium">destruyen</strong> información: no
-              hay tabla que lo deshaga porque los datos que faltan ya no existen
-              en ninguna parte.
+              <Rico texto={E.vuelta.sinVuelta.despues} />
             </p>
           ) : null}
         </div>
@@ -419,7 +412,7 @@ export function EditorDePolitica({
       {conMondrian ? (
         <div className="border-borde mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
           <label htmlFor={idDeK} className="text-tinta text-[0.875rem]">
-            Grupo mínimo (k) para las columnas que se generalizan solas
+            {t(E.k.etiqueta)}
           </label>
           <input
             id={idDeK}
@@ -443,18 +436,11 @@ export function EditorDePolitica({
             // k. Aun así se dice aquí y no solo en el balance — que llega después de transformar,
             // cuando el archivo ya salió intacto.
             <p className="text-alerta w-full text-[0.8125rem] leading-relaxed">
-              Esta política pide generalización automática y{" "}
-              <strong className="font-medium">no fija un k</strong>. Sin él no
-              hay hasta dónde generalizar: esas columnas saldrían intactas.
-              Escribe un número arriba.
+              <Rico texto={E.k.sinK} />
             </p>
           ) : (
             <p className="text-tinta-tenue w-full text-[0.8125rem] leading-relaxed">
-              Con k = {numero(politica.kObjetivo)}, Velo generaliza esas
-              columnas hasta que nadie quede en un grupo de menos de{" "}
-              {numero(politica.kObjetivo)} registros. Cuanto más alto el k,
-              menos preciso queda el dato. Si no se puede alcanzar sin borrar
-              filas, Velo lo dice y no borra nada.
+              <Rico texto={E.k.conK} datos={{ k: politica.kObjetivo }} />
             </p>
           )}
         </div>
@@ -479,6 +465,7 @@ function CasillaDeVuelta({
   tecnica: Tecnica;
   onCambio: (columna: string, reversible: boolean) => void;
 }) {
+  const { t } = useT();
   const admiteVuelta =
     tecnica.tipo === "seudonimizar" ||
     tecnica.tipo === "seudonimizar-con-formato";
@@ -492,11 +479,8 @@ function CasillaDeVuelta({
         onChange={(evento) => onCambio(columna, evento.target.checked)}
       />
       <span>
-        Poder deshacerlo con una bóveda
-        <span className="text-tinta-tenue block">
-          Guarda la correspondencia en un archivo cifrado. Sin la bóveda, el
-          seudónimo sigue sin vuelta.
-        </span>
+        {t(E.casilla.titulo)}
+        <span className="text-tinta-tenue block">{t(E.casilla.detalle)}</span>
       </span>
     </label>
   );
@@ -510,6 +494,7 @@ function origenTrasEditar(origen: Politica["origen"]): Politica["origen"] {
 }
 
 function AvisoDeOrigen({ origen }: { origen: Politica["origen"] }) {
+  const { m } = useT();
   const deFabrica = POLITICAS_DE_FABRICA.find((f) => origen.startsWith(f.id));
   if (!deFabrica) return null;
   const editada = origen.endsWith("-editada");
@@ -525,35 +510,29 @@ function AvisoDeOrigen({ origen }: { origen: Politica["origen"] }) {
     >
       <p>
         {editada ? (
-          <>
-            <strong className="font-medium">
-              Ya no es {deFabrica.nombre}.
-            </strong>{" "}
-            Partiste de esa plantilla y la cambiaste, así que el reporte va a
-            decir que la política es tuya. Es lo correcto: la guía oficial no
-            respalda una decisión que no tomó.
-          </>
+          <Rico texto={E.origen.editada} datos={{ nombre: deFabrica.nombre }} />
         ) : (
           <>
             <strong className="font-medium">{deFabrica.nombre}</strong> ·{" "}
-            {deFabrica.fuente}
+            {m(deFabrica.fuente)}
           </>
         )}
       </p>
-      <p className="text-tinta-tenue mt-2">{deFabrica.advertencia}</p>
+      <p className="text-tinta-tenue mt-2">{m(deFabrica.advertencia)}</p>
       {/* «De los N identificadores que enumera la fuente» era FALSO para Habeas Data: la Ley 1581
           no enumera identificadores — esos puntos son el resumen que hace Velo. HIPAA sí enumera
           18, y una frase escrita para ese caso se volvía mentira en el otro. Encontrado leyendo la
           captura, que es el único sitio donde las dos se ven con el mismo texto encima. */}
       <p className="text-tinta-tenue mt-2">
-        Velo resume esa fuente en {numero(cobertura.total)} puntos:{" "}
-        <strong className="font-medium">{numero(cobertura.automaticos)}</strong>{" "}
-        los reconoce por el contenido de la columna,{" "}
-        <strong className="font-medium">{numero(cobertura.porNombre)}</strong>{" "}
-        solo por su nombre, y{" "}
-        <strong className="font-medium">{numero(cobertura.manuales)}</strong> no
-        los puede reconocer ningún programa que solo vea la tabla — esos los
-        tienes que marcar tú, abajo.
+        <Rico
+          texto={E.origen.cobertura}
+          datos={{
+            total: cobertura.total,
+            automaticos: cobertura.automaticos,
+            porNombre: cobertura.porNombre,
+            manuales: cobertura.manuales,
+          }}
+        />
       </p>
     </div>
   );

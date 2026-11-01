@@ -14,7 +14,8 @@
 //     dato del artículo 5 a una pantalla que no lo necesita no tiene defensa.
 
 import { Panel } from "@/components/panel";
-import { numero } from "@/lib/formato";
+import { Rico, useT } from "@/components/texto";
+import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import { nombreDeTecnica } from "@/lib/tecnicas-en-palabras";
 import type { MuestraDeTransformacion } from "@/workers/contrato";
 
@@ -25,20 +26,20 @@ export function VistaPrevia({
   muestras: readonly MuestraDeTransformacion[];
   filas: number;
 }) {
+  const { t, idioma } = useT();
   const tocadas = muestras.filter(
     (m) => m.suprimida || (!m.despuesEnmascarado && !m.omitida),
   );
 
   return (
     <Panel
-      etiqueta="Paso 3 · la vista previa"
-      titulo="Qué va a recibir la otra persona"
+      etiqueta={t(TRANSFORMAR.vista.panel.etiqueta)}
+      titulo={t(TRANSFORMAR.vista.panel.titulo)}
       nota={
-        <>
-          {numero(tocadas.length)} de {numero(muestras.length)} columnas
-          cambian. Los valores de la izquierda van enmascarados porque siguen
-          siendo tus datos; los de la derecha van completos cuando ya no lo son.
-        </>
+        <Rico
+          texto={TRANSFORMAR.vista.panel.nota}
+          datos={{ cambian: tocadas.length, total: muestras.length }}
+        />
       }
     >
       {/* Una caja que se desplaza y no tiene dentro nada enfocable deja fuera a quien navega con
@@ -48,24 +49,26 @@ export function VistaPrevia({
       <div
         tabIndex={0}
         role="region"
-        aria-label="Comparación antes y después, columna por columna"
+        aria-label={t(TRANSFORMAR.vista.region)}
         className="overflow-x-auto"
       >
         <table className="w-full min-w-[36rem] border-collapse text-[0.875rem]">
           <caption className="sr-only">
-            Muestra de {numero(Math.min(filas, 6))} filas repartidas por todo el
-            archivo, antes y después del tratamiento
+            <Rico
+              texto={TRANSFORMAR.vista.descripcion}
+              datos={{ n: Math.min(filas, 6) }}
+            />
           </caption>
           <thead>
             <tr className="border-borde border-b">
               <th scope="col" className="etiqueta py-2 pr-3 text-left">
-                Columna
+                <Rico texto={TRANSFORMAR.vista.columna} />
               </th>
               <th scope="col" className="etiqueta py-2 pr-3 text-left">
-                Antes
+                <Rico texto={TRANSFORMAR.vista.antes} />
               </th>
               <th scope="col" className="etiqueta py-2 text-left">
-                Después
+                <Rico texto={TRANSFORMAR.vista.despues} />
               </th>
             </tr>
           </thead>
@@ -81,7 +84,7 @@ export function VistaPrevia({
                 >
                   {muestra.nombre}
                   <span className="text-tinta-tenue block font-sans text-[0.75rem]">
-                    {nombreDeTecnica(muestra.tecnica)}
+                    {nombreDeTecnica(muestra.tecnica, idioma)}
                   </span>
                 </th>
                 <td className="py-2 pr-3">
@@ -93,11 +96,11 @@ export function VistaPrevia({
                 <td className="py-2">
                   {muestra.suprimida ? (
                     <p className="text-alerta text-[0.8125rem]">
-                      la columna no va en el archivo
+                      <Rico texto={TRANSFORMAR.vista.suprimida} />
                     </p>
                   ) : muestra.omitida ? (
                     <p className="text-tinta-tenue text-[0.8125rem]">
-                      dato sensible sin cambios: no se muestra
+                      <Rico texto={TRANSFORMAR.vista.omitida} />
                     </p>
                   ) : (
                     <Valores
@@ -125,6 +128,7 @@ function Valores({
   vacia: boolean;
   destacado?: boolean;
 }) {
+  const { t } = useT();
   if (vacia || filas.length === 0) {
     return <p className="text-tinta-tenue text-[0.8125rem]">—</p>;
   }
@@ -135,7 +139,7 @@ function Valores({
       }`}
     >
       {filas.map((valor, i) => (
-        <li key={i}>{valor === "" ? "(vacío)" : valor}</li>
+        <li key={i}>{valor === "" ? t(TRANSFORMAR.vista.vacio) : valor}</li>
       ))}
     </ul>
   );

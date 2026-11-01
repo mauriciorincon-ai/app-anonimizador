@@ -27,8 +27,11 @@ import {
   IconoVolver,
 } from "@/components/iconos";
 import { Panel } from "@/components/panel";
-import { numero } from "@/lib/formato";
+import { Rico, useT } from "@/components/texto";
+import { LLAVES } from "@/lib/idioma/textos/llaves";
 import type { AsaDeArchivo, EstadoDeBoveda } from "@/lib/sesion";
+
+const B = LLAVES.boveda;
 
 /** El mismo mínimo que la llave del proyecto: una frase corta no la salva el PBKDF2. */
 const MINIMO = 12;
@@ -47,20 +50,15 @@ export function BovedaDelTratamiento({
 }) {
   const idDeFrase = useId();
   const idDeAyuda = useId();
+  const { t } = useT();
   const [frase, setFrase] = useState("");
 
   if (archivo) {
     return (
       <Panel
-        etiqueta="Paso 9 · la bóveda"
-        titulo="Guarda la bóveda, o no habrá regreso"
-        nota={
-          <>
-            Este archivo lleva tus valores <strong>originales</strong>,
-            cifrados. No lo mandes por el mismo correo que el archivo
-            anonimizado: juntos son el archivo sin anonimizar.
-          </>
-        }
+        etiqueta={t(B.etiqueta)}
+        titulo={t(B.lista.titulo)}
+        nota={<Rico texto={B.lista.nota} />}
       >
         <a
           href={archivo.url}
@@ -68,15 +66,19 @@ export function BovedaDelTratamiento({
           className={clasesDeBoton("principal")}
         >
           <IconoDescargar />
-          Guardar la bóveda
+          {t(B.lista.guardar)}
         </a>
         <p className="text-tinta-suave mt-3 text-[0.875rem] leading-relaxed">
-          <code className="font-mono text-[0.8125rem]">{archivo.nombre}</code> ·{" "}
-          {numero(Math.max(1, Math.round(archivo.bytes / 1024)))} KB. Cubre{" "}
-          {columnas.length === 1
-            ? "una columna"
-            : `${numero(columnas.length)} columnas`}
-          :{" "}
+          <code className="font-mono text-[0.8125rem]">{archivo.nombre}</code>{" "}
+          <Rico
+            texto={
+              columnas.length === 1 ? B.lista.cubreUna : B.lista.cubreVarias
+            }
+            datos={{
+              kb: Math.max(1, Math.round(archivo.bytes / 1024)),
+              n: columnas.length,
+            }}
+          />{" "}
           {columnas.map((nombre, i) => (
             <span key={nombre}>
               {i > 0 ? " · " : ""}
@@ -87,12 +89,11 @@ export function BovedaDelTratamiento({
         </p>
         <div className="border-borde mt-4 border-t pt-4">
           <p className="text-tinta-suave text-[0.875rem] leading-relaxed">
-            Cuando te devuelvan el archivo trabajado, vuelve con esta bóveda y
-            su frase.
+            <Rico texto={B.lista.cuando} />
           </p>
           <Link href="/regreso" className={`${clasesDeBoton("discreto")} mt-3`}>
             <IconoVolver />
-            Ir al regreso
+            {t(B.lista.irAlRegreso)}
           </Link>
         </div>
       </Panel>
@@ -104,40 +105,26 @@ export function BovedaDelTratamiento({
 
   return (
     <Panel
-      etiqueta="Paso 9 · la bóveda"
-      titulo="La correspondencia para poder deshacerlo"
+      etiqueta={t(B.etiqueta)}
+      titulo={t(B.sellar.titulo)}
       nota={
-        <>
-          Marcaste{" "}
-          {columnas.length === 1
-            ? "una columna reversible"
-            : `${numero(columnas.length)} columnas reversibles`}
-          . La bóveda es un archivo cifrado con la correspondencia entre cada
-          seudónimo y su valor original.
-        </>
+        <Rico
+          texto={columnas.length === 1 ? B.sellar.notaUna : B.sellar.notaVarias}
+          datos={{ n: columnas.length }}
+        />
       }
     >
       <ul className="text-tinta-suave space-y-2 text-[0.9375rem] leading-relaxed">
-        <li>
-          <strong className="text-tinta font-medium">
-            Lleva tus datos originales.
-          </strong>{" "}
-          Es el archivo más sensible que sale de Velo. Guárdalo donde guardarías
-          el original — nunca junto al anonimizado.
-        </li>
-        <li>
-          <strong className="text-tinta font-medium">
-            Sin la frase no hay recuperación.
-          </strong>{" "}
-          Ni Velo, ni nadie. Es la contrapartida de que nadie más pueda abrirla.
-        </li>
-        <li>
-          <strong className="text-tinta font-medium">
-            Puede ser otra frase, y es mejor que lo sea.
-          </strong>{" "}
-          La llave del proyecto decide los seudónimos; esta solo abre el
-          archivo. Separarlas significa que filtrar una no entrega la otra.
-        </li>
+        {[B.sellar.datos, B.sellar.sinFrase, B.sellar.otraFrase].map(
+          (punto) => (
+            <li key={punto.titulo.es}>
+              <strong className="text-tinta font-medium">
+                {t(punto.titulo)}
+              </strong>{" "}
+              <Rico texto={punto.cuerpo} />
+            </li>
+          ),
+        )}
       </ul>
 
       <div className="mt-5">
@@ -145,7 +132,7 @@ export function BovedaDelTratamiento({
           htmlFor={idDeFrase}
           className="text-tinta block text-[0.9375rem]"
         >
-          Frase de paso de la bóveda
+          {t(B.sellar.campo)}
         </label>
         <input
           id={idDeFrase}
@@ -159,8 +146,7 @@ export function BovedaDelTratamiento({
           onChange={(evento) => setFrase(evento.target.value)}
         />
         <p id={idDeAyuda} className="text-tinta-tenue mt-2 text-[0.8125rem]">
-          Al menos {MINIMO} caracteres. Apúntala en tu gestor de contraseñas
-          antes de continuar: no hay forma de recuperarla.
+          <Rico texto={B.sellar.ayuda} datos={{ minimo: MINIMO }} />
         </p>
       </div>
 
@@ -175,11 +161,11 @@ export function BovedaDelTratamiento({
           }}
         >
           <IconoArchivador />
-          {sellando ? "Cifrando la bóveda…" : "Cifrar y preparar la bóveda"}
+          {sellando ? t(B.sellar.cifrando) : t(B.sellar.cifrar)}
         </Boton>
         {sellando ? (
           <p role="status" className="text-tinta-suave text-[0.875rem]">
-            Derivando la llave de cifrado y sellando el archivo.
+            <Rico texto={B.sellar.progreso} />
           </p>
         ) : null}
       </div>

@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import { BalanceEnPantalla } from "@/components/balance-en-pantalla";
 import type { BalanceDelTratamiento } from "@/engine/balance";
+import { fijarIdioma } from "@/lib/idioma/estado";
 
 const ANTES = {
   naturaleza: "exacto",
@@ -187,5 +188,83 @@ describe("A1 en pantalla — las columnas que salieron intactas", () => {
         .compareDocumentPosition(screen.getByTestId("reduccion")) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+});
+
+describe("el balance en inglés", () => {
+  // La regla del producto no depende del idioma: la salvedad que descalifica va ANTES que la
+  // cifra, y la cifra no se luce. Cambia el texto y la convención de los números.
+  const EN_INGLES: BalanceDelTratamiento = {
+    ...CON_CEDULA_INTACTA,
+    salvedades: [
+      CON_CEDULA_INTACTA.salvedades[0],
+      {
+        gravedad: "descalifica",
+        tipo: "unicos-restantes",
+        cuantos: 1_200,
+        proporcion: 0.012,
+      },
+      CON_CEDULA_INTACTA.salvedades[2],
+    ],
+  };
+
+  it("dice lo mismo, en inglés, y escribe los miles con coma", () => {
+    fijarIdioma("en");
+    render(<BalanceEnPantalla balance={EN_INGLES} />);
+    const texto = screen.getByTestId("salvedades").textContent ?? "";
+    expect(texto).toContain("The policy leaves one column untouched");
+    expect(texto).toContain("cedula_titular");
+    expect(texto).toContain("1,200 records");
+    expect(texto).not.toContain("1.200");
+    expect(
+      screen.getByText(/That figure doesn't describe a treated file/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unique, after")).toBeInTheDocument();
+  });
+
+  it("la salvedad sigue yendo ANTES que la cifra", () => {
+    fijarIdioma("en");
+    render(<BalanceEnPantalla balance={EN_INGLES} />);
+    expect(
+      screen
+        .getByTestId("salvedades")
+        .compareDocumentPosition(screen.getByTestId("reduccion")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("un solo registro se dice en singular, en los dos idiomas", () => {
+    const UNO: BalanceDelTratamiento = {
+      ...EN_INGLES,
+      salvedades: [
+        {
+          gravedad: "descalifica",
+          tipo: "unicos-restantes",
+          cuantos: 1,
+          proporcion: 0.001,
+        },
+      ],
+    };
+    fijarIdioma("en");
+    const { unmount } = render(<BalanceEnPantalla balance={UNO} />);
+    expect(screen.getByTestId("salvedades").textContent).toMatch(
+      /1 record \(.*\) is still alone/,
+    );
+    unmount();
+    fijarIdioma("es");
+    render(<BalanceEnPantalla balance={UNO} />);
+    expect(screen.getByTestId("salvedades").textContent).toMatch(
+      /1 registro \(.*\) sigue solo/,
+    );
+  });
+
+  it("sin salvedades, y con reducción, la cifra se luce y el texto no promete anonimato", () => {
+    fijarIdioma("en");
+    render(<BalanceEnPantalla balance={LIMPIO} />);
+    expect(screen.getByText(/found no caveats/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/doesn't make the file anonymous/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/cross-checked columns/)).toBeInTheDocument();
   });
 });

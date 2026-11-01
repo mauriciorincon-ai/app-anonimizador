@@ -6,12 +6,13 @@
 // menos de 5», el motor solo reparte con un k declarado, y las columnas salían INTACTAS. Cada
 // afirmación de la pantalla era cierta por separado.
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { EditorDePolitica } from "@/components/editor-de-politica";
 import type { HallazgoDeColumna } from "@/engine/clasificador";
 import type { Politica } from "@/engine/politica";
+import { fijarIdioma } from "@/lib/idioma/estado";
 
 const COLUMNAS = [
   { nombre: "edad", tipo: "numero", categoria: "cuasi-identificador" },
@@ -114,5 +115,105 @@ describe("una política importada que pide reparto y no trae k", () => {
     );
     expect(screen.getByText(/Con k = 7/)).toBeInTheDocument();
     expect(screen.queryByText(/saldrían intactas/)).not.toBeInTheDocument();
+  });
+});
+
+describe("el editor en inglés", () => {
+  // Mismo componente, otro idioma: lo que cambia es el texto y la convención de los números, no
+  // el comportamiento ni lo que se manda a la política.
+  it("habla en inglés y escribe los miles con coma", () => {
+    fijarIdioma("en");
+    render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={{ ...SIN_REGLAS, reglas: [AUTOMATICO], kObjetivo: 1_234 }}
+        onCambio={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("What happens to each column")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Technique for column edad"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Minimum group size \(k\)/),
+    ).toBeInTheDocument();
+    // «1,234», no «1.234»: la convención del idioma, aplicada a la cifra que viaja cruda.
+    expect(screen.getByText(/With k = 1,234/)).toBeInTheDocument();
+    expect(screen.queryByText(/Con k =/)).not.toBeInTheDocument();
+  });
+
+  it("elegir una técnica en inglés manda lo mismo a la política", () => {
+    fijarIdioma("en");
+    const onCambio = vi.fn();
+    render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={SIN_REGLAS}
+        onCambio={onCambio}
+      />,
+    );
+    // La opción es la misma, solo cambia su rótulo.
+    expect(
+      screen.getAllByRole("option", { name: "Generalize until k is reached" }),
+    ).toHaveLength(COLUMNAS.length);
+    fireEvent.change(screen.getByLabelText("Technique for column edad"), {
+      target: { value: "generalizar-automatico" },
+    });
+    const siguiente = onCambio.mock.calls[0][0] as Politica;
+    expect(siguiente.kObjetivo).toBe(5);
+    expect(siguiente.reglas).toContainEqual(AUTOMATICO);
+  });
+
+  it("la advertencia de una política de fábrica sigue diciendo que no es una certificación", () => {
+    fijarIdioma("en");
+    render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={{ ...SIN_REGLAS, origen: "hipaa" }}
+        onCambio={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/not a certification/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Safe Harbor requires REMOVING/),
+    ).toBeInTheDocument();
+  });
+
+  it("el error de importar se repinta si cambia el idioma", async () => {
+    fijarIdioma("es");
+    const { container, rerender } = render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={SIN_REGLAS}
+        onCambio={vi.fn()}
+      />,
+    );
+    const entrada = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const archivo = new File(["{ esto no es json"], "mala.json", {
+      type: "application/json",
+    });
+    // jsdom no implementa `File.text()` en todas las versiones: se completa si falta.
+    if (!archivo.text)
+      Object.assign(archivo, { text: async () => "{ esto no es json" });
+    fireEvent.change(entrada, { target: { files: [archivo] } });
+    expect(
+      await screen.findByText(/No se pudo importar: El archivo no es un JSON/),
+    ).toBeInTheDocument();
+
+    act(() => fijarIdioma("en"));
+    rerender(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={SIN_REGLAS}
+        onCambio={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(
+        /Could not import: The file is not a JSON that can be read/,
+      ),
+    ).toBeInTheDocument();
   });
 });
