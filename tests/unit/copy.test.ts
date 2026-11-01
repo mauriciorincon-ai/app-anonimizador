@@ -100,7 +100,7 @@ function sinComentarios(codigo: string): string {
 
 describe("ninguna pantalla promete lo que Velo no puede cumplir", () => {
   const rutas = RAICES.flatMap((raiz) => archivos(join(process.cwd(), raiz)))
-    .filter((ruta) => /\.(tsx?|md)$/.test(ruta))
+    .filter((ruta) => /\.(tsx?|md|html)$/.test(ruta))
     .filter((ruta) => !ruta.endsWith(".d.ts"));
 
   it("encuentra el código de la interfaz donde debe estar", () => {
