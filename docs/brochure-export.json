@@ -195,7 +195,7 @@
       "valor": 153,
       "unidad": "pruebas",
       "fuente": "medido",
-      "detalle": "Salida de `pnpm test:e2e` el 2026-08-22, en escritorio y móvil, incluidas axe en los dos temas, la garantía de red y las del despliegue por recorrido del brochure —entre ellas la que exige que la página no mueva el scroll por su cuenta—. Tres se omiten cuando no está el archivo sintético de 500.000 filas."
+      "detalle": "Salida de `pnpm test:e2e` en el CI de 5bac57b (2026-08-22): 153 pasan y 3 se omiten por diseño, porque el archivo de 500.000 filas y la bitácora de 2.000 entradas solo corren en escritorio. Recontadas el 2026-10-27 sobre 5bac57b: 156 declaradas, 153 corren. En escritorio y móvil, incluidas axe en los dos temas, la garantía de red y las del despliegue por recorrido del brochure —entre ellas la que exige que la página no mueva el scroll por su cuenta—."
     },
     {
       "clave": "cobertura_lineas",
