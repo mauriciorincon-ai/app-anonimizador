@@ -1,15 +1,19 @@
 // Cómo Velo escribe un número.
 //
-// Formato colombiano: punto para los miles, coma para los decimales (1.234.567 y 0,5). No es un
-// detalle cosmético — un archivo de cédulas leído con la convención equivocada se lee mal.
+// Cada idioma usa su propia convención: en español (colombiano) punto para los miles y coma para
+// los decimales (1.234.567 y 0,5); en inglés, al revés (1,234,567 y 0.5). No es un detalle
+// cosmético — un archivo de cédulas leído con la convención equivocada se lee mal. Por eso el
+// idioma es un parámetro OBLIGATORIO de cada función: con uno opcional, un llamador que lo olvide
+// escribiría «1.234» en una pantalla en inglés sin que nada se queje.
 //
 // Y una regla propia del producto: **todo número enseña su denominador**. "412 registros únicos"
 // sin "de 3.000" no es información, es alarma. De ahí `deCada()`.
 
-const ENTERO = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
+import { decir, formatoNumerico, type Idioma } from "@/lib/idioma";
+import { COMUN } from "@/lib/idioma/textos/comun";
 
-export function numero(valor: number): string {
-  return ENTERO.format(valor);
+export function numero(valor: number, idioma: Idioma): string {
+  return formatoNumerico(idioma, { maximumFractionDigits: 0 }).format(valor);
 }
 
 /** Por debajo de esto, un decimal ya no alcanza y el redondeo escribiría un cero. */
@@ -24,32 +28,38 @@ const MINIMO_REPRESENTABLE = 0.05;
  * abajo. Ahí el número deja de ser el instrumento y se dice con palabras. La cifra de al lado
  * ("1 de 500.000") sigue llevando la verdad exacta; esta línea solo deja de contradecirla.
  */
-export function porcentaje(proporcion: number): string {
+export function porcentaje(proporcion: number, idioma: Idioma): string {
   const valor = proporcion * 100;
-  if (valor > 0 && valor < MINIMO_REPRESENTABLE) return "menos de 0,1 %";
+  if (valor > 0 && valor < MINIMO_REPRESENTABLE)
+    return decir(COMUN.formato.menosDeUnDecimo, idioma);
   const decimales = valor > 0 && valor < 10 ? 1 : 0;
-  return `${new Intl.NumberFormat("es-CO", {
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-  }).format(valor)} %`;
+  return decir(COMUN.formato.porcentaje, idioma, {
+    valor: formatoNumerico(idioma, {
+      minimumFractionDigits: decimales,
+      maximumFractionDigits: decimales,
+    }).format(valor),
+  });
 }
 
 /** "412 de 3.000" — la cifra con su denominador pegado, nunca suelta. */
-export function deCada(parte: number, total: number): string {
-  return `${numero(parte)} de ${numero(total)}`;
+export function deCada(parte: number, total: number, idioma: Idioma): string {
+  return decir(COMUN.formato.deCada, idioma, {
+    parte: numero(parte, idioma),
+    total: numero(total, idioma),
+  });
 }
 
-export function bytes(valor: number): string {
-  if (valor < 1024) return `${numero(valor)} B`;
+export function bytes(valor: number, idioma: Idioma): string {
+  if (valor < 1024) return `${numero(valor, idioma)} B`;
   const mb = valor / (1024 * 1024);
   if (mb < 1)
-    return `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(valor / 1024)} KB`;
-  return `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: mb < 10 ? 1 : 0 }).format(mb)} MB`;
+    return `${formatoNumerico(idioma, { maximumFractionDigits: 0 }).format(valor / 1024)} KB`;
+  return `${formatoNumerico(idioma, { maximumFractionDigits: mb < 10 ? 1 : 0 }).format(mb)} MB`;
 }
 
-export function milisegundos(valor: number): string {
-  if (valor < 1000) return `${numero(valor)} ms`;
-  return `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 }).format(valor / 1000)} s`;
+export function milisegundos(valor: number, idioma: Idioma): string {
+  if (valor < 1000) return `${numero(valor, idioma)} ms`;
+  return `${formatoNumerico(idioma, { maximumFractionDigits: 1 }).format(valor / 1000)} s`;
 }
 
 /**
@@ -58,7 +68,7 @@ export function milisegundos(valor: number): string {
  * El caso límite es el importante: con k = 1 el registro está solo, y la forma honesta de decirlo
  * es "1 en 1" — uno a uno, señalable con el dedo.
  */
-export function unoEn(riesgo: number): string {
+export function unoEn(riesgo: number, idioma: Idioma): string {
   if (riesgo <= 0) return "—";
-  return `1 en ${numero(Math.round(1 / riesgo))}`;
+  return decir(COMUN.formato.unoEn, idioma, { n: numero(Math.round(1 / riesgo), idioma) });
 }

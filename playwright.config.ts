@@ -39,6 +39,11 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
+    // Las pruebas corren en UN idioma por sprint (regla 20): el español. Playwright lanza Chromium
+    // en `en-US` por omisión, y Velo ahora sigue el idioma del navegador — sin esto, los e2e que
+    // buscan frases en español abrirían la app en inglés. Las del conmutador piden el inglés a
+    // propósito (`?lang=en` o su propio `locale`).
+    locale: "es-CO",
   },
   projects: [
     {

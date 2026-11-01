@@ -6,7 +6,13 @@
 //
 // Reglas de uso (design-system.md § 1): va siempre con su frase, no es clicable, no reacciona a
 // nada — ni al riesgo, ni al hover, ni a la carga. Es lo único de la interfaz que nunca cambia,
-// porque nunca deja de ser cierto.
+// porque nunca deja de ser cierto. (Lo único que cambia es el idioma en que lo dice.)
+
+"use client";
+
+import { COMUN } from "@/lib/idioma/textos/comun";
+
+import { Rico } from "./texto";
 
 export function MarcaDeSello({ clase = "" }: { clase?: string }) {
   return (
@@ -58,7 +64,7 @@ export function Sello({ compacto = false }: { compacto?: boolean }) {
       <p className="flex items-center gap-2 text-tinta-suave">
         <MarcaDeSello clase="size-5 shrink-0 text-acento" />
         <span className="text-[0.8125rem] leading-tight">
-          Nada sale de este navegador
+          <Rico texto={COMUN.sello.compacto} />
         </span>
       </p>
     );
@@ -71,12 +77,10 @@ export function Sello({ compacto = false }: { compacto?: boolean }) {
       <MarcaDeSello clase="text-acento mt-0.5 size-6 shrink-0" />
       <p className="text-[0.9375rem] leading-relaxed">
         <strong className="text-acento font-medium">
-          Nada sale de este navegador.
+          <Rico texto={COMUN.sello.titulo} />
         </strong>{" "}
         <span className="text-tinta-suave">
-          El archivo se abre aquí mismo, en esta pestaña y en un hilo aparte. No
-          hay subida, no hay servidor que lo reciba y no queda copia cuando
-          cierras.
+          <Rico texto={COMUN.sello.detalle} />
         </span>
       </p>
     </div>
