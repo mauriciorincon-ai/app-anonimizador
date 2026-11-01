@@ -1,61 +1,52 @@
 ---
-description: Auditoría final de dos fases del sprint — OBLIGATORIA al concluir la construcción, antes de la guía de prueba/gate ⭐ y del cierre (método v1.10.0).
+description: Auditoría de UNA pasada al concluir la construcción — un auditor independiente en solo lectura, 4 casillas; críticos y altos se pagan en el sprint, medios y bajos al lote del hito.
 ---
 
 # /audita-sprint
 
-Realiza la **auditoría final del sprint antes del cierre**. Es un paso OBLIGATORIO de todo
-sprint (método v1.10.0): se ejecuta justo al concluir la construcción — ANTES de la
-validación con `docs/GUIA-DE-PRUEBA.html`/gate ⭐ del usuario y ANTES del summary definitivo.
+Se corre una vez, al terminar la construcción (después del STOP, antes de `/deploy-check` o
+`/release-check` y del cierre ejecutivo). **Una pasada, un auditor, sin segunda pasada.**
 
-Trabaja en **dos fases** y **no modifiques nada hasta que el usuario apruebe la Fase 1**.
+## Quién audita
 
-## Regla de modelos (léela primero)
+Un **auditor independiente del constructor** — subagente o sesión nueva que NO construyó el sprint — en
+**solo lectura**, con el diff del sprint delante: `git diff origin/main...HEAD --stat` y luego archivo por
+archivo. La bitácora dice qué se creyó hacer; el diff dice qué se hizo. El constructor responde, no se
+audita a sí mismo. Modelo: **Sonnet 5.5 · esfuerzo high** (tabla de la constitución); el subagente lo declara, no hereda el de la sesión.
 
-**El modelo que audita PLANEA; cualquier modelo ejecuta.** La Fase 1 la corre un modelo
-poderoso y su entregable más importante es dejar cada ajuste **tan bien definido — archivo,
-línea, cambio exacto, criterio de verificación — que CUALQUIER modelo de menor capacidad
-pueda ejecutarlo de la mejor manera sin ambigüedad**. La Fase 2 puede (y suele) correrse con
-un modelo menor siguiendo ese plan al pie. El usuario decide el modelo de cada fase con
-`/model` — este comando se lo recuerda al entregar el reporte.
+## Las 4 casillas
 
-## FASE 1 — Auditoría (SOLO LECTURA)
+1. **Alcance** — ítem por ítem del inicio ejecutivo del sprint (alcance incluido, fases, criterios de fin):
+   **Completo / Parcial / No implementado / Con desviación**, cada uno con `archivo:línea`.
+2. **Calidad** — correctitud (bugs, edge cases, errores sin manejar), **pruebas de lo que cambia** (cobertura
+   de lo nuevo, casos faltantes, tests frágiles), seguridad básica (inputs sin validar, inyecciones),
+   consistencia con el repo. Dependencias: solo si hay alternativa claramente superior, nunca estilo.
+3. **Seguridad y privacidad** — secretos en el diff; enlaces de producción o de preview en cualquier
+   archivo versionado y en el campo homepage del repo (`node scripts/cero-enlaces.mjs --homepage "$(gh repo view
+   --json homepageUrl --jq .homepageUrl)"`; los dominios viven en `cero-enlaces.json`, ampliados con el host real
+   del stack); datos reales del usuario o de su familia; derivados que nacen menos
+   privados que su fuente; protecciones del sistema tocadas sin matriz ni «sí».
+4. **Frases caducadas** — lo que el sprint dejó falso. Se busca por **promesa aplazada**, jamás por la
+   palabra de la feature: `todavía no` · `aún no` · `por ahora` · `de momento` · `mientras tanto` ·
+   `próximamente` · `llega después` · `en esta versión` · `más adelante` · `no (se) puede` · `podrás` ·
+   `permitirá` — en portada, `docs/MANUAL-DE-USO.md`, `README.md`, `docs/GUIA-DE-PRUEBA.html`, estados
+   vacíos y brochure; cada coincidencia contra lo que la app hace HOY. Y las frases de evidencia («leído
+   como imagen», «N de N», «en verde») contra la corrida que las sostiene.
 
-1. **Cobertura de alcance:** contrasta CADA ítem planeado (el plan aprobado del sprint +
-   la orden de la planeadora) contra lo implementado. Clasifica cada uno como:
-   **Completo / Parcial / No implementado / Implementado con desviación** — justificando
-   cada clasificación con citas de archivos y líneas.
-2. **Calidad de código** de lo desarrollado en el sprint:
-   - **Correctitud:** bugs, edge cases no manejados, manejo de errores.
-   - **Diseño:** acoplamiento, duplicación, responsabilidades mal ubicadas.
-   - **Seguridad:** inputs sin validar, secretos expuestos, inyecciones.
-   - **Tests:** cobertura de lo nuevo, casos faltantes, tests frágiles.
-   - **Consistencia:** adherencia a las convenciones existentes del repo.
-3. **Herramientas/dependencias:** señala SOLO librerías o patrones con una alternativa
-   claramente superior (mantenimiento, seguridad, idiomática del stack) con justificación
-   fuerte — jamás preferencias de estilo.
+## Severidades y pago
 
-**Entrega de la Fase 1:** un reporte con hallazgos clasificados por severidad
-(**Crítico / Alto / Medio / Bajo**) y una recomendación explícita: **"listo para cierre"** o
-**"requiere ajustes"**. Valida que todo quede documentado en los archivos correspondientes
-(bitácora, ADRs, deuda declarada). Cada hallazgo Crítico/Alto debe traer su **ajuste
-ejecutable**: archivo(s) y línea(s), cambio exacto propuesto, y el criterio observable de
-"ajuste verificado" — el formato que un modelo de menor capacidad puede seguir sin pensar
-de más. Cierra recordando al usuario: *"aprueba la Fase 1 y fija el modelo de la Fase 2 con
-`/model` (un modelo menor basta si sigue este plan)"*.
+- **C** crítico · **A** alto · **M** medio · **B** bajo. Todo hallazgo con `archivo:línea`; jamás un
+  resumen por conteo.
+- **Críticos y altos se pagan en este sprint**, antes del PR, con un ajuste ejecutable por hallazgo
+  (archivo, cambio exacto, criterio de verificación). **«No reproducible» no cierra un C/A:** se re-audita
+  su superficie hasta ubicarlo o descartarlo con evidencia.
+- **Medios y bajos se listan en el cierre ejecutivo como deuda con sitio** (`archivo:línea` + una línea) y
+  se pagan en el lote del cierre del hito; no se pagan en el sprint salvo que cuesten menos que anotarlos.
+- Toda decisión que le pidas al usuario va en llano: qué pasa y qué cuesta por opción, sin identificadores
+  de hallazgo en la pregunta.
 
-## FASE 2 — Correcciones (SOLO tras aprobación del usuario)
+## Entrega
 
-1. Propón el **plan de ajustes para los hallazgos Crítico/Alto** (los Medio/Bajo se declaran
-   como deuda con pago asignado, salvo que el usuario pida incluirlos).
-2. **Espera la validación del usuario** del plan.
-3. Solo entonces implementa — siguiendo el plan de la Fase 1 al pie; cualquier desviación se
-   declara antes de ejecutarla.
-4. Al terminar: registra en la bitácora y en el `SPRINT_NNN-summary.md` los hallazgos, los
-   pagos y la deuda aceptada. **Sin auditoría registrada en el summary, el cierre del sprint
-   queda condicionado** (lo verifica el `/cierre-sprint` de la planeadora).
-
-## Posición en el flujo del sprint
-
-construcción concluida → **`/audita-sprint`** (Fase 1 → aprobación → Fase 2) →
-`/deploy-check` → summary (registra la auditoría) → PR → gate ⭐ del usuario → merge.
+Un reporte en el chat y la sección **Auditoría** del `sprints/SPRINT_NNN-cierre.md`: casilla por casilla,
+hallazgos C/A con su estado (`pagado · <commit>` o `descartado · <razón>`), M/B como deuda con sitio, y el
+veredicto **«listo para cierre»** o **«requiere ajustes»** (solo un C/A abierto lo produce).

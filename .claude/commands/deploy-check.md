@@ -1,79 +1,36 @@
 ---
-description: Checklist pre-merge a main. Verifica que todo lo necesario está listo antes de mergear un PR.
+description: Checklist pre-merge a main (perfil WEB) — ≤ 10 casillas MANUALES. Todo lo demás lo corre la CI; si no está en la CI, no es casilla.
 ---
 
 # /deploy-check
 
-Checklist exhaustivo antes de mergear a `main` (que dispara deploy a producción en Vercel).
+**Todo lo demás lo corre la CI (`quality` · `e2e` · `lighthouse`); si no está en la CI, no es casilla.**
+Esto es solo lo que la CI no puede ver. Se corre después de `/audita-sprint`, antes de abrir el PR.
 
-## Pasos
+- [ ] 1. **El preview abre y el flujo principal funciona** de punta a punta en el preview del PR, con
+      sesión y sin ella.
+- [ ] 2. **Capturas leídas como imagen** (no solo generadas) de las pantallas tocadas: **ambos temas, un
+      idioma** (el otro al hito), móvil y escritorio, ningún desborde.
+- [ ] 3. **`docs/MANUAL-DE-USO.md` actualizado** con cada feature de este sprint (qué hace, cómo se usa,
+      limitaciones).
+- [ ] 4. **Cierre ejecutivo** `sprints/SPRINT_NNN-cierre.md` ≤ 40 líneas, con la salida de
+      `node scripts/horas-sprint.mjs` pegada y la sección Auditoría.
+- [ ] 5. **Cero enlaces:** el paso «Cero enlaces» del job `quality` existe en el `ci.yml` de esta app (árbol +
+      homepage del repo, dominios de `cero-enlaces.json` ampliados con el host real del stack); si aún no, aquí:
+      `node scripts/cero-enlaces.mjs --homepage "$(gh repo view --json homepageUrl -q .homepageUrl)"` sale en verde.
+      Si el homepage apunta a producción: `gh repo edit --homepage ""` (o el propio repo).
+- [ ] 6. **Deuda registrada:** medios y bajos de la auditoría con `archivo:línea` en el cierre; cero
+      críticos o altos abiertos.
+- [ ] 7. **Aprovisionamiento nuevo probado** (solo si hubo): cada credencial o servicio nuevo con su humo
+      corrido, `.env.example` y Vercel env al día. Si no hubo: «n/a».
+- [ ] 8. **Checks requeridos con conclusión propia `success`**, leídos al final (`gh pr checks <N>`):
+      `skipped`, `cancelled` y ausente no son verde; si un job corrió por primera vez, el cierre lo dice.
+- [ ] 9. **Protecciones del sistema** (solo si el sprint tocó alguna): matriz y «sí» por acción en el
+      cierre. Si no: «n/a».
+- [ ] 10. **Derivados nuevos en disco** (solo si el sprint introdujo uno): nace con permisos no menos
+      privados que su fuente e inventariado en el cierre. Si no: «n/a».
 
-Corre cada verificación en orden y reporta estado:
+## Output
 
-### 1. Tests
-- [ ] `pnpm test` verde.
-- [ ] `pnpm test:e2e` verde.
-- [ ] Cobertura del app afectada >=70%.
-
-### 2. Type safety
-- [ ] `pnpm typecheck` sin errores.
-- [ ] Sin `@ts-ignore` nuevos sin justificación en comentario.
-
-### 3. Lint y formato
-- [ ] `pnpm lint` sin warnings nuevos.
-- [ ] `prefers-reduced-motion` respetado si hay animaciones nuevas.
-
-### 4. Build
-- [ ] `pnpm build` exitoso.
-- [ ] Bundle size no creció >10% vs main (medir con `next build` output).
-
-### 5. Security
-- [ ] `pnpm audit --audit-level high` limpio.
-- [ ] Sin secrets en el diff.
-- [ ] Variables de entorno nuevas agregadas a `.env.example` y a Vercel env.
-
-### 6. Observabilidad
-- [ ] Endpoints nuevos loggean request/duration.
-- [ ] Errores nuevos capturados por Sentry (no hay path a `throw` sin try/catch).
-
-### 7. Accesibilidad y diseño
-- [ ] Axe scan sin violaciones en rutas nuevas (e2e test con `@axe-core/playwright`).
-- [ ] Navegación por teclado probada en rutas nuevas.
-- [ ] **Checklist de revisión de diseño del skill `diseno-ui` corrido sobre la preview** (fidelidad a design-system.md, jerarquía, 5 estados, cero anti-patrones) + aprobación visual del usuario.
-
-### 8. Performance
-- [ ] Lighthouse score >=90 en Performance, Best Practices, Accessibility, SEO (móvil).
-      **Si lo corres a mano: `npx @lhci/cli`** — `npx lhci` A SECAS resuelve a un paquete
-      impostor del registry (imprime "Hello, this is AnupamAS01!"); el CI del kit ya usa el
-      correcto (K-habla S2).
-- [ ] No hay queries N+1.
-- [ ] Imágenes usan `next/image`.
-
-### 9. Documentación
-- [ ] README actualizado si cambió el setup.
-- [ ] **`docs/MANUAL-DE-USO.md` actualizado con las features de este sprint** (qué hace, cómo se usa, limitaciones — en lenguaje de usuario final). Feature sin manual = sprint no cierra.
-- [ ] CHANGELOG entry (si el proyecto lo usa).
-- [ ] Si hay decisión arquitectónica: ADR en `decisions/` de este repo.
-
-### 10. Cierre del sprint (las dos casas)
-- [ ] Bitácora `sprints/SPRINT_NNN-implementation-log.md` al día en este repo.
-- [ ] Si este merge cierra el sprint: `sprints/SPRINT_NNN-summary.md` generado (plantilla en CLAUDE.md) — es lo que la planeadora lee para la retrospectiva.
-- [ ] (Si aplicó IA embebida) checklist del skill `ia-embebida` completo.
-
-## Output esperado
-
-```
-### ✅ Pasa (N/10)
-- ...
-
-### ❌ Falla (N/10) — bloquea merge
-- tipo: descripción
-- fix: ...
-
-### ⚠️ Warnings (no bloquean, pero revisar)
-- ...
-
-### Decisión: MERGE OK | NO MERGE
-```
-
-Si NO MERGE, termina ahí. Si MERGE OK, el usuario procede manualmente (no mergees automáticamente).
+`✅ Pasa (n/10)` · `❌ Falla (n/10) — bloquea merge` (con su fix) · `Decisión: MERGE OK | NO MERGE`.
+Si NO MERGE, termina ahí. Si MERGE OK, el merge (squash) lo hace el usuario — no mergees tú.
