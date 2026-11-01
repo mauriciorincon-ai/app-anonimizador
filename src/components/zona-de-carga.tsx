@@ -16,48 +16,32 @@ import { useState } from "react";
 
 import { clasesDeBoton } from "@/components/boton";
 import { IconoLupa, IconoReiniciar, IconoTabla } from "@/components/iconos";
-import { bytes as enBytes, numero, porcentaje } from "@/lib/formato";
+import { useT } from "@/components/texto";
+import { bytes as enBytes, porcentaje } from "@/lib/formato";
+import type { Texto } from "@/lib/idioma";
+import { INICIO } from "@/lib/idioma/textos/inicio";
 import type { EstadoDeSesion } from "@/lib/sesion";
 import { TOPE_EXCEL_BYTES } from "@/lib/archivo";
 import type { EtapaDelWorker, MotivoDeError } from "@/workers/contrato";
 
 // Solo las etapas del ANÁLISIS. Las de la transformación viven en `/transformar`, que es donde se
 // ven: un `Record` completo obligaría a esta pantalla a tener texto para trabajos que nunca hace.
-const ETAPAS: Partial<Record<EtapaDelWorker, string>> = {
-  huella: "Tomando la huella del archivo",
-  leyendo: "Leyendo el archivo",
-  clasificando: "Reconociendo qué hay en cada columna",
-  "midiendo-riesgo": "Midiendo el riesgo de reidentificación",
+const ETAPAS: Partial<Record<EtapaDelWorker, Texto>> = {
+  huella: INICIO.carga.etapas.huella,
+  leyendo: INICIO.carga.etapas.leyendo,
+  clasificando: INICIO.carga.etapas.clasificando,
+  "midiendo-riesgo": INICIO.carga.etapas.midiendoRiesgo,
 };
 
 /** Los errores dicen QUÉ HACER. Decir "error al procesar" es dejar al usuario donde estaba. */
 const ERRORES: Partial<
-  Record<MotivoDeError, { titulo: string; salida: string }>
+  Record<MotivoDeError, { titulo: Texto; salida: Texto }>
 > = {
-  "formato-no-soportado": {
-    titulo: "Velo no reconoce ese tipo de archivo",
-    salida:
-      "Lee tablas: CSV (.csv) y Excel (.xlsx, .xls). Si tu archivo viene de una hoja de cálculo, ábrelo y guárdalo como CSV.",
-  },
-  "archivo-vacio": {
-    titulo: "El archivo no tiene filas para revisar",
-    salida:
-      "Puede que solo tenga el encabezado, o que la primera hoja del libro esté vacía. Revísalo y vuelve a soltarlo.",
-  },
-  "excel-excede-tope": {
-    titulo: "Ese Excel es más grande de lo que Velo puede abrir",
-    salida: `El tope para Excel es ${enBytes(TOPE_EXCEL_BYTES)}, porque un .xlsx hay que abrirlo entero en memoria para leerlo. Guárdalo como CSV: el CSV se lee por partes y no tiene tope.`,
-  },
-  "excel-excede-memoria": {
-    titulo: "El navegador se quedó sin memoria abriendo ese Excel",
-    salida:
-      "Pasa con libros muy anchos o con muchas hojas. Guárdalo como CSV y vuelve a intentarlo: así Velo lo lee por partes en vez de completo.",
-  },
-  "lectura-fallida": {
-    titulo: "No se pudo leer el archivo",
-    salida:
-      "Puede estar dañado o tener un contenido distinto al que anuncia su extensión. Ábrelo, guárdalo de nuevo como CSV e inténtalo otra vez.",
-  },
+  "formato-no-soportado": INICIO.carga.errores.formatoNoSoportado,
+  "archivo-vacio": INICIO.carga.errores.archivoVacio,
+  "excel-excede-tope": INICIO.carga.errores.excelExcedeTope,
+  "excel-excede-memoria": INICIO.carga.errores.excelExcedeMemoria,
+  "lectura-fallida": INICIO.carga.errores.lecturaFallida,
 };
 
 export function ZonaDeCarga({
@@ -70,6 +54,7 @@ export function ZonaDeCarga({
   onReintentar: () => void;
 }) {
   const [arrastrando, setArrastrando] = useState(false);
+  const { t, idioma } = useT();
 
   function soltar(evento: React.DragEvent<HTMLDivElement>) {
     evento.preventDefault();
@@ -109,10 +94,12 @@ export function ZonaDeCarga({
     >
       <div>
         <p className="font-display text-tinta text-2xl font-semibold">
-          {arrastrando ? "Suéltalo aquí" : "Trae tu tabla"}
+          {t(
+            arrastrando ? INICIO.carga.sueltaloAqui : INICIO.carga.traeTuTabla,
+          )}
         </p>
         <p className="text-tinta-suave mt-1.5 text-[0.9375rem]">
-          Arrástrala hasta aquí o elígela desde tu computador.
+          {t(INICIO.carga.instruccion)}
         </p>
       </div>
 
@@ -132,13 +119,14 @@ export function ZonaDeCarga({
           className={`${clasesDeBoton("principal")} cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--acento)]`}
         >
           <IconoTabla />
-          Elegir archivo
+          {t(INICIO.carga.elegirArchivo)}
         </label>
       </div>
 
       <p className="text-tinta-tenue text-[0.8125rem]">
-        CSV o Excel. El CSV no tiene tope de tamaño; el Excel sí, hasta{" "}
-        {enBytes(TOPE_EXCEL_BYTES)}.
+        {t(INICIO.carga.formatos, {
+          tope: enBytes(TOPE_EXCEL_BYTES, idioma),
+        })}
       </p>
     </div>
   );
@@ -149,6 +137,7 @@ function EnCurso({
 }: {
   estado: Extract<EstadoDeSesion, { fase: "analizando" | "listo" }>;
 }) {
+  const { t, idioma } = useT();
   const terminado = estado.fase === "listo";
   const nombre = terminado ? estado.informe.archivo.nombre : estado.nombre;
   const etapa = terminado ? "midiendo-riesgo" : estado.etapa;
@@ -160,11 +149,12 @@ function EnCurso({
     (estado.etapa === "huella" || estado.etapa === "leyendo") &&
     estado.bytesLeidos > 0;
   const avance = conBarra ? estado.bytesLeidos / estado.bytesTotales : 0;
+  const textoDeEtapa = ETAPAS[etapa];
 
   return (
     <div className="rounded-3 border-borde bg-superficie shadow-1 flex flex-col gap-4 border px-6 py-10">
       <div>
-        <p className="etiqueta">Analizando</p>
+        <p className="etiqueta">{t(INICIO.carga.analizando)}</p>
         {/* La región viva es SOLO el nombre de la etapa, que cambia tres veces en todo el proceso.
             Si abarcara la tarjeta entera, un lector de pantalla leería el porcentaje en voz alta
             cada 25.000 filas —veinte veces seguidas en un archivo grande— y el aviso útil se
@@ -174,7 +164,11 @@ function EnCurso({
           role="status"
           className="font-display text-tinta mt-1.5 text-2xl font-semibold"
         >
-          {terminado ? "Listo" : ETAPAS[etapa]}
+          {terminado
+            ? t(INICIO.carga.listo)
+            : textoDeEtapa
+              ? t(textoDeEtapa)
+              : undefined}
         </p>
         <p className="text-tinta-suave mt-1 font-mono text-[0.8125rem] break-all">
           {nombre}
@@ -185,7 +179,7 @@ function EnCurso({
         <div>
           <div
             role="progressbar"
-            aria-label={ETAPAS[etapa]}
+            aria-label={textoDeEtapa ? t(textoDeEtapa) : undefined}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(avance * 100)}
@@ -197,19 +191,21 @@ function EnCurso({
             />
           </div>
           <p className="cifra text-tinta-tenue mt-2 text-[0.8125rem]">
-            {porcentaje(avance)}
+            {porcentaje(avance, idioma)}
             {/* Durante la huella todavía no se ha leído una sola fila: decir "0 filas leídas"
                 sería contar algo que no está pasando. */}
             {etapa === "leyendo"
-              ? ` · ${numero(estado.filas)} filas leídas`
+              ? ` · ${t(INICIO.carga.filasLeidas, { n: estado.filas })}`
               : ""}
           </p>
         </div>
       ) : (
         <p className="cifra text-tinta-tenue text-[0.8125rem]">
           {terminado
-            ? `${numero(estado.informe.diagnostico.filas)} filas revisadas`
-            : `${numero(estado.filas)} filas leídas`}
+            ? t(INICIO.carga.filasRevisadas, {
+                n: estado.informe.diagnostico.filas,
+              })
+            : t(INICIO.carga.filasLeidas, { n: estado.filas })}
         </p>
       )}
 
@@ -222,15 +218,15 @@ function EnCurso({
           className={`${clasesDeBoton("principal")} self-start`}
         >
           <IconoLupa />
-          Ver el diagnóstico
+          {t(INICIO.carga.verDiagnostico)}
         </Link>
       ) : null}
 
       {!terminado && estado.avisoDeTamano ? (
         <p className="rounded-2 border-aviso/30 bg-aviso-tenue text-aviso border px-3 py-2 text-[0.8125rem] leading-relaxed">
-          Es un Excel grande ({enBytes(estado.bytes)}). Velo lo está abriendo
-          completo en memoria porque un .xlsx no se puede leer por partes. Si se
-          demora demasiado o falla, guárdalo como CSV y vuelve a soltarlo.
+          {t(INICIO.carga.avisoDeTamano, {
+            peso: enBytes(estado.bytes, idioma),
+          })}
         </p>
       ) : null}
     </div>
@@ -246,33 +242,30 @@ function Fallo({
   nombre: string;
   onReintentar: () => void;
 }) {
+  const { t, idioma } = useT();
   // Los tres motivos de la transformación (`sin-tabla`, `sin-llave`, `transformacion-fallida`) no
   // pueden nacer en la aduana: se producen en `/transformar` y allá tienen su propio texto. Si uno
   // llegara aquí sería por una navegación rara, y la salida honesta es la misma de siempre —
   // volver a soltar el archivo—, no un «error inesperado» que deja al usuario donde estaba.
-  const { titulo, salida } = ERRORES[motivo] ?? {
-    titulo: "Se perdió el archivo que estabas revisando",
-    salida:
-      "Velo no guarda copias en ningún lado, así que no hay nada que recuperar. Suéltalo otra vez: tarda lo mismo que la primera.",
-  };
+  const { titulo, salida } = ERRORES[motivo] ?? INICIO.carga.errores.perdido;
   return (
     <div
       role="alert"
       aria-labelledby="titulo-de-error"
       className="rounded-3 border-alerta/35 bg-alerta-tenue flex flex-col items-start gap-3 border px-6 py-8"
     >
-      <p className="etiqueta text-alerta">No se pudo abrir</p>
+      <p className="etiqueta text-alerta">{t(INICIO.carga.noSePudoAbrir)}</p>
       <h2
         id="titulo-de-error"
         className="font-display text-tinta text-2xl font-semibold"
       >
-        {titulo}
+        {t(titulo, { tope: enBytes(TOPE_EXCEL_BYTES, idioma) })}
       </h2>
       <p className="text-tinta-suave font-mono text-[0.8125rem] break-all">
         {nombre}
       </p>
       <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-        {salida}
+        {t(salida, { tope: enBytes(TOPE_EXCEL_BYTES, idioma) })}
       </p>
       <button
         type="button"
@@ -280,7 +273,7 @@ function Fallo({
         className={`${clasesDeBoton("discreto")} mt-1`}
       >
         <IconoReiniciar />
-        Elegir otro archivo
+        {t(INICIO.carga.elegirOtro)}
       </button>
     </div>
   );

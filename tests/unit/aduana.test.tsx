@@ -7,6 +7,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ZonaDeCarga } from "@/components/zona-de-carga";
+import { fijarIdioma } from "@/lib/idioma/estado";
 import type { EstadoDeSesion } from "@/lib/sesion";
 
 const ANALIZANDO: Extract<EstadoDeSesion, { fase: "analizando" }> = {
@@ -165,5 +166,47 @@ describe("estado de error — dice qué hacer, no qué falló", () => {
     // texto escrito por nosotros, no texto derivado del archivo.
     montar({ fase: "error", motivo: "lectura-fallida", nombre: "roto.csv" });
     expect(screen.queryByText(/lectura-fallida/)).not.toBeInTheDocument();
+  });
+});
+
+describe("la zona de carga, en inglés", () => {
+  it("dice el estado vacío en inglés y declara el tope de Excel", () => {
+    fijarIdioma("en");
+    montar({ fase: "vacio" });
+    expect(screen.getByLabelText("Choose file")).toHaveAttribute(
+      "type",
+      "file",
+    );
+    expect(screen.getByText("Bring your table")).toBeInTheDocument();
+    expect(screen.getByText(/up to 150 MB/)).toBeInTheDocument();
+    // Y el español no se quedó en la pantalla.
+    expect(screen.queryByText("Trae tu tabla")).not.toBeInTheDocument();
+  });
+
+  it("escribe los miles con la convención del inglés mientras lee", () => {
+    fijarIdioma("en");
+    montar(ANALIZANDO);
+    expect(screen.getByText(/40,000 rows read/)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-label",
+      "Reading the file",
+    );
+  });
+
+  it("dice qué hacer cuando el archivo falla, también en inglés", () => {
+    fijarIdioma("en");
+    montar({
+      fase: "error",
+      motivo: "excel-excede-tope",
+      nombre: "enorme.xlsx",
+    });
+    const alerta = screen.getByRole("alert", {
+      name: "That Excel file is bigger than Velo can open",
+    });
+    expect(alerta).toHaveTextContent("Save it as CSV");
+    expect(alerta).toHaveTextContent("The limit for Excel is 150 MB");
+    expect(
+      screen.getByRole("button", { name: "Choose another file" }),
+    ).toBeInTheDocument();
   });
 });

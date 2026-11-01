@@ -27,12 +27,14 @@ import { useId, useState } from "react";
 import { Boton } from "@/components/boton";
 import { IconoBarras, IconoEquis } from "@/components/iconos";
 import { Panel } from "@/components/panel";
+import { Rico, useT } from "@/components/texto";
 import type {
   CifraEstimada,
   Estimacion,
   RiesgoEstimado,
 } from "@/engine/riesgo-estimado";
-import { numero, porcentaje, unoEn } from "@/lib/formato";
+import { porcentaje, unoEn } from "@/lib/formato";
+import { DIAGNOSTICO } from "@/lib/idioma/textos/diagnostico";
 
 export function RiesgoEstimadoEnPantalla({
   estimacion,
@@ -43,6 +45,8 @@ export function RiesgoEstimadoEnPantalla({
   poblacion: number | null;
   onDeclarar: (poblacion: number | null) => void;
 }) {
+  const { t, idioma } = useT();
+  const textos = DIAGNOSTICO.estimado;
   const idDePoblacion = useId();
   const idDeAyuda = useId();
   const [texto, setTexto] = useState(
@@ -50,31 +54,26 @@ export function RiesgoEstimadoEnPantalla({
   );
 
   const escrito = texto.trim();
-  const valor = escrito === "" ? null : Number(escrito.replace(/[.\s]/g, ""));
+  // Sin separadores de miles: el punto del español («2.400.000») y la coma del inglés
+  // («2,400,000») se quitan igual, porque una población es siempre un entero.
+  const valor = escrito === "" ? null : Number(escrito.replace(/[.,\s]/g, ""));
   const invalido = valor !== null && (!Number.isFinite(valor) || valor <= 0);
 
   return (
     <Panel
-      etiqueta="Paso 5 · el riesgo estimado"
-      titulo="Y en la población entera, ¿cuánto?"
+      etiqueta={t(textos.etiqueta)}
+      titulo={t(textos.titulo)}
       // La nota de `Panel` se pinta en el PIE, así que no puede decir «lo de arriba»: colocada
       // debajo de las cifras estimadas, esa frase parecería estar hablando de ellas y diría justo
       // lo contrario de lo que quiere decir. Se nombran los dos paneles por lo que son.
-      nota={
-        <>
-          El balance es <strong className="font-medium">exacto</strong> y habla
-          de tu archivo; esta sección es{" "}
-          <strong className="font-medium">estimada</strong> y habla de la
-          población de la que salió. No se suman ni se promedian entre sí.
-        </>
-      }
+      nota={<Rico texto={textos.nota} />}
     >
       <div>
         <label
           htmlFor={idDePoblacion}
           className="text-tinta block text-[0.9375rem]"
         >
-          ¿De cuántas personas salió este archivo? (opcional)
+          {t(textos.pregunta)}
         </label>
         <div className="mt-2 flex flex-wrap items-start gap-3">
           <input
@@ -84,7 +83,7 @@ export function RiesgoEstimadoEnPantalla({
             value={texto}
             aria-describedby={idDeAyuda}
             aria-invalid={invalido}
-            placeholder="por ejemplo, 2400000"
+            placeholder={t(textos.ejemplo)}
             className="rounded-1 border-borde-control bg-superficie text-tinta w-full max-w-[16rem] border px-3 py-2 text-[0.9375rem] tabular-nums"
             onChange={(evento) => setTexto(evento.target.value)}
           />
@@ -95,50 +94,58 @@ export function RiesgoEstimadoEnPantalla({
             onClick={() => onDeclarar(invalido ? null : valor)}
           >
             {valor === null ? <IconoEquis /> : <IconoBarras />}
-            {valor === null ? "Quitar la estimación" : "Estimar"}
+            {t(valor === null ? textos.quitar : textos.estimar)}
           </Boton>
         </div>
         <p
           id={idDeAyuda}
           className="text-tinta-tenue mt-2 text-[0.8125rem] leading-relaxed"
         >
-          El total de personas del que este archivo es una muestra —los
-          afiliados de la EPS, los habitantes del municipio, los empleados de la
-          empresa—. Velo no puede saberlo, y{" "}
-          <strong className="font-medium">no se lo inventa</strong>: sin este
-          dato no hay estimador poblacional que valga.
+          <Rico texto={textos.ayuda} />
         </p>
       </div>
 
       {estimacion ? (
         <div className="border-borde mt-6 space-y-6 border-t pt-5">
           <Estimador
-            titulo="Si alguien intenta emparejar una fila con una persona"
+            titulo={t(textos.individual.titulo)}
             estimacion={estimacion.individual}
             cifra={(e) => (
               <>
-                <Valor cifra={e.maximo} formato={(v) => unoEn(v)} />{" "}
+                <Valor cifra={e.maximo} formato={(v) => unoEn(v, idioma)} />{" "}
                 <span className="text-tinta-suave">
-                  para el registro más expuesto
-                  {e.claseMasPequena === 1
-                    ? " (uno que está solo en el archivo)"
-                    : `, que comparte valores con otros ${numero(e.claseMasPequena - 1)}`}
-                  ; {unoEn(e.promedio.valor)} de media.
+                  <Rico
+                    texto={
+                      e.claseMasPequena === 1
+                        ? textos.individual.solo
+                        : textos.individual.comparte
+                    }
+                    datos={{
+                      otros: e.claseMasPequena - 1,
+                      promedio: unoEn(e.promedio.valor, idioma),
+                    }}
+                  />
                 </span>
               </>
             )}
           />
           <Estimador
-            titulo="De tus registros únicos, cuántos lo serían en la población"
+            titulo={t(textos.poblacional.titulo)}
             estimacion={estimacion.poblacional}
             cifra={(e) => (
               <>
-                <Valor cifra={e.proporcion} formato={porcentaje} />{" "}
+                <Valor
+                  cifra={e.proporcion}
+                  formato={(v) => porcentaje(v, idioma)}
+                />{" "}
                 <span className="text-tinta-suave">
-                  de las filas del archivo —unas{" "}
-                  {numero(Math.round(e.registros.valor))} de{" "}
-                  {numero(e.unicosEnLaMuestra)} únicos— seguirían siendo únicas
-                  entre todas esas personas.
+                  <Rico
+                    texto={textos.poblacional.detalle}
+                    datos={{
+                      registros: Math.round(e.registros.valor),
+                      unicos: e.unicosEnLaMuestra,
+                    }}
+                  />
                 </span>
               </>
             )}
@@ -159,6 +166,8 @@ function Estimador<T>({
   estimacion: Estimacion<T>;
   cifra: (datos: Estimacion<T> & { ok: true }) => React.ReactNode;
 }) {
+  const { t, m } = useT();
+  const textos = DIAGNOSTICO.estimado;
   return (
     <div>
       <p className="etiqueta">{titulo}</p>
@@ -171,16 +180,21 @@ function Estimador<T>({
               afirmación, y ponerlos en un pie de página sería ponerlos donde no se leen. */}
           <p className="text-tinta-tenue mt-2 text-[0.8125rem] leading-relaxed">
             <strong className="text-tinta-suave font-medium">
-              Cifra estimada
+              {t(textos.cifraEstimada)}
             </strong>{" "}
-            · modelo: {estimacion.modelo} · supone que {estimacion.supuesto} ·{" "}
-            {estimacion.fuente}
+            {t(textos.procedencia, {
+              modelo: m(estimacion.modelo),
+              supuesto: m(estimacion.supuesto),
+              fuente: m(estimacion.fuente),
+            })}
           </p>
         </>
       ) : (
         <p className="text-tinta-suave mt-2 text-[0.9375rem] leading-relaxed">
-          <strong className="text-tinta font-medium">No calculable.</strong>{" "}
-          {estimacion.explicacion}
+          <strong className="text-tinta font-medium">
+            {t(textos.noCalculable)}
+          </strong>{" "}
+          {m(estimacion.explicacion)}
         </p>
       )}
     </div>
@@ -195,6 +209,7 @@ function Valor({
   cifra: CifraEstimada;
   formato: (valor: number) => string;
 }) {
+  const { t, idioma } = useT();
   const { intervalo } = cifra;
   return (
     <>
@@ -207,8 +222,11 @@ function Valor({
         // —como estaba— el de porcentajes salía descendente y se leía como una errata.
         <span className="text-tinta-tenue text-[0.875rem]">
           {" "}
-          (el modelo lo sitúa entre {formato(intervalo.desde)} y{" "}
-          {formato(intervalo.hasta)}, al {porcentaje(intervalo.confianza)})
+          {t(DIAGNOSTICO.estimado.intervalo, {
+            desde: formato(intervalo.desde),
+            hasta: formato(intervalo.hasta),
+            confianza: porcentaje(intervalo.confianza, idioma),
+          })}
         </span>
       ) : null}
     </>

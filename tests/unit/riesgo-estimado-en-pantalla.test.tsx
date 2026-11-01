@@ -9,13 +9,14 @@
 // su valor sea impecable. Es el mismo instrumento que el S2 estrenó con las salvedades del balance:
 // se mira la composición, no la cifra.
 
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { BalanceEnPantalla } from "@/components/balance-en-pantalla";
 import { RiesgoEstimadoEnPantalla } from "@/components/riesgo-estimado-en-pantalla";
 import type { BalanceDelTratamiento } from "@/engine/balance";
 import { estimarRiesgo, type RiesgoEstimado } from "@/engine/riesgo-estimado";
+import { fijarIdioma } from "@/lib/idioma/estado";
 
 /** Clases de equivalencia de un archivo pequeño con únicos de sobra. */
 function clases(tamanos: number[]) {
@@ -160,5 +161,69 @@ describe("el estimado no se disfraza de exacto", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText(/no se lo inventa/)).toBeInTheDocument();
+  });
+});
+
+describe("el estimado, en inglés, sigue etiquetado como estimado", () => {
+  it("sin población dice que no es calculable y por qué, en inglés", () => {
+    fijarIdioma("en");
+    render(
+      <RiesgoEstimadoEnPantalla
+        estimacion={estimacionCon(null)}
+        poblacion={null}
+        onDeclarar={() => {}}
+      />,
+    );
+
+    expect(screen.getAllByText(/Not calculable/)).toHaveLength(2);
+    expect(
+      screen.getAllByText(/the exact risk does not depend on this figure/),
+    ).not.toHaveLength(0);
+    expect(
+      screen.getByLabelText(
+        /How many people did this file come from\? \(optional\)/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/does not make it up/)).toBeInTheDocument();
+  });
+
+  it("cada cifra lleva su modelo y su supuesto en la misma línea, y la etiqueta «Estimated»", () => {
+    fijarIdioma("en");
+    render(
+      <RiesgoEstimadoEnPantalla
+        estimacion={estimacionCon(800)}
+        poblacion={800}
+        onDeclarar={() => {}}
+      />,
+    );
+
+    const marcas = screen.getAllByText(/Estimated figure/);
+    expect(marcas.length).toBeGreaterThan(0);
+    for (const marca of marcas) {
+      const bloque = marca.closest("p");
+      expect(bloque?.textContent).toMatch(/model:/);
+      expect(bloque?.textContent).toMatch(/assumes that/);
+      expect(bloque?.textContent).toMatch(/199[18]/);
+    }
+    // El intervalo se dice en inglés, y con la confianza escrita a la inglesa («95%», sin espacio).
+    expect(document.body.textContent).toMatch(/at 95% confidence/);
+    expect(document.body.textContent).not.toContain("⟦");
+  });
+
+  it("acepta la población escrita con comas de miles", () => {
+    fijarIdioma("en");
+    const onDeclarar = vi.fn();
+    render(
+      <RiesgoEstimadoEnPantalla
+        estimacion={null}
+        poblacion={null}
+        onDeclarar={onDeclarar}
+      />,
+    );
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "2,400,000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Estimate" }));
+    expect(onDeclarar).toHaveBeenCalledWith(2_400_000);
   });
 });
