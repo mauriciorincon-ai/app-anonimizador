@@ -16,6 +16,8 @@
 // nombres de columna, las muestras— se escapa. Este documento lo va a abrir alguien más, y una
 // columna llamada `<script>` no puede convertirse en un script.
 
+import type { Idioma } from "@/lib/idioma";
+
 import type { BalanceDelTratamiento, Salvedad } from "./balance";
 import type { Diagnostico, HallazgoDeColumna } from "./clasificador";
 import type {
@@ -54,6 +56,12 @@ export interface DatosDelReporte {
   advisor: AdvisorDeQis;
   /** Fecha ya formateada por quien llama. Inyectada para que el reporte sea reproducible. */
   fecha: string;
+  /**
+   * El idioma del documento. Entra como dato, igual que la fecha, y por la misma razón: el
+   * documento es una función pura de lo que recibe. Mismo informe + misma fecha + mismo idioma ⇒
+   * mismo archivo, byte por byte; el idioma queda además escrito dentro del documento (`lang`).
+   */
+  idioma: Idioma;
   /** Presente solo cuando el archivo se transformó. Sin él, el reporte es el diagnóstico del S1. */
   tratamiento?: DatosDelTratamiento;
 }
@@ -673,6 +681,8 @@ export interface DatosDelInformeDeRegreso {
   hashDePolitica: string;
   /** Fecha ya formateada por quien llama. Inyectada para que el informe sea reproducible. */
   fecha: string;
+  /** El idioma del documento; ver `DatosDelReporte.idioma`. */
+  idioma: Idioma;
 }
 
 function itemDeSalvedadDelRegreso(salvedad: SalvedadDelRegreso): string {
