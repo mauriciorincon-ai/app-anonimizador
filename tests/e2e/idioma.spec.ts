@@ -121,12 +121,18 @@ test("el idioma sobrevive a navegar entre pantallas", async ({ page }) => {
 
 test("cambiar de idioma no abre ninguna conexión", async ({ page }) => {
   await page.goto("/");
+  // Next, en producción, precarga los enlaces propios cuando entran en pantalla (el logo es un
+  // <Link href="/">): son peticiones al propio origen que ocurren al cargar, no al cambiar de
+  // idioma. Se espera a que la red se asiente ANTES de escuchar; lo que se vigila es el cambio.
+  await page.waitForLoadState("networkidle");
   const peticiones: string[] = [];
   page.on("request", (r) => peticiones.push(r.url()));
   await boton(page, "English").click();
   await expect(page.getByText(LEMA_EN)).toBeVisible();
   await boton(page, "Español").click();
   await expect(page.getByText(LEMA_ES)).toBeVisible();
+  // Y se le da tiempo a una petición tardía de aparecer: callar a destiempo no es no haber pedido.
+  await page.waitForLoadState("networkidle");
   expect(peticiones).toEqual([]);
 });
 

@@ -64,23 +64,17 @@ export function fijarIdioma(idioma: Idioma): void {
  * abra igual. `replaceState` y no `pushState`: cambiar de idioma no es una página nueva, y el botón
  * «atrás» no debería pasar por cada vez que lo cambió.
  *
- * Se llama al `replaceState` NATIVO (el del prototipo) y no al de `window.history`: el App Router
- * de Next lo envuelve y, al ver una URL nueva, pide al servidor el payload de esa ruta
- * (`/?_rsc=…`). Son peticiones al propio origen y sin un solo dato, pero «cambiar de idioma no abre
- * ninguna conexión» es una frase que esta app puede decir entera, y `tests/e2e/idioma.spec.ts` la
- * vigila. A cambio, Next no se entera del parámetro: nadie en la app lo lee por esa vía.
+ * Es el `replaceState` de `window.history`, el que el App Router de Next envuelve para enterarse
+ * de la URL. Se midió (S5) que cambiar de idioma así NO abre ninguna conexión: las peticiones
+ * `/?_rsc=…` que se ven al cargar son la precarga de los enlaces propios, no el cambio.
+ * `tests/e2e/idioma.spec.ts` lo vigila esperando a que la red se asiente antes de escuchar.
  */
 export function elegirIdioma(idioma: Idioma): void {
   fijarIdioma(idioma);
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   url.searchParams.set("lang", idioma);
-  History.prototype.replaceState.call(
-    window.history,
-    window.history.state,
-    "",
-    url,
-  );
+  window.history.replaceState(window.history.state, "", url);
 }
 
 export function useIdioma(): Idioma {
