@@ -297,14 +297,6 @@ const EXCEPCIONES: readonly Excepcion[] = [
     razon:
       "el nombre de cada idioma se escribe en su propio idioma, a propósito (el conmutador)",
   },
-  {
-    archivo: "src/engine/mondrian.ts",
-    contiene: "(o vacío)",
-    razon:
-      "es texto que Velo ESCRIBE EN EL ARCHIVO DE SALIDA del usuario (el rótulo de un intervalo que cubre celdas vacías): " +
-      "la salida depende de entrada, política y llave, nunca del idioma de la interfaz (regla dura nº3, ADR-009). " +
-      "Decisión pendiente del dueño: si algún día el archivo de salida debe poder salir con rótulos en inglés.",
-  },
 ];
 
 function archivos(ruta: string): string[] {

@@ -57,7 +57,7 @@ async function balanceDe(
   sensibles: readonly string[] = [],
 ) {
   const diagnostico = clasificar(tabla);
-  const transformada = await aplicarPolitica(tabla, politica, null);
+  const transformada = await aplicarPolitica(tabla, politica, null, "es");
   const qis = diagnostico.columnas
     .filter((c) => c.categoria === "cuasi-identificador")
     .map((c) => c.nombre)
@@ -376,7 +376,10 @@ describe("A1 — la política pide reparto automático y no fija un k", () => {
   );
 
   it("lo dice, nombra las columnas, y descalifica la cifra", async () => {
-    const balance = await balanceDe(delKit("mediana-repetida", 400), CON_REPARTO);
+    const balance = await balanceDe(
+      delKit("mediana-repetida", 400),
+      CON_REPARTO,
+    );
     const salvedad = balance.salvedades.find((s) => s.tipo === "reparto-sin-k");
 
     expect(salvedad).toBeDefined();
@@ -388,7 +391,10 @@ describe("A1 — la política pide reparto automático y no fija un k", () => {
   });
 
   it("y va ANTES que los únicos, porque explica de dónde salen", async () => {
-    const balance = await balanceDe(delKit("mediana-repetida", 400), CON_REPARTO);
+    const balance = await balanceDe(
+      delKit("mediana-repetida", 400),
+      CON_REPARTO,
+    );
     const tipos = balance.salvedades.map((s) => s.tipo);
     expect(tipos.indexOf("reparto-sin-k")).toBeLessThan(
       tipos.indexOf("unicos-restantes"),
@@ -400,8 +406,8 @@ describe("A1 — la política pide reparto automático y no fija un k", () => {
       delKit("mediana-repetida", 400),
       politicaDe(CON_REPARTO.reglas, 5),
     );
-    expect(
-      balance.salvedades.some((s) => s.tipo === "reparto-sin-k"),
-    ).toBe(false);
+    expect(balance.salvedades.some((s) => s.tipo === "reparto-sin-k")).toBe(
+      false,
+    );
   });
 });

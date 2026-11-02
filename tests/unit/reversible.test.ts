@@ -198,11 +198,13 @@ describe("hacer reversible una columna no cambia su seudónimo (C9)", () => {
       TABLA,
       politicaDe(reglas(false)),
       llave,
+      "es",
     );
     const conVuelta = await aplicarPolitica(
       TABLA,
       politicaDe(reglas(true)),
       llave,
+      "es",
     );
 
     for (const nombre of ["cedula", "nit"]) {
@@ -232,6 +234,7 @@ describe("la correspondencia que llega a la bóveda", () => {
         { columna: "ciudad", tecnica: { tipo: "enmascarar" } },
       ]),
       llave,
+      "es",
     );
 
     expect(resultado.correspondencias.map((c) => c.columna)).toEqual([
@@ -261,6 +264,7 @@ describe("la correspondencia que llega a la bóveda", () => {
       TABLA,
       politicaDe([{ columna: "ciudad", tecnica: { tipo: "enmascarar" } }]),
       null,
+      "es",
     );
     expect(resultado.correspondencias).toEqual([]);
   });
@@ -301,6 +305,7 @@ describe("la colisión de formato, provocada por el fixture", () => {
         },
       ]),
       await llaveDe("llave-del-proyecto"),
+      "es",
     );
 
     expect(resultado.colisiones[0]?.columna).toBe("nit_empresa");

@@ -231,6 +231,7 @@ describe("sobre una tabla ya repartida por Mondrian", () => {
       tabla,
       qis,
       5,
+      "es",
     );
     expect(kAlcanzado).toBeGreaterThanOrEqual(5);
 

@@ -16,6 +16,7 @@ import { useSyncExternalStore } from "react";
 import type { Politica } from "@/engine/politica";
 import type { RiesgoEstimado } from "@/engine/riesgo-estimado";
 import { excedeElTope, excelGrande, formatoDeArchivo } from "@/lib/archivo";
+import { idiomaActual } from "@/lib/idioma/estado";
 import { generarSal } from "@/lib/llave";
 import type {
   EtapaDelWorker,
@@ -267,7 +268,13 @@ export function transformar(politica: Politica): void {
     huellaDeSalida: null,
     etapa: "transformando",
   });
-  worker.postMessage({ tipo: "transformar", politica });
+  // El idioma del trabajo se lee AQUÍ, al pulsar, y viaja como dato (igual que el del informe del
+  // regreso): el worker no conoce la pantalla y el motor no puede leerlo de ningún sitio.
+  worker.postMessage({
+    tipo: "transformar",
+    politica,
+    idioma: idiomaActual(),
+  });
 }
 
 /**

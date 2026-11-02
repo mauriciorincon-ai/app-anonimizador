@@ -30,6 +30,7 @@ import {
   type EstadoDelTaller,
 } from "@/lib/sesion";
 import type { Politica } from "@/engine/politica";
+import { fijarIdioma } from "@/lib/idioma/estado";
 import type {
   MensajeAlWorker,
   MensajeDelWorker,
@@ -145,6 +146,7 @@ const POLITICA = {
 
 const RESULTADO = {
   hashDePolitica: "abc123",
+  idioma: "es",
   ms: 12,
 } as unknown as ResultadoDeTransformacion;
 
@@ -164,6 +166,7 @@ const RESULTADO = {
  */
 const CLAVES_DEL_RESULTADO: Record<keyof ResultadoDeTransformacion, true> = {
   hashDePolitica: true,
+  idioma: true,
   balance: true,
   utilidad: true,
   suprimidas: true,
@@ -188,13 +191,16 @@ function archivoListo(
 // ── Los tests ─────────────────────────────────────────────────────────────────────────────────
 
 describe("el contrato del tratamiento (§5 — deuda B2)", () => {
-  it("cruzan seis campos, y cada uno tiene su lector", () => {
+  it("cruzan siete campos, y cada uno tiene su lector", () => {
     // Los nombres se escriben aquí para que un humano los lea, no porque el runtime los necesite:
     // la garantía fuerte la da el tipo de `CLAVES_DEL_RESULTADO`, que no compila si sobra o falta
-    // uno. Esta lista obliga además a que el campo nuevo se vea en el diff del PR.
+    // uno. Esta lista obliga además a que el campo nuevo se vea en el diff del PR. `idioma` (el del
+    // TRABAJO) lo lee el certificado, que declara en qué idioma quedaron escritos los rótulos del
+    // archivo aunque el documento se descargue en otro.
     expect(Object.keys(CLAVES_DEL_RESULTADO).sort()).toEqual([
       "balance",
       "hashDePolitica",
+      "idioma",
       "ms",
       "muestras",
       "suprimidas",
@@ -320,6 +326,7 @@ describe("la transformación", () => {
     expect(worker.enviados.at(-1)).toEqual({
       tipo: "transformar",
       politica: POLITICA,
+      idioma: "es",
     });
 
     worker.responde({ tipo: "transformado", resultado: RESULTADO });
@@ -328,6 +335,23 @@ describe("la transformación", () => {
       resultado: RESULTADO,
     });
     expect(taller.etapa).toBeNull();
+  });
+
+  it("el idioma del trabajo es el de la pantalla al pulsar, y construir el archivo no lleva ninguno", () => {
+    const worker = conArchivo();
+    act(() => fijarIdioma("en"));
+    act(() => transformar(POLITICA));
+    expect(worker.enviados.at(-1)).toEqual({
+      tipo: "transformar",
+      politica: POLITICA,
+      idioma: "en",
+    });
+
+    // Cambiar de idioma DESPUÉS no reescribe el archivo ya transformado: construirlo no pregunta
+    // por idioma alguno, la tabla guardada nació en el del trabajo.
+    act(() => fijarIdioma("es"));
+    act(() => prepararArchivo());
+    expect(worker.enviados.at(-1)).toEqual({ tipo: "construir-archivo" });
   });
 
   it("pedir el archivo nombra su etapa: escribir 500k filas tarda y se dice", () => {

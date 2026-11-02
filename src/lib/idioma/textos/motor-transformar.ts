@@ -18,6 +18,13 @@
 //   · `utilidad.*` — por qué una columna quedó fuera del cruce de correlaciones.
 //   · `tecnica.*`  — el nombre llano de cada técnica (la bitácora guarda la CLAVE de la técnica, no
 //                    este nombre: ver `src/lib/tecnicas-en-palabras.ts`).
+//   · `salida.*`   — lo que Velo ESCRIBE DENTRO del archivo anonimizado (los dos rótulos de un
+//                    intervalo de Mondrian). Siguen el idioma del TRABAJO —el de la pantalla al
+//                    pulsar «transformar»—, que queda escrito en el certificado. Llevan sus espacios
+//                    de borde a propósito (`" a "`, `" (o vacío)"`): `decir` no recorta, y el
+//                    español de aquí es byte por byte el que el archivo siempre llevó. En inglés
+//                    son ASCII a propósito: un guion choca con negativos y fechas ISO, una coma con
+//                    las comillas del CSV, y un guion largo con el CSV sin BOM.
 //
 // Los nombres propios (Habeas Data, HIPAA, Safe Harbor, SIC, AGN, HHS, CFR) se escriben igual en los
 // dos idiomas.
@@ -277,5 +284,17 @@ export const MOTOR_TRANSFORMAR = {
   "tecnica.generalizar-automatico": {
     es: "generalizada hasta el k",
     en: "generalized up to k",
+  },
+
+  // ── Salida: lo que se escribe dentro del archivo anonimizado ───────────────────────────────
+  "salida.mondrian.separador": {
+    // Entre los extremos de un intervalo OBSERVADO: «18 a 39», «18 to 39».
+    es: " a ",
+    en: " to ",
+  },
+  "salida.mondrian.sufijoVacio": {
+    // Cuando el intervalo también cubre celdas vacías: «0 a 5 (o vacío)», «0 to 5 (or empty)».
+    es: " (o vacío)",
+    en: " (or empty)",
   },
 } as const satisfies Readonly<Record<string, Texto>>;

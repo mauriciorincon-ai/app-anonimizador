@@ -14,8 +14,13 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { generarFilas } from "../../docs/kit-de-prueba/generador.mjs";
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
-import { serializarCsv } from "@/engine/csv";
-import { hashDePolitica, type Politica } from "@/engine/politica";
+import { nombreDelArchivoAnonimizado, serializarCsv } from "@/engine/csv";
+import {
+  exportarPolitica,
+  hashDePolitica,
+  type Politica,
+} from "@/engine/politica";
+import { serializarCanonico } from "@/engine/serializacion";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { sha256 } from "@/lib/sha256";
 
@@ -76,7 +81,12 @@ async function huellaDelArchivo(
   tabla: TablaColumnar,
   llave: CryptoKey,
 ): Promise<string> {
-  const { tabla: transformada } = await aplicarPolitica(tabla, POLITICA, llave);
+  const { tabla: transformada } = await aplicarPolitica(
+    tabla,
+    POLITICA,
+    llave,
+    "es",
+  );
   return sha256(new TextEncoder().encode(serializarCsv(transformada)));
 }
 
@@ -120,8 +130,8 @@ describe("llave distinta ⇒ archivo distinto", () => {
     // Un archivo distinto podría deberse a una sola columna. La promesa es más fuerte: toda
     // columna que dependa de la llave tiene que cambiar con ella.
     const tabla = tablaPorBloques(500);
-    const conA = await aplicarPolitica(tabla, POLITICA, llaveA);
-    const conB = await aplicarPolitica(tabla, POLITICA, llaveB);
+    const conA = await aplicarPolitica(tabla, POLITICA, llaveA, "es");
+    const conB = await aplicarPolitica(tabla, POLITICA, llaveB, "es");
 
     for (const nombre of ["cedula_titular", "nit_empresa", "correo"]) {
       const a = conA.tabla.columnas.find((c) => c.nombre === nombre)!;
@@ -134,8 +144,8 @@ describe("llave distinta ⇒ archivo distinto", () => {
     // El complemento del test anterior: si `celular` (enmascarado) o `fecha_nacimiento`
     // (generalizada) cambiaran con la llave, algo estaría leyendo la llave donde no debe.
     const tabla = tablaPorBloques(500);
-    const conA = await aplicarPolitica(tabla, POLITICA, llaveA);
-    const conB = await aplicarPolitica(tabla, POLITICA, llaveB);
+    const conA = await aplicarPolitica(tabla, POLITICA, llaveA, "es");
+    const conB = await aplicarPolitica(tabla, POLITICA, llaveB, "es");
 
     for (const nombre of ["celular", "fecha_nacimiento", "municipio"]) {
       const a = conA.tabla.columnas.find((c) => c.nombre === nombre)!;
@@ -165,6 +175,7 @@ describe("con Mondrian en la política, el archivo sigue siendo byte-idéntico",
       tabla,
       CON_REPARTO,
       llaveA,
+      "es",
     );
     expect(mondrian?.alcanzado).toBe(true);
     return sha256(new TextEncoder().encode(serializarCsv(transformada)));
@@ -187,6 +198,7 @@ describe("con Mondrian en la política, el archivo sigue siendo byte-idéntico",
       tabla,
       { ...CON_REPARTO, kObjetivo: 50 },
       llaveA,
+      "es",
     );
     expect(
       sha256(new TextEncoder().encode(serializarCsv(conK50.tabla))),
@@ -209,7 +221,7 @@ describe("el gate no está comparando constantes", () => {
     };
     expect(hashDePolitica(otra)).not.toBe(hashDePolitica(POLITICA));
 
-    const { tabla: conOtra } = await aplicarPolitica(tabla, otra, llaveA);
+    const { tabla: conOtra } = await aplicarPolitica(tabla, otra, llaveA, "es");
     const huellaOtra = sha256(new TextEncoder().encode(serializarCsv(conOtra)));
     expect(huellaOtra).not.toBe(await huellaDelArchivo(tabla, llaveA));
   });
@@ -219,8 +231,109 @@ describe("el gate no está comparando constantes", () => {
       tablaPorBloques(500),
       POLITICA,
       llaveA,
+      "es",
     );
     const csv = serializarCsv(transformada);
     expect(csv).not.toContain("nombre_completo");
+  });
+});
+
+// ── El idioma del trabajo (S6) ────────────────────────────────────────────────────────────────
+//
+// Lo que Velo escribe DENTRO del archivo (los dos rótulos de un intervalo de Mondrian) sigue al
+// idioma de la pantalla al pulsar «transformar». Eso añade una entrada a la función del archivo:
+// mismo input + misma política + misma llave + MISMO IDIOMA ⇒ mismo archivo, byte por byte. Lo que
+// el idioma NO puede hacer es entrar a la identidad del tratamiento: ni a la política, ni a su
+// hash, ni a la bóveda, ni al nombre del archivo. Las dos versiones del CSV se llaman igual; solo
+// su SHA-256 difiere, y eso es lo que el certificado declara.
+
+describe("el idioma del trabajo", () => {
+  const CON_REPARTO: Politica = {
+    ...POLITICA,
+    kObjetivo: 5,
+    reglas: [
+      ...POLITICA.reglas.map((regla) =>
+        regla.columna === "correo"
+          ? {
+              columna: "correo",
+              tecnica: {
+                tipo: "seudonimizar" as const,
+                longitud: 16,
+                reversible: true,
+              },
+            }
+          : regla,
+      ),
+      { columna: "municipio", tecnica: { tipo: "generalizar-automatico" } },
+      { columna: "estrato", tecnica: { tipo: "generalizar-automatico" } },
+      { columna: "latitud", tecnica: { tipo: "generalizar-automatico" } },
+    ],
+  };
+
+  async function csvDe(
+    politica: Politica,
+    idioma: "es" | "en",
+    tabla = tablaPorBloques(500),
+  ) {
+    const r = await aplicarPolitica(tabla, politica, llaveA, idioma);
+    return { csv: serializarCsv(r.tabla), r };
+  }
+
+  const huella = (csv: string) => sha256(new TextEncoder().encode(csv));
+
+  it("un CSV transformado SIN Mondrian es byte-idéntico en los dos idiomas", async () => {
+    const es = await csvDe(POLITICA, "es");
+    const en = await csvDe(POLITICA, "en");
+    expect(es.r.mondrian).toBeNull();
+    expect(en.csv).toBe(es.csv);
+    expect(huella(en.csv)).toBe(huella(es.csv));
+  });
+
+  it("con Mondrian, cada idioma es byte-idéntico a sí mismo (dos corridas completas)", async () => {
+    for (const idioma of ["es", "en"] as const) {
+      const primera = huella((await csvDe(CON_REPARTO, idioma)).csv);
+      const segunda = huella(
+        (await csvDe(CON_REPARTO, idioma, tablaPorBloques(13))).csv,
+      );
+      expect(segunda, idioma).toBe(primera);
+      expect(primera).toMatch(/^[0-9a-f]{64}$/);
+    }
+  });
+
+  it("y los dos idiomas NO dan el mismo archivo — el gate no compara constantes", async () => {
+    const es = await csvDe(CON_REPARTO, "es");
+    const en = await csvDe(CON_REPARTO, "en");
+    expect(es.r.mondrian?.alcanzado).toBe(true);
+    expect(en.r.mondrian?.alcanzado).toBe(true);
+    expect(huella(en.csv)).not.toBe(huella(es.csv));
+    // Lo que difiere son los dos rótulos y nada más: traducidos los del español, el CSV es el mismo.
+    expect(
+      es.csv.replaceAll(" a ", " to ").replaceAll(" (o vacío)", " (or empty)"),
+    ).toBe(en.csv);
+  });
+
+  it("el idioma no toca la identidad: ni el hash de la política, ni la bóveda, ni el nombre del archivo", async () => {
+    const antes = JSON.stringify(CON_REPARTO);
+    const hashAntes = hashDePolitica(CON_REPARTO);
+
+    const es = await csvDe(CON_REPARTO, "es");
+    const en = await csvDe(CON_REPARTO, "en");
+
+    // La política es la misma, el hash es el mismo y el JSON que se exporta no sabe de idiomas.
+    expect(JSON.stringify(CON_REPARTO)).toBe(antes);
+    expect(hashDePolitica(CON_REPARTO)).toBe(hashAntes);
+    expect(exportarPolitica(CON_REPARTO)).not.toContain('"idioma"');
+    // El nombre sale solo del hash: las dos versiones del CSV se llaman igual.
+    expect(nombreDelArchivoAnonimizado(hashAntes)).toBe(
+      `velo-anonimizado-${hashAntes.slice(0, 8)}.csv`,
+    );
+    // La correspondencia de la bóveda (original ↔ seudónimo) no depende del idioma.
+    expect(es.r.correspondencias.length).toBeGreaterThan(0);
+    expect(serializarCanonico(en.r.correspondencias)).toBe(
+      serializarCanonico(es.r.correspondencias),
+    );
+    // Ni lo que no es Mondrian: columnas suprimidas y colisiones salen idénticas.
+    expect(en.r.suprimidas).toEqual(es.r.suprimidas);
+    expect(en.r.colisiones).toEqual(es.r.colisiones);
   });
 });

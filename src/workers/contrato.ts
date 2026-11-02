@@ -34,7 +34,13 @@ export type MensajeAlWorker =
    * puede tener una `CryptoKey` en la mano.
    */
   | { tipo: "derivar-llave"; frase: string; sal: string }
-  | { tipo: "transformar"; politica: Politica }
+  /**
+   * `idioma` es el del TRABAJO: el de la pantalla al pulsar «transformar». Decide los rótulos que
+   * Velo escribe dentro del archivo (los de un intervalo de Mondrian) y queda en el resultado y en
+   * el certificado. NO es parte de la política —ni de su hash, ni de la bóveda, ni del nombre del
+   * archivo— y `construir-archivo` no lleva ninguno: la tabla guardada ya nació en ese idioma.
+   */
+  | { tipo: "transformar"; politica: Politica; idioma: Idioma }
   | { tipo: "construir-archivo" }
   /**
    * Sella la bóveda del tratamiento que se acaba de hacer. La frase de paso entra y **no vuelve a
@@ -266,6 +272,13 @@ export interface MuestraDeTransformacion {
 export interface ResultadoDeTransformacion {
   /** Identidad del tratamiento: mismo hash ⇒ mismo trato. */
   readonly hashDePolitica: string;
+  /**
+   * El idioma del trabajo: el de la pantalla cuando se pulsó «transformar», con el que se escribió
+   * el archivo. Aparte del hash a propósito: la política es la misma en los dos idiomas. El
+   * certificado lo lee de aquí —no del idioma de la pantalla al descargar, que decide el idioma del
+   * propio documento— y lo declara.
+   */
+  readonly idioma: Idioma;
   readonly balance: BalanceDelTratamiento;
   readonly utilidad: Utilidad;
   readonly suprimidas: readonly string[];

@@ -307,7 +307,7 @@ async function derivar(frase: string, sal: string): Promise<void> {
   enviar({ tipo: "llave-lista", huella: proyecto.huella });
 }
 
-async function transformar(politica: Politica): Promise<void> {
+async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
   if (!tabla || !diagnosticoActual) {
     enviar({ tipo: "error", motivo: "sin-tabla" });
     return;
@@ -319,7 +319,10 @@ async function transformar(politica: Politica): Promise<void> {
 
   try {
     avisar("transformando", original.filas, 0, 0);
-    const resultado = await aplicarPolitica(original, politica, llave);
+    // El idioma del trabajo llega como dato (la pantalla al pulsar «transformar») y se queda en el
+    // resultado: el certificado lo lee de ahí, no del idioma que tenga la pantalla al descargarlo.
+    // `construirArchivo` no lee ningún idioma: la tabla que escribe ya nació en el del trabajo.
+    const resultado = await aplicarPolitica(original, politica, llave, idioma);
 
     avisar("midiendo-el-despues", original.filas, 0, 0);
     const sensibles = diagnostico.columnas
@@ -391,6 +394,7 @@ async function transformar(politica: Politica): Promise<void> {
       // del balance, ya ordenadas y con su gravedad decidida.
       resultado: {
         hashDePolitica: hashDeLaPolitica,
+        idioma,
         balance,
         utilidad: medirUtilidad(original, resultado.tabla),
         suprimidas: resultado.suprimidas,
@@ -800,7 +804,8 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
   if (mensaje?.tipo === "analizar") void analizar(mensaje.archivo);
   if (mensaje?.tipo === "derivar-llave")
     void derivar(mensaje.frase, mensaje.sal);
-  if (mensaje?.tipo === "transformar") void transformar(mensaje.politica);
+  if (mensaje?.tipo === "transformar")
+    void transformar(mensaje.politica, mensaje.idioma);
   if (mensaje?.tipo === "construir-archivo") construirArchivo();
   if (mensaje?.tipo === "sellar-boveda") void sellar(mensaje.frase);
   if (mensaje?.tipo === "abrir-boveda")
