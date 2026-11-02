@@ -179,10 +179,10 @@
     {
       "clave": "pruebas_unitarias",
       "etiqueta": "Pruebas unitarias y de integración",
-      "valor": 963,
+      "valor": 964,
       "unidad": "pruebas",
       "fuente": "medido",
-      "detalle": "Salida de `pnpm test` el 2026-11-01: 963 pruebas en 52 archivos. Un archivo y una prueba quedan omitidos por diseño."
+      "detalle": "Salida de `pnpm test` el 2026-11-01: 964 pruebas en 52 archivos. Un archivo y una prueba quedan omitidos por diseño."
     },
     {
       "clave": "pruebas_e2e",
