@@ -1,0 +1,77 @@
+{
+  "jerarquia": "divipola",
+  "descripcion": "Colombian departments (33 department-level entities: 32 departments + Bogotá D.C.) and the 5-digit DIVIPOLA entities (municipalities, the island of San Andrés and non-municipalized areas), each department assigned to a Sistema General de Regalías region.",
+  "fuentes": [
+    {
+      "editor": "DANE (Departamento Administrativo Nacional de Estadística), published on datos.gov.co",
+      "titulo": "DIVIPOLA- Códigos municipios (dataset gdxc-w37w; \"Actualización a corte 30 diciembre 2024\")",
+      "url": "https://www.datos.gov.co/api/views/gdxc-w37w/rows.csv?accessType=DOWNLOAD",
+      "fecha_de_consulta": "2026-11-02",
+      "archivo": "divipola-gdxc-w37w.csv",
+      "sha256": "159b4b84595a11be5bf623fdf25c6fd5c9ac8c3ed898cf7928b2b3f321b9b492",
+      "que_se_tomo": "Columns 'Código Departamento', 'Nombre Departamento', 'Código Municipio', 'Nombre Municipio' and 'Tipo: Municipio / Isla / Área no municipalizada' (type is used only for the counts); latitude/longitude are not used. Names are kept exactly as the source writes them (upper case, accents, e.g. 'BOGOTÁ, D.C.').",
+      "version_de_la_fuente": "dataset metadata (datos.gov.co views API, saved as divipola-gdxc-w37w.metadata.json, sha256 2b15c797999d11a598e6388118576576fa47a4c6c68d8190259c77b24ac28363): attribution 'Departamento Administrativo Nacional de Estadística - DANE'; description 'Actualización a corte 30 diciembre 2024'; publicationDate 2025-01-24; rows updated 2025-01-24.",
+      "licencia": "CC BY-SA 4.0 (licenseId CC_40_BY_SA declared by datos.gov.co)"
+    },
+    {
+      "editor": "Congreso de la República de Colombia (Ley 2056 de 2020); text published by the Secretaría del Senado de la República",
+      "titulo": "Ley 2056 de 2020 (30 de septiembre), 'Por la cual se regula la organización y el funcionamiento del Sistema General de Regalías' — artículo 45, 'Regiones del Sistema General de Regalías' (Diario Oficial No. 51.453 de 30 de septiembre de 2020)",
+      "url": "http://www.secretariasenado.gov.co/senado/basedoc/ley_2056_2020_pr001.html",
+      "fecha_de_consulta": "2026-11-02",
+      "archivo": "ley2056-senado-pr001.html",
+      "sha256": "7566be65cbec1379a21bf2b44f674f8f291d7f8e522564b19ac79edbe1697e06",
+      "que_se_tomo": "Article 45 only (anchor name=\"45\" up to the start of article 46): the six region headings ('Región Caribe', 'Región Centro-Oriente', 'Región Eje Cafetero', 'Región Pacífico', 'Región Centro - Sur - Amazonía', 'Región del Llano', written exactly as the heading line of each numeral) and the departments listed under each. The article lists the 32 departments plus Bogotá D.C., each in exactly one region. Region labels keep the 'Región ' prefix and the hyphen spacing of the Senado text (the law's own headings are inconsistent: 'Centro-Oriente' vs 'Centro - Sur - Amazonía'). The article says the regions exist 'para efectos de la distribución de la Asignación Regional' of the SGR and that they do not prevent other associations of territorial entities (parágrafo). The page header read 'Última actualización: 15 de octubre de 2026 - (Diario Oficial No. 53.651 - 7 de octubre de 2026)' and carries no modification note on article 45; Ley 2294 de 2023 modifies article 50 (literal a) of Ley 2056, not article 45.",
+      "version_de_la_fuente": "The Senado page is regenerated when the law is updated, so its sha256 may change on a later download; the text of article 45 was cross-checked against two other copies (below) and is identical in membership.",
+      "corroborado_con": [
+        {
+          "editor": "Departamento Administrativo de la Función Pública (Gestor Normativo, EVA)",
+          "url": "https://www1.funcionpublica.gov.co/eva/gestornormativo/norma_pdf.php?i=142858",
+          "archivo": "ley2056-funcionpublica-copia.pdf",
+          "sha256": "3c4add0d6fe8058a850147306d78dfc40859ad224afc439cb7354837b2470c19",
+          "nota": "PDF regenerated on every download (its hash is not stable); article 45 on pages 21-22."
+        },
+        {
+          "editor": "Scan of the signed law (hosted by Universidad del Rosario)",
+          "url": "https://eventos.urosario.edu.co/sites/default/files/2022-10/ley-2056-del-30-de-septiembre-de-2020.pdf",
+          "archivo": "ley2056-scan-urosario-copia.pdf",
+          "sha256": "82e5b9c087d0da232357323a9a3c405bb4dc7ba476248bc39cc4dcf9fd6da3e6",
+          "nota": "Scanned PDF with OCR text; stable file; same six regions and the same 33 members."
+        },
+        {
+          "editor": "Secretaría del Senado de la República (index page of the law)",
+          "url": "http://www.secretariasenado.gov.co/senado/basedoc/ley_2056_2020.html",
+          "archivo": "ley2056-senado-indice.html",
+          "sha256": "e9cb0e3c74e5f3556eb124ab597f4fb8188d51f3392924e81a7a67abddf06726",
+          "nota": "Gives the publication reference 'Diario Oficial No. 51.453 de 30 de septiembre de 2020'."
+        }
+      ]
+    }
+  ],
+  "derivado": {
+    "archivo": "divipola.json",
+    "sha256": "0fb8f794f010c26e1ceaf3c3b8246c6f04b1b2016a287da2d21dc4e753c98cb0",
+    "como": "Produced by `node scripts/jerarquias/derivar.mjs <sources-dir>` (scripts/jerarquias/derivar.mjs, Node built-ins only), which reads divipola-gdxc-w37w.csv and ley2056-senado-pr001.html from the sources directory. departamentos = one row [code, name, region] per distinct 'Código Departamento' (name verbatim from the CSV; the region is the heading of the article 45 numeral that lists the department, matched to the DIVIPOLA department by name ignoring case, accents and punctuation, with 'San Andrés, Providencia y Santa Catalina' matched to 'ARCHIPIÉLAGO DE SAN ANDRÉS, PROVIDENCIA Y SANTA CATALINA'); municipios = one row [code, name, department code] per CSV row (1,122 rows: all entities the source lists with a 5-digit code, including the island and the non-municipalized areas, which are not marked in the file — their codes are in 'notas'). Both lists are sorted by code (plain string order), JSON.stringify on one line plus a trailing newline, UTF-8 without BOM. The script throws if: the CSV header changes, a code is malformed, a department has two names or a municipality code repeats, a law department matches zero or several DIVIPOLA departments, a department appears in two regions or in none, the department count is not 33, or 05001 / 11001 are missing."
+  },
+  "conteos": {
+    "departamentos": 33,
+    "municipios_segun_la_fuente": 1103,
+    "isla_segun_la_fuente": 1,
+    "areas_no_municipalizadas": 18,
+    "entradas_en_municipios_del_json": 1122,
+    "regiones": 6,
+    "departamentos_por_region": {
+      "Región Caribe": 8,
+      "Región Centro-Oriente": 5,
+      "Región Eje Cafetero": 4,
+      "Región Pacífico": 4,
+      "Región Centro - Sur - Amazonía": 5,
+      "Región del Llano": 7
+    }
+  },
+  "notas": [
+    "The source DOES list non-municipalized areas with 5-digit codes (type 'Área no municipalizada'): 91263, 91405, 91407, 91430, 91460, 91530, 91536, 91669, 91798 (Amazonas); 94883, 94884, 94885, 94886, 94887, 94888 (Guainía); 97511, 97777, 97889 (Vaupés).",
+    "San Andrés (88001) is typed 'Isla' in the source; Providencia (88564) is typed 'Municipio'.",
+    "Bogotá, D.C. is both a department-level entity (code 11) and the municipality 11001, both named 'BOGOTÁ, D.C.' in the source.",
+    "The regions are those of the Sistema General de Regalías (Ley 2056 de 2020, art. 45), chosen because the Plan Nacional de Desarrollo 2022-2026 (Ley 2294 de 2023 and its Bases) contains no department-to-region table; they group Antioquia with the Eje Cafetero and Meta with the Llano, which differs from other regionalizations."
+  ]
+}
