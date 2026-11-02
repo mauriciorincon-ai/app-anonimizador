@@ -11,7 +11,11 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { join } from "node:path";
 
-import { DIRECTORIO_DE_FIXTURES, nombreDeFixture } from "./global-setup";
+import {
+  DIRECTORIO_DE_FIXTURES,
+  FIXTURE_CON_LISTAS_JSON,
+  nombreDeFixture,
+} from "./global-setup";
 
 const CLINICO = nombreDeFixture("clinico", 2_000, 42);
 const NO_TABLA = join(DIRECTORIO_DE_FIXTURES, "notas.txt");
@@ -48,6 +52,16 @@ for (const tema of ["light", "dark"] as const) {
       await page
         .getByRole("heading", { level: 1, name: /clinico-2000-s42\.csv/ })
         .waitFor();
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
+
+    test("el diagnóstico de un JSON con listas pasa axe", async ({ page }) => {
+      // El panel nuevo del S6: tablas de rutas sin tratar y de rutas heterogéneas, y el aviso fuerte.
+      await page.goto("/");
+      await page.setInputFiles("#archivo", FIXTURE_CON_LISTAS_JSON);
+      await page.waitForURL("**/diagnostico");
+      await page.getByText("Estas rutas salen sin tocar").waitFor();
       const { violations } = await new AxeBuilder({ page }).analyze();
       expect(resumir(violations)).toEqual([]);
     });
