@@ -212,6 +212,13 @@ export function Taller({ informe }: { informe: Informe }) {
             <DescargaDelArchivo
               archivo={taller.archivo}
               preparando={taller.etapa === "escribiendo"}
+              salida={
+                informe.archivo.formato !== "json"
+                  ? "csv"
+                  : informe.estructura?.forma === "arreglo"
+                    ? "json"
+                    : "jsonl"
+              }
               filas={informe.diagnostico.filas}
               suprimidas={hecha.suprimidas}
               hashDePolitica={hecha.hashDePolitica}

@@ -563,32 +563,66 @@ export const TRANSFORMAR = {
       titulo: { es: "Llévate el archivo", en: "Take your file" },
       nota: {
         es:
-          "El nombre no repite el del original: sale como `velo-anonimizado-…csv`. Un nombre " +
+          "El nombre no repite el del original: empieza por `velo-anonimizado-`. Un nombre " +
           "como `pacientes-2026.csv` cuenta de qué va el contenido antes de que nadie lo abra, " +
           "y ese nombre viaja en el asunto de un correo.",
         en:
-          "The name doesn't repeat the original's: it comes out as `velo-anonimizado-…csv`. A " +
-          "name like `pacientes-2026.csv` tells what the contents are about before anyone opens " +
-          "it, and that name travels in an email's subject line.",
+          "The name doesn't repeat the original's: it starts with `velo-anonimizado-`. A name " +
+          "like `pacientes-2026.csv` tells what the contents are about before anyone opens it, " +
+          "and that name travels in an email's subject line.",
       },
     },
     // «Un CSV con N filas» + [«y sin la columna X»] + «. Separado por comas…». La lista de columnas
-    // suprimidas es del usuario, así que va aparte.
-    csv: {
-      filas: { es: "Un CSV con {filas} filas", en: "A CSV with {filas} rows" },
-      sinUna: { es: "y sin la columna", en: "and without the column" },
-      sinVarias: {
-        es: "y sin las {n} columnas",
-        en: "and without the {n} columns",
+    // suprimidas es del usuario, así que va aparte. La primera y la última frase siguen a lo que el
+    // worker escribe: un JSON sale como JSON (el panel decía CSV para todo; hallazgo A1 del S6).
+    salida: {
+      csv: {
+        filas: {
+          es: "Un CSV con {filas} filas",
+          en: "A CSV with {filas} rows",
+        },
+        formato: {
+          es:
+            ". Separado por comas, terminado en salto de línea y sin BOM — si Excel en Windows " +
+            "te pregunta por la codificación, es UTF-8.",
+          en:
+            ". Comma-separated, ending in a line break and with no BOM — if Excel on Windows " +
+            "asks about the encoding, it's UTF-8.",
+        },
       },
-      formato: {
-        es:
-          ". Separado por comas, terminado en salto de línea y sin BOM — si Excel en Windows te " +
-          "pregunta por la codificación, es UTF-8.",
-        en:
-          ". Comma-separated, ending in a line break and with no BOM — if Excel on Windows asks " +
-          "about the encoding, it's UTF-8.",
+      json: {
+        filas: {
+          es: "Un JSON con {filas} registros",
+          en: "A JSON file with {filas} records",
+        },
+        formato: {
+          es:
+            ". Es un arreglo con un registro compacto por línea y las claves en el orden del " +
+            "original, en UTF-8 y sin BOM.",
+          en:
+            ". One array, one compact record per line, keys in the order the original had them, " +
+            "UTF-8 with no BOM.",
+        },
       },
+      jsonl: {
+        filas: {
+          es: "Un JSON Lines con {filas} registros",
+          en: "A JSON Lines file with {filas} records",
+        },
+        formato: {
+          es:
+            ". Un registro compacto por línea, con las claves en el orden del original, en UTF-8 " +
+            "y sin BOM.",
+          en:
+            ". One compact record per line, keys in the order the original had them, UTF-8 with " +
+            "no BOM.",
+        },
+      },
+    },
+    sinUna: { es: "y sin la columna", en: "and without the column" },
+    sinVarias: {
+      es: "y sin las {n} columnas",
+      en: "and without the {n} columns",
     },
     // Los 8 caracteres del nombre no son un número de serie: son el principio del SHA-256 de la
     // política. Va partido porque en medio están los 8 caracteres.

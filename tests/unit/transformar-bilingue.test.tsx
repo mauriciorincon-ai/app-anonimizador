@@ -290,6 +290,7 @@ describe("la entrega del archivo", () => {
   const ENTREGA = {
     archivo: null,
     preparando: false,
+    salida: "csv" as const,
     filas: 1_234,
     suprimidas: ["correo", "telefono"],
     hashDePolitica: "0123456789abcdef",
@@ -308,6 +309,22 @@ describe("la entrega del archivo", () => {
     expect(
       screen.getByRole("button", { name: "Prepare the file" }),
     ).toBeEnabled();
+  });
+
+  it("un JSON se anuncia como JSON, en su forma, y jamás como CSV", () => {
+    for (const idioma of ["es", "en"] as const)
+      for (const salida of ["json", "jsonl"] as const) {
+        fijarIdioma(idioma);
+        const { container, unmount } = render(
+          <DescargaDelArchivo {...ENTREGA} salida={salida} />,
+        );
+        const texto = container.textContent ?? "";
+        expect(texto).toMatch(
+          salida === "json" ? /JSON (con|file)/ : /JSON Lines/,
+        );
+        expect(texto).not.toMatch(/CSV|Excel|comas|Comma/);
+        unmount();
+      }
   });
 
   it("si el idioma cambió después de transformar, dice en cuál se escribió el archivo", () => {

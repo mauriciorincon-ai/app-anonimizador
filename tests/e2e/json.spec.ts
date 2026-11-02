@@ -48,6 +48,11 @@ async function transformarYGuardar(page: Page) {
   await page
     .getByRole("heading", { name: "Qué cambió, y qué sigue igual" })
     .waitFor({ timeout: 90_000 });
+  // El panel de entrega nombra lo que se escribe: un JSON, nunca «un CSV» (hallazgo A1 del S6).
+  await expect(
+    page.getByText(/Un JSON (Lines )?con [\d.]+ registros/),
+  ).toBeVisible();
+  await expect(page.getByText(/Un CSV con/)).toHaveCount(0);
   await page.getByRole("button", { name: "Preparar el archivo" }).click();
 
   const guardar = page.getByRole("link", {

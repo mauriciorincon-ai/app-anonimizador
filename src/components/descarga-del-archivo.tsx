@@ -26,9 +26,13 @@ import type { AsaDeArchivo } from "@/lib/sesion";
 
 const E = TRANSFORMAR.entrega;
 
+/** Lo que el worker escribe: un CSV o un Excel salen como CSV; un JSON, en su misma forma. */
+export type SalidaDelArchivo = keyof typeof E.salida;
+
 export function DescargaDelArchivo({
   archivo,
   preparando,
+  salida,
   filas,
   suprimidas,
   hashDePolitica,
@@ -37,6 +41,7 @@ export function DescargaDelArchivo({
 }: {
   archivo: AsaDeArchivo | null;
   preparando: boolean;
+  salida: SalidaDelArchivo;
   filas: number;
   suprimidas: readonly string[];
   hashDePolitica: string;
@@ -52,12 +57,12 @@ export function DescargaDelArchivo({
       nota={<Rico texto={E.panel.nota} />}
     >
       <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-        <Rico texto={E.csv.filas} datos={{ filas }} />
+        <Rico texto={E.salida[salida].filas} datos={{ filas }} />
         {suprimidas.length > 0 ? (
           <>
             {" "}
             <Rico
-              texto={suprimidas.length === 1 ? E.csv.sinUna : E.csv.sinVarias}
+              texto={suprimidas.length === 1 ? E.sinUna : E.sinVarias}
               datos={{ n: suprimidas.length }}
             />{" "}
             <span className="font-mono text-[0.875rem]">
@@ -65,7 +70,7 @@ export function DescargaDelArchivo({
             </span>
           </>
         ) : null}
-        <Rico texto={E.csv.formato} />
+        <Rico texto={E.salida[salida].formato} />
       </p>
 
       {/* Los 8 caracteres del nombre no son un número de serie: son el principio del SHA-256 de la
