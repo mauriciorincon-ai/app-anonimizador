@@ -22,6 +22,8 @@
 import { useId, useRef, useState } from "react";
 
 import { Boton } from "@/components/boton";
+import { ComoLlegarAlK } from "@/components/como-llegar-al-k";
+import { ParametrosDeRuido } from "@/components/parametros-de-ruido";
 import { IconoExportar, IconoImportar } from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import { Rico, useT } from "@/components/texto";
@@ -41,10 +43,9 @@ import {
   resumenDeCobertura,
   type PoliticaDeFabrica,
 } from "@/engine/politicas-de-fabrica";
-import { plural, type Texto } from "@/lib/idioma";
+import { type Texto } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
-import type { FormatoDeArchivo } from "@/workers/contrato";
 
 const E = TRANSFORMAR.editor;
 
@@ -112,6 +113,23 @@ const OPCIONES: readonly { valor: string; texto: Texto; tecnica: Tecnica }[] = [
     tecnica: { tipo: "generalizar-automatico" },
   },
   {
+    // S7: los parámetros (ε, rango, decimales) se eligen debajo del menú (`ParametrosDeRuido`).
+    // Los de partida son un ejemplo, no una recomendación: el rango tiene que ser el del dato.
+    valor: "laplace",
+    texto: E.opcion.laplace,
+    tecnica: { tipo: "laplace", epsilon: 1, minimo: 0, maximo: 100, decimales: 0 },
+  },
+  {
+    valor: "respuesta-aleatorizada",
+    texto: E.opcion.respuestaAleatorizada,
+    tecnica: { tipo: "respuesta-aleatorizada", epsilon: 1 },
+  },
+  {
+    valor: "perturbar",
+    texto: E.opcion.perturbar,
+    tecnica: { tipo: "perturbar", porcentaje: 10 },
+  },
+  {
     valor: "suprimir",
     texto: E.opcion.suprimir,
     tecnica: { tipo: "suprimir" },
@@ -141,54 +159,17 @@ function valorDe(tecnica: Tecnica): string {
 
 const ETIQUETA_DE_CATEGORIA: Record<string, Texto> = E.categoria;
 
-/**
- * Quita el eje reversible de toda la política y cuenta a cuántas columnas se lo quitó. Es la
- * política tal cual, salvo que ninguna seudonimización puede deshacerse con una bóveda.
- */
-function sinVueltaPosible(politica: Politica): {
-  politica: Politica;
-  quitadas: number;
-} {
-  let quitadas = 0;
-  const reglas = politica.reglas.map((regla) => {
-    const { tecnica } = regla;
-    if (
-      (tecnica.tipo === "seudonimizar" ||
-        tecnica.tipo === "seudonimizar-con-formato") &&
-      esReversible(tecnica)
-    ) {
-      quitadas += 1;
-      return { ...regla, tecnica: { ...tecnica, reversible: undefined } };
-    }
-    return regla;
-  });
-  return quitadas === 0
-    ? { politica, quitadas }
-    : { politica: { ...politica, reglas }, quitadas };
-}
-
 export function EditorDePolitica({
   columnas,
   politica,
   onCambio,
-  formato = "csv",
 }: {
   columnas: readonly HallazgoDeColumna[];
   politica: Politica;
   onCambio: (politica: Politica) => void;
-  /**
-   * El formato del archivo que se está tratando. En un JSON la casilla de la bóveda se apaga: el
-   * regreso lee solo CSV, y una bóveda de un JSON sería un archivo cifrado que nada sabe abrir.
-   * Ausente = CSV (el comportamiento de siempre).
-   */
-  formato?: FormatoDeArchivo;
 }) {
   const idDeK = useId();
   const { t, m } = useT();
-  const sinRegreso = formato === "json";
-  // Cuántas columnas reversibles de una política IMPORTADA se apagaron. Se dice en pantalla: quitar
-  // en silencio lo que un archivo pedía sería desobedecerlo sin avisar.
-  const [vueltaQuitada, setVueltaQuitada] = useState(0);
   const entrada = useRef<HTMLInputElement>(null);
   // Se guarda el MENSAJE y no la frase: si el idioma cambia con el error a la vista, se repinta.
   const [errorAlImportar, setErrorAlImportar] = useState<MensajeDeMotor | null>(
@@ -248,6 +229,18 @@ export function EditorDePolitica({
     });
   }
 
+  /** S7: los parámetros del ruido de una columna (ya validados por `ParametrosDeRuido`). */
+  function cambiarParametros(nombre: string, tecnica: Tecnica): void {
+    onCambio({
+      ...politica,
+      origen: origenTrasEditar(politica.origen),
+      reglas: [
+        ...politica.reglas.filter((r) => r.columna !== nombre),
+        { columna: nombre, tecnica },
+      ],
+    });
+  }
+
   function aplicarFabrica(fabrica: PoliticaDeFabrica): void {
     onCambio(
       construirPolitica(
@@ -284,15 +277,6 @@ export function EditorDePolitica({
       return;
     }
     setErrorAlImportar(null);
-    if (sinRegreso) {
-      const { politica: sinVuelta, quitadas } = sinVueltaPosible(
-        resultado.politica,
-      );
-      setVueltaQuitada(quitadas);
-      onCambio(sinVuelta);
-      return;
-    }
-    setVueltaQuitada(0);
     onCambio(resultado.politica);
   }
 
@@ -372,25 +356,6 @@ export function EditorDePolitica({
         </p>
       ) : null}
 
-      {vueltaQuitada > 0 ? (
-        <p
-          role="status"
-          className="rounded-2 border-aviso/35 bg-aviso-tenue text-tinta mt-4 border px-4 py-3 text-[0.875rem] leading-relaxed"
-        >
-          <span aria-hidden="true" className="text-aviso mr-2 font-semibold">
-            !
-          </span>
-          <Rico
-            texto={plural(
-              vueltaQuitada,
-              E.casilla.vueltaQuitadaUna,
-              E.casilla.vueltaQuitadaVarias,
-            )}
-            datos={{ n: vueltaQuitada }}
-          />
-        </p>
-      ) : null}
-
       <AvisoDeOrigen origen={politica.origen} />
 
       {/* Contenedor propio, SIN `contain: paint`: el desplegable nativo se pinta fuera del flujo y
@@ -446,8 +411,12 @@ export function EditorDePolitica({
                   <CasillaDeVuelta
                     columna={columna.nombre}
                     tecnica={tecnicaDe(politica, columna.nombre)}
-                    bloqueada={sinRegreso}
                     onCambio={cambiarReversible}
+                  />
+                  <ParametrosDeRuido
+                    columna={columna.nombre}
+                    tecnica={tecnicaDe(politica, columna.nombre)}
+                    onCambio={cambiarParametros}
                   />
                 </td>
               </tr>
@@ -512,6 +481,13 @@ export function EditorDePolitica({
           )}
         </div>
       ) : null}
+      {conMondrian ? (
+        <ComoLlegarAlK
+          columnas={columnas}
+          politica={politica}
+          onCambio={onCambio}
+        />
+      ) : null}
     </Panel>
   );
 }
@@ -526,13 +502,10 @@ export function EditorDePolitica({
 function CasillaDeVuelta({
   columna,
   tecnica,
-  bloqueada,
   onCambio,
 }: {
   columna: string;
   tecnica: Tecnica;
-  /** El archivo no tiene regreso (un JSON): la casilla se ve, apagada, y dice por qué. */
-  bloqueada: boolean;
   onCambio: (columna: string, reversible: boolean) => void;
 }) {
   const { t } = useT();
@@ -541,30 +514,16 @@ function CasillaDeVuelta({
     tecnica.tipo === "seudonimizar-con-formato";
   if (!admiteVuelta) return null;
   return (
-    <label
-      className={`text-tinta-suave mt-1.5 flex max-w-[18rem] items-start gap-2 text-[0.8125rem] leading-snug ${
-        bloqueada ? "cursor-not-allowed" : ""
-      }`}
-    >
+    <label className="text-tinta-suave mt-1.5 flex max-w-[18rem] items-start gap-2 text-[0.8125rem] leading-snug">
       <input
         type="checkbox"
-        // Apagada, la casilla no puede estar marcada: una casilla bloqueada y marcada diría que
-        // la vuelta existe. Con el atributo `disabled` el navegador además la saca del tabulador.
-        checked={bloqueada ? false : esReversible(tecnica)}
-        disabled={bloqueada}
-        className="accent-acento mt-0.5 size-4 shrink-0 disabled:cursor-not-allowed"
-        onChange={(evento) => {
-          // Un control apagado no emite eventos en un navegador, pero un evento sintético sí
-          // podría llegar: la política no debe depender de que la casilla esté bien portada.
-          if (!bloqueada) onCambio(columna, evento.target.checked);
-        }}
+        checked={esReversible(tecnica)}
+        className="accent-acento mt-0.5 size-4 shrink-0"
+        onChange={(evento) => onCambio(columna, evento.target.checked)}
       />
       <span>
         {t(E.casilla.titulo)}
-        {/* El motivo va en texto, no solo en gris: una casilla apagada sin razón parece un fallo. */}
-        <span className="text-tinta-tenue block">
-          {t(bloqueada ? E.casilla.soloIda : E.casilla.detalle)}
-        </span>
+        <span className="text-tinta-tenue block">{t(E.casilla.detalle)}</span>
       </span>
     </label>
   );

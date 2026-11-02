@@ -83,6 +83,22 @@ export class Sha256 {
 
   /** Cierra el resumen y devuelve los 64 caracteres hexadecimales. */
   terminar(): string {
+    this.cerrar();
+    let hex = "";
+    for (const palabra of this.h) hex += palabra.toString(16).padStart(8, "0");
+    return hex;
+  }
+
+  /**
+   * Cierra el resumen y devuelve sus ocho palabras de 32 bits (big-endian, las mismas del hex). Lo
+   * usa el azar sembrado del ruido (S7), que consume palabras y no texto.
+   */
+  terminarEnPalabras(): Uint32Array {
+    this.cerrar();
+    return new Uint32Array(this.h);
+  }
+
+  private cerrar(): void {
     if (this.terminado) throw new Error("el resumen ya se cerró");
     this.terminado = true;
 
@@ -103,10 +119,6 @@ export class Sha256 {
     vista.setUint32(cola.length - 4, bitsDeLongitud >>> 0, false);
 
     for (let i = 0; i < cola.length; i += BLOQUE) this.comprimir(cola, i);
-
-    let hex = "";
-    for (const palabra of this.h) hex += palabra.toString(16).padStart(8, "0");
-    return hex;
   }
 
   /** Una ronda de compresión sobre el bloque de 64 bytes que empieza en `desde`. */

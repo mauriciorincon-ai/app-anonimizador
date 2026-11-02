@@ -18,6 +18,10 @@ import { useState } from "react";
 
 import { IconoAtras, IconoTransformar } from "@/components/iconos";
 import { BalanceEnPantalla } from "@/components/balance-en-pantalla";
+import {
+  PrivacidadEnPantalla,
+  privacidadDeLaEntrada,
+} from "@/components/privacidad-en-pantalla";
 import { BovedaDelTratamiento } from "@/components/boveda-del-tratamiento";
 import { clasesDeBoton, Boton } from "@/components/boton";
 import { DescargaDelArchivo } from "@/components/descarga-del-archivo";
@@ -136,7 +140,6 @@ export function Taller({ informe }: { informe: Informe }) {
           columnas={informe.diagnostico.columnas}
           politica={politica}
           onCambio={cambiarPolitica}
-          formato={informe.archivo.formato}
         />
 
         {pideLlave ? (
@@ -201,6 +204,8 @@ export function Taller({ informe }: { informe: Informe }) {
               filas={informe.diagnostico.filas}
             />
             <BalanceEnPantalla balance={hecha.balance} />
+            {/* S7: aparte del balance, por la misma regla que el estimado: el k y ε no se suman. */}
+            <PrivacidadEnPantalla privacidad={hecha.privacidad} />
             {/* Panel APARTE, y nunca dentro del balance: lo de arriba es exacto y esto es
                 estimado. La regla del sprint es que no se compongan, y dos cifras en el mismo
                 panel se componen aunque nadie las sume. */}
@@ -247,6 +252,10 @@ export function Taller({ informe }: { informe: Informe }) {
                 // se redacta en el idioma de al descargar, pero declara el del archivo.
                 idiomaDelTrabajo: hecha.idioma,
                 suprimidas: hecha.suprimidas,
+                // S7: cómo se llegó al k y el ruido con su ε. Campo por campo, como los de arriba:
+                // un campo del resultado que no se pasa aquí no llega al certificado.
+                generalizacion: hecha.generalizacion,
+                privacidad: hecha.privacidad,
               }}
             />
             {/* Anotar exige lo mismo que certificar: que el archivo exista, porque una entrada sin
@@ -273,6 +282,10 @@ export function Taller({ informe }: { informe: Informe }) {
                   esTitular: hecha.balance.esTitular,
                   huellaDeEntrada: informe.archivo.sha256,
                   huellaDeSalida: taller.huellaDeSalida,
+                  // S7: el ε del tratamiento viaja con la entrada; sin ruido, el campo no existe.
+                  ...(hecha.privacidad
+                    ? { privacidad: privacidadDeLaEntrada(hecha.privacidad) }
+                    : {}),
                 }}
               />
             ) : null}

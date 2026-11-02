@@ -124,9 +124,12 @@ describe("leerXmp", () => {
       "<".repeat(LARGO_MAXIMO_DE_XMP - 1_000),
       "<rdf:li ".repeat((LARGO_MAXIMO_DE_XMP - 1_000) / 8),
     ]) {
+      // 2 s y no 500 ms: en la CI, con cobertura y la suite entera en paralelo, un recorrido tardó
+      // 621 ms (S7; 115–162 ms en local). La versión de 1024 pasos por `<` y por propiedad hacía
+      // del orden de mil veces más trabajo: decenas de segundos. El tope sigue separando las dos.
       const inicio = performance.now();
       leerXmp(anidar(relleno), "xmp");
-      expect(performance.now() - inicio).toBeLessThan(500);
+      expect(performance.now() - inicio).toBeLessThan(2_000);
     }
   });
 

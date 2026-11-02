@@ -35,6 +35,9 @@ const CSV_DE_ORO: Record<string, string> = {
     "0294353378a1268f04f47636a33267040cab1aa0d089973d87fe915bfcc98d77",
   "sin-personales":
     "98c83321587efdd5826a4d3196e5a2847e6dbf12891056e45ea6db376c33981c",
+  // S7: tomado con el generador del S7, al nacer el perfil.
+  jerarquias:
+    "69c361e3972bcb08aea9eb16282fba000a6ccd3956c6852e0810a5f099efaaf1",
 };
 
 /** Otra semilla y otras tasas: protege el camino de los tres sorteos por celda. */

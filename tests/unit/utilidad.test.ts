@@ -10,6 +10,7 @@ import {
   CARDINALIDAD_MAXIMA_DE_CORRELACION,
   COLUMNAS_MAXIMAS_DE_CORRELACION,
   entropiaEnBits,
+  informacionMutua,
   medirUtilidad,
   vDeCramer,
 } from "@/engine/utilidad";
@@ -272,5 +273,39 @@ describe("las relaciones entre columnas", () => {
     expect(medirUtilidad(tabla, tabla).correlaciones).toEqual(
       medirUtilidad(tabla, tabla).correlaciones,
     );
+  });
+});
+
+describe("información mutua: lo que la salida todavía dice del original (S7)", () => {
+  it("con una función del valor es la entropía de la salida", () => {
+    const tabla = tablaDe(
+      ["x", "g"],
+      [
+        ["1", "a"],
+        ["2", "a"],
+        ["3", "b"],
+        ["4", "b"],
+      ],
+    );
+    const [x, g] = tabla.columnas;
+    expect(informacionMutua(x, g, 4)).toBeCloseTo(entropiaEnBits(g, 4), 12);
+  });
+
+  it("con cortes por región (no es función del valor) nunca pasa de la entropía del original", () => {
+    // El mismo `F` sale de dos formas: la salida tiene MÁS valores y más entropía que la entrada,
+    // y aun así no puede decir del original más de lo que el original tenía.
+    const tabla = tablaDe(
+      ["x", "g"],
+      [
+        ["F", "F"],
+        ["F", "F, M"],
+        ["M", "F, M"],
+        ["M", "M"],
+      ],
+    );
+    const [x, g] = tabla.columnas;
+    expect(entropiaEnBits(g, 4)).toBeGreaterThan(entropiaEnBits(x, 4));
+    expect(informacionMutua(x, g, 4)).toBeLessThanOrEqual(entropiaEnBits(x, 4));
+    expect(informacionMutua(x, g, 4)).toBeCloseTo(0.5, 12);
   });
 });

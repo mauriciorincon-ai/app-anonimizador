@@ -307,6 +307,14 @@ export const DOCUMENTOS = {
         es: "La política deja **intactas** {n} columnas que señalan a la persona sin ayuda de ninguna otra: {lista_html}. Mientras estén en el archivo, ninguna cifra de esta página describe datos tratados.",
         en: "The policy leaves {n} columns **untouched** that point to the person without any help from another: {lista_html}. As long as they stay in the file, no figure on this page describes treated data.",
       },
+      ruidoNoAplicado: {
+        es: "{n} columnas salieron **intactas**: la política pidió respuesta aleatorizada y tienen más de {maximo} valores distintos, que es lo que esa técnica acepta. {lista_html}.",
+        en: "{n} columns came out **untouched**: the policy asked for randomized response and they have more than {maximo} distinct values, which is what that technique accepts. {lista_html}.",
+      },
+      reticulaExcedeTope: {
+        es: "{n} columnas salieron **intactas**: la política pidió la generalización óptima y sus jerarquías dan {nodos} combinaciones de niveles, más de las {tope} que Velo recorre. {lista_html}.",
+        en: "{n} columns came out **untouched**: the policy asked for the optimal generalization and their hierarchies give {nodos} combinations of levels, more than the {tope} Velo walks through. {lista_html}.",
+      },
       repartoSinKUna: {
         es: "Una columna salió **intacta**: la política la marcó para generalización automática y no fijó un grupo mínimo (k), así que no había hasta dónde generalizar. {lista_html}.",
         en: "One column came out **untouched**: the policy marked it for automatic generalization but set no minimum group size (k), so there was nowhere to generalize to. {lista_html}.",
@@ -338,6 +346,65 @@ export const DOCUMENTOS = {
       colisionesVarias: {
         es: "En `{columna}`, **{cuantas}** pares de valores distintos recibieron el mismo seudónimo. Conservar el formato reduce el espacio disponible y algunos chocan: dos entidades distintas se ven como una.",
         en: "In `{columna}`, **{cuantas}** pairs of distinct values received the same pseudonym. Keeping the format shrinks the available space and some collide: two different entities look like one.",
+      },
+    },
+  },
+
+  // S7: la generalización óptima, cuando la política la pidió. Cada escalera de fábrica cita su
+  // fuente y su fecha: el título y la versión aquí, redactados; la URL y la fecha de consulta, en
+  // `src/engine/jerarquias/fuentes.ts`.
+  generalizacion: {
+    etiqueta: { es: "Cómo se llegó al k", en: "How k was reached" },
+    titulo: {
+      es: "La generalización óptima",
+      en: "The optimal generalization",
+    },
+    explicacion: {
+      es: "Cada columna del reparto subió por su escalera hasta un nivel, **el mismo en todo el archivo**. De las {total} combinaciones de niveles, Velo revisó {revisadas} y eligió la que cumple el k pedido perdiendo menos información medida en bits (algoritmo OLA: El Emam y otros, JAMIA 16(5), 2009). No se borró ninguna fila.",
+      en: "Each column of the partition went up its ladder to one level, **the same across the whole file**. Out of {total} combinations of levels, Velo checked {revisadas} and picked the one that meets the k asked for while losing the least information measured in bits (the OLA algorithm: El Emam et al., JAMIA 16(5), 2009). No row was deleted.",
+    },
+    k: {
+      es: "k pedido: {objetivo}. Grupo más pequeño sobre las columnas del reparto: {alcanzado}.",
+      en: "k asked for: {objetivo}. Smallest group over the columns of the partition: {alcanzado}.",
+    },
+    l: {
+      es: "ℓ distinta pedida sobre {columnas_html}: {objetivo}. La alcanzada: {alcanzado}.",
+      en: "Distinct ℓ asked for over {columnas_html}: {objetivo}. Reached: {alcanzado}.",
+    },
+    lNoAlcanzada: {
+      es: "**La ℓ pedida no se alcanzó.** Hay grupos donde el dato sensible toma menos de {objetivo} valores distintos: estar en ese grupo puede delatarlo. Velo aplicó lo más que la escalera permite y no borró filas.",
+      en: "**The ℓ asked for was not reached.** Some groups hold fewer than {objetivo} distinct values of the sensitive data: being in such a group can give it away. Velo applied as much as the ladder allows and deleted no rows.",
+    },
+    encabezados: {
+      columna: { es: "Columna", en: "Column" },
+      escalera: { es: "Escalera", en: "Ladder" },
+      nivel: { es: "Nivel elegido", en: "Level chosen" },
+    },
+    fuentesTitulo: {
+      es: "Fuentes de las escaleras de fábrica",
+      en: "Sources of the built-in ladders",
+    },
+    consultada: { es: "consultada el {fecha}", en: "accessed {fecha}" },
+    fuentes: {
+      divipola: {
+        es: "DANE, «DIVIPOLA — Códigos municipios», actualización con corte al 30 de diciembre de 2024 (datos.gov.co, conjunto gdxc-w37w)",
+        en: "DANE, “DIVIPOLA — Códigos municipios” (municipality codes), update cut off on 30 December 2024 (datos.gov.co, dataset gdxc-w37w)",
+      },
+      regiones: {
+        es: "Ley 2056 de 2020, artículo 45: las regiones del Sistema General de Regalías (Diario Oficial 51.453, 30 de septiembre de 2020)",
+        en: "Ley 2056 de 2020, article 45: the regions of the General Royalties System (Diario Oficial 51.453, 30 September 2020)",
+      },
+      ciiu: {
+        es: "DANE, «Estructura detallada CIIU Rev. 4 A.C.», actualización 2022, adoptada por la Resolución 2306 de 2022",
+        en: "DANE, “Estructura detallada CIIU Rev. 4 A.C.” (ISIC Rev. 4 adapted for Colombia), 2022 update, adopted by Resolución 2306 de 2022",
+      },
+      edadesSimples: {
+        es: "DANE, Proyecciones de Población y Estudios Demográficos (PPED), serie nacional 2018-2070 por edades simples, actualizada el 18 de julio de 2025: los quinquenios agregan sus edades de 0 a 99 y su grupo abierto «100 años y más»",
+        en: "DANE, Population Projections and Demographic Studies (PPED), national series 2018-2070 by single years of age, updated 18 July 2025: the five-year groups add up its ages 0 to 99 and its open group “100 años y más”",
+      },
+      grandesGrupos: {
+        es: "DANE, Nota técnica PPED, actualización 2025 (julio de 2025), tabla 3: grandes grupos de edad 0 a 14, 15 a 59 y 60 años y más",
+        en: "DANE, PPED technical note, 2025 update (July 2025), table 3: broad age groups 0 to 14, 15 to 59 and 60 and over",
       },
     },
   },
@@ -706,6 +773,7 @@ export const DOCUMENTOS = {
       jpeg: { es: "Imagen JPEG", en: "JPEG image" },
       png: { es: "Imagen PNG", en: "PNG image" },
       webp: { es: "Imagen WebP", en: "WebP image" },
+      heic: { es: "Imagen HEIC", en: "HEIC image" },
     },
     revela: {
       autoria: { es: "Autoría", en: "Authorship" },
@@ -748,8 +816,8 @@ export const DOCUMENTOS = {
         en: "Camera maker note",
       },
       imagenesAdicionales: {
-        es: "Imágenes adicionales (MPF)",
-        en: "Additional images (MPF)",
+        es: "Imágenes adicionales dentro del archivo",
+        en: "Additional images inside the file",
       },
       procedencia: {
         es: "Datos de procedencia (C2PA)",
@@ -767,13 +835,17 @@ export const DOCUMENTOS = {
         es: "Bytes después del final de la imagen",
         en: "Bytes after the end of the image",
       },
+      datosSinUso: {
+        es: "Datos dentro de la imagen que ningún elemento usaba",
+        en: "Data inside the image that no item used",
+      },
       perfilDeColor: {
         es: "Perfil de color (ICC)",
         en: "Colour profile (ICC)",
       },
       orientacion: {
-        es: "Orientación (un EXIF mínimo con solo esa etiqueta)",
-        en: "Orientation (a minimal EXIF with that tag only)",
+        es: "Orientación de la foto, para que no aparezca girada",
+        en: "Photo orientation, so it does not appear rotated",
       },
       jfif: { es: "Cabecera JFIF", en: "JFIF header" },
       adobe: {
@@ -824,6 +896,10 @@ export const DOCUMENTOS = {
       imagenesAdicionales: {
         es: "Había imágenes adicionales (por ejemplo, el mapa de ganancia HDR) y se quitaron con lo demás: en una pantalla HDR la foto puede verse con menos rango.",
         en: "There were additional images (for example, the HDR gain map) and they went with the rest: on an HDR screen the photo may show less range.",
+      },
+      heicAuxiliares: {
+        es: "La foto traía imágenes auxiliares (profundidad o realce HDR): se conservaron, porque son píxeles, pero los datos que las describían se quitaron con lo demás, así que en una pantalla HDR puede verse con menos rango.",
+        en: "The photo carried auxiliary images (depth or HDR boost): they were kept, because they are pixels, but the data describing them went with the rest, so on an HDR screen it may show less range.",
       },
       textoComprimido: {
         es: "Había texto comprimido que Velo no leyó. Se quitó igual.",

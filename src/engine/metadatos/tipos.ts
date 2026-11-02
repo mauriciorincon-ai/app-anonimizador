@@ -23,7 +23,7 @@ import type {
 } from "../validadores/tipos";
 
 /** El formato por CONTENIDO (bytes mágicos). La extensión es una pista y nada más. */
-export type FormatoBinario = "pdf" | "jpeg" | "png" | "webp";
+export type FormatoBinario = "pdf" | "jpeg" | "png" | "webp" | "heic";
 export type FormatoDeImagen = Exclude<FormatoBinario, "pdf">;
 
 /** Qué deja saber un campo. Decide el orden de lectura y la insignia en pantalla. */
@@ -86,6 +86,8 @@ export type ClaseDeElemento =
   | "aplicacion"
   | "auxiliar"
   | "bytes-sobrantes"
+  /** Bytes dentro de la imagen que ningún elemento usa (lo que dejó una edición, por ejemplo). */
+  | "datos-sin-uso"
   // lo que se conserva en una imagen
   | "perfil-de-color"
   | "orientacion"
@@ -124,6 +126,11 @@ export type ClaveDeAviso =
   | "imagenes-adicionales"
   /** Texto comprimido (zTXt, iTXt): se quita sin leerlo. */
   | "texto-comprimido"
+  /**
+   * Una foto HEIC trae imágenes auxiliares (mapa de profundidad, realce HDR): son píxeles y se
+   * conservan, pero el XMP que las describe se va, así que el realce HDR puede perderse.
+   */
+  | "heic-auxiliares"
   /** Un bloque EXIF que no se pudo leer: se quita entero igual, pero no se sabe qué decía. */
   | "exif-ilegible"
   | "valores-recortados"
@@ -203,6 +210,11 @@ export type MotivoDeMetadatos =
   | "pdf-cifrado"
   | "pdf-ilegible"
   | "imagen-ilegible"
+  /**
+   * La imagen usa una parte del formato que Velo no sabe reescribir sin romperla (una secuencia, una
+   * Live Photo, un elemento protegido o una propiedad esencial que no conoce): no se toca.
+   */
+  | "imagen-no-soportada"
   /** La poscomprobación encontró campos en la salida: no se entrega un archivo que no quedó limpio. */
   | "limpieza-incompleta";
 

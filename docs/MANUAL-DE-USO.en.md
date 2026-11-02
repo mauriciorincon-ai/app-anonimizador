@@ -1,7 +1,7 @@
 # User manual — Velo
 
 > _Veil it to hand it over. Unveil it to get it back._
-> Updated in Sprint 006 · November 2, 2026
+> Updated in Sprint 007 · November 2, 2026
 >
 > Spanish version: [MANUAL-DE-USO.md](MANUAL-DE-USO.md)
 
@@ -32,7 +32,8 @@ own section below.
 And Velo works with **three kinds of file**, not one. **Tables** (CSV and Excel) and **JSON** (an
 array of objects, or JSON Lines) go through the diagnosis and the workshop of sections 2 to 7; for
 JSON, [how it is read and what is not treated](#if-your-file-is-a-json) is explained in section 1.
-**PDFs and images** (JPEG, PNG, WebP) are not tabular data: Velo cleans their **metadata**, what the
+**PDFs and images** (JPEG, PNG, WebP and HEIC, the format iPhone photos come in) are not tabular
+data: Velo cleans their **metadata**, what the
 file says about itself that nobody sees on screen (author, camera, location, dates, earlier
 versions), and [section 8](#8-pdfs-and-images-cleaning-what-the-file-says-about-itself) explains it.
 With the same caution in all three: **Velo cleans what the file says about itself; it does not touch
@@ -79,13 +80,13 @@ works from the keyboard: reach it with the Tab key and open it with Enter). The 
 
 Velo reads:
 
-| Format                                                             | Limit                              | Why                                                                                                                                                                 |
-| ------------------------------------------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CSV** (`.csv`)                                                   | no limit                           | It is read in parts; it never exists whole in memory.                                                                                                               |
-| **Excel** (`.xlsx`, `.xls`)                                        | **150 MB**                         | An Excel file has to be opened whole to be read. Above that size the browser runs out of memory, so Velo rejects it **before** opening it.                          |
-| **JSON** (`.json`) and **JSON Lines** (`.jsonl`, `.ndjson`)        | **20,000,000 cells**, not a weight | The file is read in parts, but the table Velo builds from it lives in memory: what takes up space is the number of cells (records × distinct paths), not the bytes. |
-| **PDF** (`.pdf`)                                                   | **50 MB**                          | A PDF cannot be rewritten in parts: it is opened whole in memory, and what weighs is how many pieces it holds. Velo rejects it **before** opening it.               |
-| **Image**: JPEG (`.jpg`, `.jpeg`), PNG (`.png`) and WebP (`.webp`) | **100 MB**                         | Same as the PDF: it is rewritten in one go.                                                                                                                         |
+| Format                                                                                      | Limit                              | Why                                                                                                                                                                 |
+| ------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CSV** (`.csv`)                                                                            | no limit                           | It is read in parts; it never exists whole in memory.                                                                                                               |
+| **Excel** (`.xlsx`, `.xls`)                                                                 | **150 MB**                         | An Excel file has to be opened whole to be read. Above that size the browser runs out of memory, so Velo rejects it **before** opening it.                          |
+| **JSON** (`.json`) and **JSON Lines** (`.jsonl`, `.ndjson`)                                 | **20,000,000 cells**, not a weight | The file is read in parts, but the table Velo builds from it lives in memory: what takes up space is the number of cells (records × distinct paths), not the bytes. |
+| **PDF** (`.pdf`)                                                                            | **50 MB**                          | A PDF cannot be rewritten in parts: it is opened whole in memory, and what weighs is how many pieces it holds. Velo rejects it **before** opening it.               |
+| **Image**: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), WebP (`.webp`) and HEIC (`.heic`, `.heif`) | **100 MB**                         | Same as the PDF: it is rewritten in one go.                                                                                                                         |
 
 The full JSON limits are: **20,000,000 cells** (records × distinct paths), **256 distinct paths**,
 **32 levels** of nesting inside a record, keys of up to 256 characters and strings of up to
@@ -103,8 +104,11 @@ Two more things about what Velo reads:
   really a PNG, it treats it as a PNG, says so in a notice, and the clean copy comes out with the
   extension that fits. If the contents are none of what Velo reads (a `.json` that is really a PDF,
   for instance), it is rejected with a message that says what to do.
-- **It does not read HEIC**, the format many iPhones save photos in. If your photo is HEIC, export
-  it as JPEG and drop that copy in. Whether Velo will read HEIC later has not been decided.
+- **It reads HEIC**, the format many iPhones save photos in (`.heic` and `.heif`), but only to clean
+  its metadata, like any other image. Velo **does not convert** the photo or decode it: the clean
+  copy is still a HEIC. What it removes, what it keeps and what it refuses is in
+  [section 8](#8-pdfs-and-images-cleaning-what-the-file-says-about-itself). A HEIF that stores the
+  picture in another format (AVIF) is not a HEIC, and Velo does not read it.
 
 While it works you will see where it is: **taking the file's fingerprint**, **reading the file**,
 **recognizing what is in each column** and **measuring the re-identification risk**. The bar only
@@ -166,11 +170,11 @@ byte-for-byte copy:
 The certificate carries both SHA-256 fingerprints, and Velo recomputes the original's while it
 writes: if the file changed since the diagnosis, it does not hand it over.
 
-**No way back.** With a JSON, the “Make it undoable with a vault” box comes out **switched off** and
-says why: [the return](#6-the-return-getting-back-what-you-handed-over) reads only CSV, so a vault
-for a JSON would be an encrypted file that nothing can open. Pseudonyms in a JSON are one-way. If
-you import a policy that asked to make a column undoable, Velo tells you how many were left
-one-way.
+**A way back.** A JSON can have a vault too: the “Make it undoable with a vault” box works just as
+it does with a table, and when the third party sends the worked file back you recover it in
+[the return](#6-the-return-getting-back-what-you-handed-over), which reads JSON and JSON Lines as
+well as CSV. What is not a reversible pseudonym (masking, generalizing, removing a column, noise)
+does not come back, just as in a table.
 
 **If it is not valid JSON,** Velo tells you the line where it stopped (“the problem is there, or just
 before it”) and does not echo anything from inside the file: not a piece of it, not the name of a
@@ -330,6 +334,10 @@ so in red and leaves the box empty: without a k there is nothing to generalize u
 columns would come out untouched. If you transform anyway, the balance puts it at the very top,
 with their names.
 
+There are two ways to reach that k —Mondrian, the usual one, and the optimal generalization— and the
+workshop lets you compare them before you choose: it is explained at the end of this section, in
+[“How to reach k”](#how-to-reach-k-mondrian-or-the-optimal-generalization).
+
 #### The key, if you ask for pseudonyms
 
 A pseudonym is calculated with a **passphrase that only you have**. Three things worth knowing
@@ -449,6 +457,154 @@ One detail that falls out of the math on its own and is worth knowing: **if you 
 file is the entire population, the estimated figures land exactly on top of the exact ones.** It is
 not a programmed exception; it is that there is nothing left to estimate.
 
+#### How to reach k: Mondrian or the optimal generalization
+
+When a column carries the “Generalize until k is reached” technique, the **“How to reach k”** panel
+appears under the minimum-group-size box. There you choose between two roads to the same k:
+
+- **Mondrian (the usual one)**, which is the one that comes selected. It cuts the file into regions
+  and generalizes each one differently: it is fast and loses little where there is a lot of data.
+- **The optimal generalization.** It moves each column up its own **ladder** to one level, **the
+  same across the whole file**, and out of every combination of levels it picks the one that meets k
+  while losing the least information, measured in bits. It is the OLA algorithm (El Emam et al.,
+  _JAMIA_, 2009). **It does not delete rows.**
+
+Your choice is stored inside the policy, so it travels with it if you export it.
+
+**Each column's ladder.** It is the list of steps, from the finest to the coarsest, that a column
+climbs. Velo suggests one from the column's type and name; if it does not fit, you change it in the
+“Generalization ladder for the column …” dropdown:
+
+| Ladder                                                     | What it does                                                    |
+| ---------------------------------------------------------- | --------------------------------------------------------------- |
+| “Ranges of 5, 10, 20 and 40”                               | A number in ever wider ranges.                                  |
+| “Ranges of 10, 100, 1,000 and 10,000”                      | The same, for big figures.                                      |
+| “Date: month, quarter, year”                               | The quarter comes out as an interval (`1987-01/1987-03`).       |
+| “First 3, 2 and 1 characters”                              | A code that keeps fewer and fewer characters from the start.    |
+| “The value or nothing”                                     | The value as it is, or suppressed (`*`), with no steps between. |
+| “Municipality, department, region (DIVIPOLA, DANE)”        | Built in, with an official source.                              |
+| “Age: five-year groups, broad groups (DANE)”               | Built in, with an official source.                              |
+| “Economic activity: group, division, section (CIIU, DANE)” | Built in, with an official source.                              |
+
+The three built-in ladders rest on official sources, and the certificate cites them with the date
+they were consulted (November 2, 2026):
+
+| Ladder                              | Source and version                                                                                                                                                                                |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Municipality → department           | DANE, DIVIPOLA “Códigos municipios”, published on datos.gov.co (dataset gdxc-w37w), update cut off on December 30, 2024: 1,122 municipalities and areas, 33 departments.                          |
+| Department → region                 | Ley 2056 de 2020, article 45 (secretariasenado.gov.co): the 6 regions of the General Royalties System.                                                                                            |
+| Age → five-year group → broad group | DANE, Population Projections and Demographic Studies (PPED), July 2025 update: five-year groups from 0-4 to 95-99 and 100 and over; broad groups 0-14, 15-59 and 60 and over.                     |
+| Economic activity                   | DANE, CIIU Rev. 4 A.C. (ISIC Rev. 4 adapted for Colombia), 2022 update, adopted by Resolución 2306 de 2022: class, group, division, section. Rev. 5 A.C. is not included (see “What comes next”). |
+
+What a built-in ladder does not find —a code that does not exist, a municipality name that appears
+in two departments— stays as it is in the middle steps and reaches `*` at the last one. Velo **does
+not guess** which “La Unión” you mean: choosing one would be stating where someone lives.
+
+**Distinct ℓ, when there is sensitive data in the partition.** A field appears, “Distinct ℓ
+(optional) over …”, from 2 to 100. It asks that every group hold at least ℓ different values of the
+sensitive data, so that being in the group does not give it away. **Only the optimal generalization
+enforces it**; with Mondrian it is measured, not enforced. If the ℓ asked for is not reached, the
+certificate says so and Velo does not delete rows to get there.
+
+**Comparing them before you choose.** The **“Compare the two roads”** button works both out and puts
+them in a table, “The two roads, side by side”:
+
+| Row                            | What it says                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------- |
+| Does it reach the k asked for? | ✓ Yes or ✗ No, for each road.                                                       |
+| Smallest group (k)             | The k that was actually reached.                                                    |
+| Distinct ℓ                     | The one reached, if you asked for one.                                              |
+| Distinct groups                | How many different combinations are left.                                           |
+| Records alone in their group   | How many are still unique.                                                          |
+| Risk of the most exposed       | The chance of picking the most exposed person correctly, over the measured columns. |
+| Information left (bits)        | How much of the original detail survives: more bits, less loss.                     |
+| How each column ends up        | Each one's level (with Mondrian, “local cuts”).                                     |
+| Combinations checked           | “N of M”: how many of the possible ones the search walked through.                  |
+
+The table says it right under its title, and it is worth reading: **it is measured over the columns
+of the partition —the ones you marked “Generalize until k is reached”—, not over the whole file.**
+Other columns that were not part of the partition can split those groups; the full balance, the one
+that counts, arrives when you transform.
+
+“Optimal” means the best combination of levels **from the ladders you gave it**, not the best
+generalization that exists: with other ladders, or by being allowed to delete rows —which Velo does
+not do— the result could be different.
+
+**The limit and the time.** If the lattice —the product of the steps of all the ladders— goes over
+**20,000 combinations**, Velo does not walk through it: the table says “Not computed: the lattice is
+over the limit”, the columns come out **untouched** and the balance puts that first. With fewer
+columns in the partition, or shorter ladders, the lattice fits. With 500,000 rows and 6 columns the
+search takes about 10 to 30 seconds depending on the machine; it happens in the background, so the
+page does not freeze, and it runs **twice**: when you compare and when you transform.
+
+**What gets written down.** The certificate gains the section **“How k was reached · The optimal
+generalization”**: each column with its ladder and the level chosen, the k and ℓ measured, how many
+combinations were checked, and the sources of the built-in ladders with their date.
+
+#### Noise with a guarantee: local differential privacy
+
+The dropdown of each column carries three more techniques, which add **noise**: a measured, random
+change in each cell. All three need the project key (the passphrase described above), because the
+randomness comes from it. “Guarantee”, here, is the name of the panel and means **a measured ε with
+its scope**; it is not a promise that the file is anonymous. The parameters show up under the menu:
+
+| Technique                 | What it is for                       | Parameters                                                                        | What its ε covers                                                       |
+| ------------------------- | ------------------------------------ | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| “Laplace noise (ε)”       | Numbers (amounts, ages, weights)     | ε (0.1 · 0.5 · 1 · 2 · 4 · 8), the **possible** min and max of the data, decimals | ε per value of that field.                                              |
+| “Randomized response (ε)” | Categories, up to 64 distinct values | ε                                                                                 | Effective ε, always at most the one asked for, per value of that field. |
+| “Perturb ±%”              | Numbers                              | How far the data may move, from 1 to 50 %                                         | It has no ε: **no formal guarantee**.                                   |
+
+- **Laplace noise.** Each number gets noise from a discrete Laplace distribution. The range you
+  declare is the one the data **can** take (an age, from 0 to 120), not the one your file has:
+  taking it from the data would already give something away. What falls outside the range is clipped
+  before the noise and counted; what is not a number stays as it is and is counted too; an empty
+  cell stays empty.
+- **Randomized response.** Each cell, sometimes, answers a random value among the ones the column
+  holds. The possible values come from the file: **that a value shows up in the column is not
+  protected by ε.** With more than **64 distinct values Velo does not apply it**: the column comes
+  out untouched and the balance says so first.
+- **Perturb ±%.** It moves each number at random by up to ±x %. It is not differential privacy: it
+  has no ε and promises nothing measurable, which is why the screen, the certificate and the log
+  label it “no formal guarantee”.
+
+**What ε is, without formulas.** It measures how much someone who sees the file can learn about
+**one value of one field**. The lower the ε, the more protection and the more noise —the data comes
+out less useful—; the higher the ε, the less noise and the less protection. “Local” means the noise
+goes into each cell before the file leaves your computer: the file you hand over already carries
+it. **Velo does not decide which ε suits you, nor does it call any of them “enough”**: it depends on
+what the file is for and who it is going to. The screen repeats the ε and its scope next to each
+column's menu: “Local differential privacy, ε = X per value of this field”.
+
+**After you transform**, the **“Noise with a guarantee · Local differential privacy”** panel
+appears, apart from the balance. For each column it gives the mechanism, the effective ε (and the
+one asked for, if they differ), how many cells received noise and the notes: how many cells were
+clipped, how many were not a number, how many values the domain has. At the end, **“ε per row”**:
+the sum of the ε of the columns with noise, because that is how they compose. Velo shows the ε
+**rounded up**: if it is off, it is off on the side of saying less protection, not more. If no
+column carries an ε (you only perturbed), the panel is called **“Noise with no formal guarantee ·
+No differential privacy”** and says nothing about ε, on screen, in the certificate and in the log:
+perturbation is not differential privacy.
+
+**What ε does not cover**, and the panel says so in so many words:
+
+- **Only one value of one field.** It is not the file's ε, nor the whole person's: a person with
+  several noisy columns spends the sum, and that sum is the “ε per row”.
+- **The other columns.** The ones without noise are not protected by ε, but by whatever you applied
+  to them.
+- **Repeated deliveries.** Each different file you hand over with the same data spends its own ε,
+  and the ε add up. The same file with the same key and the same technique (the same ε, the same
+  range) gets the same noise, so it cannot be averaged away by running it twice; another file, or
+  another ε or range on the same file, gets other noise, independent, and spends its own ε.
+- **The k.** The k is measured apart, over the file, and **does not add up with ε**: they are two
+  different measures and Velo does not make up a number that joins them.
+
+Noise destroys information, like masking: there is no vault that can undo it. The randomness is
+drawn by exact sampling, with no floating point (Canonne, Kamath and Steinke, NeurIPS 2020), and it
+comes from the project key and the file's fingerprint. The certificate carries a privacy section
+with the effective ε per column, the ε per row and the scope, and the log records “ε = X per row”
+with the mechanisms (or “N perturbed columns, no formal guarantee”). This is noise over the cells of
+your file: Velo does not produce counts tables with differential privacy.
+
 ---
 
 ### 5. The vault: so you can undo it
@@ -459,11 +615,11 @@ that is the **vault**.
 
 **How you ask for it.** In step 1, under the technique of each column that is a pseudonym, the box
 **“Make it undoable with a vault”** appears. Tick it on the columns you want to be able to recover.
-Only pseudonyms accept it, and that is not a limitation of this version: masking (`103***89`) and
-generalizing (`30-39`) **destroy** information, so there is no table that can undo it — the missing
-digits no longer exist anywhere. The screen tells you which ones will not come back.
-**With a JSON the box comes out switched off,** and says why: the return (section 6) reads only CSV,
-so a vault for a JSON would have no way back.
+Only pseudonyms accept it, and that is not a limitation of this version: masking (`103***89`),
+generalizing (`30-39`) and adding noise **destroy** information, so there is no table that can undo
+it — the missing digits no longer exist anywhere. The screen names the masked, generalized or
+removed columns that will not come back; the ones with noise will not either. **With a JSON the box
+works the same:** the return (section 6) reads JSON too.
 
 **How it is saved.** After you transform, step 9 appears. You type a passphrase —**it can and
 should be different from the project's**— and Velo prepares an encrypted `.velo` file for you to
@@ -491,9 +647,10 @@ anything loaded).
 
 1. **Load the vault** and type its passphrase. Velo shows you its fingerprint, how many mappings it
    holds and which columns it can restore.
-2. **Load the returned file.** It can come back with the rows in a different order, with new columns
-   from the third party, without the ones they deleted and with values corrected by hand: none of
-   that gets in the way.
+2. **Load the returned file.** It has to be a CSV or a JSON (an array, JSON Lines or NDJSON); if it
+   came back to you as Excel, open it and save it as CSV. It can come back with the rows in a
+   different order, with new columns from the third party, without the ones they deleted and with
+   values corrected by hand: none of that gets in the way.
 3. **Read the notice before you confirm.** If the vault has ambiguous pseudonyms, Velo tells you how
    many **before** you press, not after.
 4. **Restore the original values** and take the restored file and its report with you.
@@ -501,6 +658,18 @@ anything loaded).
 **Why it survives the third party working on it.** Restoring is **by value, never by position**:
 Velo looks up each value in its column's mapping. And it recognizes columns by their **content**,
 not by their name — if the third party renamed `cedula` to `ID_PACIENTE`, it is still recognized.
+
+**If what you handed over was a JSON.** The return reads it just as it reads a CSV —an array of
+objects, JSON Lines or NDJSON— and restores **path by path**, by value. What comes back keeps the
+structure and the key order of the file that was returned to you, and the columns that were all
+numbers in your original come back **without quotes**, as numbers. If the third party touched
+nothing, the restored JSON is **your original, byte for byte**, except for what never had a way
+back (what was masked, generalized, removed or noised, and the pseudonyms you did not mark as
+reversible). One caveat: Velo writes compactly, one record per line, so that “byte for byte” holds
+if your original was already written that way; any indentation or spacing it had was not kept on
+the way out and does not come back. The file is named `velo-restaurado-<8 characters>.json`
+(`.jsonl` for JSON Lines or NDJSON); with a CSV, `velo-restaurado-<8 characters>.csv`. The eight
+characters are the start of the SHA-256 of the file that was returned to you.
 
 **The four things that can happen to a cell**, and Velo counts all of them:
 
@@ -537,7 +706,9 @@ at the end**, without touching the earlier ones.
 
 **What gets logged:** the file name, the date, the techniques you applied —**without saying to
 which columns**—, the policy hash, both fingerprints, and the share of unique records before and
-after.
+after. If you used noise, the entry also keeps “ε = X per row” with its mechanisms (the sum of the ε
+of the columns with noise, as in the panel in section 4) or, if you only perturbed, how many
+columns were left with “no formal guarantee”.
 
 **Cleaning a PDF or an image is logged too.** After cleaning, the same **“Add to my log”** button
 shows up, and the entry goes into the same `.velolog` file, alongside the others. It carries the file
@@ -592,7 +763,7 @@ hands you a copy without it. It all happens inside the tab, as with a table.
 **How to use it**
 
 1. **Drop the file** on the main screen, like any other. Velo recognizes it by its contents: PDF,
-   JPEG, PNG or WebP. If the extension lies (a `.jpg` that is a PNG), it treats the file as what it
+   JPEG, PNG, WebP or HEIC. If the extension lies (a `.jpg` that is a PNG), it treats the file as what it
    is and says so.
 2. **Read the metadata diagnosis.** It has four parts:
    - **“What Velo cleans and what it leaves alone”**: the limit above, with what changes and what
@@ -620,7 +791,7 @@ hands you a copy without it. It all happens inside the tab, as with a table.
    was removed and what was kept, and —again— what did not change. In a clean PDF, the new document
    identifier.
 5. **Take the clean copy** with **Save**. It is named `velo-limpio-<8 characters>.pdf` (or `.jpg`,
-   `.png`, `.webp`, according to its contents). The eight characters are the start of the SHA-256
+   `.png`, `.webp`, `.heic`, according to its contents). The eight characters are the start of the SHA-256
    of the file **that went in**; the original's name is not repeated, because it already says what
    the file is about. **The original is not touched.**
 6. **Take the cleaning certificate** (`velo-limpieza-<8 characters>.html`, `velo-cleaning-….html` in English).
@@ -650,7 +821,7 @@ Velo knows how to _name_; the cleaning does not depend on it. That is why “Vel
 fields” is not the same as “this file has no metadata”: what it cannot name is removed all the same,
 and the diagnosis says so.
 
-- **In an image** no pixel is touched and nothing is re-encoded: no quality is lost. EXIF, GPS, XMP,
+- **In a JPEG, a PNG or a WebP** no pixel is touched and nothing is re-encoded: no quality is lost. EXIF, GPS, XMP,
   IPTC, comments, PNG text, its modification date, thumbnails, the camera maker's private notes,
   content provenance data (C2PA), blocks Velo does not recognize and the **bytes left over after the
   end of the image** are removed —some programs leave there remnants of what you cropped—. What is
@@ -658,6 +829,16 @@ and the diagnosis says so.
   is not in its normal position, Velo writes a minimal EXIF block with only that tag, so the clean
   copy does not open sideways. If the file carried additional images inside (for example, the gain
   map of an HDR photo), they are removed, and a notice says so.
+- **In a HEIC photo** (the iPhone's) the file is also **rewritten**, because removing one block
+  changes where everything after it sits, but the image data is copied as it is: Velo does not
+  decode the photo or convert it, and the clean copy is still a HEIC. EXIF (location, camera, dates,
+  author), XMP, the descriptions and tags someone wrote about the photo, the internal names of its
+  parts, blocks Velo does not recognize, unused data an edit may have left inside and the **bytes
+  left over at the end** are removed. What is kept is the image, the **color profile**, the
+  **orientation** (in a HEIC it lives apart from the EXIF, so none needs to be written), the
+  thumbnail and the auxiliary images —a depth map, an HDR boost map—, which are pixels. Hence a
+  notice of its own: the data describing the HDR boost goes with the XMP, and on an HDR screen the
+  photo may show less range.
 - **In a PDF** the file is **rewritten whole**, and the pages and their content are copied as they
   are. The information dictionary (author, software, dates), the XMP, the data from the application
   that made it, the date each page was last edited, page thumbnails and orphan objects are removed.
@@ -671,18 +852,19 @@ and the diagnosis says so.
 **The notices: what Velo does not clean, or cleans at a cost.** They show up in the diagnosis before
 you press anything, and they are repeated in the certificate:
 
-| Notice                               | What it means                                                                                           |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Annotations with an author (PDF)     | Velo shows them but **does not clean them**: the name of whoever commented stays inside the clean copy. |
-| Attached files (PDF)                 | **It does not clean them**: each one can carry its own metadata.                                        |
-| Form fields (PDF)                    | Their names and values **stay as they are**: what someone typed into them is still in the clean copy.   |
-| Embedded JavaScript (PDF)            | **It does not touch it**: it can contain data or addresses, and it stays in the clean copy.             |
-| Signed PDF                           | Rewriting it **invalidates the signature**: the clean copy no longer carries it.                        |
-| Versions in compressed streams (PDF) | They are removed, but Velo cannot list what they said.                                                  |
-| Extension differs from the contents  | The file was treated as what it is, not as what its name says.                                          |
-| Orientation kept (image)             | A minimal EXIF block with only that tag, so the photo is not rotated.                                   |
-| Additional images (image)            | There were more images inside the file; they are removed along with the rest.                           |
-| Compressed text (image)              | It is removed without being read, so it does not appear in the table of fields.                         |
+| Notice                               | What it means                                                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Annotations with an author (PDF)     | Velo shows them but **does not clean them**: the name of whoever commented stays inside the clean copy.                   |
+| Attached files (PDF)                 | **It does not clean them**: each one can carry its own metadata.                                                          |
+| Form fields (PDF)                    | Their names and values **stay as they are**: what someone typed into them is still in the clean copy.                     |
+| Embedded JavaScript (PDF)            | **It does not touch it**: it can contain data or addresses, and it stays in the clean copy.                               |
+| Signed PDF                           | Rewriting it **invalidates the signature**: the clean copy no longer carries it.                                          |
+| Versions in compressed streams (PDF) | They are removed, but Velo cannot list what they said.                                                                    |
+| Extension differs from the contents  | The file was treated as what it is, not as what its name says.                                                            |
+| Orientation kept (image)             | A minimal EXIF block with only that tag, so the photo is not rotated.                                                     |
+| Additional images (image)            | There were more images inside the file; they are removed along with the rest.                                             |
+| Auxiliary images (HEIC)              | They are kept (they are pixels), but the data describing them is removed: on an HDR screen the photo may show less range. |
+| Compressed text (image)              | It is removed without being read, so it does not appear in the table of fields.                                           |
 
 **What Velo refuses to do.**
 
@@ -690,6 +872,12 @@ you press anything, and they are repeated in the certificate:
   cannot be read or rewritten without one. The message says what to do: remove the protection with
   the program that made it —by opening it and saving a copy without a password— and drop that copy
   in.
+- **A HEIC photo with parts Velo cannot rewrite without breaking it is left alone.** That is the
+  case for a Live Photo or a burst (a sequence), a photo with protected parts, with data stored
+  outside the file or with an unknown property the file declares essential. Velo says “That photo
+  uses a part of the format Velo does not rewrite” and hands nothing over: rather than a broken
+  copy, none. Export the photo as a still image —HEIC or JPEG— from your photos app and drop that
+  copy in.
 - **If the check finds anything, it does not hand the file over.** After cleaning, the same reader
   that made the diagnosis runs over the copy. If it finds **a single** named field, or (in a PDF)
   more than one version, Velo says “No file was handed over”: a cleaning that is not checked is a
@@ -740,6 +928,18 @@ This section is as much a part of the product as the others.
   the path and the names of the fields it saw inside; treating them, or removing them, is up to
   you. And what comes out is a faithful rewrite, not a byte-for-byte copy: compact, one record per
   line.
+- **The ε of local differential privacy is for ONE value of ONE field, not for the file.** It says
+  how much someone who sees the file can learn about a single value of a column with noise. It does
+  not cover the other columns; it does not cover repeated deliveries —each different file you hand
+  over with the same data spends its own ε, and the ε add up—; and it **does not compose with k**:
+  k is measured apart, over the file, and Velo does not add or average the two into one number. The
+  ±% perturbation has no ε and no formal guarantee. And Velo does not say which ε is “enough”: that
+  decision is yours and depends on what the file is for.
+- **The optimal generalization's comparison is measured over the columns of the partition, not over
+  the whole file.** The k, ℓ, risk and bits in the “The two roads, side by side” table speak only
+  about the columns you marked “Generalize until k is reached”; other columns can split those
+  groups, and the full balance arrives when you transform. “Optimal” is the best combination of the
+  ladders you gave it, not the best generalization possible.
 
 ---
 
@@ -781,8 +981,21 @@ coordinates, dates— work the same in both languages. The language changes what
 Velo can detect.
 
 **I have a photo in HEIC, from my iPhone. Can I clean it?**
-Today Velo does not read HEIC. Export it as JPEG from the photos program on your phone or computer
-and drop that copy in. Whether Velo will read HEIC later has not been decided.
+Yes. Drop it in like any other image. Velo removes the EXIF (location, camera, dates, author), the
+XMP and the descriptions someone wrote about the photo, and gives you back a HEIC: it does not
+convert it to JPEG. It keeps the image, the color profile, the orientation, the thumbnail and the
+auxiliary maps (depth or HDR boost); that is why, on an HDR screen, the photo may show less range,
+and Velo warns you. If it is a Live Photo, a burst or has parts Velo cannot rewrite, it leaves the
+file alone and tells you what to do: export it as a still image. The details are in
+[section 8](#8-pdfs-and-images-cleaning-what-the-file-says-about-itself).
+
+**In “Noise with a guarantee”, which ε do I choose?**
+Velo does not decide for you and does not hand you a “safe” number, because there is none. A lower ε
+gives more protection and more noise —the data comes out less useful—; a higher one gives less noise
+and less protection. Which balance suits depends on what the file is for and who it is going to. And
+remember what the ε is for: ONE value of ONE field, not the file, and every different delivery with
+the same data spends its own. The options run from 0.1 to 8, and the screen always shows the ε that
+came out, rounded up.
 
 **I cleaned the metadata of a photo. Can I publish it now?**
 The location, the camera, the author and the dates are gone, and Velo checked it by reading the copy
@@ -806,6 +1019,16 @@ without the tab freezing, because the heavy work happens on a separate thread.
 estimated risk —the three things promised here— are above, each with its own section.
 
 What Velo does **not** do today lives in “What Velo does NOT claim” and in the declared limits: it does
-not read databases, it does not read HEIC photos, it does not generate `.xlsx` output, it does not
-treat the lists inside a JSON, it does not clean the annotations, attachments or forms of a PDF, and
-it does not use —and will not use— generative artificial intelligence anywhere in the product.
+not read databases, it does not generate `.xlsx` output, it does not treat the lists inside a JSON,
+it does not clean the annotations, attachments or forms of a PDF, and it does not use —and will not
+use— generative artificial intelligence anywhere in the product.
+
+And there are four things that are **pending the owner's decision**: they are neither promised nor
+discarded.
+
+- **AVIF**, the other photo format that resembles HEIC: today Velo does not read it.
+- **HEIC sequences and Live Photos:** today Velo refuses them rather than risk breaking them.
+- **Deleting rows inside the optimal generalization's search:** today Velo deletes no record on its
+  own, and the “optimal” result is limited to what the ladders allow.
+- **CIIU Rev. 5 A.C.**, which DANE adopted in August 2026 with a two-year transition: today the
+  economic-activity ladder uses Rev. 4 A.C.

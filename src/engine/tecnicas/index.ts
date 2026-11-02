@@ -23,9 +23,12 @@ import {
 } from "../columnar";
 import { enmascarar } from "../mascara";
 import { anonimizarConMondrian, type ResultadoDeMondrian } from "../mondrian";
+import { generalizarOptimo, type ResultadoOptimo } from "../optima";
+import { aplicarRuido, type InformeDeRuido } from "../ruido";
 import type { EntradaDeBoveda } from "../boveda";
 import {
   columnasDeMondrian,
+  esDeRuido,
   esReversible,
   requiereLlave,
   tecnicaDe,
@@ -59,6 +62,13 @@ export interface TablaTransformada {
   readonly pendientesDeMondrian: readonly string[];
   /** El reparto, cuando la política pidió k. `null` cuando no había nada que repartir. */
   readonly mondrian: ResultadoDeMondrian | null;
+  /**
+   * S7: el reparto por la generalización ÓPTIMA, cuando la política la pide en vez de Mondrian. A lo
+   * sumo uno de los dos no es `null`.
+   */
+  readonly optima: ResultadoOptimo | null;
+  /** S7: lo que cada columna con ruido recibió (mecanismo, ε, recortes…), en el orden de la tabla. */
+  readonly ruido: readonly InformeDeRuido[];
   /**
    * El material de la bóveda: una entrada por columna **reversible**, con su diccionario original y
    * los seudónimos que salieron de él, en paralelo.
@@ -110,23 +120,28 @@ function transformarSincrono(
  * escribe dentro de las etiquetas de intervalo (`"18 a 39"` / `"18 to 39"`). No entra a la
  * política, a su hash, a la bóveda ni al nombre del archivo; con las demás técnicas, la salida es
  * byte-idéntica en los dos idiomas. Un valor por defecto aquí emitiría español en silencio.
+ *
+ * `huella` es el SHA-256 del archivo de entrada. Solo la usa el ruido (S7): entra a la semilla de
+ * cada celda para que dos archivos distintos reciban ruido independiente (`ruido/azar.ts`).
  */
 export async function aplicarPolitica(
   tabla: TablaColumnar,
   politica: Politica,
   llave: CryptoKey | null,
   idioma: Idioma,
+  huella = "",
 ): Promise<TablaTransformada> {
   if (requiereLlave(politica) && llave === null) {
     // Invariante del pipeline, no error de usuario: la UI no deja llegar aquí sin llave. Si llega,
     // es un defecto nuestro y tiene que sonar fuerte en vez de producir un archivo a medias.
-    throw new Error("la política pide seudonimizar y no se dio una llave");
+    throw new Error("la política pide una técnica con llave y no se dio una llave");
   }
 
   const columnas: ColumnaColumnar[] = [];
   const suprimidas: string[] = [];
   const colisiones: ColisionEnColumna[] = [];
   const correspondencias: EntradaDeBoveda[] = [];
+  const ruido: InformeDeRuido[] = [];
 
   for (const columna of tabla.columnas) {
     const tecnica = tecnicaDe(politica, columna.nombre);
@@ -140,6 +155,15 @@ export async function aplicarPolitica(
       tecnica.tipo === "generalizar-automatico"
     ) {
       columnas.push(columna);
+      continue;
+    }
+
+    // S7: el ruido va celda por celda, no por diccionario (dos celdas con el mismo valor reciben
+    // ruido distinto). `llave` no es null aquí: lo garantiza la guarda del principio.
+    if (esDeRuido(tecnica)) {
+      const conRuido = await aplicarRuido(columna, tecnica, llave!, huella);
+      columnas.push(conRuido.columna);
+      ruido.push(conRuido.informe);
       continue;
     }
 
@@ -193,22 +217,41 @@ export async function aplicarPolitica(
   // llevar de verdad, no lo que llevaba al entrar. Y va aparte porque no es una técnica por
   // columna — mira todas las marcadas a la vez y decide dónde cortar.
   const transformada: TablaColumnar = { columnas, filas: tabla.filas };
+  const conReparto = paraMondrian.length > 0 && politica.kObjetivo !== null;
+  const pideOptima = politica.generalizacion?.algoritmo === "optima";
   const mondrian =
-    paraMondrian.length > 0 && politica.kObjetivo !== null
+    conReparto && !pideOptima
       ? anonimizarConMondrian(
           transformada,
           paraMondrian,
-          politica.kObjetivo,
+          politica.kObjetivo!,
           idioma,
         )
       : null;
+  // La óptima no escribe palabras (rangos, códigos y `*`): el idioma no entra.
+  const optima =
+    conReparto && pideOptima
+      ? generalizarOptimo(
+          transformada,
+          paraMondrian,
+          politica.generalizacion!.jerarquias,
+          politica.kObjetivo!,
+          politica.generalizacion!.diversidad ?? null,
+        )
+      : null;
+  // Una retícula que pasa del tope no se recorre: sus columnas salen intactas, y el balance lo dice
+  // antes que cualquier cifra (`reticula-excede-tope`).
+  const optimaAplicada =
+    optima !== null && optima.motivo !== "excede-tope" ? optima : null;
 
   return {
-    tabla: mondrian?.tabla ?? transformada,
+    tabla: mondrian?.tabla ?? optimaAplicada?.tabla ?? transformada,
     suprimidas,
     colisiones,
-    pendientesDeMondrian: mondrian === null ? paraMondrian : [],
+    pendientesDeMondrian: conReparto ? [] : paraMondrian,
     mondrian,
+    optima,
+    ruido,
     correspondencias,
   };
 }

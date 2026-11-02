@@ -60,6 +60,27 @@ export type Salvedad = { readonly gravedad: "descalifica" | "matiza" } & (
       readonly columnas: readonly string[];
     }
   | {
+      /**
+       * S7: la política pidió la generalización ÓPTIMA y la retícula de esas columnas pasa del tope
+       * que Velo recorre. Salieron **intactas**: recorrerla a medias sería prometer un óptimo que no
+       * se buscó, y pasar a Mondrian en silencio sería cambiar el tratamiento que pide la política.
+       */
+      readonly tipo: "reticula-excede-tope";
+      readonly columnas: readonly string[];
+      readonly nodos: number;
+      readonly tope: number;
+    }
+  | {
+      /**
+       * S7: la política pidió respuesta aleatorizada sobre una columna con más valores distintos de
+       * los que esa técnica acepta. Salió **intacta**: inventarle un dominio más chico sería mentir
+       * sobre lo que se protegió.
+       */
+      readonly tipo: "ruido-no-aplicado";
+      readonly columnas: readonly string[];
+      readonly maximo: number;
+    }
+  | {
       /** Registros que siguen SOLOS en su clase después del tratamiento. */
       readonly tipo: "unicos-restantes";
       readonly cuantos: number;
@@ -123,10 +144,28 @@ export interface EntradasDelBalance {
   readonly politica: Politica;
   readonly suprimidas: readonly string[];
   readonly colisiones: readonly ColisionEnColumna[];
-  readonly mondrian: ResultadoDeMondrian | null;
+  /**
+   * El reparto que se hizo: el de Mondrian o el de la generalización óptima (S7). El balance solo lee
+   * lo que los dos tienen en común: el k pedido, el alcanzado y sobre qué columnas.
+   */
+  readonly mondrian: Pick<
+    ResultadoDeMondrian,
+    "kObjetivo" | "kAlcanzado" | "alcanzado" | "dimensiones"
+  > | null;
   readonly diversidad: readonly MedidaDeDiversidad[];
   /** Columnas del reparto que quedaron sin generalizar porque la política no fijó un k. */
   readonly pendientesDeMondrian: readonly string[];
+  /** S7: columnas con respuesta aleatorizada que no se aplicó (dominio de más de `maximo`). */
+  readonly ruidoNoAplicado?: {
+    readonly columnas: readonly string[];
+    readonly maximo: number;
+  } | null;
+  /** S7: la retícula de la generalización óptima que no se recorrió por pasar del tope. */
+  readonly reticulaExcedida?: {
+    readonly dimensiones: readonly string[];
+    readonly nodos: number;
+    readonly tope: number;
+  } | null;
 }
 
 /** El orden de las salvedades es parte del contrato: primero lo que deja a alguien señalable. */
@@ -135,6 +174,8 @@ const ORDEN: Record<Salvedad["tipo"], number> = {
   // Va segunda y no quinta: explica POR QUÉ quedan únicos, y una explicación después de su
   // consecuencia se lee como una excusa.
   "reparto-sin-k": 1,
+  "reticula-excede-tope": 1,
+  "ruido-no-aplicado": 1,
   "unicos-restantes": 2,
   "k-no-alcanzado": 3,
   "k-del-reparto-no-es-el-del-archivo": 4,
@@ -175,6 +216,8 @@ export function balanceDelTratamiento(
     mondrian,
     diversidad,
     pendientesDeMondrian,
+    reticulaExcedida,
+    ruidoNoAplicado,
   } = entradas;
 
   const qisAntes = diagnostico.columnas
@@ -201,6 +244,25 @@ export function balanceDelTratamiento(
       gravedad: "descalifica",
       tipo: "reparto-sin-k",
       columnas: pendientesDeMondrian,
+    });
+  }
+
+  if (reticulaExcedida) {
+    salvedades.push({
+      gravedad: "descalifica",
+      tipo: "reticula-excede-tope",
+      columnas: reticulaExcedida.dimensiones,
+      nodos: reticulaExcedida.nodos,
+      tope: reticulaExcedida.tope,
+    });
+  }
+
+  if (ruidoNoAplicado && ruidoNoAplicado.columnas.length > 0) {
+    salvedades.push({
+      gravedad: "descalifica",
+      tipo: "ruido-no-aplicado",
+      columnas: ruidoNoAplicado.columnas,
+      maximo: ruidoNoAplicado.maximo,
     });
   }
 

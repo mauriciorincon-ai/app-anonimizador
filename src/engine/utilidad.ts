@@ -104,6 +104,41 @@ export function entropiaEnBits(
 }
 
 /**
+ * Información mutua I(X; G) entre una columna original y su versión generalizada, en bits: lo que
+ * la salida todavía dice del original. I = H(X) + H(G) − H(X, G), y nunca pasa de H(X).
+ *
+ * S7: hace falta porque la entropía de la salida sola NO mide eso cuando la generalización no es
+ * una función del valor. Mondrian corta por regiones, y el mismo `F` puede salir `F` en una y
+ * `F, M` en otra: la columna de salida puede tener MÁS valores distintos y más entropía que la de
+ * entrada, y «quedan 10 bits de 9» sería un número imposible. Con una función del valor (la
+ * generalización óptima) las dos medidas coinciden: I(X; f(X)) = H(f(X)).
+ */
+export function informacionMutua(
+  original: ColumnaColumnar,
+  generalizada: ColumnaColumnar,
+  filas: number,
+): number {
+  if (filas === 0) return 0;
+  const ancho = generalizada.valores.length;
+  const conjunta = new Map<number, number>();
+  for (let f = 0; f < filas; f++) {
+    const clave = original.codigos[f] * ancho + generalizada.codigos[f];
+    conjunta.set(clave, (conjunta.get(clave) ?? 0) + 1);
+  }
+  let hConjunta = 0;
+  for (const cuenta of conjunta.values()) {
+    const p = cuenta / filas;
+    hConjunta -= p * Math.log2(p);
+  }
+  const i =
+    entropiaEnBits(original, filas) +
+    entropiaEnBits(generalizada, filas) -
+    hConjunta;
+  // El redondeo de la suma puede dejar −1e-16 o pasarse de H(X) por un último bit.
+  return Math.min(entropiaEnBits(original, filas), Math.max(0, i));
+}
+
+/**
  * V de Cramér entre dos columnas, en [0, 1].
  *
  * Se calcula sobre la tabla de contingencia de los códigos del diccionario. No hay corrección de
@@ -198,7 +233,11 @@ export function medirUtilidad(
       cardinalidadAntes: original.valores.length - 1,
       cardinalidadDespues: nueva.valores.length - 1,
       bitsAntes: entropiaEnBits(original, filas),
-      bitsDespues: entropiaEnBits(nueva, filas),
+      // Lo que la columna de salida todavía dice de la original (S7). Era su entropía, que coincide
+      // cuando la técnica es una función del valor; con Mondrian (cortes por región) o con ruido
+      // por celda la salida tiene más valores distintos que la entrada, y la entropía sola diría
+      // que el archivo GANÓ información.
+      bitsDespues: informacionMutua(original, nueva, filas),
       celdasCambiadas: filas === 0 ? 0 : cambiadas / filas,
     };
   });

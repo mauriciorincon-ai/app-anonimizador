@@ -285,6 +285,18 @@ export const MOTOR_TRANSFORMAR = {
     es: "generalizada hasta el k",
     en: "generalized up to k",
   },
+  "tecnica.laplace": {
+    es: "ruido de Laplace (ε)",
+    en: "Laplace noise (ε)",
+  },
+  "tecnica.respuesta-aleatorizada": {
+    es: "respuesta aleatorizada (ε)",
+    en: "randomized response (ε)",
+  },
+  "tecnica.perturbar": {
+    es: "perturbada, sin garantía formal",
+    en: "perturbed, no formal guarantee",
+  },
 
   // ── Salida: lo que se escribe dentro del archivo anonimizado ───────────────────────────────
   "salida.mondrian.separador": {

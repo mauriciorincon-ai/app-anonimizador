@@ -1,0 +1,40 @@
+{
+  "jerarquia": "ciiu",
+  "descripcion": "CIIU Rev. 4 adaptada para Colombia (CIIU Rev. 4 A.C.), update 2022: sections A-U, the divisions (2 digits) each section contains, and the 4-digit classes.",
+  "fuentes": [
+    {
+      "editor": "DANE (Departamento Administrativo Nacional de Estadística)",
+      "titulo": "Estructura Detallada CIIU Rev. 4 A.C. (Excel - actualización 2022), adopted by Resolución 2306 de 2022 (27 de diciembre de 2022)",
+      "url": "https://www.dane.gov.co/files/sen/nomenclatura/ciiu/Estructura-detallada-CIIU-4AC-2022.xlsx",
+      "fecha_de_consulta": "2026-11-02",
+      "archivo": "Estructura-detallada-CIIU-4AC-2022.xlsx",
+      "sha256": "235ae1d239c98d4c5b4f692bdf1402e2beac4fc356beab5c12bfbbc4d2da8bff",
+      "que_se_tomo": "The single worksheet: rows 'SECCIÓN X' (column A) open a section; two-digit codes in column A are divisions; three-digit codes in column B are groups; four-digit codes in column C are classes. Descriptions (column D) are not used. Server Last-Modified: Wed, 28 Dec 2022 15:45:36 GMT.",
+      "version_de_la_fuente": "CIIU Rev. 4 A.C. (2022), actualización año 2022 (DANE, DIRPEN, diciembre de 2022). The DANE page (saved as dane-ciiu-pagina.html, sha256 5802052132b5ebeff6f52aac9ecff47c4b3d4fd56c087298f495fc25fa5b7fd1) lists it under 'CIIU Rev. 4 A.C.' with Resolución 2306 de 2022."
+    },
+    {
+      "editor": "DANE (Departamento Administrativo Nacional de Estadística)",
+      "titulo": "Clasificación Industrial Internacional Uniforme de todas las actividades económicas, Revisión 4 Adaptada para Colombia, CIIU Rev. 4 A.C. (2022) — Actualización año 2022 (document; sections 9 'Estructura general' and 10 'Estructura detallada')",
+      "url": "https://www.dane.gov.co/files/sen/nomenclatura/ciiu/CIIU_Rev_4_AC2022.pdf",
+      "fecha_de_consulta": "2026-11-02",
+      "archivo": "CIIU_Rev_4_AC2022.pdf",
+      "sha256": "bcd7e8786b0e6159d6237136f03d87e95f195e7c5804d9474740479a00b90914",
+      "que_se_tomo": "Used ONLY to cross-check the Excel: the 88 divisions and the 502 four-digit classes of section 10 ('Estructura detallada') are identical to those of the Excel. Not read by the script. The 'Estructura general' table (section 9) prints section I as divisions '51-56', a typographical error in the PDF (the same document's detailed structure and the Excel give 55-56)."
+    }
+  ],
+  "derivado": {
+    "archivo": "ciiu.json",
+    "sha256": "c58a48477fe5edce1aaa0cf93e21e6a5c457a3a5ada0d53b120c885d6c33fb1e",
+    "como": "Produced by `node scripts/jerarquias/derivar.mjs <sources-dir>` (scripts/jerarquias/derivar.mjs, Node built-ins only), which reads Estructura-detallada-CIIU-4AC-2022.xlsx (a ZIP of XML, read with a minimal ZIP reader on node:zlib). secciones = [letter, first division, last division] for each 'SECCIÓN X' row, taking the first and last division code listed under it; clases = every four-digit code of column C, sorted (plain string order). JSON.stringify on one line plus a trailing newline, UTF-8 without BOM. The script throws if: the header row changes, sections are not A..U in order, a division is listed twice or the divisions of a section are not contiguous, a group is not under its division, a class is not under its group, a class repeats, a class's first two digits fall in zero or several section ranges, or the sections are not 21."
+  },
+  "conteos": {
+    "secciones": 21,
+    "divisiones": 88,
+    "grupos": 246,
+    "clases": 502
+  },
+  "notas": [
+    "Divisions are contiguous inside every section; the ranges are NOT contiguous across sections (the division codes 04, 34, 40, 44, 48, 54, 57, 67, 76, 83 and 89 do not exist between 01 and 99), which is expected.",
+    "Resolución 992 de 2026 (6 de agosto de 2026, DANE) repeals Resolución 2306 de 2022 and establishes the CIIU Rev. 5 A.C. (DANE page: 'CIIU Rev. 5 A.C.'). Its article 3 gives implementers up to two years from publication to move to Rev. 5 A.C. and its parágrafo 2 lets obligated entities keep using Rev. 4 A.C. during that period. Rev. 4 A.C. data will therefore keep circulating, but it is no longer the current DANE classification. Downloaded for reference only (not used in the derivation): res-0992-06ago2026.pdf sha256 946937032a3554a77a756864e1bcd7676225163ff1dac9150a61898e0dda88f2 (scanned, no text layer; read as images), CIIU_5_AC_Estructura_detallada.xlsx sha256 ef5e93f0246d7c3efb74caf5dfa6888fe4c1e7fe196b6a7dd5e144908bd18b16 (22 sections, 87 divisions, 266 groups, 544 classes)."
+  ]
+}

@@ -42,6 +42,33 @@ function TextoDeSalvedad({ salvedad }: { salvedad: Salvedad }) {
           <Rico texto={B.sinTratar.cierre} />
         </>
       );
+    case "ruido-no-aplicado":
+      return (
+        <>
+          <Rico
+            texto={B.ruidoNoAplicado}
+            datos={{
+              n: salvedad.columnas.length,
+              maximo: numero(salvedad.maximo, idioma),
+            }}
+          />{" "}
+          <span className="font-mono">{salvedad.columnas.join(" · ")}</span>.
+        </>
+      );
+    case "reticula-excede-tope":
+      return (
+        <>
+          <Rico
+            texto={B.reticulaExcedeTope}
+            datos={{
+              n: salvedad.columnas.length,
+              nodos: numero(salvedad.nodos, idioma),
+              tope: numero(salvedad.tope, idioma),
+            }}
+          />{" "}
+          <span className="font-mono">{salvedad.columnas.join(" · ")}</span>.
+        </>
+      );
     case "reparto-sin-k":
       return (
         <>

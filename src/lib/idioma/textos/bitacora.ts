@@ -257,6 +257,21 @@ export const BITACORA = {
     fecha: { es: "Fecha", en: "Date" },
     filas: { es: "Filas", en: "Rows" },
     tecnicas: { es: "Técnicas", en: "Techniques" },
+    // S7: el ruido con garantía, en una línea, con su ε y su alcance.
+    privacidad: {
+      es: "Privacidad diferencial local",
+      en: "Local differential privacy",
+    },
+    privacidadValor: {
+      es: "ε = {epsilon} por fila ({mecanismos})",
+      en: "ε = {epsilon} per row ({mecanismos})",
+    },
+    // La perturbación va en su propia línea y con su propio nombre: no es privacidad diferencial.
+    perturbacion: { es: "Perturbación", en: "Perturbation" },
+    perturbadas: {
+      es: "{n} columnas perturbadas, sin garantía formal",
+      en: "{n} perturbed columns, no formal guarantee",
+    },
     ninguna: { es: "ninguna", en: "none" },
     // Las DOS puntas del riesgo, nunca la reducción entre ellas (ADR-007): «bajó del 30 % al 2 %»
     // es cierta y puede engañar, y una bitácora se lee meses después, sin la pantalla al lado que

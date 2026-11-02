@@ -268,10 +268,10 @@ const LITERALES: Record<string, string> = {
 const ATRIBUTOS_LITERALES: Record<string, string> = {
   "Idioma · Language":
     "el grupo del conmutador es bilingüe a propósito: quien llegó en el otro idioma debe reconocerlo",
-  Español:
-    'nombre propio del idioma, en su propio idioma; el botón lleva `lang="es"`',
-  English:
-    'nombre propio del idioma, en su propio idioma; el botón lleva `lang="en"`',
+  "ES · Español":
+    'lo que el botón muestra y el nombre propio del idioma, en su propio idioma; lleva `lang="es"`',
+  "EN · English":
+    'lo que el botón muestra y el nombre propio del idioma, en su propio idioma; lleva `lang="en"`',
 };
 
 const ATRIBUTOS_QUE_SE_LEEN: readonly [string, string][] = [

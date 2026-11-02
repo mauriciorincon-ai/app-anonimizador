@@ -41,7 +41,7 @@ export function formatoDeArchivo(nombre: string): FormatoDeArchivo | null {
   if (/\.(json|jsonl|ndjson)$/i.test(nombre)) return "json";
   // PDF e imágenes: la extensión solo abre la puerta. Qué son lo deciden sus bytes, en el worker.
   if (/\.pdf$/i.test(nombre)) return "pdf";
-  if (/\.(jpe?g|jpe|png|webp)$/i.test(nombre)) return "imagen";
+  if (/\.(jpe?g|jpe|png|webp|heic|heif)$/i.test(nombre)) return "imagen";
   return null;
 }
 

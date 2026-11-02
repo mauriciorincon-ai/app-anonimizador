@@ -35,7 +35,10 @@ export function ConmutadorDeIdioma() {
               type="button"
               lang={candidato}
               aria-pressed={activo}
-              aria-label={NOMBRE_PROPIO[candidato]}
+              // El nombre accesible CONTIENE lo que se ve («ES · Español»), no lo sustituye: quien
+              // maneja la página por voz dice «ES» porque es lo que lee (WCAG 2.5.3; axe-core 4.14
+              // lo exige con `label-content-name-mismatch`).
+              aria-label={`${candidato.toUpperCase()} · ${NOMBRE_PROPIO[candidato]}`}
               onClick={() => elegirIdioma(candidato)}
               className={`rounded-1 focus-visible:outline-acento min-h-8 min-w-8 px-1.5 text-[0.8125rem] tracking-wide underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 ${
                 activo

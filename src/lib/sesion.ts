@@ -13,12 +13,18 @@
 
 import { useSyncExternalStore } from "react";
 
-import type { Politica } from "@/engine/politica";
+import {
+  columnasDeMondrian,
+  type JerarquiaDeLaPolitica,
+  type Politica,
+} from "@/engine/politica";
+import { serializarCanonico } from "@/engine/serializacion";
 import type { RiesgoEstimado } from "@/engine/riesgo-estimado";
 import { excelGrande, formatoDeArchivo, motivoDelTope } from "@/lib/archivo";
 import { idiomaActual } from "@/lib/idioma/estado";
 import { generarSal } from "@/lib/llave";
 import type {
+  ComparacionDeGeneralizacion,
   EtapaDelWorker,
   FormatoDeArchivo,
   Informe,
@@ -126,6 +132,51 @@ export interface EstadoDelTaller {
   readonly poblacionDeclarada: number | null;
   /** Solo para un PDF o una imagen: la limpieza de sus metadatos. */
   readonly limpieza: EstadoDeLimpieza;
+  /** S7: Mondrian y la generalización óptima lado a lado, sobre la política en pantalla. */
+  readonly comparacion: EstadoDeComparacion;
+}
+
+/**
+ * La comparación lleva la FIRMA de lo que comparó (`firmaDeComparacion`): la pantalla la enseña solo
+ * mientras lo que tiene delante firme igual. Elegir Mondrian o la óptima no cambia lo comparado (los
+ * dos caminos ya están calculados); cambiar el k, una escalera, una columna del reparto o la ℓ, sí.
+ */
+export type EstadoDeComparacion =
+  | { readonly fase: "sin-hacer" }
+  | { readonly fase: "comparando"; readonly firma: string }
+  | {
+      readonly fase: "hecha";
+      readonly comparacion: ComparacionDeGeneralizacion;
+      readonly firma: string;
+    }
+  | { readonly fase: "fallo"; readonly firma: string };
+
+/**
+ * Lo que una comparación compara: el k, las columnas del reparto, la escalera de cada una y la ℓ
+ * pedida. Lo demás de la política (el camino elegido, las técnicas de otras columnas) no la mueve.
+ */
+export function firmaDeComparacion(
+  politica: Politica,
+  jerarquias: Readonly<Record<string, JerarquiaDeLaPolitica>>,
+): string {
+  const reparto = columnasDeMondrian(politica)
+    .slice()
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return serializarCanonico({
+    k: politica.kObjetivo,
+    reparto,
+    jerarquias: Object.fromEntries(
+      reparto.map((c) => [c, jerarquias[c] ?? { tipo: "supresion" }]),
+    ),
+    diversidad: politica.generalizacion?.diversidad ?? null,
+  });
+}
+
+/** La firma de la comparación que el worker está calculando (la que se pidió). */
+function firmaPendiente(): string {
+  return tallerActual.comparacion.fase === "comparando"
+    ? tallerActual.comparacion.firma
+    : "";
 }
 
 /**
@@ -180,6 +231,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   estimacion: null,
   poblacionDeclarada: null,
   limpieza: { fase: "sin-hacer" },
+  comparacion: { fase: "sin-hacer" },
 };
 
 let estadoActual: EstadoDeSesion = VACIO;
@@ -249,6 +301,9 @@ export function descartar(): void {
  * mentira que este sprint persigue — cada cifra sería cierta, pero de otro archivo.
  */
 export function invalidarTransformacion(): void {
+  // La comparación NO se olvida aquí: lleva su firma, y la pantalla la esconde en cuanto lo que
+  // tiene delante firma distinto (ver `EstadoDeComparacion`). Olvidarla con cada toque de la
+  // política la borraba justo al elegir el camino que se acababa de comparar.
   if (
     tallerActual.transformacion.fase === "sin-hacer" &&
     tallerActual.archivo === null
@@ -314,6 +369,30 @@ export function sellarLaBoveda(frase: string): void {
     etapa: "sellando-boveda",
   });
   worker.postMessage({ tipo: "sellar-boveda", frase });
+}
+
+/**
+ * Compara Mondrian con la generalización óptima sobre las columnas del reparto de `politica`, con
+ * `jerarquias` (las de la política o las que la pantalla propone). No pide llave.
+ */
+export function compararGeneralizacion(
+  politica: Politica,
+  jerarquias: Readonly<Record<string, JerarquiaDeLaPolitica>>,
+): void {
+  if (!worker) return;
+  publicarTaller({
+    comparacion: {
+      fase: "comparando",
+      firma: firmaDeComparacion(politica, jerarquias),
+    },
+    etapa: "comparando",
+  });
+  worker.postMessage({
+    tipo: "comparar-generalizacion",
+    politica,
+    jerarquias,
+    idioma: idiomaActual(),
+  });
 }
 
 /**
@@ -470,6 +549,20 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
       // en pantalla sería la composición prohibida en su forma más tonta —una cifra correcta
       // sobre un archivo que ya no existe.
       estimacion: null,
+      etapa: null,
+    });
+    return;
+  }
+  if (mensaje.tipo === "comparacion") {
+    publicarTaller({
+      comparacion:
+        mensaje.comparacion === null
+          ? { fase: "fallo", firma: firmaPendiente() }
+          : {
+              fase: "hecha",
+              comparacion: mensaje.comparacion,
+              firma: firmaPendiente(),
+            },
       etapa: null,
     });
     return;

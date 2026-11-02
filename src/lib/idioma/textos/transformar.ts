@@ -203,6 +203,68 @@ export const TRANSFORMAR = {
         en: "Generalize until k is reached",
       },
       suprimir: { es: "Quitar la columna", en: "Remove the column" },
+      // S7: cortas por la misma razón que las de arriba (412 px); el detalle va debajo del menú.
+      laplace: { es: "Ruido de Laplace (ε)", en: "Laplace noise (ε)" },
+      respuestaAleatorizada: {
+        es: "Respuesta aleatorizada (ε)",
+        en: "Randomized response (ε)",
+      },
+      perturbar: { es: "Perturbar ±%", en: "Perturb ±%" },
+    },
+    // S7: los parámetros del ruido, debajo del menú de la columna.
+    ruido: {
+      epsilon: {
+        es: "ε de {columna}",
+        en: "ε for {columna}",
+      },
+      minimo: { es: "Mínimo posible de {columna}", en: "Lowest possible {columna}" },
+      maximo: { es: "Máximo posible de {columna}", en: "Highest possible {columna}" },
+      decimales: { es: "Decimales de {columna}", en: "Decimals of {columna}" },
+      porcentaje: {
+        es: "Cuánto puede moverse {columna} (%)",
+        en: "How far {columna} may move (%)",
+      },
+      etiquetas: {
+        epsilon: { es: "ε", en: "ε" },
+        minimo: { es: "mín.", en: "min" },
+        maximo: { es: "máx.", en: "max" },
+        decimales: { es: "decimales", en: "decimals" },
+        porcentaje: { es: "± %", en: "± %" },
+      },
+      notaLaplace: {
+        es:
+          "**Privacidad diferencial local, ε = {epsilon} por valor de este campo.** El rango es el " +
+          "que el dato PUEDE tener, no el que tiene el archivo: sacarlo de los datos ya delataría " +
+          "algo. Lo que cae fuera se recorta y se cuenta. A menor ε, más ruido.",
+        en:
+          "**Local differential privacy, ε = {epsilon} per value of this field.** The range is the " +
+          "one the data CAN take, not the one the file has: taking it from the data would already " +
+          "give something away. What falls outside is clipped and counted. The lower the ε, the " +
+          "more noise.",
+      },
+      notaRespuesta: {
+        es:
+          "**Privacidad diferencial local, ε efectivo ≤ {epsilon} por valor de este campo.** Cada " +
+          "celda responde a veces un valor al azar entre los que tiene la columna (hasta 64). Esos " +
+          "valores posibles salen del archivo: que un valor aparezca no está protegido por ε.",
+        en:
+          "**Local differential privacy, effective ε ≤ {epsilon} per value of this field.** Each " +
+          "cell sometimes answers a random value among the ones the column holds (up to 64). Those " +
+          "possible values come from the file: that a value shows up is not protected by ε.",
+      },
+      notaPerturbar: {
+        es:
+          "**Perturbación, sin garantía formal.** Cada número se mueve al azar hasta ±{porcentaje} %. " +
+          "No es privacidad diferencial: no tiene ε y no promete nada medible.",
+        en:
+          "**Perturbation, with no formal guarantee.** Each number moves at random up to " +
+          "±{porcentaje} %. It is not differential privacy: it has no ε and promises nothing " +
+          "measurable.",
+      },
+      invalido: {
+        es: "El máximo tiene que ser mayor que el mínimo, con esos decimales y en un rango que quepa.",
+        en: "The maximum must be greater than the minimum, with those decimals and in a range that fits.",
+      },
     },
     categoria: {
       "identificador-directo": {
@@ -224,36 +286,6 @@ export const TRANSFORMAR = {
       detalle: {
         es: "Guarda la correspondencia en un archivo cifrado. Sin la bóveda, el seudónimo sigue sin vuelta.",
         en: "Saves the mapping in an encrypted file. Without the vault, the pseudonym can't be reversed.",
-      },
-      // Un JSON no tiene regreso (el regreso lee solo CSV): una bóveda para él sería inútil, y
-      // ofrecerla sería prometer una vuelta que no existe.
-      soloIda: {
-        es:
-          "No disponible con un JSON: el regreso funciona solo con CSV, así que una bóveda de " +
-          "este archivo no serviría de nada.",
-        en:
-          "Not available with a JSON: the return flow works only with CSV, so a vault for this " +
-          "file would be useless.",
-      },
-      vueltaQuitadaUna: {
-        es:
-          "La política importada pedía poder deshacer una columna con una bóveda. Con un JSON no " +
-          "se puede (el regreso funciona solo con CSV): esa columna quedó con seudónimo sin " +
-          "vuelta.",
-        en:
-          "The imported policy asked to make one column undoable with a vault. That is not " +
-          "possible with a JSON (the return flow works only with CSV): that column was left " +
-          "with a one-way pseudonym.",
-      },
-      vueltaQuitadaVarias: {
-        es:
-          "La política importada pedía poder deshacer {n} columnas con una bóveda. Con un JSON " +
-          "no se puede (el regreso funciona solo con CSV): esas columnas quedaron con seudónimo " +
-          "sin vuelta.",
-        en:
-          "The imported policy asked to make {n} columns undoable with a vault. That is not " +
-          "possible with a JSON (the return flow works only with CSV): those columns were left " +
-          "with one-way pseudonyms.",
       },
     },
     vuelta: {
@@ -408,6 +440,27 @@ export const TRANSFORMAR = {
         es: ". Mientras estén en el archivo, ninguna cifra de aquí abajo describe datos tratados.",
         en: ". As long as they remain in the file, none of the figures below describes treated data.",
       },
+    },
+    ruidoNoAplicado: {
+      es:
+        "**{n} columnas salieron intactas**: la política pide respuesta aleatorizada y tienen más " +
+        "de {maximo} valores distintos, que es lo que esa técnica acepta. Usa Laplace si son " +
+        "números, generaliza antes o suprímelas:",
+      en:
+        "**{n} columns came out untouched**: the policy asks for randomized response and they " +
+        "have more than {maximo} distinct values, which is what that technique accepts. Use " +
+        "Laplace if they are numbers, generalize them first or suppress them:",
+    },
+    reticulaExcedeTope: {
+      es:
+        "**{n} columnas salieron intactas**: la política pide la generalización óptima y sus " +
+        "jerarquías dan {nodos} combinaciones de niveles, más de las {tope} que Velo recorre. " +
+        "Quita una columna del reparto, usa una jerarquía con menos niveles o elige Mondrian:",
+      en:
+        "**{n} columns came out untouched**: the policy asks for the optimal generalization and " +
+        "their hierarchies give {nodos} combinations of levels, more than the {tope} Velo walks " +
+        "through. Take a column out of the partition, use a hierarchy with fewer levels or choose " +
+        "Mondrian:",
     },
     repartoSinK: {
       uno: {

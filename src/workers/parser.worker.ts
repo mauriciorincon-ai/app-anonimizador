@@ -36,7 +36,11 @@ import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { filasDeCsv, nombreDelArchivoAnonimizado } from "@/engine/csv";
 import { medirDiversidad } from "@/engine/diversidad";
 import { escribirJson } from "@/engine/json/escritor";
-import { leerJson, type LecturaJson } from "@/engine/json/lector";
+import {
+  columnasNumericas,
+  leerJson,
+  type LecturaJson,
+} from "@/engine/json/lector";
 import { ErrorDeJson } from "@/engine/json/tipos";
 import type { EstructuraJson } from "@/engine/json/tipos";
 import {
@@ -48,18 +52,34 @@ import {
   type FormatoBinario,
 } from "@/engine/metadatos/tipos";
 import { muestraDeColumna } from "@/engine/muestra";
-import { hashDePolitica, type Politica } from "@/engine/politica";
+import {
+  generalizarOptimo,
+  TOPE_DE_NODOS,
+  type ResultadoOptimo,
+} from "@/engine/optima";
+import { anonimizarConMondrian } from "@/engine/mondrian";
+import { nombresDeNiveles } from "@/engine/jerarquias";
+import {
+  columnasDeMondrian,
+  hashDePolitica,
+  type GeneralizacionOptima,
+  type JerarquiaDeLaPolitica,
+  type Politica,
+} from "@/engine/politica";
 import {
   construirInformeDeRestauracion,
   nombreDelInforme,
 } from "@/engine/reporte";
 import { restaurar, type Restauracion } from "@/engine/restaurar";
+import { DOMINIO_MAXIMO, informeDePrivacidad } from "@/engine/ruido";
 import {
   clasesDeEquivalencia,
   evaluarRiesgo,
+  riesgoProsecutor,
   type ClasesDeEquivalencia,
 } from "@/engine/riesgo";
 import { estimarRiesgo } from "@/engine/riesgo-estimado";
+import { entropiaEnBits, informacionMutua } from "@/engine/utilidad";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
 import { esDeMetadatos, formatoDeArchivo, motivoDelTope } from "@/lib/archivo";
@@ -78,9 +98,12 @@ import { derivarLlave } from "@/lib/llave";
 import { Sha256 } from "@/lib/sha256";
 
 import type {
+  ComparacionDeGeneralizacion,
   EtapaDelWorker,
   FormatoDeArchivo,
+  GeneralizacionAplicada,
   Informe,
+  LadoDeLaComparacion,
   MensajeAlWorker,
   MensajeDelWorker,
 } from "./contrato";
@@ -517,7 +540,14 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
     // El idioma del trabajo llega como dato (la pantalla al pulsar «transformar») y se queda en el
     // resultado: el certificado lo lee de ahí, no del idioma que tenga la pantalla al descargarlo.
     // `construirArchivo` no lee ningún idioma: la tabla que escribe ya nació en el del trabajo.
-    const resultado = await aplicarPolitica(original, politica, llave, idioma);
+    // La huella del archivo de entrada entra a la semilla del ruido (S7, `ruido/azar.ts`).
+    const resultado = await aplicarPolitica(
+      original,
+      politica,
+      llave,
+      idioma,
+      huella,
+    );
 
     avisar("midiendo-el-despues", original.filas, 0, 0);
     const sensibles = diagnostico.columnas
@@ -529,6 +559,9 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
       .map((c) => c.nombre)
       .filter((n) => !resultado.suprimidas.includes(n));
     const diversidad = medirDiversidad(resultado.tabla, qis, sensibles);
+    // Una retícula que pasó del tope no se recorrió: no hay nada aplicado que contar.
+    const optimaAplicada =
+      resultado.optima?.motivo === "excede-tope" ? null : resultado.optima;
 
     const balance = balanceDelTratamiento({
       tablaOriginal: original,
@@ -537,9 +570,32 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
       politica,
       suprimidas: resultado.suprimidas,
       colisiones: resultado.colisiones,
-      mondrian: resultado.mondrian,
+      // La salvedad del k habla del k: una óptima que llegó al k y no a la ℓ pedida no es un «k no
+      // alcanzado». La ℓ la cuenta el certificado, en la sección de la generalización.
+      mondrian:
+        resultado.mondrian ??
+        (optimaAplicada
+          ? {
+              ...optimaAplicada,
+              alcanzado: optimaAplicada.kAlcanzado >= optimaAplicada.kObjetivo,
+            }
+          : null),
       diversidad,
       pendientesDeMondrian: resultado.pendientesDeMondrian,
+      ruidoNoAplicado: {
+        columnas: resultado.ruido
+          .filter((r) => !r.aplicado)
+          .map((r) => r.columna),
+        maximo: DOMINIO_MAXIMO,
+      },
+      reticulaExcedida:
+        resultado.optima?.motivo === "excede-tope"
+          ? {
+              dimensiones: resultado.optima.dimensiones,
+              nodos: resultado.optima.nodosEnLaReticula,
+              tope: TOPE_DE_NODOS,
+            }
+          : null,
     });
 
     const porNombre = new Map(
@@ -575,7 +631,13 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
     hashDeLaPolitica = hashDePolitica(politica);
     // El material de la bóveda se guarda AQUÍ, del lado de la frontera donde están los originales.
     // Sellarlo es un mensaje aparte porque exige la frase de paso del usuario, que se pide después.
-    correspondencias = resultado.correspondencias;
+    correspondencias =
+      formatoOriginal === "json" && lecturaJson !== null
+        ? conNumericas(
+            resultado.correspondencias,
+            columnasNumericas(lecturaJson),
+          )
+        : resultado.correspondencias;
 
     // Aquí vivía la proyección campo a campo del reparto de Mondrian, para que su tabla —el archivo
     // entero— no cruzara la frontera dentro de `ResultadoDeMondrian`. **Ya no hace falta porque el
@@ -595,6 +657,11 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
         suprimidas: resultado.suprimidas,
         muestras,
         ms: Math.round(performance.now() - inicio),
+        generalizacion:
+          optimaAplicada && politica.generalizacion
+            ? generalizacionAplicada(optimaAplicada, politica.generalizacion)
+            : null,
+        privacidad: informeDePrivacidad(resultado.ruido),
       },
     });
   } catch {
@@ -604,6 +671,192 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
       motivo: llave === null ? "sin-llave" : "transformacion-fallida",
     });
   }
+}
+
+/**
+ * La óptima tal como se aplicó, para el certificado: cada columna con su escalera y el nivel
+ * elegido. Las columnas sin escalera en la política subieron por la de solo supresión.
+ */
+function generalizacionAplicada(
+  optima: ResultadoOptimo,
+  pedida: GeneralizacionOptima,
+): GeneralizacionAplicada {
+  return {
+    kObjetivo: optima.kObjetivo,
+    kAlcanzado: optima.kAlcanzado,
+    lObjetivo: optima.lObjetivo,
+    lAlcanzado: optima.lAlcanzado,
+    columnasSensibles: pedida.diversidad?.columnas ?? [],
+    columnas: optima.dimensiones.map((nombre, i) => {
+      const jerarquia = pedida.jerarquias[nombre] ?? { tipo: "supresion" };
+      return {
+        nombre,
+        jerarquia,
+        nivel: nombresDeNiveles(jerarquia)[optima.niveles[i]],
+      };
+    }),
+    nodosRevisados: optima.nodosRevisados,
+    nodosEnLaReticula: optima.nodosEnLaReticula,
+  };
+}
+
+/** Un lado de la comparación, medido sobre las columnas del reparto de la tabla ya generalizada. */
+function medirLado(
+  generalizada: TablaColumnar,
+  dimensiones: readonly string[],
+  sensibles: readonly string[],
+  niveles: readonly (string | null)[],
+  extra: Pick<
+    LadoDeLaComparacion,
+    | "disponible"
+    | "motivo"
+    | "alcanzado"
+    | "nodosRevisados"
+    | "nodosEnLaReticula"
+    | "ms"
+  >,
+): LadoDeLaComparacion {
+  const porNombre = new Map(generalizada.columnas.map((c) => [c.nombre, c]));
+  const originales = new Map((tabla?.columnas ?? []).map((c) => [c.nombre, c]));
+  const columnas = dimensiones.map((n) => porNombre.get(n)!);
+  const riesgo = riesgoProsecutor(
+    clasesDeEquivalencia(columnas, generalizada.filas),
+    dimensiones,
+    generalizada.filas,
+  );
+  const diversidad =
+    sensibles.length > 0
+      ? medirDiversidad(generalizada, dimensiones, sensibles)
+      : [];
+  return {
+    ...extra,
+    kAlcanzado: riesgo.kMinimo,
+    lAlcanzado:
+      diversidad.length > 0 ? Math.min(...diversidad.map((d) => d.l)) : null,
+    clases: riesgo.clases,
+    unicos: riesgo.unicos,
+    riesgoMaximo: riesgo.riesgoMaximo,
+    riesgoPromedio: riesgo.riesgoPromedio,
+    bitsAntes: dimensiones.reduce(
+      (s, n) => s + entropiaEnBits(originales.get(n)!, generalizada.filas),
+      0,
+    ),
+    // Lo que la salida todavía dice del original, no su entropía: con Mondrian no es lo mismo
+    // (ver `informacionMutua`).
+    bitsDespues: columnas.reduce(
+      (s, c) =>
+        s + informacionMutua(originales.get(c.nombre)!, c, generalizada.filas),
+      0,
+    ),
+    columnas: columnas.map((c, i) => ({
+      nombre: c.nombre,
+      nivel: niveles[i],
+      distintos: c.valores.length - 1,
+    })),
+  };
+}
+
+/**
+ * Mondrian y la óptima, lado a lado, sobre las columnas del reparto. Se mide sobre la tabla
+ * ORIGINAL: las columnas del reparto no llevan técnica por columna, así que es lo mismo que verá
+ * `aplicarPolitica`, y no hace falta la llave.
+ */
+function compararGeneralizacion(
+  politica: Politica,
+  jerarquias: Readonly<Record<string, JerarquiaDeLaPolitica>>,
+  idioma: Idioma,
+): void {
+  // Un fallo aquí NO es un error de la sesión (eso tumbaría el diagnóstico en pantalla): la
+  // comparación vuelve vacía y la pantalla dice que no se pudo hacer.
+  if (!tabla || !diagnosticoActual) {
+    enviar({ tipo: "comparacion", comparacion: null });
+    return;
+  }
+  try {
+    compararSobre(tabla, politica, jerarquias, idioma);
+  } catch {
+    enviar({ tipo: "comparacion", comparacion: null });
+  }
+}
+
+function compararSobre(
+  tabla: TablaColumnar,
+  politica: Politica,
+  jerarquias: Readonly<Record<string, JerarquiaDeLaPolitica>>,
+  idioma: Idioma,
+): void {
+  const k = politica.kObjetivo;
+  const existentes = new Set(tabla.columnas.map((c) => c.nombre));
+  const dimensiones = tabla.columnas
+    .map((c) => c.nombre)
+    .filter((n) => columnasDeMondrian(politica).includes(n));
+  if (k === null || dimensiones.length === 0) {
+    enviar({ tipo: "comparacion", comparacion: null });
+    return;
+  }
+  avisar("comparando", tabla.filas, 0, 0);
+  const diversidad = politica.generalizacion?.diversidad ?? null;
+  const sensibles = (diversidad?.columnas ?? []).filter(
+    (n) => existentes.has(n) && !dimensiones.includes(n),
+  );
+
+  let inicio = performance.now();
+  const mondrian = anonimizarConMondrian(tabla, dimensiones, k, idioma);
+  const ladoMondrian = medirLado(
+    mondrian.tabla,
+    dimensiones,
+    sensibles,
+    dimensiones.map(() => null),
+    {
+      disponible: true,
+      motivo: mondrian.alcanzado ? null : "no-alcanzable",
+      alcanzado: mondrian.alcanzado,
+      nodosRevisados: null,
+      nodosEnLaReticula: null,
+      ms: Math.round(performance.now() - inicio),
+    },
+  );
+
+  inicio = performance.now();
+  const optima = generalizarOptimo(
+    tabla,
+    dimensiones,
+    jerarquias,
+    k,
+    diversidad && sensibles.length > 0
+      ? { l: diversidad.l, columnas: sensibles }
+      : null,
+  );
+  const disponible = optima.motivo !== "excede-tope";
+  const ladoOptima = medirLado(
+    optima.tabla,
+    dimensiones,
+    sensibles,
+    optima.dimensiones.map((n, i) =>
+      disponible
+        ? nombresDeNiveles(jerarquias[n] ?? { tipo: "supresion" })[
+            optima.niveles[i]
+          ]
+        : null,
+    ),
+    {
+      disponible,
+      motivo: optima.motivo,
+      alcanzado: optima.alcanzado,
+      nodosRevisados: optima.nodosRevisados,
+      nodosEnLaReticula: optima.nodosEnLaReticula,
+      ms: Math.round(performance.now() - inicio),
+    },
+  );
+
+  const comparacion: ComparacionDeGeneralizacion = {
+    kObjetivo: k,
+    lObjetivo: diversidad && sensibles.length > 0 ? diversidad.l : null,
+    dimensiones,
+    mondrian: ladoMondrian,
+    optima: ladoOptima,
+  };
+  enviar({ tipo: "comparacion", comparacion });
 }
 
 /** Cuántas filas se juntan antes de cerrar un trozo del Blob. */
@@ -741,6 +994,22 @@ let bovedaActual: Boveda | null = null;
 let devuelta: TablaColumnar | null = null;
 let restaurada: Restauracion | null = null;
 let datosDelDevuelto = { nombre: "", bytes: 0, sha256: "" };
+/**
+ * Solo si lo devuelto es un JSON (S7): su lectura y el archivo, para escribir lo restaurado con SU
+ * estructura y el orden de SUS claves —los del archivo que volvió, no los del que salió—.
+ */
+let lecturaDevuelta: LecturaJson | null = null;
+let archivoDevuelto: File | null = null;
+
+/** En un JSON, las columnas reversibles que eran todas números vuelven sin comillas (ADR-011). */
+function conNumericas(
+  entradas: readonly EntradaDeBoveda[],
+  numericas: ReadonlySet<string>,
+): EntradaDeBoveda[] {
+  return entradas.map((e) =>
+    numericas.has(e.columna) ? { ...e, numerica: true } : e,
+  );
+}
 
 /** Sella la bóveda del tratamiento recién hecho y la entrega como asa (ADR-005). */
 async function sellar(frase: string): Promise<void> {
@@ -915,6 +1184,42 @@ async function sellarLaBitacora(
   }
 }
 
+/** El devuelto está listo: lo que la página puede saber de él son conteos. */
+function anunciarDevuelto(tabla: TablaColumnar): void {
+  enviar({
+    tipo: "devuelto-listo",
+    nombre: datosDelDevuelto.nombre,
+    bytes: datosDelDevuelto.bytes,
+    filas: tabla.filas,
+    columnas: tabla.columnas.length,
+    sha256: datosDelDevuelto.sha256,
+  });
+}
+
+/** Un JSON devuelto: el mismo lector propio de la ida, con la misma regla de no citar nada. */
+async function analizarJsonDevuelto(archivo: File): Promise<void> {
+  try {
+    const lectura = await leerJson(
+      fuenteDeArchivo(archivo, {
+        alAvanzar: (leidos) => avisar("leyendo", 0, leidos, archivo.size),
+      }),
+    );
+    if (lectura.tabla.filas === 0) {
+      enviar({ tipo: "error", motivo: "archivo-vacio" });
+      return;
+    }
+    devuelta = lectura.tabla;
+    lecturaDevuelta = lectura;
+    archivoDevuelto = archivo;
+    anunciarDevuelto(lectura.tabla);
+  } catch (error) {
+    enviar({
+      tipo: "error",
+      motivo: error instanceof ErrorDeJson ? error.motivo : "lectura-fallida",
+    });
+  }
+}
+
 /** Parsea el archivo devuelto. Sin clasificar y sin medir riesgo: es otro flujo. */
 async function analizarDevuelto(archivo: File): Promise<void> {
   try {
@@ -925,6 +1230,22 @@ async function analizarDevuelto(archivo: File): Promise<void> {
     };
   } catch {
     enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+  devuelta = null;
+  restaurada = null;
+  lecturaDevuelta = null;
+  archivoDevuelto = null;
+
+  // El regreso lee CSV y JSON. Un Excel, un PDF o una imagen se vetan aquí y no se leen «como
+  // texto»: la página filtra por extensión, pero la frontera no se fía de lo que diga el otro lado.
+  const formato = formatoDeArchivo(archivo.name);
+  if (formato === "json") {
+    await analizarJsonDevuelto(archivo);
+    return;
+  }
+  if (formato !== null && formato !== "csv") {
+    enviar({ tipo: "error", motivo: "formato-no-soportado" });
     return;
   }
 
@@ -961,14 +1282,7 @@ async function analizarDevuelto(archivo: File): Promise<void> {
         enviar({ tipo: "error", motivo: "archivo-vacio" });
         return;
       }
-      enviar({
-        tipo: "devuelto-listo",
-        nombre: datosDelDevuelto.nombre,
-        bytes: datosDelDevuelto.bytes,
-        filas: devuelta.filas,
-        columnas: devuelta.columnas.length,
-        sha256: datosDelDevuelto.sha256,
-      });
+      anunciarDevuelto(devuelta);
     },
     error() {
       enviar({ tipo: "error", motivo: "lectura-fallida" });
@@ -1004,12 +1318,66 @@ function restaurarDevuelto(): void {
   }
 }
 
-function construirRestaurado(): void {
+/**
+ * Un JSON restaurado: la segunda pasada del escritor sobre el archivo DEVUELTO, con la tabla
+ * restaurada mandando. Las columnas que en el original eran todas números (la bóveda lo dice)
+ * vuelven a escribirse como números. Si el archivo cambió en el disco desde que se leyó, no se
+ * escribe nada.
+ */
+async function construirRestauradoJson(
+  restauracion: Restauracion,
+  lectura: LecturaJson,
+  archivo: File,
+): Promise<void> {
+  const numericas = new Set<string>();
+  const deLaBoveda = new Map(
+    (bovedaActual?.columnas ?? []).map((c) => [c.columna, c]),
+  );
+  for (const columna of restauracion.columnas)
+    if (
+      columna.deLaBoveda !== null &&
+      deLaBoveda.get(columna.deLaBoveda)?.numerica === true
+    )
+      numericas.add(columna.columna);
+
+  const trozos: string[] = [];
+  try {
+    for await (const trozo of escribirJson(
+      fuenteDeArchivo(archivo, { huellaEsperada: datosDelDevuelto.sha256 }),
+      lectura,
+      restauracion.tabla,
+      numericas,
+    ))
+      trozos.push(trozo);
+  } catch {
+    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+  const arreglo = lectura.estructura.forma === "arreglo";
+  const blob = new Blob(trozos, {
+    type: arreglo
+      ? "application/json;charset=utf-8"
+      : "application/x-ndjson;charset=utf-8",
+  });
+  enviar({
+    tipo: "archivo",
+    blob,
+    nombre: `velo-restaurado-${datosDelDevuelto.sha256.slice(0, 8)}.${arreglo ? "json" : "jsonl"}`,
+    bytes: blob.size,
+    proposito: "restaurado",
+  });
+}
+
+async function construirRestaurado(): Promise<void> {
   if (!restaurada) {
     enviar({ tipo: "error", motivo: "sin-devuelto" });
     return;
   }
   avisar("escribiendo", restaurada.tabla.filas, 0, 0);
+  if (lecturaDevuelta !== null && archivoDevuelto !== null) {
+    await construirRestauradoJson(restaurada, lecturaDevuelta, archivoDevuelto);
+    return;
+  }
   const trozos: string[] = [];
   let acumulado = "";
   let filas = 0;
@@ -1066,6 +1434,12 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
     void derivar(mensaje.frase, mensaje.sal);
   if (mensaje?.tipo === "transformar")
     void transformar(mensaje.politica, mensaje.idioma);
+  if (mensaje?.tipo === "comparar-generalizacion")
+    compararGeneralizacion(
+      mensaje.politica,
+      mensaje.jerarquias,
+      mensaje.idioma,
+    );
   if (mensaje?.tipo === "construir-archivo") void construirArchivo();
   if (mensaje?.tipo === "sellar-boveda") void sellar(mensaje.frase);
   if (mensaje?.tipo === "abrir-boveda")
@@ -1073,7 +1447,7 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
   if (mensaje?.tipo === "analizar-devuelto")
     void analizarDevuelto(mensaje.archivo);
   if (mensaje?.tipo === "restaurar") restaurarDevuelto();
-  if (mensaje?.tipo === "construir-restaurado") construirRestaurado();
+  if (mensaje?.tipo === "construir-restaurado") void construirRestaurado();
   if (mensaje?.tipo === "construir-informe-del-regreso")
     construirInformeDelRegreso(mensaje.fecha, mensaje.idioma);
   if (mensaje?.tipo === "estimar-riesgo") estimar(mensaje.poblacion);

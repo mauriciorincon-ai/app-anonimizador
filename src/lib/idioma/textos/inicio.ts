@@ -144,13 +144,13 @@ export const INICIO = {
       es:
         "CSV, Excel o JSON (también JSON Lines). El CSV no tiene tope de tamaño; el Excel sí, " +
         "hasta {tope}; el JSON se limita por la cantidad de celdas, no por el peso del archivo. " +
-        "También limpia los metadatos de un PDF (hasta {topePdf}) o de una imagen JPEG, PNG o " +
-        "WebP (hasta {topeImagen}).",
+        "También limpia los metadatos de un PDF (hasta {topePdf}) o de una imagen JPEG, PNG, " +
+        "WebP o HEIC (hasta {topeImagen}).",
       en:
         "CSV, Excel or JSON (JSON Lines too). CSV has no size limit; Excel does, up to {tope}; " +
         "JSON is capped by its number of cells, not by the weight of the file. Velo also cleans " +
-        "the metadata of a PDF (up to {topePdf}) or of a JPEG, PNG or WebP image (up to " +
-        "{topeImagen}).",
+        "the metadata of a PDF (up to {topePdf}) or of a JPEG, PNG, WebP or HEIC image (up " +
+        "to {topeImagen}).",
     },
 
     // Solo las etapas del ANÁLISIS. Las de la transformación viven en `/transformar`.
@@ -224,11 +224,11 @@ export const INICIO = {
         salida: {
           es:
             "Lee tablas: CSV (.csv), Excel (.xlsx, .xls) y JSON (.json, .jsonl, .ndjson), y " +
-            "limpia los metadatos de PDF (.pdf) e imágenes (.jpg, .png, .webp). Si tu archivo " +
+            "limpia los metadatos de PDF (.pdf) e imágenes (.jpg, .png, .webp, .heic). Si tu archivo " +
             "viene de una hoja de cálculo, ábrelo y guárdalo como CSV.",
           en:
             "It reads tables: CSV (.csv), Excel (.xlsx, .xls) and JSON (.json, .jsonl, .ndjson), " +
-            "and cleans the metadata of PDFs (.pdf) and images (.jpg, .png, .webp). If your file " +
+            "and cleans the metadata of PDFs (.pdf) and images (.jpg, .png, .webp, .heic). If your file " +
             "comes from a spreadsheet, open it and save it as CSV.",
         },
       },
@@ -456,12 +456,29 @@ export const INICIO = {
         salida: {
           es:
             "Puede estar dañada, cortada a medias o ser de un formato distinto del que dice su " +
-            "extensión. Velo lee JPEG, PNG y WebP. Ábrela en un visor y, si se ve bien, " +
+            "extensión. Velo lee JPEG, PNG, WebP y HEIC. Ábrela en un visor y, si se ve bien, " +
             "expórtala de nuevo en uno de esos formatos y suelta esa copia.",
           en:
             "It may be damaged, cut off halfway or be a different format from the one its " +
-            "extension claims. Velo reads JPEG, PNG and WebP. Open it in a viewer and, if it " +
+            "extension claims. Velo reads JPEG, PNG, WebP and HEIC. Open it in a viewer and, if it " +
             "looks fine, export it again in one of those formats and drop that copy in.",
+        },
+      },
+      imagenNoSoportada: {
+        titulo: {
+          es: "Esa foto usa una parte del formato que Velo no reescribe",
+          en: "That photo uses a part of the format Velo does not rewrite",
+        },
+        salida: {
+          es:
+            "Puede ser una ráfaga, una Live Photo o una foto con piezas que Velo no conoce y que " +
+            "el archivo declara imprescindibles. Antes que entregarte una copia rota, Velo no la " +
+            "toca. Expórtala como una foto fija —en HEIC o en JPEG— desde el programa de fotos y " +
+            "suelta esa copia.",
+          en:
+            "It may be a burst, a Live Photo or a photo with parts Velo does not know and that the " +
+            "file declares essential. Rather than hand you a broken copy, Velo leaves it alone. " +
+            "Export it as a still photo —HEIC or JPEG— from your photos app and drop that copy in.",
         },
       },
       pdfExcedeTope: {

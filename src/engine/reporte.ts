@@ -18,7 +18,12 @@
 // nombres de columna, las muestras— se escapa. Este documento lo va a abrir alguien más, y una
 // columna llamada `<script>` no puede convertirse en un script.
 
-import { numero, porcentaje, unoEn } from "@/lib/formato";
+import {
+  epsilon as epsilonEnTexto,
+  numero,
+  porcentaje,
+  unoEn,
+} from "@/lib/formato";
 import {
   decir,
   formatoNumerico,
@@ -33,8 +38,18 @@ import {
 import { decirMensaje } from "@/lib/idioma/mensajes";
 import { DOCUMENTOS as D } from "@/lib/idioma/textos/documentos";
 import { MOTOR_TRANSFORMAR as M } from "@/lib/idioma/textos/motor-transformar";
+import { PRIVACIDAD as P } from "@/lib/idioma/textos/privacidad";
+import {
+  escaleraEnPalabras,
+  nivelEnPalabras,
+} from "@/lib/tecnicas-en-palabras";
 
 import type { BalanceDelTratamiento, Salvedad } from "./balance";
+import type { JerarquiaDeFabrica } from "./jerarquias/fabrica";
+import { FUENTES, FUENTES_DE_LA_ESCALERA } from "./jerarquias/fuentes";
+import type { GeneralizacionAplicada } from "./optima";
+import type { InformeDePrivacidad } from "./ruido";
+import { DOMINIO_MAXIMO } from "./ruido/limites";
 import type { Diagnostico, HallazgoDeColumna } from "./clasificador";
 import type {
   ColumnaRestaurada,
@@ -71,6 +86,10 @@ export interface DatosDelTratamiento {
   sha256DeSalida: string;
   /** Nombre del archivo tratado. Va en el comando de verificación, para poder copiarlo y pegarlo. */
   nombreDeSalida: string;
+  /** S7: la generalización óptima tal como se aplicó; ausente o `null` con Mondrian. */
+  generalizacion?: GeneralizacionAplicada | null;
+  /** S7: el ruido con garantía de cada columna y el ε por fila; ausente o `null` sin ruido. */
+  privacidad?: InformeDePrivacidad | null;
 }
 
 export interface DatosDelReporte {
@@ -421,6 +440,19 @@ function itemDeSalvedad(salvedad: Salvedad, idioma: Idioma): string {
             lista_html: listaDeCodigo(salvedad.columnas),
           },
         );
+      case "ruido-no-aplicado":
+        return h(S.ruidoNoAplicado, idioma, {
+          n: salvedad.columnas.length,
+          maximo: numero(salvedad.maximo, idioma),
+          lista_html: listaDeCodigo(salvedad.columnas),
+        });
+      case "reticula-excede-tope":
+        return h(S.reticulaExcedeTope, idioma, {
+          n: salvedad.columnas.length,
+          nodos: numero(salvedad.nodos, idioma),
+          tope: numero(salvedad.tope, idioma),
+          lista_html: listaDeCodigo(salvedad.columnas),
+        });
       case "reparto-sin-k":
         return h(
           plural(
@@ -532,6 +564,152 @@ ${cifra}
     separador: decir(M["salida.mondrian.separador"], idiomaDelTrabajo).trim(),
     vacio: decir(M["salida.mondrian.sufijoVacio"], idiomaDelTrabajo).trim(),
   })}</p>
+</section>`;
+}
+
+/**
+ * Cómo se llegó al k con la generalización óptima (S7): cada columna con su escalera y el nivel
+ * elegido, el k y la ℓ medidos, y la fuente y la fecha de cada escalera de fábrica que se usó.
+ */
+function seccionDeLaGeneralizacion(
+  g: GeneralizacionAplicada,
+  idioma: Idioma,
+): string {
+  const G = D.generalizacion;
+  const filas = g.columnas
+    .map(
+      (c) => `<tr>
+<td class="col">${escapar(c.nombre)}</td>
+<td>${escapar(escaleraEnPalabras(c.jerarquia, idioma))}</td>
+<td><b>${escapar(nivelEnPalabras(c.nivel, idioma))}</b></td>
+</tr>`,
+    )
+    .join("");
+  const citadas = [
+    ...new Set(
+      g.columnas.flatMap((c) =>
+        c.jerarquia.tipo in FUENTES_DE_LA_ESCALERA
+          ? FUENTES_DE_LA_ESCALERA[c.jerarquia.tipo as JerarquiaDeFabrica]
+          : [],
+      ),
+    ),
+  ];
+  const fuentes = citadas
+    .map(
+      (clave) =>
+        `<li>${h(G.fuentes[clave], idioma)} · <code>${escapar(FUENTES[clave].url)}</code> · ${h(
+          G.consultada,
+          idioma,
+          { fecha: FUENTES[clave].consultada },
+        )}</li>`,
+    )
+    .join("");
+  const diversidad =
+    g.lObjetivo === null
+      ? ""
+      : `<p>${h(G.l, idioma, {
+          columnas_html: listaDeCodigo(g.columnasSensibles),
+          objetivo: g.lObjetivo,
+          alcanzado: g.lAlcanzado ?? 0,
+        })}</p>${
+          (g.lAlcanzado ?? 0) < g.lObjetivo
+            ? `<p class="alerta">${h(G.lNoAlcanzada, idioma, { objetivo: g.lObjetivo })}</p>`
+            : ""
+        }`;
+
+  return `<section>
+<p class="etiqueta">${h(G.etiqueta, idioma)}</p>
+<h2>${h(G.titulo, idioma)}</h2>
+<p>${h(G.explicacion, idioma, {
+    total: numero(g.nodosEnLaReticula, idioma),
+    revisadas: numero(g.nodosRevisados, idioma),
+  })}</p>
+<p>${h(G.k, idioma, { objetivo: g.kObjetivo, alcanzado: g.kAlcanzado })}</p>
+${diversidad}
+<table style="margin-top:16px">
+<thead><tr><th>${h(G.encabezados.columna, idioma)}</th><th>${h(G.encabezados.escalera, idioma)}</th><th>${h(G.encabezados.nivel, idioma)}</th></tr></thead>
+<tbody>${filas}</tbody></table>
+${
+  fuentes
+    ? `<h2 style="margin-top:18px;font-size:1.05rem">${h(G.fuentesTitulo, idioma)}</h2>
+<ul class="limpia">${fuentes}</ul>`
+    : ""
+}
+</section>`;
+}
+
+/**
+ * El ruido con garantía (S7): cada columna con su mecanismo, su ε efectivo y su alcance, y el ε por
+ * fila. Sección APARTE del balance: el k y ε no se suman, y el documento no los pone juntos.
+ */
+function seccionDePrivacidad(
+  privacidad: InformeDePrivacidad,
+  idioma: Idioma,
+): string {
+  const conEpsilon = privacidad.columnas.some(
+    (c) => c.aplicado && c.epsilonEfectivo !== null,
+  );
+  const filas = privacidad.columnas
+    .map((c) => {
+      const notas: string[] = [];
+      if (!c.aplicado)
+        notas.push(
+          h(P.notas.noAplicada, idioma, {
+            n: numero(c.dominio ?? 0, idioma),
+            maximo: numero(DOMINIO_MAXIMO, idioma),
+          }),
+        );
+      else {
+        if (c.dominio !== null)
+          notas.push(
+            h(P.notas.dominio, idioma, { n: numero(c.dominio, idioma) }),
+          );
+        if (c.recortes > 0)
+          notas.push(
+            h(P.notas.recortes, idioma, { n: numero(c.recortes, idioma) }),
+          );
+        if (c.noNumericas > 0)
+          notas.push(
+            h(P.notas.noNumericas, idioma, {
+              n: numero(c.noNumericas, idioma),
+            }),
+          );
+      }
+      const valorDeEpsilon = !c.aplicado
+        ? "—"
+        : c.epsilonEfectivo === null
+          ? h(P.sinGarantia, idioma)
+          : h(P.efectivo, idioma, {
+              efectivo: epsilonEnTexto(c.epsilonEfectivo, idioma),
+              pedido: epsilonEnTexto(c.epsilon ?? 0, idioma),
+            });
+      return `<tr>
+<td class="col">${escapar(c.columna)}</td>
+<td>${h(P.mecanismos[c.mecanismo], idioma)}</td>
+<td>${valorDeEpsilon}</td>
+<td>${numero(c.tratadas, idioma)}</td>
+<td>${notas.join(" · ") || "—"}</td>
+</tr>`;
+    })
+    .join("");
+
+  // Sin un ε aplicado, la sección no se llama «privacidad diferencial»: la perturbación no lo es.
+  const textos = conEpsilon ? P : P.sinEpsilon;
+  return `<section>
+<p class="etiqueta">${h(textos.etiqueta, idioma)}</p>
+<h2>${h(textos.titulo, idioma)}</h2>
+<p>${h(textos.intro, idioma)}</p>
+${
+  conEpsilon
+    ? `<p>${h(P.porFila, idioma, {
+        epsilon: epsilonEnTexto(privacidad.epsilonPorFila, idioma),
+      })}</p>`
+    : ""
+}
+<table style="margin-top:16px">
+<thead><tr><th>${h(P.encabezados.columna, idioma)}</th><th>${h(P.encabezados.mecanismo, idioma)}</th><th style="text-transform:none">${h(P.encabezados.epsilon, idioma)}</th><th>${h(P.encabezados.celdas, idioma)}</th><th>${h(P.encabezados.notas, idioma)}</th></tr></thead>
+<tbody>${filas}</tbody></table>
+<p class="por-que" style="margin-top:14px">${h(textos.fuente, idioma)}</p>
 </section>`;
 }
 
@@ -761,6 +939,8 @@ ${
 </section>
 
 ${tratamiento ? seccionDelTratamiento(tratamiento, idioma) : ""}
+${tratamiento?.generalizacion ? seccionDeLaGeneralizacion(tratamiento.generalizacion, idioma) : ""}
+${tratamiento?.privacidad ? seccionDePrivacidad(tratamiento.privacidad, idioma) : ""}
 
 ${seccionDeRiesgo(riesgo, resumen["identificador-directo"], hayTratamiento, idioma)}
 
