@@ -85,9 +85,12 @@ forms stream): a bad line is located by its number, and most tools write and rea
 - A list inside a record can still carry personal data. Velo says so, names the fields it saw there
   and does not look inside; treating list elements, or suppressing a whole list from the policy, is
   left as a documented next step.
-- **A JSON comes back (S7).** If the third party did not touch the file, the restored JSON is the
-  original byte for byte (unit test `tests/unit/regreso-json.test.ts` and e2e
-  `tests/e2e/regreso-json.spec.ts`, which compares the whole file). If it did, what Velo does not know
+- **A JSON comes back (S7).** If the third party did not touch the file, the restored JSON has the
+  original's structure, key order and values, numbers unquoted; it is the original **byte for byte
+  when the original was already compact with one record per line** (the form the writer emits, and
+  the form of the kit's JSON Lines: unit test `tests/unit/regreso-json.test.ts` and e2e
+  `tests/e2e/regreso-json.spec.ts`, which compares the whole file). An indented original comes back
+  with its whitespace normalized, by the first consequence above. If it did, what Velo does not know
   stays as it is and the return report says how many cells. What the S6 version of this ADR said
   ("a JSON has no return trip") is no longer true: the owner decided it on 2026-11-02 (planner log of
   S6). Two limits remain and are said: values inside a list were never treated, so there is nothing
