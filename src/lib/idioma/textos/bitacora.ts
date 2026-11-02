@@ -258,11 +258,16 @@ export const BITACORA = {
     filas: { es: "Filas", en: "Rows" },
     tecnicas: { es: "Técnicas", en: "Techniques" },
     // S7: el ruido con garantía, en una línea, con su ε y su alcance.
-    privacidad: { es: "Privacidad diferencial local", en: "Local differential privacy" },
+    privacidad: {
+      es: "Privacidad diferencial local",
+      en: "Local differential privacy",
+    },
     privacidadValor: {
       es: "ε = {epsilon} por fila ({mecanismos})",
       en: "ε = {epsilon} per row ({mecanismos})",
     },
+    // La perturbación va en su propia línea y con su propio nombre: no es privacidad diferencial.
+    perturbacion: { es: "Perturbación", en: "Perturbation" },
     perturbadas: {
       es: "{n} columnas perturbadas, sin garantía formal",
       en: "{n} perturbed columns, no formal guarantee",

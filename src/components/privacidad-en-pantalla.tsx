@@ -26,26 +26,26 @@ export function PrivacidadEnPantalla({
   const conEpsilon = privacidad.columnas.some(
     (c) => c.aplicado && c.epsilonEfectivo !== null,
   );
+  // Sin un ε aplicado, el panel no se llama «privacidad diferencial»: la perturbación no lo es.
+  const textos = conEpsilon ? P : P.sinEpsilon;
 
   return (
     <Panel
-      etiqueta={t(P.etiqueta)}
-      titulo={t(P.titulo)}
-      nota={<Rico texto={P.fuente} />}
+      etiqueta={t(textos.etiqueta)}
+      titulo={t(textos.titulo)}
+      nota={<Rico texto={textos.fuente} />}
     >
       <p className="text-tinta-suave text-[0.875rem] leading-relaxed text-pretty">
-        <Rico texto={P.intro} />
+        <Rico texto={textos.intro} />
       </p>
-      <p className="text-tinta mt-3 text-[0.9375rem]">
-        {conEpsilon ? (
+      {conEpsilon ? (
+        <p className="text-tinta mt-3 text-[0.9375rem]">
           <Rico
             texto={P.porFila}
             datos={{ epsilon: epsilon(privacidad.epsilonPorFila, idioma) }}
           />
-        ) : (
-          <Rico texto={P.sinEpsilon} />
-        )}
-      </p>
+        </p>
+      ) : null}
       <div className="mt-3 overflow-x-auto">
         <table className="w-full min-w-[20rem] border-collapse text-[0.875rem]">
           <thead>
@@ -60,7 +60,9 @@ export function PrivacidadEnPantalla({
                   className="etiqueta py-2 pr-3 text-left"
                   // En línea y no `normal-case`: `.etiqueta` vive fuera de las capas de Tailwind
                   // y le gana a cualquier utilidad.
-                  style={c === "epsilon" ? { textTransform: "none" } : undefined}
+                  style={
+                    c === "epsilon" ? { textTransform: "none" } : undefined
+                  }
                 >
                   {t(P.encabezados[c])}
                 </th>
@@ -79,12 +81,18 @@ export function PrivacidadEnPantalla({
                 );
               else {
                 if (c.dominio !== null)
-                  notas.push(t(P.notas.dominio, { n: numero(c.dominio, idioma) }));
+                  notas.push(
+                    t(P.notas.dominio, { n: numero(c.dominio, idioma) }),
+                  );
                 if (c.recortes > 0)
-                  notas.push(t(P.notas.recortes, { n: numero(c.recortes, idioma) }));
+                  notas.push(
+                    t(P.notas.recortes, { n: numero(c.recortes, idioma) }),
+                  );
                 if (c.noNumericas > 0)
                   notas.push(
-                    t(P.notas.noNumericas, { n: numero(c.noNumericas, idioma) }),
+                    t(P.notas.noNumericas, {
+                      n: numero(c.noNumericas, idioma),
+                    }),
                   );
               }
               return (

@@ -40,12 +40,7 @@ import {
   guardarBitacora,
   useBitacora,
 } from "@/lib/bitacora";
-import {
-  epsilon,
-  NOMBRE_DEL_FORMATO,
-  numero,
-  porcentaje,
-} from "@/lib/formato";
+import { epsilon, NOMBRE_DEL_FORMATO, numero, porcentaje } from "@/lib/formato";
 import { plural } from "@/lib/idioma";
 import { BITACORA } from "@/lib/idioma/textos/bitacora";
 import { nombreDeTecnica } from "@/lib/tecnicas-en-palabras";
@@ -497,7 +492,7 @@ function ResumenDeEntrada({ entrada }: { entrada: EntradaDeBitacora }) {
       ) : null}
       {entrada.privacidad && entrada.privacidad.perturbadas > 0 ? (
         <Dato
-          termino={t(BITACORA.detalle.privacidad)}
+          termino={t(BITACORA.detalle.perturbacion)}
           valor={t(BITACORA.detalle.perturbadas, {
             n: numero(entrada.privacidad.perturbadas, idioma),
           })}

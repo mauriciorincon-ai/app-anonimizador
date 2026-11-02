@@ -211,6 +211,28 @@ describe("el panel de privacidad, después de transformar", () => {
     expect(screen.getByText(/no se suma con ε/)).toBeInTheDocument();
   });
 
+  it("solo con perturbación, el panel no se llama privacidad diferencial ni habla de ε", () => {
+    const soloPerturbar: InformeDePrivacidad = {
+      epsilonPorFila: 0,
+      columnas: INFORME.columnas.filter((c) => c.mecanismo === "perturbar"),
+    };
+    const { unmount } = render(
+      <PrivacidadEnPantalla privacidad={soloPerturbar} />,
+    );
+    expect(screen.getByText("Sin privacidad diferencial")).toBeInTheDocument();
+    expect(screen.getByText("Ruido sin garantía formal")).toBeInTheDocument();
+    expect(screen.queryByText(/Privacidad diferencial local/)).toBeNull();
+    expect(screen.queryByText(/Ruido con garantía/)).toBeNull();
+    expect(screen.queryByText(/ε por fila/)).toBeNull();
+    expect(screen.queryByText(/Canonne/)).toBeNull();
+    unmount();
+    fijarIdioma("en");
+    render(<PrivacidadEnPantalla privacidad={soloPerturbar} />);
+    expect(screen.getByText("No differential privacy")).toBeInTheDocument();
+    expect(screen.queryByText(/Local differential privacy/)).toBeNull();
+    expect(screen.queryByText(/Noise with a guarantee/)).toBeNull();
+  });
+
   it("la bitácora guarda el ε por fila y los mecanismos con ε, sin nombres de columna", () => {
     expect(privacidadDeLaEntrada(INFORME)).toEqual({
       epsilonPorFila: INFORME.epsilonPorFila,

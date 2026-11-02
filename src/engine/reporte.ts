@@ -39,7 +39,10 @@ import { decirMensaje } from "@/lib/idioma/mensajes";
 import { DOCUMENTOS as D } from "@/lib/idioma/textos/documentos";
 import { MOTOR_TRANSFORMAR as M } from "@/lib/idioma/textos/motor-transformar";
 import { PRIVACIDAD as P } from "@/lib/idioma/textos/privacidad";
-import { escaleraEnPalabras, nivelEnPalabras } from "@/lib/tecnicas-en-palabras";
+import {
+  escaleraEnPalabras,
+  nivelEnPalabras,
+} from "@/lib/tecnicas-en-palabras";
 
 import type { BalanceDelTratamiento, Salvedad } from "./balance";
 import type { JerarquiaDeFabrica } from "./jerarquias/fabrica";
@@ -658,11 +661,19 @@ function seccionDePrivacidad(
         );
       else {
         if (c.dominio !== null)
-          notas.push(h(P.notas.dominio, idioma, { n: numero(c.dominio, idioma) }));
+          notas.push(
+            h(P.notas.dominio, idioma, { n: numero(c.dominio, idioma) }),
+          );
         if (c.recortes > 0)
-          notas.push(h(P.notas.recortes, idioma, { n: numero(c.recortes, idioma) }));
+          notas.push(
+            h(P.notas.recortes, idioma, { n: numero(c.recortes, idioma) }),
+          );
         if (c.noNumericas > 0)
-          notas.push(h(P.notas.noNumericas, idioma, { n: numero(c.noNumericas, idioma) }));
+          notas.push(
+            h(P.notas.noNumericas, idioma, {
+              n: numero(c.noNumericas, idioma),
+            }),
+          );
       }
       const valorDeEpsilon = !c.aplicado
         ? "—"
@@ -682,21 +693,23 @@ function seccionDePrivacidad(
     })
     .join("");
 
+  // Sin un ε aplicado, la sección no se llama «privacidad diferencial»: la perturbación no lo es.
+  const textos = conEpsilon ? P : P.sinEpsilon;
   return `<section>
-<p class="etiqueta">${h(P.etiqueta, idioma)}</p>
-<h2>${h(P.titulo, idioma)}</h2>
-<p>${h(P.intro, idioma)}</p>
-<p>${
-    conEpsilon
-      ? h(P.porFila, idioma, {
-          epsilon: epsilonEnTexto(privacidad.epsilonPorFila, idioma),
-        })
-      : h(P.sinEpsilon, idioma)
-  }</p>
+<p class="etiqueta">${h(textos.etiqueta, idioma)}</p>
+<h2>${h(textos.titulo, idioma)}</h2>
+<p>${h(textos.intro, idioma)}</p>
+${
+  conEpsilon
+    ? `<p>${h(P.porFila, idioma, {
+        epsilon: epsilonEnTexto(privacidad.epsilonPorFila, idioma),
+      })}</p>`
+    : ""
+}
 <table style="margin-top:16px">
 <thead><tr><th>${h(P.encabezados.columna, idioma)}</th><th>${h(P.encabezados.mecanismo, idioma)}</th><th style="text-transform:none">${h(P.encabezados.epsilon, idioma)}</th><th>${h(P.encabezados.celdas, idioma)}</th><th>${h(P.encabezados.notas, idioma)}</th></tr></thead>
 <tbody>${filas}</tbody></table>
-<p class="por-que" style="margin-top:14px">${h(P.fuente, idioma)}</p>
+<p class="por-que" style="margin-top:14px">${h(textos.fuente, idioma)}</p>
 </section>`;
 }
 

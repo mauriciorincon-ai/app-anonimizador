@@ -62,6 +62,21 @@ describe("la anotación pendiente", () => {
     expect(document.body.textContent).not.toMatch(/cedula|nombre_completo/);
   });
 
+  it("la perturbación va con su nombre, no bajo «privacidad diferencial»", () => {
+    act(() =>
+      anotarTratamiento({
+        ...ENTRADA,
+        privacidad: { epsilonPorFila: 0, mecanismos: [], perturbadas: 2 },
+      }),
+    );
+    render(<Bitacora />);
+    expect(
+      screen.getAllByText("2 columnas perturbadas, sin garantía formal").length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("Perturbación").length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toMatch(/Privacidad diferencial/);
+  });
+
   it("una medición que llevaba salvedades lo dice, en vez de callarlo", () => {
     act(() => anotarTratamiento({ ...ENTRADA, esTitular: false }));
     render(<Bitacora />);

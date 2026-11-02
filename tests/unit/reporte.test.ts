@@ -925,7 +925,11 @@ describe("la generalización óptima en el certificado (S7)", () => {
     lAlcanzado: 1,
     columnasSensibles: ["diagnostico"],
     columnas: [
-      { nombre: "municipio", jerarquia: { tipo: "divipola" }, nivel: "departamento" },
+      {
+        nombre: "municipio",
+        jerarquia: { tipo: "divipola" },
+        nivel: "departamento",
+      },
       { nombre: "edad", jerarquia: { tipo: "edad-dane" }, nivel: "quinquenio" },
       { nombre: "sexo", jerarquia: { tipo: "supresion" }, nivel: "valor" },
     ],
@@ -940,7 +944,9 @@ describe("la generalización óptima en el certificado (S7)", () => {
 
   it("con Mondrian no hay sección: el certificado del S6 no cambia", async () => {
     const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
-    expect(construirReporte(await conOptima(null))).toBe(construirReporte(datos));
+    expect(construirReporte(await conOptima(null))).toBe(
+      construirReporte(datos),
+    );
     expect(construirReporte(datos)).not.toContain("La generalización óptima");
   });
 
@@ -952,7 +958,9 @@ describe("la generalización óptima en el certificado (S7)", () => {
     expect(html).toContain("<b>departamento</b>");
     expect(html).toContain("<b>quinquenio</b>");
     expect(html).toContain("<b>sin generalizar</b>");
-    expect(html).toContain("Grupo más pequeño sobre las columnas del reparto: 7");
+    expect(html).toContain(
+      "Grupo más pequeño sobre las columnas del reparto: 7",
+    );
     // La ℓ no alcanzada se dice, no se esconde detrás del k que sí se alcanzó.
     expect(html).toContain("La ℓ pedida no se alcanzó.");
   });
@@ -969,7 +977,10 @@ describe("la generalización óptima en el certificado (S7)", () => {
   });
 
   it("en inglés, redactada y no traducida", async () => {
-    const html = construirReporte({ ...(await conOptima(OPTIMA)), idioma: "en" });
+    const html = construirReporte({
+      ...(await conOptima(OPTIMA)),
+      idioma: "en",
+    });
     expect(html).toContain("The optimal generalization");
     expect(html).toContain("Sources of the built-in ladders");
     expect(html).toContain("accessed 2026-11-02");
@@ -1025,7 +1036,9 @@ describe("el ruido con garantía en el certificado (S7)", () => {
 
   it("sin ruido no hay sección: el certificado del S6 no cambia", async () => {
     const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
-    expect(construirReporte(await conPrivacidad(null))).toBe(construirReporte(datos));
+    expect(construirReporte(await conPrivacidad(null))).toBe(
+      construirReporte(datos),
+    );
   });
 
   it("cada columna con su mecanismo, su ε efectivo y su alcance; el ε por fila hacia arriba", async () => {
@@ -1041,8 +1054,33 @@ describe("el ruido con garantía en el certificado (S7)", () => {
     expect(html).toContain("no se suma con ε");
   });
 
+  it("solo con perturbación, la sección no se llama privacidad diferencial ni habla de ε", async () => {
+    const soloPerturbar: InformeDePrivacidad = {
+      epsilonPorFila: 0,
+      columnas: PRIVACIDAD.columnas.filter((c) => c.mecanismo === "perturbar"),
+    };
+    const html = construirReporte(await conPrivacidad(soloPerturbar));
+    expect(html).toContain("Sin privacidad diferencial");
+    expect(html).toContain("Ruido sin garantía formal");
+    expect(html).toContain("Perturbación porcentual, sin garantía formal");
+    expect(html).not.toContain("Privacidad diferencial local");
+    expect(html).not.toContain("Ruido con garantía");
+    expect(html).not.toContain("ε por fila");
+    expect(html).not.toContain("Canonne");
+    const en = construirReporte({
+      ...(await conPrivacidad(soloPerturbar)),
+      idioma: "en",
+    });
+    expect(en).toContain("No differential privacy");
+    expect(en).not.toContain("Local differential privacy");
+    expect(en).not.toContain("Noise with a guarantee");
+  });
+
   it("en inglés, redactada y no traducida", async () => {
-    const html = construirReporte({ ...(await conPrivacidad(PRIVACIDAD)), idioma: "en" });
+    const html = construirReporte({
+      ...(await conPrivacidad(PRIVACIDAD)),
+      idioma: "en",
+    });
     expect(html).toContain("Local differential privacy");
     expect(html).toContain("ε per row: <b>2</b>");
     expect(html).toContain("no formal guarantee");

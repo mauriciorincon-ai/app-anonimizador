@@ -29,9 +29,36 @@ export const PRIVACIDAD = {
     es: "ε por fila: **{epsilon}**, la suma de las columnas con ε (así se componen).",
     en: "ε per row: **{epsilon}**, the sum over the columns with ε (that is how they compose).",
   },
+  // Sin ninguna columna con ε (solo perturbación, o una técnica con ε que no se pudo aplicar), el
+  // panel no se llama «privacidad diferencial» ni habla de ε: no hay ninguno que leer.
   sinEpsilon: {
-    es: "Ninguna columna lleva privacidad diferencial: lo que hay es perturbación, sin garantía formal.",
-    en: "No column carries differential privacy: what there is is perturbation, with no formal guarantee.",
+    etiqueta: {
+      es: "Ruido sin garantía formal",
+      en: "Noise with no formal guarantee",
+    },
+    titulo: { es: "Sin privacidad diferencial", en: "No differential privacy" },
+    intro: {
+      es:
+        "**Ninguna columna de este archivo lleva privacidad diferencial**, así que aquí no hay un ε " +
+        "que leer. La perturbación porcentual mueve cada número al azar, sin una garantía formal: " +
+        "no promete nada medible. Una técnica con ε que no se pudo aplicar dejó su columna " +
+        "intacta, y su fila lo dice. El k se mide aparte, en el balance.",
+      en:
+        "**No column in this file carries differential privacy**, so there is no ε to read here. " +
+        "Percentage perturbation moves each number at random, with no formal guarantee: it " +
+        "promises nothing measurable. A technique with ε that could not be applied left its " +
+        "column untouched, and its row says so. k is measured apart, in the balance.",
+    },
+    fuente: {
+      es:
+        "El azar sale de la llave del proyecto: el mismo archivo con la misma llave y la misma " +
+        "técnica da el mismo ruido, y no se puede promediar; otro porcentaje da otro ruido, " +
+        "independiente.",
+      en:
+        "The randomness comes from the project key: the same file with the same key and the same " +
+        "technique gets the same noise, and it cannot be averaged away; another percentage gets " +
+        "other noise, independent.",
+    },
   },
   encabezados: {
     columna: { es: "Columna", en: "Column" },
