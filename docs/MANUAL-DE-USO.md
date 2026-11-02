@@ -42,12 +42,13 @@ nombres de columna, los valores, las muestras) se muestra tal como está; los re
 de un país siguen siendo los colombianos —cédula, NIT, celular, placa, y la Ley 1581 como marco—
 porque el inglés es el de la interfaz, no el de la detección; y la bóveda y la bitácora son el mismo archivo sin importar en qué
 idioma las guardaste. Una anotación de la bitácora conserva la fecha tal como se escribió cuando la
-anotaste. Igual con lo que Velo escribe **dentro de los archivos que descargas**: el archivo tratado
-conserva sus palabras en español (el « (o vacío)» que marca un valor generalizado vacío, el « a »
-entre los dos extremos de un rango) y los nombres con que se guardan (`velo-anonimizado-…`,
-`velo-boveda-…`, `velo-politica.json`), porque esos bytes dependen de tus datos, tu política y tu
-llave, nunca del idioma de la pantalla. El certificado y el informe del regreso son la excepción:
-salen en el idioma que usabas al descargarlos.
+anotaste. Lo que Velo escribe **dentro del archivo tratado** sí sigue el idioma con que pediste la
+transformación: las dos palabras que usa al generalizar (el « a » entre los extremos de un rango y el
+« (o vacío)» de un grupo con celdas vacías) salen como « to » y « (or empty)» si estabas en inglés, y
+el certificado lo anota como «Idioma del trabajo». Mismo archivo, misma política, misma llave y mismo
+idioma dan los mismos bytes; con otro idioma cambian esas dos palabras y nada más. Los nombres con
+que se guardan los archivos (`velo-anonimizado-…`, `velo-boveda-…`, `velo-politica.json`) no
+cambian. El certificado y el informe del regreso salen en el idioma que usabas al descargarlos.
 
 Dicho con precisión, porque la diferencia importa: **un seudónimo sigue siendo irreversible por sí
 solo**. Quien reciba el archivo tratado no puede deshacerlo —eso es lo que lo hace seguro de
