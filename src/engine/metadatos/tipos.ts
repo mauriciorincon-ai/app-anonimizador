@@ -96,6 +96,7 @@ export type ClaseDeElemento =
   | "pdf-xmp"
   | "pdf-piece-info"
   | "pdf-miniatura"
+  | "pdf-ultima-modificacion"
   | "pdf-revisiones"
   | "pdf-huerfanos"
   | "pdf-id";

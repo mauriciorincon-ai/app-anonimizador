@@ -12,7 +12,8 @@
 //     valor por omisión, pdf-lib CREA un `/AcroForm` en todo documento que no lo tenga y redibuja
 //     los campos de los que sí, con una fuente que incrusta — eso ya no sería quitar, sería poner.
 //   · Limpiar es REESCRIBIR, no editar: se recorre el grafo desde el `/Root` del tráiler, se borran
-//     en el camino las claves `/Metadata`, `/PieceInfo` y `/Thumb`, y se elimina TODO objeto al que
+//     en el camino las claves `/Metadata`, `/PieceInfo`, `/Thumb` y `/LastModified` (la fecha de
+//     edición de una página o un XObject, pareja de `/PieceInfo`), y se elimina TODO objeto al que
 //     no se llega. Así se van de una vez el `Info` (cuelga del tráiler, no del catálogo), el XMP, las
 //     revisiones anteriores (pdf-lib solo conserva la última definición de cada objeto) y los
 //     objetos «liberados» que una edición dejó en los bytes. Se guarda sin flujos de objetos, en una
@@ -108,7 +109,12 @@ const GUARDADO = {
 } as const;
 
 /** Las claves que la poda borra donde las encuentre, y lo que la pantalla nombra de cada una. */
-const CLAVES_QUE_SE_QUITAN = ["Metadata", "PieceInfo", "Thumb"] as const;
+const CLAVES_QUE_SE_QUITAN = [
+  "Metadata",
+  "PieceInfo",
+  "Thumb",
+  "LastModified",
+] as const;
 
 /** Anotaciones que NO son de marcado: su `/T` no es un autor (en un `Widget` es el nombre del campo). */
 const SIN_AUTOR = ["Widget", "Link", "Popup"] as const;
@@ -247,7 +253,7 @@ interface Hallazgos {
 }
 
 interface Recorrido {
-  /** Cuántos valores distintos colgaban de `/Metadata`, `/PieceInfo` y `/Thumb`, en ese orden. */
+  /** Cuántos valores distintos colgaban de cada una de `CLAVES_QUE_SE_QUITAN`, en ese orden. */
   readonly porClave: readonly number[];
   /** Esos valores: lo que deja de alcanzarse si no cuelga también de otra parte. */
   readonly apartados: readonly PDFObject[];
@@ -410,6 +416,7 @@ function elementos(
   poner("pdf-xmp", "/Metadata", porClave[0]);
   poner("pdf-piece-info", "/PieceInfo", porClave[1]);
   poner("pdf-miniatura", "/Thumb", porClave[2]);
+  poner("pdf-ultima-modificacion", "/LastModified", porClave[3]);
   poner("pdf-revisiones", "%%EOF", revisiones - 1);
   poner("pdf-huerfanos", "obj", inventario.huerfanos);
   poner("pdf-id", "/ID", inventario.conId ? 1 : 0);
@@ -616,7 +623,7 @@ export async function analizarPdf(
 }
 
 /**
- * El PDF reescrito desde el catálogo: sin `Info`, sin XMP, sin `PieceInfo`, sin miniaturas, sin
+ * El PDF reescrito desde el catálogo: sin `Info`, sin XMP, sin `PieceInfo` ni `LastModified`, sin miniaturas, sin
  * revisiones anteriores ni objetos huérfanos, con un `/ID` derivado del contenido limpio. Las
  * páginas no se tocan. Determinista: los mismos bytes dan los mismos bytes.
  */

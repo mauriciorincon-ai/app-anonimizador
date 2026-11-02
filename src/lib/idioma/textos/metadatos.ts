@@ -291,6 +291,10 @@ export const METADATOS = {
         en: "Data from the application that made it",
       },
       "pdf-miniatura": { es: "Miniaturas de página", en: "Page thumbnails" },
+      "pdf-ultima-modificacion": {
+        es: "Fecha de la última edición de una página",
+        en: "When a page was last edited",
+      },
       "pdf-revisiones": {
         es: "Versiones anteriores del documento",
         en: "Earlier versions of the document",

@@ -102,6 +102,7 @@ const CLASE: Record<ClaseDeElemento, Texto> = {
   "pdf-xmp": L.clases.pdfXmp,
   "pdf-piece-info": L.clases.pdfPieceInfo,
   "pdf-miniatura": L.clases.pdfMiniatura,
+  "pdf-ultima-modificacion": L.clases.pdfUltimaModificacion,
   "pdf-revisiones": L.clases.pdfRevisiones,
   "pdf-huerfanos": L.clases.pdfHuerfanos,
   "pdf-id": L.clases.pdfId,

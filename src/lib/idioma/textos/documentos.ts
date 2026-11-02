@@ -793,6 +793,10 @@ export const DOCUMENTOS = {
         en: "Private data of the editing application",
       },
       pdfMiniatura: { es: "Miniaturas de página", en: "Page thumbnails" },
+      pdfUltimaModificacion: {
+        es: "Fecha de la última edición de una página",
+        en: "When a page was last edited",
+      },
       pdfRevisiones: {
         es: "Versiones anteriores del documento",
         en: "Earlier versions of the document",

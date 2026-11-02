@@ -267,7 +267,7 @@ export interface OpcionesDePdf {
   readonly anotacion?: boolean;
   readonly adjunto?: boolean;
   readonly javascript?: boolean;
-  /** `/PieceInfo` (con un objeto privado) y `/Thumb` en la página. */
+  /** `/PieceInfo` (con un objeto privado), su pareja `/LastModified` y `/Thumb` en la página. */
   readonly piezas?: boolean;
   /** Número de la revisión (≥ 2) que guarda su `Info` en un `/ObjStm` con un flujo `/XRef`. */
   readonly comprimida?: number;
@@ -297,7 +297,7 @@ export function pdfDePrueba(opciones: OpcionesDePdf = {}): Uint8Array {
     "/Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >>",
     anotaciones.length > 0 ? `/Annots [${anotaciones.join(" ")}]` : "",
     opciones.piezas
-      ? "/PieceInfo << /Illustrator << /LastModified (D:20260101000000Z) /Private 15 0 R >> >> /Thumb 16 0 R"
+      ? "/PieceInfo << /Illustrator << /LastModified (D:20260101000000Z) /Private 15 0 R >> >> /LastModified (D:20260202000000Z) /Thumb 16 0 R"
       : "",
   ].filter(Boolean);
 
