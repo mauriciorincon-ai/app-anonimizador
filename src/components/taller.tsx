@@ -136,6 +136,7 @@ export function Taller({ informe }: { informe: Informe }) {
           columnas={informe.diagnostico.columnas}
           politica={politica}
           onCambio={cambiarPolitica}
+          formato={informe.archivo.formato}
         />
 
         {pideLlave ? (
@@ -211,9 +212,17 @@ export function Taller({ informe }: { informe: Informe }) {
             <DescargaDelArchivo
               archivo={taller.archivo}
               preparando={taller.etapa === "escribiendo"}
+              salida={
+                informe.archivo.formato !== "json"
+                  ? "csv"
+                  : informe.estructura?.forma === "arreglo"
+                    ? "json"
+                    : "jsonl"
+              }
               filas={informe.diagnostico.filas}
               suprimidas={hecha.suprimidas}
               hashDePolitica={hecha.hashDePolitica}
+              idiomaDelTrabajo={hecha.idioma}
               onPreparar={prepararArchivo}
             />
             {/* El archivo no puede salir solo. Un CSV anonimizado sin un documento que diga qué se
@@ -234,6 +243,9 @@ export function Taller({ informe }: { informe: Informe }) {
                 balance: hecha.balance,
                 utilidad: hecha.utilidad,
                 hashDePolitica: hecha.hashDePolitica,
+                // El del TRABAJO (el de la pantalla al transformar), no el de ahora: el certificado
+                // se redacta en el idioma de al descargar, pero declara el del archivo.
+                idiomaDelTrabajo: hecha.idioma,
                 suprimidas: hecha.suprimidas,
               }}
             />

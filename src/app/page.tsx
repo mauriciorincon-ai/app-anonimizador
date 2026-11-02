@@ -22,13 +22,17 @@ import { analizar, descartar, useSesion } from "@/lib/sesion";
 export default function Aduana() {
   const estado = useSesion();
   const router = useRouter();
-  // Solo se navega en la TRANSICIÓN a "listo". Si se navegara cada vez que el estado es "listo",
-  // volver a la aduana con el botón «atrás» rebotaría de vuelta al diagnóstico y el usuario
+  // Solo se navega en la TRANSICIÓN a "listo" (una tabla) o a "metadatos" (un PDF o una imagen,
+  // S6): las dos terminan en el mismo diagnóstico. Si se navegara cada vez que el estado es uno de
+  // ellos, volver a la aduana con el botón «atrás» rebotaría de vuelta al diagnóstico y el usuario
   // quedaría atrapado entre las dos pantallas.
   const faseAnterior = useRef(estado.fase);
 
   useEffect(() => {
-    if (estado.fase === "listo" && faseAnterior.current !== "listo") {
+    const terminado = estado.fase === "listo" || estado.fase === "metadatos";
+    const estabaTerminado =
+      faseAnterior.current === "listo" || faseAnterior.current === "metadatos";
+    if (terminado && !estabaTerminado) {
       router.push("/diagnostico");
     }
     faseAnterior.current = estado.fase;

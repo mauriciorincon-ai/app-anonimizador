@@ -32,6 +32,7 @@ import {
 } from "@/lib/idioma";
 import { decirMensaje } from "@/lib/idioma/mensajes";
 import { DOCUMENTOS as D } from "@/lib/idioma/textos/documentos";
+import { MOTOR_TRANSFORMAR as M } from "@/lib/idioma/textos/motor-transformar";
 
 import type { BalanceDelTratamiento, Salvedad } from "./balance";
 import type { Diagnostico, HallazgoDeColumna } from "./clasificador";
@@ -49,6 +50,14 @@ export interface DatosDelTratamiento {
   utilidad: Utilidad;
   /** Identidad de la política aplicada: mismo hash ⇒ mismo tratamiento. */
   hashDePolitica: string;
+  /**
+   * El idioma del TRABAJO: el de la pantalla cuando se pulsó «transformar», con el que Velo
+   * escribió los rótulos de dentro del archivo (los de un intervalo de Mondrian). Sale del
+   * resultado de la transformación, **no** del idioma del documento: este puede ser otro (se pide
+   * al descargar, y decide en qué idioma se redacta el certificado), y por eso el certificado lo
+   * declara — quien reciba el archivo sabe en qué idioma leer sus rótulos.
+   */
+  idiomaDelTrabajo: Idioma;
   suprimidas: readonly string[];
   /**
    * SHA-256 del archivo que SALE, calculado en el worker sobre los bytes del `Blob`.
@@ -99,7 +108,7 @@ export function escapar(texto: string): string {
  * llamada `**x**` o `<script>` es un nombre, nunca marcado. Los datos cuyo nombre termina en
  * `_html` ya son HTML armado aquí (listas de `<code>`) y pasan tal cual.
  */
-function h(texto: Texto, idioma: Idioma, datos: Datos = {}): string {
+export function h(texto: Texto, idioma: Idioma, datos: Datos = {}): string {
   const seguros: Record<string, string | number> = {};
   for (const [nombre, valor] of Object.entries(datos))
     seguros[nombre] =
@@ -130,7 +139,7 @@ function decimales(valor: number, cuantos: number, idioma: Idioma): string {
   }).format(valor);
 }
 
-function megabytes(valor: number, idioma: Idioma): string {
+export function megabytes(valor: number, idioma: Idioma): string {
   if (valor < 1024 * 1024) {
     return `${formatoNumerico(idioma, { maximumFractionDigits: 0 }).format(valor / 1024)} KB`;
   }
@@ -153,7 +162,7 @@ const CERTEZA: Record<HallazgoDeColumna["certeza"], Texto> = {
 
 // El sello, dibujado a mano en el propio documento. Ver `src/components/sello.tsx`: si viniera de
 // una URL, la marca que promete que nada salió del navegador estaría hecha de algo que sí salió.
-const SELLO = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+export const SELLO = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
 <circle cx="12" cy="12" r="10.25" fill="none" stroke="currentColor" stroke-width="1.2"/>
 <circle cx="12" cy="12" r="7.75" fill="none" stroke="currentColor" stroke-width=".7" stroke-dasharray="1.1 1.9" stroke-linecap="round" opacity=".65"/>
 <path d="M7.6 9.9h8.8M9.4 12h5.2M7.6 14.1h8.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
@@ -169,7 +178,7 @@ const SELLO = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true
 //   · Las salvedades van antes que la cifra, y se ven antes que la cifra. Que la descalificante pese más
 //     que la que solo matiza no es decoración: es la diferencia entre "esto desmiente el número" y "esto
 //     lo acompaña".
-const ESTILOS = `
+export const ESTILOS = `
 :root{--papel:#fbf9f4;--superficie:#fff;--borde:#e2dccf;--tinta:#1a211d;--tinta-suave:#4f5a55;
 --tinta-tenue:#626b66;--acento:#0d6b57;--acento-tenue:#e4f0eb;--alerta:#9e3222;--alerta-tenue:#f8e9e5;
 --aviso:#7c5209;--aviso-tenue:#f6eedb;--sensible:#71355c;--sensible-tenue:#f4e9f0}
@@ -460,7 +469,7 @@ export function seccionDelTratamiento(
   datos: DatosDelTratamiento,
   idioma: Idioma,
 ): string {
-  const { balance, hashDePolitica, suprimidas } = datos;
+  const { balance, hashDePolitica, idiomaDelTrabajo, suprimidas } = datos;
   const { antes, despues, reduccion, salvedades } = balance;
   const T = D.tratamiento;
 
@@ -511,6 +520,18 @@ ${cifra}
   })}</p>
 <p class="por-que">${h(D.comun.huellaDelTratamiento, idioma)}</p>
 <p class="huella">${escapar(hashDePolitica)}</p>
+<p class="por-que">${h(T.idiomaDelTrabajo, idioma, {
+    // El nombre del idioma va en el idioma del DOCUMENTO; los dos rótulos, tal como quedaron
+    // escritos en el archivo (en el idioma del TRABAJO) y sin los espacios de borde.
+    idioma: decir(
+      idiomaDelTrabajo === "es"
+        ? T.nombreDelIdioma.espanol
+        : T.nombreDelIdioma.ingles,
+      idioma,
+    ),
+    separador: decir(M["salida.mondrian.separador"], idiomaDelTrabajo).trim(),
+    vacio: decir(M["salida.mondrian.sufijoVacio"], idiomaDelTrabajo).trim(),
+  })}</p>
 </section>`;
 }
 
@@ -649,7 +670,10 @@ const NOMBRES_DE_DOCUMENTO: Record<
   },
 };
 
-function baseDelNombre(nombreDelArchivo: string, idioma: Idioma): string {
+export function baseDelNombre(
+  nombreDelArchivo: string,
+  idioma: Idioma,
+): string {
   const base = nombreDelArchivo
     .replace(/\.[^.]+$/, "")
     .replace(/[^\p{L}\p{N}._-]+/gu, "-")

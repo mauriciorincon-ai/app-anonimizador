@@ -25,6 +25,12 @@ export const TRANSFORMAR = {
       es: "Abriendo el taller…",
       en: "Opening the workshop…",
     },
+    // La puerta también abre la limpieza de un PDF o una imagen (S6): su texto vive en esta
+    // página, que ya la importa, y no en `metadatos.ts`, que solo viaja con quien lo necesita.
+    abriendoLimpieza: {
+      es: "Abriendo la limpieza…",
+      en: "Opening the cleaning…",
+    },
     vacio: {
       titulo: {
         es: "No hay nada que transformar",
@@ -218,6 +224,36 @@ export const TRANSFORMAR = {
       detalle: {
         es: "Guarda la correspondencia en un archivo cifrado. Sin la bóveda, el seudónimo sigue sin vuelta.",
         en: "Saves the mapping in an encrypted file. Without the vault, the pseudonym can't be reversed.",
+      },
+      // Un JSON no tiene regreso (el regreso lee solo CSV): una bóveda para él sería inútil, y
+      // ofrecerla sería prometer una vuelta que no existe.
+      soloIda: {
+        es:
+          "No disponible con un JSON: el regreso funciona solo con CSV, así que una bóveda de " +
+          "este archivo no serviría de nada.",
+        en:
+          "Not available with a JSON: the return flow works only with CSV, so a vault for this " +
+          "file would be useless.",
+      },
+      vueltaQuitadaUna: {
+        es:
+          "La política importada pedía poder deshacer una columna con una bóveda. Con un JSON no " +
+          "se puede (el regreso funciona solo con CSV): esa columna quedó con seudónimo sin " +
+          "vuelta.",
+        en:
+          "The imported policy asked to make one column undoable with a vault. That is not " +
+          "possible with a JSON (the return flow works only with CSV): that column was left " +
+          "with a one-way pseudonym.",
+      },
+      vueltaQuitadaVarias: {
+        es:
+          "La política importada pedía poder deshacer {n} columnas con una bóveda. Con un JSON " +
+          "no se puede (el regreso funciona solo con CSV): esas columnas quedaron con seudónimo " +
+          "sin vuelta.",
+        en:
+          "The imported policy asked to make {n} columns undoable with a vault. That is not " +
+          "possible with a JSON (the return flow works only with CSV): those columns were left " +
+          "with one-way pseudonyms.",
       },
     },
     vuelta: {
@@ -527,32 +563,66 @@ export const TRANSFORMAR = {
       titulo: { es: "Llévate el archivo", en: "Take your file" },
       nota: {
         es:
-          "El nombre no repite el del original: sale como `velo-anonimizado-…csv`. Un nombre " +
+          "El nombre no repite el del original: empieza por `velo-anonimizado-`. Un nombre " +
           "como `pacientes-2026.csv` cuenta de qué va el contenido antes de que nadie lo abra, " +
           "y ese nombre viaja en el asunto de un correo.",
         en:
-          "The name doesn't repeat the original's: it comes out as `velo-anonimizado-…csv`. A " +
-          "name like `pacientes-2026.csv` tells what the contents are about before anyone opens " +
-          "it, and that name travels in an email's subject line.",
+          "The name doesn't repeat the original's: it starts with `velo-anonimizado-`. A name " +
+          "like `pacientes-2026.csv` tells what the contents are about before anyone opens it, " +
+          "and that name travels in an email's subject line.",
       },
     },
     // «Un CSV con N filas» + [«y sin la columna X»] + «. Separado por comas…». La lista de columnas
-    // suprimidas es del usuario, así que va aparte.
-    csv: {
-      filas: { es: "Un CSV con {filas} filas", en: "A CSV with {filas} rows" },
-      sinUna: { es: "y sin la columna", en: "and without the column" },
-      sinVarias: {
-        es: "y sin las {n} columnas",
-        en: "and without the {n} columns",
+    // suprimidas es del usuario, así que va aparte. La primera y la última frase siguen a lo que el
+    // worker escribe: un JSON sale como JSON (el panel decía CSV para todo; hallazgo A1 del S6).
+    salida: {
+      csv: {
+        filas: {
+          es: "Un CSV con {filas} filas",
+          en: "A CSV with {filas} rows",
+        },
+        formato: {
+          es:
+            ". Separado por comas, terminado en salto de línea y sin BOM — si Excel en Windows " +
+            "te pregunta por la codificación, es UTF-8.",
+          en:
+            ". Comma-separated, ending in a line break and with no BOM — if Excel on Windows " +
+            "asks about the encoding, it's UTF-8.",
+        },
       },
-      formato: {
-        es:
-          ". Separado por comas, terminado en salto de línea y sin BOM — si Excel en Windows te " +
-          "pregunta por la codificación, es UTF-8.",
-        en:
-          ". Comma-separated, ending in a line break and with no BOM — if Excel on Windows asks " +
-          "about the encoding, it's UTF-8.",
+      json: {
+        filas: {
+          es: "Un JSON con {filas} registros",
+          en: "A JSON file with {filas} records",
+        },
+        formato: {
+          es:
+            ". Es un arreglo con un registro compacto por línea y las claves en el orden del " +
+            "original, en UTF-8 y sin BOM.",
+          en:
+            ". One array, one compact record per line, keys in the order the original had them, " +
+            "UTF-8 with no BOM.",
+        },
       },
+      jsonl: {
+        filas: {
+          es: "Un JSON Lines con {filas} registros",
+          en: "A JSON Lines file with {filas} records",
+        },
+        formato: {
+          es:
+            ". Un registro compacto por línea, con las claves en el orden del original, en UTF-8 " +
+            "y sin BOM.",
+          en:
+            ". One compact record per line, keys in the order the original had them, UTF-8 with " +
+            "no BOM.",
+        },
+      },
+    },
+    sinUna: { es: "y sin la columna", en: "and without the column" },
+    sinVarias: {
+      es: "y sin las {n} columnas",
+      en: "and without the {n} columns",
     },
     // Los 8 caracteres del nombre no son un número de serie: son el principio del SHA-256 de la
     // política. Va partido porque en medio están los 8 caracteres.
@@ -569,6 +639,18 @@ export const TRANSFORMAR = {
           "— are the start of the policy's SHA-256. Two files that share it received exactly " +
           "the same treatment; the report carries the full hash.",
       },
+    },
+    // Solo se muestra cuando el idioma de la pantalla ya no es el del trabajo (se cambió DESPUÉS de
+    // transformar): el archivo se escribió en el idioma de entonces y no se reescribe solo.
+    idiomaDelTrabajo: {
+      es:
+        "Este archivo se escribió en **{idioma}**, el idioma que tenías al transformar: los " +
+        "rótulos de un intervalo agrupado salen en él. Si lo quieres en el otro idioma, cámbialo " +
+        "y vuelve a transformar.",
+      en:
+        "This file was written in **{idioma}**, the language you had when you transformed: the " +
+        "labels of a grouped range come out in it. If you want it in the other language, switch " +
+        "and transform again.",
     },
     preparar: { es: "Preparar el archivo", en: "Prepare the file" },
     preparando: { es: "Escribiendo el archivo…", en: "Writing the file…" },

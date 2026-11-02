@@ -32,6 +32,27 @@ export const DIAGNOSTICO = {
         "is done to each column, see the before and the after, and take away the treated file. " +
         "Without leaving this tab.",
     },
+    // Un PDF o una imagen (S6) no se transforma: se limpia. Viven aquí y no en `metadatos.ts` porque
+    // la página del diagnóstico los pinta sin esperar al chunk del informe, y ese catálogo no
+    // tiene por qué viajar con un CSV.
+    abriendoMetadatos: {
+      es: "Abriendo el diagnóstico…",
+      en: "Opening the diagnosis…",
+    },
+    limpiar: {
+      es: "Limpiar este archivo",
+      en: "Clean this file",
+    },
+    explicacionLimpieza: {
+      es:
+        "El diagnóstico dice qué guarda el archivo de sí mismo. La limpieza no tiene opciones: " +
+        "quita todo lo que no hace falta para verlo o abrirlo, vuelve a leer la copia para " +
+        "comprobarlo y te la entrega. Sin salir de esta pestaña.",
+      en:
+        "The diagnosis says what the file keeps about itself. The cleaning has no options: it " +
+        "removes everything not needed to view or open it, reads the copy again to check it and " +
+        "hands it to you. Without leaving this tab.",
+    },
     otroArchivo: {
       es: "Analizar otro archivo",
       en: "Analyze another file",
@@ -80,6 +101,11 @@ export const DIAGNOSTICO = {
     tamano: {
       es: "{filas} filas · {columnas} columnas · {peso}",
       en: "{filas} rows · {columnas} columns · {peso}",
+    },
+    // Un JSON no tiene filas ni columnas de nacimiento: tiene registros y rutas.
+    tamanoJson: {
+      es: "{filas} registros · {columnas} rutas tratadas · {peso}",
+      en: "{filas} records · {columnas} treated paths · {peso}",
     },
     lecturaConMemoria: {
       es:
@@ -178,6 +204,150 @@ export const DIAGNOSTICO = {
     sinMuestraLector: {
       es: "— es una columna de datos sensibles y enmascararla no la protegería.",
       en: "— it is a sensitive-data column, and masking it would not protect it.",
+    },
+  },
+
+  // ── La estructura de un JSON (S6) ───────────────────────────────────────────────────────────
+  // Solo aparece si el archivo es un JSON. Dice qué rutas se tratan como columnas, cuáles NO (las
+  // listas, que salen tal cual) y cuáles no están en todos los registros. Honestidad medida: lo que
+  // Velo no toca se declara con el mismo peso que lo que sí.
+  estructura: {
+    etiqueta: { es: "Estructura del JSON", en: "JSON structure" },
+    titulo: {
+      es: "Qué se trató y qué no en este JSON",
+      en: "What was treated, and what was not, in this JSON",
+    },
+    nota: {
+      es:
+        "Velo lee cada ruta de un registro —`paciente.contacto.correo`— como una columna. Lo que " +
+        "no cabe en una columna, las listas, no se aplana ni se trata: se declara aquí y se " +
+        "copia al archivo tal cual.",
+      en:
+        "Velo reads each path of a record —`patient.contact.email`— as a column. What does not " +
+        "fit in a column, lists, is neither flattened nor treated: it is declared here and " +
+        "copied into the file as it is.",
+    },
+    cifras: {
+      registros: { es: "Registros", en: "Records" },
+      rutasTratadas: {
+        es: "Rutas tratadas (columnas)",
+        en: "Treated paths (columns)",
+      },
+      profundidad: { es: "Profundidad máxima", en: "Maximum depth" },
+      forma: { es: "Forma del archivo", en: "Shape of the file" },
+    },
+    forma: {
+      arreglo: { es: "Arreglo de objetos", en: "Array of objects" },
+      lineas: {
+        es: "JSON Lines (un objeto por línea)",
+        en: "JSON Lines (one object per line)",
+      },
+    },
+
+    noTratadas: {
+      titulo: {
+        es: "Listas que salen tal cual",
+        en: "Lists that come out as they are",
+      },
+      ninguna: {
+        es: "Ninguna lista dentro de los registros: cada ruta es una columna y se trata como tal.",
+        en: "No lists inside the records: every path is a column and is treated as one.",
+      },
+      avisoTitulo: {
+        es: "Estas rutas salen sin tocar",
+        en: "These paths come out untouched",
+      },
+      aviso: {
+        es:
+          "!!Velo no trata los valores de estas listas: los copia al archivo tal cual.!! Pueden " +
+          "llevar correos, teléfonos, documentos u otros datos personales, y la política que " +
+          "elijas **no las alcanza**. Por ejemplo, `{ejemplo}` saldrá tal cual. Antes de entregar " +
+          "el archivo, trátalas tú o quítalas de su origen.",
+        en:
+          "!!Velo does not treat the values inside these lists: it copies them into the file as " +
+          "they are.!! They may hold emails, phone numbers, ID numbers or other personal data, " +
+          "and the policy you choose **does not reach them**. For example, `{ejemplo}` will come " +
+          "out as is. Before handing the file over, treat them yourself or remove them at the " +
+          "source.",
+      },
+      descripcion: {
+        es: "Listas dentro de los registros que Velo no trata",
+        en: "Lists inside the records that Velo does not treat",
+      },
+      detalle: {
+        es: "Detalle de las listas que salen sin tratar",
+        en: "Details of the lists that come out untreated",
+      },
+      encabezados: {
+        ruta: { es: "Ruta", en: "Path" },
+        queEs: { es: "Qué es", en: "What it is" },
+        registros: { es: "En cuántos registros", en: "In how many records" },
+        campos: { es: "Campos vistos dentro", en: "Fields seen inside" },
+      },
+      motivo: {
+        lista: { es: "Lista de valores", en: "List of values" },
+        listaDeObjetos: { es: "Lista de objetos", en: "List of objects" },
+      },
+      presencia: {
+        es: "{n} de {total}",
+        en: "{n} of {total}",
+      },
+      sinCampos: {
+        es: "sin campos con nombre",
+        en: "no named fields",
+      },
+      nota: {
+        es:
+          "Los campos vistos son solo nombres, nunca valores, y pueden ser una muestra de los " +
+          "que hay: la lista puede traer más.",
+        en:
+          "The fields seen are names only, never values, and may be just a sample of what is " +
+          "there: the list may hold more.",
+      },
+    },
+
+    heterogeneas: {
+      titulo: {
+        es: "Rutas que faltan en algunos registros o cambian de tipo",
+        en: "Paths missing from some records or that change type",
+      },
+      ninguna: {
+        es: "Todas las rutas están en todos los registros y mantienen un solo tipo.",
+        en: "Every path is in every record and keeps a single type.",
+      },
+      intro: {
+        es:
+          "Donde un registro no trae la ruta, Velo no la crea por su cuenta. Una celda que la " +
+          "política cambie sale como texto, aunque el original fuera un número.",
+        en:
+          "Where a record lacks the path, Velo does not create it on its own. A cell that the " +
+          "policy changes comes out as text, even if the original was a number.",
+      },
+      descripcion: {
+        es: "Rutas que no están en todos los registros o que cambian de tipo",
+        en: "Paths that are not in every record or that change type",
+      },
+      detalle: {
+        es: "Detalle de las rutas irregulares",
+        en: "Details of the irregular paths",
+      },
+      encabezados: {
+        ruta: { es: "Ruta", en: "Path" },
+        presencia: { es: "Dónde aparece", en: "Where it appears" },
+        tipos: { es: "Tipos vistos", en: "Types seen" },
+      },
+      presencia: {
+        es: "{n} de {total} registros",
+        en: "{n} of {total} records",
+      },
+      tipo: {
+        texto: { es: "texto", en: "text" },
+        numero: { es: "número", en: "number" },
+        booleano: { es: "verdadero o falso", en: "true or false" },
+        nulo: { es: "nulo", en: "null" },
+        objeto: { es: "objeto", en: "object" },
+        lista: { es: "lista", en: "list" },
+      },
     },
   },
 

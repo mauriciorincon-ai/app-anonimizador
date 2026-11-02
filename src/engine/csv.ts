@@ -70,6 +70,9 @@ export function serializarCsv(tabla: TablaColumnar): string {
  * correo, en una carpeta compartida y en la barra de descargas. El sufijo con la huella corta de
  * la política es lo que permite reconocer dos entregas del mismo tratamiento.
  */
-export function nombreDelArchivoAnonimizado(hashDePolitica: string): string {
-  return `velo-anonimizado-${hashDePolitica.slice(0, 8)}.csv`;
+export function nombreDelArchivoAnonimizado(
+  hashDePolitica: string,
+  extension: "csv" | "json" | "jsonl" = "csv",
+): string {
+  return `velo-anonimizado-${hashDePolitica.slice(0, 8)}.${extension}`;
 }

@@ -23,6 +23,7 @@ import { z } from "zod";
 import { mensaje } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { sha256 } from "@/lib/sha256";
+import type { FormatoBinario } from "./metadatos/tipos";
 import { serializarCanonico } from "./serializacion";
 
 z.config({ jitless: true });
@@ -66,6 +67,24 @@ export interface EntradaDeBitacora {
   readonly huellaDeEntrada: string;
   /** SHA-256 del archivo que salió. Es lo que ata una entrada a su certificado. */
   readonly huellaDeSalida: string;
+  /**
+   * Solo en una LIMPIEZA de metadatos (S6): un PDF o una imagen no tienen filas ni riesgo, así que
+   * los campos de arriba que hablan de eso van en cero y la pantalla no los enseña — enseña esto.
+   *
+   * **Opcional y sin subir la versión, a propósito:** una entrada sin el bloque se serializa igual
+   * que antes, así que la huella de una bitácora vieja no se mueve por abrirla con esta versión.
+   */
+  readonly metadatos?: MetadatosDeLaEntrada;
+}
+
+export interface MetadatosDeLaEntrada {
+  readonly formato: FormatoBinario;
+  /** Campos con nombre que tenía el original. */
+  readonly campos: number;
+  /** Elementos quitados (bloques, chunks, diccionarios), contados uno a uno. */
+  readonly elementos: number;
+  /** Solo en un PDF: versiones anteriores que había dentro. */
+  readonly revisionesQuitadas: number;
 }
 
 export interface Bitacora {
@@ -128,6 +147,14 @@ const entradaSchema = z.object({
   esTitular: z.boolean(),
   huellaDeEntrada: z.string(),
   huellaDeSalida: z.string(),
+  metadatos: z
+    .object({
+      formato: z.enum(["pdf", "jpeg", "png", "webp"]),
+      campos: z.number().int().nonnegative(),
+      elementos: z.number().int().nonnegative(),
+      revisionesQuitadas: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 
 const bitacoraSchema = z.object({

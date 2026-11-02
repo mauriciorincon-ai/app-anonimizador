@@ -7,6 +7,7 @@
 // visible de la promesa del producto, así que está diseñado como una pantalla más y no como un
 // error.
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -17,22 +18,61 @@ import { Rico } from "@/components/texto";
 import { DIAGNOSTICO } from "@/lib/idioma/textos/diagnostico";
 import { descartar, useSesion } from "@/lib/sesion";
 
+/**
+ * El informe de un PDF o una imagen (S6) se carga solo cuando llega uno: `/diagnostico` ya pesa lo
+ * que pesa el de una tabla, y quien trae un CSV no tiene por qué pagar las tablas de metadatos, los
+ * avisos ni el catálogo de sus textos. A esta pantalla se llega después de leer el archivo, así que
+ * el trozo pedido al mismo origen no se nota.
+ */
+const InformeDeMetadatos = dynamic(
+  () =>
+    import("@/components/informe-de-metadatos").then(
+      (m) => m.InformeDeMetadatos,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-tinta-suave" role="status">
+        <Rico texto={DIAGNOSTICO.pagina.abriendoMetadatos} />
+      </p>
+    ),
+  },
+);
+
 export default function PaginaDeDiagnostico() {
   const estado = useSesion();
   const router = useRouter();
 
-  if (estado.fase !== "listo") return <SinDatos />;
+  if (estado.fase !== "listo" && estado.fase !== "metadatos")
+    return <SinDatos />;
+  const esMetadatos = estado.fase === "metadatos";
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <InformeDeDiagnostico informe={estado.informe} />
+      {estado.fase === "listo" ? (
+        <InformeDeDiagnostico informe={estado.informe} />
+      ) : (
+        <InformeDeMetadatos informe={estado.informe} />
+      )}
 
       <div className="border-borde mt-10 border-t pt-6">
         <Link href="/transformar" className={clasesDeBoton("principal")}>
-          <Rico texto={DIAGNOSTICO.pagina.transformar} />
+          <Rico
+            texto={
+              esMetadatos
+                ? DIAGNOSTICO.pagina.limpiar
+                : DIAGNOSTICO.pagina.transformar
+            }
+          />
         </Link>
         <p className="text-tinta-suave mt-3 text-[0.9375rem] leading-relaxed">
-          <Rico texto={DIAGNOSTICO.pagina.explicacion} />
+          <Rico
+            texto={
+              esMetadatos
+                ? DIAGNOSTICO.pagina.explicacionLimpieza
+                : DIAGNOSTICO.pagina.explicacion
+            }
+          />
         </p>
       </div>
 

@@ -62,6 +62,20 @@ HTML on the template _before_ data is filled in, so a column named `**x**` is a 
 `idioma` with no default, so a call site that forgets it fails to compile instead of printing
 `1.234` on an English screen.
 
+**7. What Velo writes _into the output file_ follows the language of the job (amended in Sprint
+006; Sprint 005 had left it Spanish).** The two words the Mondrian generalizer puts in cells —the
+separator of a range and the suffix of a group that has blanks— were Spanish constants in the
+engine. They are now catalog entries, resolved once per run with an `idioma` that the engine takes
+as a required parameter (no default, for the same reason as §6) and that the page reads when the
+user presses _transform_. Spanish bytes are identical to before; English uses ASCII tokens (`to`,
+`(or empty)`) because a hyphen collides with negatives and ISO dates and a comma with CSV quoting.
+The language is bound at transform time, not at download time, and the certificate states it as the
+_language of the job_, written in the document's own language. It enters neither the policy (so the
+policy hash, the `velo-anonimizado-<hash8>` name and the vault do not move) nor the file builder.
+Determinism therefore reads: same input + same policy + same key + same language ⇒ same bytes. Only
+those two tokens differ between languages, and a table transformed without generalization is
+identical in both. Return and restore never read the tokens. The file names `velo-…` do not change.
+
 **7. The brochure (`/conoce`) is bilingual inside its own file.** Spanish stays in the markup (it
 reads the same without JavaScript); English lives in an in-page dictionary keyed by `data-t`. It has
 its own switcher and the same no-storage rule, because it opens by double click as well.
@@ -76,10 +90,8 @@ its own switcher and the same no-storage rule, because it opens by double click 
 - A log entry keeps the date as written when it was annotated (ADR-007 is untouched): an old entry
   reads in the language it was written in.
 - **Out of scope, and said so in the manual:** detection is still Colombian (`cédula`, `NIT`,
-  `celular`, `placa`, Law 1581); the English is the interface's, not the detector's. Text that Velo
-  writes _into the user's output file_ (for example the suffix of a generalized value) is part of the
-  deterministic output and is not localized: output bytes depend on input, policy and key, never on
-  the interface language.
+  `celular`, `placa`, Law 1581); the English is the interface's, not the detector's. What Velo writes _into the
+  user's output file_ is covered by §7 (amended in Sprint 006).
 - Tests and screenshots run in one language per sprint (Spanish this time, via `locale: "es-CO"` in
   Playwright); the other is covered at the close of the milestone.
 

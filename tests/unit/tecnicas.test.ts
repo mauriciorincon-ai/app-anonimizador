@@ -187,8 +187,8 @@ describe("consistencia referencial (C9) — cae sola del HMAC", () => {
       { columna: "cedula", tecnica: { tipo: "seudonimizar", longitud: 16 } },
     ]);
 
-    const deMarzo = await aplicarPolitica(marzo, politica, llaveA);
-    const deAbril = await aplicarPolitica(abril, politica, llaveA);
+    const deMarzo = await aplicarPolitica(marzo, politica, llaveA, "es");
+    const deAbril = await aplicarPolitica(abril, politica, llaveA, "es");
 
     const enMarzo = valoresDe(deMarzo.tabla, "cedula");
     const enAbril = valoresDe(deAbril.tabla, "cedula");
@@ -204,8 +204,8 @@ describe("consistencia referencial (C9) — cae sola del HMAC", () => {
     const politica = politicaDe([
       { columna: "cedula", tecnica: { tipo: "seudonimizar", longitud: 16 } },
     ]);
-    const conA = await aplicarPolitica(tabla, politica, llaveA);
-    const conB = await aplicarPolitica(tabla, politica, llaveB);
+    const conA = await aplicarPolitica(tabla, politica, llaveA, "es");
+    const conB = await aplicarPolitica(tabla, politica, llaveB, "es");
     expect(valoresDe(conB.tabla, "cedula")[0]).not.toBe(
       valoresDe(conA.tabla, "cedula")[0],
     );
@@ -241,7 +241,7 @@ describe("el pipeline completo", () => {
       { columna: "monto", tecnica: { tipo: "suprimir" } },
     ]);
 
-    const r = await aplicarPolitica(TABLA, politica, llaveA);
+    const r = await aplicarPolitica(TABLA, politica, llaveA, "es");
 
     expect(r.suprimidas).toEqual(["monto"]);
     expect(r.tabla.columnas.map((c) => c.nombre)).not.toContain("monto");
@@ -266,7 +266,7 @@ describe("el pipeline completo", () => {
         tecnica: { tipo: "generalizar-fecha", precision: "anio" },
       },
     ]);
-    const r = await aplicarPolitica(TABLA, politica, null);
+    const r = await aplicarPolitica(TABLA, politica, null, "es");
     const columna = r.tabla.columnas.find((c) => c.nombre === "fecha_nac")!;
     // "" + 1987 + 1982 = 3 entradas, no 4 (las dos fechas de 1987 colapsaron en una).
     expect(columna.valores).toEqual(["", "1987", "1982"]);
@@ -280,7 +280,7 @@ describe("el pipeline completo", () => {
       { columna: "municipio", tecnica: { tipo: "generalizar-automatico" } },
       { columna: "monto", tecnica: { tipo: "suprimir" } },
     ]);
-    const r = await aplicarPolitica(TABLA, politica, null);
+    const r = await aplicarPolitica(TABLA, politica, null, "es");
     expect(r.mondrian).toBeNull();
     expect(r.pendientesDeMondrian).toEqual(["municipio"]);
     expect(valoresDe(r.tabla, "municipio")).toEqual([
@@ -295,7 +295,7 @@ describe("el pipeline completo", () => {
       { columna: "municipio", tecnica: { tipo: "suprimir" } },
       { columna: "edad", tecnica: { tipo: "generalizar-automatico" } },
     ]);
-    const r = await aplicarPolitica(TABLA, politica, null);
+    const r = await aplicarPolitica(TABLA, politica, null, "es");
     expect(r.pendientesDeMondrian).toEqual(["edad"]);
   });
 
@@ -320,7 +320,7 @@ describe("el pipeline completo", () => {
         { columna: "edad", tecnica: { tipo: "generalizar-automatico" } },
       ],
     };
-    const r = await aplicarPolitica(tabla, politica, null);
+    const r = await aplicarPolitica(tabla, politica, null, "es");
 
     expect(r.pendientesDeMondrian).toEqual([]);
     expect(r.mondrian?.alcanzado).toBe(true);
@@ -350,7 +350,7 @@ describe("el pipeline completo", () => {
         { columna: "monto", tecnica: { tipo: "generalizar-automatico" } },
       ],
     };
-    const r = await aplicarPolitica(tabla, politica, null);
+    const r = await aplicarPolitica(tabla, politica, null, "es");
 
     // La fecha ya venía recortada al año cuando Mondrian miró la tabla.
     expect(valoresDe(r.tabla, "fecha_nac")[0]).toBe("1940");
@@ -362,7 +362,7 @@ describe("el pipeline completo", () => {
       { columna: "cedula", tecnica: { tipo: "seudonimizar", longitud: 16 } },
     ]);
     expect(requiereLlave(politica)).toBe(true);
-    await expect(aplicarPolitica(TABLA, politica, null)).rejects.toThrow(
+    await expect(aplicarPolitica(TABLA, politica, null, "es")).rejects.toThrow(
       /llave/,
     );
   });
@@ -372,7 +372,7 @@ describe("el pipeline completo", () => {
       { columna: "cedula", tecnica: { tipo: "enmascarar" } },
     ]);
     expect(requiereLlave(politica)).toBe(false);
-    const r = await aplicarPolitica(TABLA, politica, null);
+    const r = await aplicarPolitica(TABLA, politica, null, "es");
     // La regla del S1: nunca más de la mitad del valor a la vista.
     for (const valor of valoresDe(r.tabla, "cedula")) {
       expect(valor.replace("***", "").length / 10).toBeLessThanOrEqual(0.5);

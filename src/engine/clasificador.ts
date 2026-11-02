@@ -146,6 +146,27 @@ function buscarReglaDeNombre(nombre: string): ReglaDeNombre | null {
   return REGLAS_DE_NOMBRE.find((regla) => regla.patron.test(nombre)) ?? null;
 }
 
+// ── Qué parte del nombre se lee ───────────────────────────────────────────────────────────────
+// Una columna de CSV se llama como se llama y se lee entera. Una de JSON es una RUTA
+// (`salud.contacto.ciudad`) y la mayoría de sus segmentos son los nombres de los PADRES, no una
+// descripción de lo que vale cada hijo: si las reglas leyeran la ruta entera, todo lo que cuelga
+// de `salud.` o de `paciente.` subiría de categoría solo por dónde vive (y `direccion.ciudad`
+// dejaría de ser un cuasi-identificador para volverse un identificador directo). Con ruta se mira
+// la ÚLTIMA clave; para el contexto de la cédula, las dos últimas (`titular.documento`).
+function nombreParaLasReglas(columna: ColumnaColumnar): string {
+  const ruta = columna.ruta;
+  return ruta !== undefined && ruta.length > 0
+    ? ruta[ruta.length - 1]
+    : columna.nombre;
+}
+
+function nombreParaElContexto(columna: ColumnaColumnar): string {
+  const ruta = columna.ruta;
+  return ruta !== undefined && ruta.length > 0
+    ? ruta.slice(-2).join(".")
+    : columna.nombre;
+}
+
 /** Jerarquía para escalar: una columna solo sube de categoría, nunca baja por el encabezado. */
 const SEVERIDAD: Record<CategoriaLey1581, number> = {
   "no-personal": 0,
@@ -187,7 +208,7 @@ function clasificarColumna(
     muestreados++;
   }
 
-  const contexto = { nombre: columna.nombre };
+  const contexto = { nombre: nombreParaElContexto(columna) };
   const aciertos = new Array<number>(VALIDADORES.length).fill(0);
   let primerValor: string | null = null;
   for (const [codigo, repeticiones] of conteoPorCodigo) {
@@ -255,7 +276,7 @@ function clasificarColumna(
 
   // El encabezado solo puede SUBIR la categoría, nunca bajarla: si los valores confirman un NIT,
   // que la columna se llame "codigo" no lo vuelve inocuo.
-  const regla = buscarReglaDeNombre(columna.nombre);
+  const regla = buscarReglaDeNombre(nombreParaLasReglas(columna));
   if (regla && SEVERIDAD[regla.categoria] > SEVERIDAD[categoria]) {
     categoria = regla.categoria;
     evidencia.push({

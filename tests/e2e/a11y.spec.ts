@@ -11,7 +11,12 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { join } from "node:path";
 
-import { DIRECTORIO_DE_FIXTURES, nombreDeFixture } from "./global-setup";
+import {
+  DIRECTORIO_DE_FIXTURES,
+  FIXTURE_CON_LISTAS_JSON,
+  FIXTURE_PDF,
+  nombreDeFixture,
+} from "./global-setup";
 
 const CLINICO = nombreDeFixture("clinico", 2_000, 42);
 const NO_TABLA = join(DIRECTORIO_DE_FIXTURES, "notas.txt");
@@ -48,6 +53,42 @@ for (const tema of ["light", "dark"] as const) {
       await page
         .getByRole("heading", { level: 1, name: /clinico-2000-s42\.csv/ })
         .waitFor();
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
+
+    test("el diagnóstico de un JSON con listas pasa axe", async ({ page }) => {
+      // El panel nuevo del S6: tablas de rutas sin tratar y de rutas heterogéneas, y el aviso fuerte.
+      await page.goto("/");
+      await page.setInputFiles("#archivo", FIXTURE_CON_LISTAS_JSON);
+      await page.waitForURL("**/diagnostico");
+      await page.getByText("Estas rutas salen sin tocar").waitFor();
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
+
+    // PDF e imágenes (S6): el diagnóstico de metadatos y el resultado de la limpieza, con un PDF
+    // de dos versiones —la pantalla más cargada de las dos: historia, avisos y /ID nuevo—.
+    test("el diagnóstico de metadatos de un PDF pasa axe", async ({ page }) => {
+      await page.goto("/");
+      await page.setInputFiles("#archivo", FIXTURE_PDF);
+      await page.waitForURL("**/diagnostico", { timeout: 60_000 });
+      await page
+        .getByRole("heading", { name: "Qué limpia Velo y qué no toca" })
+        .waitFor();
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      expect(resumir(violations)).toEqual([]);
+    });
+
+    test("la limpieza terminada pasa axe", async ({ page }) => {
+      await page.goto("/");
+      await page.setInputFiles("#archivo", FIXTURE_PDF);
+      await page.waitForURL("**/diagnostico", { timeout: 60_000 });
+      await page.getByRole("link", { name: "Limpiar este archivo" }).click();
+      await page.getByRole("button", { name: "Limpiar", exact: true }).click();
+      await page
+        .getByRole("heading", { name: "Esto es lo que Velo quitó" })
+        .waitFor({ timeout: 60_000 });
       const { violations } = await new AxeBuilder({ page }).analyze();
       expect(resumir(violations)).toEqual([]);
     });

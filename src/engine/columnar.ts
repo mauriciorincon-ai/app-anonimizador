@@ -16,6 +16,14 @@ export const CODIGO_VACIO = 0;
 
 export interface ColumnaColumnar {
   readonly nombre: string;
+  /**
+   * Solo la pone el lector JSON (S6): las claves SIN escapar del camino hasta el valor
+   * (`["paciente","contacto","correo"]`; `nombre` es esa ruta con escapes). Una columna de CSV o Excel
+   * no la tiene y el clasificador la trata exactamente como siempre; con ella, el clasificador mira
+   * la ÚLTIMA clave y no el camino entero, porque `salud.` o `paciente.` son el nombre de un padre,
+   * no una descripción de cada hijo.
+   */
+  readonly ruta?: readonly string[];
   /** Un código por fila; índice dentro de `valores`. */
   readonly codigos: Uint32Array;
   /** Valores únicos en orden de primera aparición. `valores[0]` es siempre la cadena vacía. */
@@ -124,6 +132,133 @@ export class ConstructorColumnar {
   }
 }
 
+// ── Construcción dispersa (JSON) ──────────────────────────────────────────────────────────────
+// Un JSON no tiene encabezado: las columnas aparecen según se descubren las rutas, quizá en el
+// registro 40.000. Una columna descubierta tarde se rellena hacia atrás con celda vacía (código 0)
+// sin trabajo extra: los arreglos tipados nacen en ceros, y cero ES «vacío» (y «ausente» en las
+// clases). Solo se escribe lo que existe.
+
+class AcumuladorDisperso {
+  readonly nombre: string;
+  readonly ruta: readonly string[];
+  codigos: Uint32Array;
+  clases: Uint8Array;
+  private readonly valores: string[] = [""];
+  private readonly indice = new Map<string, number>([["", CODIGO_VACIO]]);
+  private noVacios = 0;
+
+  constructor(nombre: string, ruta: readonly string[], capacidad: number) {
+    this.nombre = nombre;
+    this.ruta = ruta;
+    this.codigos = new Uint32Array(capacidad);
+    this.clases = new Uint8Array(capacidad);
+  }
+
+  crecer(capacidad: number): void {
+    const codigos = new Uint32Array(capacidad);
+    codigos.set(this.codigos);
+    this.codigos = codigos;
+    const clases = new Uint8Array(capacidad);
+    clases.set(this.clases);
+    this.clases = clases;
+  }
+
+  poner(fila: number, valor: string, clase: number): void {
+    let codigo = this.indice.get(valor);
+    if (codigo === undefined) {
+      codigo = this.valores.length;
+      this.valores.push(valor);
+      this.indice.set(valor, codigo);
+    }
+    if (codigo !== CODIGO_VACIO) this.noVacios++;
+    this.codigos[fila] = codigo;
+    this.clases[fila] = clase;
+  }
+
+  finalizar(filas: number): { columna: ColumnaColumnar; clases: Uint8Array } {
+    this.indice.clear();
+    const sobra = this.codigos.length - filas;
+    const recortar = sobra > filas / 8;
+    const codigos = recortar
+      ? this.codigos.slice(0, filas)
+      : this.codigos.subarray(0, filas);
+    const clases = recortar
+      ? this.clases.slice(0, filas)
+      : this.clases.subarray(0, filas);
+    return {
+      columna: {
+        nombre: this.nombre,
+        ruta: this.ruta,
+        codigos,
+        valores: this.valores,
+        noVacios: this.noVacios,
+      },
+      clases,
+    };
+  }
+}
+
+/**
+ * Construye una tabla columnar celda a celda, con columnas que aparecen sobre la marcha. Cada celda
+ * lleva además una `clase` (un byte) que la tabla no guarda: es la memoria de qué ERA el valor
+ * (texto, número, `null`, ausente…) para quien lo reescriba después.
+ *
+ * La capacidad de las filas es una sola para todas las columnas y crece duplicando (O(1)
+ * amortizado, sin conocer el total de registros). `celdasMaximas` acota ese crecimiento para que la
+ * memoria reservada no se pase del tope de celdas del lector.
+ */
+export class ConstructorColumnarDisperso {
+  private readonly acumuladores: AcumuladorDisperso[] = [];
+  private readonly celdasMaximas: number;
+  private capacidad = CAPACIDAD_INICIAL;
+  private filas = 0;
+
+  constructor(celdasMaximas = Number.POSITIVE_INFINITY) {
+    this.celdasMaximas = celdasMaximas;
+  }
+
+  get filasCerradas(): number {
+    return this.filas;
+  }
+
+  get totalDeColumnas(): number {
+    return this.acumuladores.length;
+  }
+
+  /** Descubre una columna: las filas ya cerradas quedan vacías y «ausentes». Devuelve su índice. */
+  agregarColumna(nombre: string, ruta: readonly string[]): number {
+    this.acumuladores.push(new AcumuladorDisperso(nombre, ruta, this.capacidad));
+    return this.acumuladores.length - 1;
+  }
+
+  /** Escribe la celda de la fila EN CURSO (la que aún no se cerró). */
+  poner(columna: number, valor: string, clase: number): void {
+    this.acumuladores[columna].poner(this.filas, valor, clase);
+  }
+
+  cerrarFila(): void {
+    this.filas++;
+    if (this.filas < this.capacidad) return;
+    const tope = Math.floor(
+      this.celdasMaximas / Math.max(1, this.acumuladores.length),
+    );
+    const nueva = Math.max(this.capacidad + 1, Math.min(this.capacidad * 2, tope));
+    for (const a of this.acumuladores) a.crecer(nueva);
+    this.capacidad = nueva;
+  }
+
+  finalizar(): { tabla: TablaColumnar; clases: Uint8Array[] } {
+    const columnas: ColumnaColumnar[] = [];
+    const clases: Uint8Array[] = [];
+    for (const acumulador of this.acumuladores) {
+      const { columna, clases: clasesDeLaColumna } = acumulador.finalizar(this.filas);
+      columnas.push(columna);
+      clases.push(clasesDeLaColumna);
+    }
+    return { tabla: { columnas, filas: this.filas }, clases };
+  }
+}
+
 /**
  * Rehace la columna con los valores nuevos, deduplicando.
  *
@@ -166,7 +301,11 @@ export function reconstruirColumna(
     if (codigo !== CODIGO_VACIO) noVacios++;
   }
 
-  return { nombre: original.nombre, codigos, valores, noVacios };
+  // La ruta (solo existe en las columnas de JSON) sobrevive a la transformación; una columna de CSV
+  // no gana la propiedad, así que su forma sigue siendo la de siempre.
+  return original.ruta === undefined
+    ? { nombre: original.nombre, codigos, valores, noVacios }
+    : { nombre: original.nombre, ruta: original.ruta, codigos, valores, noVacios };
 }
 
 /** Valor de una celda por (columna, fila). */

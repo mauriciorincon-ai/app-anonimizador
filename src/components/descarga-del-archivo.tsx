@@ -19,24 +19,34 @@ import { Panel } from "@/components/panel";
 import { IconoDescargar, IconoDocumento } from "@/components/iconos";
 import { Rico, useT } from "@/components/texto";
 import { bytes as enBytes } from "@/lib/formato";
+import type { Idioma } from "@/lib/idioma";
+import { DOCUMENTOS } from "@/lib/idioma/textos/documentos";
 import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import type { AsaDeArchivo } from "@/lib/sesion";
 
 const E = TRANSFORMAR.entrega;
 
+/** Lo que el worker escribe: un CSV o un Excel salen como CSV; un JSON, en su misma forma. */
+export type SalidaDelArchivo = keyof typeof E.salida;
+
 export function DescargaDelArchivo({
   archivo,
   preparando,
+  salida,
   filas,
   suprimidas,
   hashDePolitica,
+  idiomaDelTrabajo,
   onPreparar,
 }: {
   archivo: AsaDeArchivo | null;
   preparando: boolean;
+  salida: SalidaDelArchivo;
   filas: number;
   suprimidas: readonly string[];
   hashDePolitica: string;
+  /** El idioma de la pantalla al pulsar «transformar»: el del archivo, aunque ahora haya otro. */
+  idiomaDelTrabajo: Idioma;
   onPreparar: () => void;
 }) {
   const { t, idioma } = useT();
@@ -47,12 +57,12 @@ export function DescargaDelArchivo({
       nota={<Rico texto={E.panel.nota} />}
     >
       <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-        <Rico texto={E.csv.filas} datos={{ filas }} />
+        <Rico texto={E.salida[salida].filas} datos={{ filas }} />
         {suprimidas.length > 0 ? (
           <>
             {" "}
             <Rico
-              texto={suprimidas.length === 1 ? E.csv.sinUna : E.csv.sinVarias}
+              texto={suprimidas.length === 1 ? E.sinUna : E.sinVarias}
               datos={{ n: suprimidas.length }}
             />{" "}
             <span className="font-mono text-[0.875rem]">
@@ -60,7 +70,7 @@ export function DescargaDelArchivo({
             </span>
           </>
         ) : null}
-        <Rico texto={E.csv.formato} />
+        <Rico texto={E.salida[salida].formato} />
       </p>
 
       {/* Los 8 caracteres del nombre no son un número de serie: son el principio del SHA-256 de la
@@ -73,6 +83,21 @@ export function DescargaDelArchivo({
         </span>
         <Rico texto={E.huella.despues} />
       </p>
+
+      {idiomaDelTrabajo !== idioma ? (
+        <p className="text-tinta-suave mt-3 text-[0.875rem] leading-relaxed">
+          <Rico
+            texto={E.idiomaDelTrabajo}
+            datos={{
+              idioma: t(
+                idiomaDelTrabajo === "es"
+                  ? DOCUMENTOS.tratamiento.nombreDelIdioma.espanol
+                  : DOCUMENTOS.tratamiento.nombreDelIdioma.ingles,
+              ),
+            }}
+          />
+        </p>
+      ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         {archivo === null ? (

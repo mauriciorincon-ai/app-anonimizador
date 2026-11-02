@@ -14,6 +14,7 @@ import { ConstructorColumnar } from "@/engine/columnar";
 import { evaluarRiesgo } from "@/engine/riesgo";
 import { porcentaje } from "@/lib/formato";
 import { fijarIdioma } from "@/lib/idioma/estado";
+import type { EstructuraJson } from "@/engine/json/tipos";
 import type { Informe } from "@/workers/contrato";
 
 function informeDe(perfil: string, filas = 400): Informe {
@@ -276,5 +277,82 @@ describe("el mismo informe, en inglés", () => {
     expect(screen.queryByText(/quedaron fuera/)).toBeNull();
     // Y una clave sin catálogo se vería como «⟦clave⟧»: ninguna debe aparecer.
     expect(document.body.textContent).not.toContain("⟦");
+  });
+});
+
+describe("un JSON en el diagnóstico (S6)", () => {
+  const estructura: EstructuraJson = {
+    forma: "lineas",
+    registros: 400,
+    rutasTratadas: 24,
+    profundidad: 2,
+    noTratadas: [
+      {
+        ruta: "contactos[]",
+        motivo: "lista-de-objetos",
+        registros: 390,
+        pistas: ["contactos[].correo"],
+      },
+    ],
+    heterogeneas: [{ ruta: "edad", presencia: 399, tipos: ["numero", "nulo"] }],
+  };
+
+  function conEstructura(): Informe {
+    const base = informeDe("clinico");
+    return {
+      ...base,
+      archivo: { ...base.archivo, nombre: "clinico.jsonl", formato: "json" },
+      estructura,
+    };
+  }
+
+  it("un CSV o un Excel no trae el panel de la estructura", () => {
+    render(<InformeDeDiagnostico informe={informeDe("clinico")} />);
+    expect(
+      screen.queryByRole("region", {
+        name: "Qué se trató y qué no en este JSON",
+      }),
+    ).toBeNull();
+    expect(screen.queryByRole("note")).toBeNull();
+    // Y el encabezado sigue diciendo filas y columnas, como siempre.
+    expect(screen.getByText(/400 filas · 24 columnas/)).toBeInTheDocument();
+  });
+
+  it("un JSON trae el panel, con el aviso de lo que sale sin tratar, antes de la tabla de columnas", () => {
+    render(<InformeDeDiagnostico informe={conEstructura()} />);
+    const panel = screen.getByRole("region", {
+      name: "Qué se trató y qué no en este JSON",
+    });
+    expect(
+      within(panel).getByRole("note", { name: "Estas rutas salen sin tocar" }),
+    ).toHaveTextContent("contactos[].correo saldrá tal cual");
+    const columnas = screen.getByRole("region", {
+      name: "Qué hay en tu tabla, y por qué lo creemos",
+    });
+    // El panel de la estructura precede al de las columnas en el documento.
+    expect(
+      panel.compareDocumentPosition(columnas) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // El encabezado habla de registros y de rutas, no de filas y columnas.
+    expect(
+      screen.getByText(/400 registros · 24 rutas tratadas/),
+    ).toBeInTheDocument();
+  });
+
+  it("lo mismo en inglés", () => {
+    fijarIdioma("en");
+    render(<InformeDeDiagnostico informe={conEstructura()} />);
+    expect(
+      screen.getByRole("region", {
+        name: "What was treated, and what was not, in this JSON",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "contactos[].correo will come out as is",
+    );
+    expect(
+      screen.getByText(/400 records · 24 treated paths/),
+    ).toBeInTheDocument();
   });
 });

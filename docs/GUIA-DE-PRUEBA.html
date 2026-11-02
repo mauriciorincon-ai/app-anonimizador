@@ -265,7 +265,7 @@
         margin-left: 4px;
       }
       /* GATE CORTO ⭐⭐ — el subconjunto de las ⭐ que NINGUNA automatización puede juzgar.
-     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 28 ⭐ incluyen
+     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 32 ⭐ incluyen
      comprobaciones que una máquina SÍ puede hacer y que están en el gate para que el usuario las
      haga con SUS herramientas (recalcular una huella, mirar la pestaña Red). Esas se quedan fuera
      del corto a propósito, porque el CI ya las cubre por otro camino. Lo que queda son las seis
@@ -280,7 +280,7 @@
       }
 
       /* MODO RECORRIDO — solo con el filtro ⭐ activo.
-     El gate del ciclo son 28 pruebas repartidas por los bloques que nacieron en cinco sprints
+     El gate del ciclo son 32 pruebas repartidas por los bloques que nacieron en seis sprints
      distintos. Sin esto se leen como cuatro listas pegadas: el mismo chip de origen que sirve para
      la regresión («Heredada · S1») sugiere un orden que NO es el del recorrido. En modo recorrido
      cada prueba visible recibe su número de PARADA y la ruta donde ocurre, así que el orden a la
@@ -383,27 +383,30 @@
     <div class="pagina">
       <header>
         <p class="eyebrow">
-          Velo · Guía de prueba viva y acumulativa · Sprint 005 · 1 de noviembre
+          Velo · Guía de prueba viva y acumulativa · Sprint 006 · 2 de noviembre
           de 2026
         </p>
         <h1>Guía de prueba</h1>
         <p class="suave">
           Todas las pruebas vigentes de Velo: las
-          <strong>125 de los sprints 001 a 004</strong> —que ahora son
-          regresión— más las que trae el Sprint 005, el que pone a Velo en dos
-          idiomas: el conmutador ES · EN, el inglés de las cinco pantallas, y el
-          certificado y el informe del regreso en inglés con las mismas dos
-          huellas. Cada línea lleva su origen. Las casillas se guardan solas en
-          este navegador, y el guardado se versiona por sprint: nada de lo que
+          <strong>132 de los sprints 001 a 005</strong> —que ahora son
+          regresión— más las <strong>18</strong> que trae el Sprint 006, el que
+          le suma dos formatos a Velo: el <strong>JSON</strong> (su estructura,
+          las listas que Velo declara sin tratar y el archivo que sale) y la
+          <strong>limpieza de metadatos de PDF e imágenes</strong> (el
+          diagnóstico campo por campo, la limpieza comprobada, el certificado
+          con sus dos huellas y la bitácora). Son <strong>150 pruebas</strong>.
+          Cada línea lleva su origen. Las casillas se guardan solas en este
+          navegador, y el guardado se versiona por sprint: nada de lo que
           marcaste antes aparece marcado aquí, porque una regresión sin correr
           no está probada.
         </p>
         <p class="chica">
           <strong>Dos gates, y el corto existe para que el largo no gane</strong
-          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 28 pruebas · ~90
-          min: el acumulado completo —8 del S1, 6 del S2, 8 del S3, 4 del S4 y 2
-          del S5— como <strong>un solo recorrido numerado</strong>, no como
-          cuatro listas pegadas. El
+          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 32 pruebas · ~100
+          min: el acumulado completo —8 del S1, 6 del S2, 8 del S3, 4 del S4, 2
+          del S5 y 4 del S6— como <strong>un solo recorrido numerado</strong>,
+          no como seis listas pegadas. El
           <strong>Gate corto ⭐⭐ son 6 paradas · ~20 min</strong>: el
           subconjunto donde el veredicto <strong>solo puede ser humano</strong>
           —si Velo se entiende, si sus cifras exactas se distinguen de las
@@ -417,32 +420,33 @@
           —hay otras apps en curso—. Un gate que nunca se corre no protege nada,
           y un gate de 90 minutos compite con el resto de la vida. El corto no
           lo reemplaza ni lo cancela: es <strong>el piso</strong>, lo que se
-          pierde de verdad si el largo no ocurre nunca. Las 22 pruebas que deja
+          pierde de verdad si el largo no ocurre nunca. Las 26 pruebas que deja
           fuera <strong>no se borran</strong> —siguen enteras en el filtro ⭐— y
           son en su mayoría <em>compruébalo tú</em>: valiosas para que la
           confianza sea tuya, pero <strong>ya verificadas por la CI</strong> por
           otro camino (recalcular la huella, la pestaña Red, el reporte sin
           wifi, el <code>.velo</code> ilegible). Todo eso lo respalda la CI
-          —<strong>732 pruebas unitarias, 117 e2e</strong>, axe en dos temas y
+          —<strong>1.788 pruebas unitarias, 248 e2e</strong>, axe en dos temas y
           dos tamaños, Lighthouse ≥90 en las 4 categorías de las
           <strong>cinco rutas</strong>— y se corre en pases completos.
         </p>
         <p class="chica">
           <strong
-            >Este sprint estrena dos pruebas que solo puedes hacer tú.</strong
+            >Este sprint estrena cuatro pruebas que solo puedes hacer
+            tú.</strong
           >
-          La primera:
+          Dos son de <em>ver</em>: que
+          <strong>la foto limpia se ve igual y no sale girada</strong>, y que
+          <strong>el PDF limpio es el mismo documento</strong>. La CI comprueba
+          que los píxeles se copiaron byte por byte; no sabe cómo se ve en tu
+          visor. Las otras dos son de <em>comprensión</em>:
           <strong
-            >verificar el certificado como lo haría quien lo recibe</strong
+            >si se entiende qué lista de un JSON saldrá sin tratar, y qué no
+            toca Velo de un PDF o una foto</strong
           >
-          — recalculas el SHA-256 del archivo con el comando que el propio
-          documento te da y lo comparas con la huella declarada. La CI compara
-          dos cadenas; tú compruebas que las instrucciones que le damos a un
-          tercero <em>funcionan de verdad en tu computador</em>, que es otra
-          cosa. La segunda: <strong>cerrar el navegador entero</strong> y volver
-          meses después —o su equivalente de un minuto— para abrir la bitácora.
-          Ningún test automático puede cerrar el navegador que lo está
-          ejecutando.
+          — la CI sabe que la advertencia está en pantalla, no si se lee como
+          una advertencia. Las pruebas con comandos (<code>shasum</code>,
+          <code>grep</code>) están también, sin ⭐ extra.
         </p>
         <div class="url-caja">
           <p class="eyebrow" style="margin: 0 0 6px">URL de prueba</p>
@@ -486,6 +490,10 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
             <strong>Nunca uses un archivo real de una persona</strong> para
             probar: este repo es público y el kit existe justo para eso.
           </p>
+          <p class="chica suave" style="margin: 6px 0 0">
+            Los archivos de JSON, PDF e imágenes (S6) se generan en sus propios
+            bloques, <strong>AB</strong> y <strong>AC</strong>.
+          </p>
         </div>
       </header>
 
@@ -501,7 +509,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
         >
           <button type="button" data-filtro="todo" class="activo">Todo</button>
           <button type="button" data-filtro="cambios">
-            Lo que cambió en S5
+            Lo que cambió en S6
           </button>
           <button type="button" data-filtro="minimo">
             Gate mínimo ⭐ del ciclo
@@ -513,12 +521,13 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
       <div id="recorrido">
         <p id="recorrido-largo">
           <strong
-            >El recorrido del ciclo H1 —
-            <span id="recorrido-total">28</span> paradas · ~90 min.</strong
+            >El recorrido del ciclo —
+            <span id="recorrido-total">32</span> paradas · ~100 min.</strong
           >
           Un solo camino, en el orden en que se hace: la aduana → el diagnóstico
           → el taller → el regreso → la bitácora, y al final el juicio del
-          conjunto.
+          conjunto. Tras él vienen los bloques que sumaron los sprints 5 y 6:
+          idioma, JSON, y PDF e imágenes.
         </p>
         <div id="recorrido-corto" hidden>
           <p>
@@ -533,7 +542,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
             archivo, una pasada, seis paradas.
           </p>
           <p class="chica suave">
-            <strong>Lo que deja fuera, y por qué:</strong> las otras 20 ⭐ son
+            <strong>Lo que deja fuera, y por qué:</strong> las otras 26 ⭐ son
             en su mayoría <em>compruébalo tú</em> —recalcular la huella SHA-256,
             mirar la pestaña Red, abrir el <code>.velo</code> con un editor,
             abrir el reporte sin wifi—. Valen mucho, pero
@@ -844,12 +853,13 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               <span class="origen origen-heredada">Heredada · S1</span></label
             >
           </li>
-          <li data-origen="heredado">
+          <li data-origen="mejorado">
             <input type="checkbox" id="d3" /><label for="d3"
               >Está la marca <strong>«Cifra exacta»</strong> y la lista de
               <strong>columnas cruzadas</strong>. Esa marca importa: en el
-              próximo sprint llegan estimadores, y tendrán que decir «estimado».
-              <span class="origen origen-heredada">Heredada · S1</span></label
+              taller conviven con cifras estimadas, que llevan la palabra
+              «estimado» pegada al número, y las dos nunca se suman.
+              <span class="origen origen-mejorado">Corregida · S6</span></label
             >
           </li>
           <li data-origen="heredado">
@@ -1021,13 +1031,14 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           algo no se puede hacer.
         </p>
         <ul class="pasos">
-          <li data-origen="heredado">
+          <li data-origen="mejorado">
             <input type="checkbox" id="f1" /><label for="f1"
-              >Suelta un archivo que no sea tabla (un <code>.txt</code> o una
-              imagen). Sale un aviso que dice
+              >Suelta un archivo que Velo no lee (un <code>.txt</code> o un
+              <code>.docx</code>; desde el S6 una imagen o un PDF sí se leen).
+              Sale un aviso que dice qué lee Velo y
               <strong>qué hacer</strong> («guárdalo como CSV»), no solo qué
               falló. Y el nombre del archivo aparece para que sepas cuál fue.
-              <span class="origen origen-heredada">Heredada · S1</span></label
+              <span class="origen origen-mejorado">Corregida · S6</span></label
             >
           </li>
           <li data-origen="heredado">
@@ -2508,27 +2519,27 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           primera vez que una persona los juzga.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="aa1" /><label for="aa1"
               >Abre <code>/</code> con el navegador en español. Arriba, entre
               «Velo» y el sello, hay dos botones <strong>ES</strong> y
               <strong>EN</strong>. El que está en uso va
               <strong>subrayado y en negrita</strong>; el otro, no. Con el
               teclado (<kbd>Tab</kbd>, <kbd>Enter</kbd>) también se cambian.
-              <span class="origen origen-nuevo">Nuevo · S5</span></label
+              <span class="origen origen-heredada">Heredada · S5</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="aa2" /><label for="aa2"
               >Pulsa <strong>EN</strong>. <strong>Todo</strong> cambia a inglés
               sin recargar: el título, el sello, «Cómo funciona», el pie. La
               pestaña del navegador también cambia de título, y la dirección
               ahora termina en <code>?lang=en</code>. Pulsa <strong>ES</strong>
               y vuelve.
-              <span class="origen origen-nuevo">Nuevo · S5</span></label
+              <span class="origen origen-heredada">Heredada · S5</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="aa3" /><label for="aa3"
               >En inglés, suelta <code>tmp/clinico-3000.csv</code> y recorre las
               cinco pantallas: el diagnóstico, el taller, el regreso y la
@@ -2538,11 +2549,11 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               como están). Y, sobre todo, lee como si no supieras español:
               <strong>¿suena escrito en inglés o traducido?</strong> Anota cada
               frase que te haga releer.
-              <span class="origen origen-nuevo">Nuevo · S5</span>
+              <span class="origen origen-heredada">Heredada · S5</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="aa4" /><label for="aa4"
               >Compara una advertencia en los dos idiomas: la de la
               <strong>frase de paso</strong> (si la pierdes, la bóveda no se
@@ -2550,11 +2561,11 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               poblacional. En inglés dicen lo mismo y con la misma firmeza —ni
               más suaves ni más fuertes—, y lo estimado sigue marcado como
               estimado.
-              <span class="origen origen-nuevo">Nuevo · S5</span>
+              <span class="origen origen-heredada">Heredada · S5</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="aa5" /><label for="aa5"
               >En inglés, transforma el archivo y descarga el
               <strong>certificado</strong>. Se llama
@@ -2563,28 +2574,457 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               <strong>dos mismas huellas</strong> que el certificado en español
               del mismo tratamiento (cópialas y compáralas). Las advertencias
               van <strong>antes</strong> de la cifra, igual que en español.
-              <span class="origen origen-nuevo">Nuevo · S5</span></label
+              <span class="origen origen-heredada">Heredada · S5</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="aa6" /><label for="aa6"
               >Recarga la página sin <code>?lang=</code> en la dirección. Vuelve
               al idioma de tu navegador: <strong>Velo no recordó nada</strong>.
               Compruébalo en las herramientas del navegador (Aplicación →
               Almacenamiento): sin entradas, sin cookies.
-              <span class="origen origen-nuevo">Nuevo · S5</span></label
+              <span class="origen origen-heredada">Heredada · S5</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="aa7" /><label for="aa7"
               >Abre <code>/conoce</code> y luego <code>/conoce?lang=en</code>:
               el brochure también cambia entero, con sus propios botones
               <strong>ES</strong> / <strong>EN</strong>, y las tarjetas se
               siguen desplegando con el recorrido.
-              <span class="origen origen-nuevo">Nuevo · S5</span></label
+              <span class="origen origen-heredada">Heredada · S5</span></label
             >
           </li>
         </ul>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">AB</span>
+          <h2>JSON: la estructura, y lo que Velo no trata</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~10 min · el tercer
+          formato. Un JSON no es una tabla, y lo que Velo no puede tratar lo
+          dice en pantalla en vez de callarlo. Usa los tres archivos del kit de
+          abajo.
+        </p>
+        <ul class="pasos">
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ab1" /><label for="ab1"
+              >Suelta <code>tmp/anidado.json</code>. El tamaño del diagnóstico
+              dice <strong>«2.000 registros · 11 rutas tratadas»</strong> —no
+              «filas · columnas»— y aparece el panel
+              <strong>«Qué se trató y qué no en este JSON»</strong> con
+              <strong>Registros 2.000</strong>,
+              <strong>Rutas tratadas 11</strong>,
+              <strong>Profundidad máxima 3</strong> y la forma
+              <strong>«Arreglo de objetos»</strong>. En la tabla de columnas los
+              nombres son <strong>rutas</strong>, como
+              <code>paciente.contacto.correo</code> o
+              <code>empleador.nit</code>, cada una con su categoría y su
+              certeza. Más abajo,
+              <strong
+                >«Rutas que faltan en algunos registros o cambian de
+                tipo»</strong
+              >
+              lista <code>atencion.edad</code> (a veces un número, a veces
+              <code>null</code>) y dice en cuántos registros está; y «Listas que
+              salen tal cual» dice, con una marca ✓, que aquí no hay ninguna.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ab2" /><label for="ab2"
+              >Suelta ahora <code>tmp/con-listas.json</code>. Antes de la tabla
+              de listas aparece un aviso con un <strong>«!»</strong> —no solo
+              color— que dice <strong>«Estas rutas salen sin tocar»</strong> y
+              que Velo <strong>no trata</strong> los valores de esas listas. La
+              tabla nombra <code>contactos[]</code> (lista de objetos, en 500 de
+              500 registros, con los campos vistos
+              <code>contactos[].correo</code> y
+              <code>contactos[].parentesco</code>) y
+              <code>etiquetas[]</code> (lista de valores). Son
+              <strong>nombres de campo</strong>: en ningún sitio de la pantalla
+              aparece el valor de una celda.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="ab3" /><label for="ab3"
+              ><strong>Juicio humano — léelo como un extraño.</strong> Con la
+              pantalla de <code>con-listas.json</code> delante, antes de bajar a
+              la tabla de columnas, responde sin ayuda:
+              <strong
+                >¿qué va a salir de este archivo sin tocar, y por qué la
+                política que elijas no lo alcanza?</strong
+              >
+              Si lo transformaras y lo entregaras, ¿quedaría claro que los
+              correos de <code>contactos[]</code> van en claro? Si el aviso se
+              lee como un inventario y no como una advertencia, o si tuviste que
+              releerlo, es un hallazgo aunque todo lo demás esté bien.
+              <span class="origen origen-nuevo">Nuevo · S6</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ab4" /><label for="ab4"
+              >Pulsa «Transformar este archivo», pon
+              <strong>Seudónimo</strong> en
+              <code>paciente.contacto.correo</code>
+              y deriva la llave. Debajo de la técnica, la casilla
+              <strong>«Poder deshacerlo con una bóveda»</strong> se ve
+              <strong>apagada</strong> y dice
+              <strong
+                >«No disponible con un JSON: el regreso funciona solo con
+                CSV…»</strong
+              >: ofrecer una vuelta que no existe sería prometer de más.
+              Transforma y guarda: el archivo se llama
+              <strong>velo-anonimizado-</strong> + 8 caracteres +
+              <strong>.json</strong>, y no se ofrece guardar ninguna bóveda.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ab5" /><label for="ab5"
+              >Abre el archivo descargado en un editor de texto y compáralo con
+              <code>tmp/con-listas.json</code>. Es
+              <strong>un registro por línea</strong>, las claves van
+              <strong>en el mismo orden</strong> (<code>paciente</code>,
+              <code>ubicacion</code>, <code>empleador</code>,
+              <code>atencion</code>, <code>contactos</code>,
+              <code>etiquetas</code>) y el correo del paciente ya no es el
+              original. Las listas, en cambio, salen
+              <strong>letra por letra como entraron</strong>:
+              <code
+                >grep -c "diego.lopez29@correo-demo.co" tmp/con-listas.json
+                velo-anonimizado-….json</code
+              >
+              da 1 en los dos, justo lo que el aviso decía. Un número que no
+              cambió, como <code>atencion.edad</code>, sigue sin comillas.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ab6" /><label for="ab6"
+              >Suelta <code>tmp/roto.json</code>, al que le falta un valor en la
+              línea 5. El mensaje dice
+              <strong>«Ese archivo no es un JSON válido»</strong>, explica qué
+              hacer y añade <strong>«Velo se detuvo en la línea 5»</strong>. No
+              cita
+              <strong>ni un trozo del archivo ni el nombre de una clave</strong
+              >: solo el número de línea.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+        </ul>
+        <div class="kit">
+          <p>
+            <strong>Kit de prueba:</strong> los dos JSON salen del generador
+            sintético y el tercero se escribe a mano con una línea de terminal:
+          </p>
+          <pre>
+node docs/kit-de-prueba/generador.mjs --filas 2000 --seed 42 --perfil anidado    --formato json --salida tmp/anidado.json
+node docs/kit-de-prueba/generador.mjs --filas 500  --seed 42 --perfil con-listas --formato json --salida tmp/con-listas.json
+printf '[\n{"a": 1,\n"b": 2},\n{"a": 3,\n"b": }\n]\n' &gt; tmp/roto.json</pre>
+          <p class="chica suave" style="margin: 6px 0 0">
+            <code>anidado</code> trae objetos dentro de objetos;
+            <code>con-listas</code> le suma <code>contactos[]</code> y
+            <code>etiquetas[]</code>. Con <code>pnpm kit:generar --</code>
+            delante funcionan igual.
+          </p>
+        </div>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> una lista que salga sin tratar
+            sin que la pantalla lo haya dicho <em>antes</em> de transformar, un
+            error de JSON que cite un pedazo del archivo o el nombre de una
+            clave, y una bóveda ofrecida para un JSON.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">AC</span>
+          <h2>PDF e imágenes: limpiar lo que el archivo dice de sí mismo</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~30 min · el cuarto y el
+          quinto formato. Aquí Velo no transforma datos: quita los metadatos,
+          los comprueba y dice, antes que nada, lo que NO toca. Usa los archivos
+          del kit de abajo; son sintéticos, con autores, cédulas y coordenadas
+          inventados.
+        </p>
+        <ul class="pasos">
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ac1" /><label for="ac1"
+              >Suelta <code>tmp/foto-s42.jpg</code> (es una imagen pequeña, de
+              64 × 48 píxeles, a propósito). La etapa dice
+              <strong>«Leyendo lo que el archivo dice de sí mismo»</strong>, sin
+              barra y sin «0 filas leídas». El diagnóstico se titula
+              <strong>«Diagnóstico de metadatos»</strong> y su tamaño termina en
+              <strong>«JPEG según su contenido»</strong>. En
+              <strong>«Qué dice el archivo de sí mismo»</strong> hay una fila
+              por campo (unos 38): cámara, programa, fechas, GPS, autor…, cada
+              una con <strong>dónde vive</strong> (EXIF, GPS, XMP, IPTC,
+              Comentario), <strong>qué revela</strong> (con símbolo y texto) y
+              una <strong>muestra enmascarada</strong> como
+              <code>Val***20</code>: <strong>ninguna</strong> es un valor
+              completo. Busca la fila <code>Artist</code> (autoría): en la
+              última columna dice
+              <strong>«Contiene: Cédula de ciudadanía (formato)»</strong> con
+              «Por su forma». Velo vio una cédula <em>dentro</em> del campo del
+              autor, no que el campo entero sea una.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="ac2" /><label for="ac2"
+              ><strong
+                >Juicio humano — el límite, leído como un extraño.</strong
+              >
+              Arriba de la tabla está el panel
+              <strong>«Qué limpia Velo y qué no toca»</strong>. Sin ayuda, di en
+              voz alta:
+              <strong>¿qué va a cambiar en este archivo y qué NO?</strong> Debe
+              quedar claro que Velo limpia
+              <em>lo que el archivo dice de sí mismo</em> y que
+              <strong>no toca lo que se ve en la imagen</strong>
+              (una cara, una placa), con el mismo peso visual que lo que sí
+              hace, y no escondido bajo la tabla. Si te quedas con la idea de
+              que después de limpiar la foto «queda anónima», es un hallazgo.
+              <span class="origen origen-nuevo">Nuevo · S6</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ac3" /><label for="ac3"
+              >En <strong>«Qué se quita y qué se conserva»</strong>: lo que se
+              quita son el bloque EXIF, la miniatura incrustada, las notas
+              privadas del fabricante, el XMP, el IPTC, el comentario y
+              <strong>«Bytes que sobran tras el final del archivo»</strong>,
+              cada uno con su marcador técnico, cuántos hay y su tamaño; lo que
+              se conserva son la cabecera JFIF y la
+              <strong>orientación de la foto</strong>. En los avisos dice que se
+              conserva la orientación (un bloque EXIF mínimo con solo ese dato)
+              para que la foto no se gire. Una nota aclara que la limpieza es
+              por <strong>lista blanca</strong>: lo que Velo no sabe nombrar se
+              quita igual.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ac4" /><label for="ac4"
+              >Pulsa <strong>«Limpiar este archivo»</strong> y luego
+              <strong>«Limpiar»</strong>. Verás «Reescribiendo el archivo sin
+              sus metadatos» y después «Volviendo a leer el archivo limpio, para
+              comprobarlo». El resultado,
+              <strong>«Esto es lo que Velo quitó»</strong>, dice cuántos campos
+              con nombre tenía, cuántos bloques se quitaron, el tamaño antes →
+              después (de unos 5 KB a menos de 1 KB) y
+              <strong
+                >«Velo volvió a leer el archivo limpio: 0 campos con
+                nombre»</strong
+              >. A pie de resultado repite
+              <strong
+                >«Qué no cambió: el texto de las páginas y lo que se ve en la
+                imagen…»</strong
+              >. Guarda la copia: se llama <strong>velo-limpio-</strong> + los 8
+              primeros caracteres del SHA-256 que imprimió el generador +
+              <strong>.jpg</strong>.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="ac5" /><label for="ac5"
+              ><strong>Juicio humano — ¿es la misma foto?</strong> Abre en el
+              visor del sistema (Vista Previa, Fotos, el visor de Windows)
+              <code>tmp/foto-s42.jpg</code> y la copia limpia, una al lado de la
+              otra y con zoom. Deben verse
+              <strong
+                >idénticas: las mismas cuatro bandas de color, en la misma
+                posición</strong
+              >, y la limpia
+              <strong>no debe verse girada ni de lado</strong> respecto de la
+              original. Después mira la información de la copia limpia (en Vista
+              Previa: Herramientas → Mostrar inspector): ya no hay cámara, ni
+              ubicación, ni autor, ni fechas. Una diferencia de color, de giro o
+              de nitidez es un hallazgo grave.
+              <span class="origen origen-nuevo">Nuevo · S6</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ac6" /><label for="ac6"
+              >Mira la vista previa del
+              <strong>certificado de la limpieza</strong> y descárgalo (<code
+                >velo-limpieza-<em>8 caracteres</em>.html</code
+              >; <code>velo-cleaning-…</code> en inglés). Abre con el
+              <strong>límite</strong> —«Se limpió lo que el archivo dice de sí
+              mismo, no lo que muestra»— <em>antes</em> de cualquier lista, y
+              lleva <strong>dos huellas SHA-256</strong>. Verifícalas:
+              <code>shasum -a 256 tmp/foto-s42.jpg</code> es la huella del
+              original, y <code>shasum -a 256 velo-limpio-….jpg</code> es la del
+              «archivo que SALIÓ». Luego busca lo que estaba escondido:
+              <code
+                >grep -a -c -e Valentina -e 1074977120 -e RESTO-DE-EDICION
+                tmp/foto-s42.jpg velo-limpio-….jpg velo-limpieza-….html</code
+              >
+              da un número mayor que 0 en el original y
+              <strong>0 en la copia limpia y en el certificado</strong>: el
+              certificado nombra los campos con muestras enmascaradas, nunca el
+              valor completo.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ac7" /><label for="ac7"
+              >Suelta <code>tmp/documento-s42.pdf</code>. En
+              <strong>«La historia del PDF»</strong> dice
+              <strong>«Este PDF guarda 2 versiones dentro»</strong> y explica
+              por qué: la versión anterior se queda aunque no se vea (un autor
+              anterior, un texto reemplazado). En la tabla hay filas de
+              <strong>«Versión anterior del PDF»</strong>, y la del autor de esa
+              versión dice
+              <strong>«Contiene: Cédula de ciudadanía (formato)»</strong>. La
+              versión vigente trae otro autor con un número de 8 dígitos al
+              final que Velo <strong>no</strong> marca como cédula: sin un
+              encabezado que lo respalde, un número de 6 a 8 dígitos puede ser
+              cualquier cosa (límite declarado, no un fallo). Limpia: el
+              resultado dice
+              <strong>«Versiones anteriores quitadas: 1»</strong> y
+              <strong>«El PDF limpio guarda una sola versión»</strong>, y
+              muestra un <strong>identificador nuevo del documento</strong>.
+              Compruébalo:
+              <code
+                >grep -a -c "%%EOF" tmp/documento-s42.pdf
+                velo-limpio-….pdf</code
+              >
+              da 2 en el original y 1 en la limpia.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="ac8" /><label for="ac8"
+              ><strong>Juicio humano — ¿es el mismo documento?</strong> Abre la
+              copia limpia del PDF en tu visor, junto al original: una sola
+              página con la línea
+              <strong>«Documento sintetico de prueba - Velo»</strong>, igual en
+              los dos. Velo prometió no tocar la página, y no la tocó: también
+              por eso, si esa línea fuera un nombre, seguiría ahí. Si el visor
+              protesta, muestra otra cosa o la página sale distinta, es un
+              hallazgo grave.
+              <span class="origen origen-nuevo">Nuevo · S6</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ac9" /><label for="ac9"
+              >En los avisos del mismo PDF:
+              <strong>«Anotaciones con autor: 1»</strong>, y que Velo las enseña
+              pero <strong>no las limpia</strong>: «el nombre de quien comentó
+              sigue dentro de la copia limpia». Compruébalo con
+              <code
+                >grep -a -c "Luisa Moreno" tmp/documento-s42.pdf
+                velo-limpio-….pdf</code
+              >: da 1 en los dos, el autor del comentario sobrevivió, como el
+              aviso decía. En cambio
+              <code>grep -a -c "Sebastian Jimenez"</code> pasa de 2 a 0: ese
+              autor sí estaba en los metadatos.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ac10" /><label for="ac10"
+              >Suelta <code>tmp/documento-cifrado-s42.pdf</code>: Velo
+              <strong>no lo abre</strong> y dice
+              <strong>«Ese PDF está protegido con contraseña»</strong>, que no
+              pide contraseñas y qué hacer (quitar la protección con el programa
+              que lo creó y soltar esa copia); ni una palabra técnica, ni un
+              pedazo del contenido. Después suelta
+              <code>tmp/documento-firmado-s42.pdf</code>: sí se abre, y en los
+              avisos dice
+              <strong
+                >«Este PDF está firmado. Reescribirlo para limpiarlo invalida la
+                firma»</strong
+              >
+              (y avisa también de campos de formulario). La decisión de limpiar
+              es tuya, con el costo a la vista.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ac11" /><label for="ac11"
+              >Haz <code>cp tmp/foto-s42.png tmp/foto-disfrazada.jpg</code> y
+              suelta <code>foto-disfrazada.jpg</code>. El diagnóstico dice
+              <strong>«PNG según su contenido»</strong> y trae el aviso
+              <strong
+                >«La extensión del archivo no coincide con su contenido»</strong
+              >: Velo lo trató por lo que es. Limpia: la copia sale como
+              <strong>velo-limpio-….png</strong>, no <code>.jpg</code>.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ac12" /><label for="ac12"
+              >Después de limpiar, pulsa
+              <strong>«Anotar en mi bitácora»</strong>: el panel dice qué se
+              anota (el nombre del archivo, la fecha, el formato, cuántos campos
+              con nombre, cuántos bloques y las dos huellas) y que
+              <strong>«los valores de los metadatos no se anotan»</strong>.
+              Guárdala con una frase de paso y abre <code>/bitacora</code> con
+              ese archivo: la entrada dice
+              <strong>«… · limpieza de metadatos · JPEG»</strong> y, desplegada,
+              muestra el formato, los campos con nombre, los bloques quitados,
+              las dos huellas y la nota de que
+              <strong>el contenido no se tocó</strong>.
+              <strong>No hay</strong> filas, técnicas ni cifras de riesgo: Velo
+              no inventa una medición que no hizo.
+              <span class="origen origen-nuevo">Nuevo · S6</span></label
+            >
+          </li>
+        </ul>
+        <div class="kit">
+          <p>
+            <strong>Kit de prueba:</strong> binarios válidos —un visor los abre—
+            cargados de metadatos inventados. Misma semilla, mismos bytes:
+          </p>
+          <pre>
+node docs/kit-de-prueba/generador.mjs --formato jpeg --seed 42 --salida tmp/foto-s42.jpg
+node docs/kit-de-prueba/generador.mjs --formato png  --seed 42 --salida tmp/foto-s42.png
+node docs/kit-de-prueba/generador.mjs --formato webp --seed 42 --salida tmp/foto-s42.webp
+node docs/kit-de-prueba/generador.mjs --formato pdf --perfil con-revisiones --seed 42 --salida tmp/documento-s42.pdf
+node docs/kit-de-prueba/generador.mjs --formato pdf --perfil cifrado        --seed 42 --salida tmp/documento-cifrado-s42.pdf
+node docs/kit-de-prueba/generador.mjs --formato pdf --perfil firmado        --seed 42 --salida tmp/documento-firmado-s42.pdf</pre>
+          <p class="chica suave" style="margin: 6px 0 0">
+            Los perfiles de PDF son <code>simple</code>,
+            <code>con-revisiones</code>, <code>cifrado</code> y
+            <code>firmado</code>. Cada comando imprime el SHA-256 del archivo
+            que escribe: sus 8 primeros caracteres son los que debe llevar el
+            nombre de la copia limpia. El WebP (<code>foto-s42.webp</code>) se
+            limpia igual que el JPEG y el PNG; si te sobra tiempo, repite con él
+            los pasos de la foto.
+          </p>
+        </div>
+        <div class="diferido">
+          <p>
+            <strong>Pendiente de decisión:</strong> los <code>.heic</code> (las
+            fotos de los iPhone) no se leen todavía. Si sueltas uno, Velo dice
+            «no reconoce ese tipo de archivo»: es el comportamiento vigente, no
+            un hallazgo.
+          </p>
+        </div>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> cualquier frase que sugiera que
+            limpiar los metadatos vuelve anónimo el archivo; que el límite («no
+            toca el texto ni lo que se ve») falte en el diagnóstico, en el
+            resultado o en el certificado; un valor completo de un metadato en
+            pantalla o en el certificado; una copia limpia que se vea distinta o
+            girada; y un archivo entregado cuando la comprobación encontró algo.
+          </p>
+        </div>
       </section>
 
       <footer>
@@ -2665,6 +3105,30 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               pesa igual?) que ninguna máquina puede dar. Se corren en el ensayo
               general del H-2.
             </li>
+            <li>
+              <strong>S6 · 2 de noviembre de 2026:</strong> las 132 de los
+              sprints 001–005 pasan a <strong>regresión</strong> y se suman los
+              bloques <strong>AB</strong> (JSON: la estructura, las listas que
+              salen sin tratar y el archivo de salida) y <strong>AC</strong>
+              (PDF e imágenes: el diagnóstico de metadatos, la limpieza
+              comprobada, el certificado con sus dos huellas y la bitácora).
+              <strong>Ninguna prueba eliminada.</strong> Dos se
+              <strong>corrigieron</strong> porque una frase suya caducó:
+              <strong>D3</strong> decía que «en el próximo sprint llegan
+              estimadores» (llegaron en el S4) y <strong>F1</strong> pedía
+              soltar «una imagen» para ver el error de formato, cuando desde
+              este sprint una imagen es un archivo que Velo limpia. El gate ⭐
+              pasa de 28 a <strong>32 pruebas</strong> y de ~90 a
+              <strong>~100 min</strong>; las cuatro nuevas son juicios humanos
+              (la foto limpia se ve igual y no sale girada, el PDF limpio es el
+              mismo documento, se entiende qué lista de un JSON sale sin tratar,
+              se entiende qué no toca Velo). El gate corto ⭐⭐ no cambia: sigue
+              en 6 paradas. También se corrigieron las cifras del encabezado,
+              que habían quedado atrás: decía «las otras 20 ⭐» cuando eran 22
+              desde el S5, y 732 pruebas unitarias y 117 e2e cuando el cierre
+              del S5 midió 964 y 203; ahora son las del árbol de trabajo del S6
+              (1.788 y 248, contadas al cierre con las omitidas).
+            </li>
           </ul>
         </details>
       </footer>
@@ -2674,9 +3138,9 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
       (function () {
         // NS VERSIONADO POR SPRINT: al publicar la guía de un sprint nuevo se cambia s001 — así una
         // regresión sin correr jamás aparece marcada como hecha por el sprint anterior.
-        // S2: s001 → s002. S3: s002 → s003. S4: s003 → s004. S5: s004 → s005. Las heredadas vuelven a
-        // estar sin marcar, que es el punto.
-        var NS = "guia-anonimizador:s005:";
+        // S2: s001 → s002. S3: s002 → s003. S4: s003 → s004. S5: s004 → s005. S6: s005 → s006. Las
+        // heredadas vuelven a estar sin marcar, que es el punto.
+        var NS = "guia-anonimizador:s006:";
         var casillas = Array.prototype.slice.call(
           document.querySelectorAll('input[type="checkbox"]'),
         );
@@ -2726,7 +3190,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               b.getAttribute("data-filtro") === filtro,
             );
           });
-          // MODO RECORRIDO: el gate ⭐ del ciclo son 28 pruebas nacidas en cinco sprints distintos y
+          // MODO RECORRIDO: el gate ⭐ del ciclo son 32 pruebas nacidas en seis sprints distintos y
           // repartidas por sus bloques. Numerarlas de corrido es lo que las convierte en UN camino en vez
           // de cuatro listas pegadas — sin mover nada de sitio: el orden del documento YA es el del
           // recorrido, lo que faltaba era que se viera.

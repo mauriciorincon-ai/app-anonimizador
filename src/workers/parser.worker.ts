@@ -35,6 +35,18 @@ import { clasificar, type Diagnostico } from "@/engine/clasificador";
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { filasDeCsv, nombreDelArchivoAnonimizado } from "@/engine/csv";
 import { medirDiversidad } from "@/engine/diversidad";
+import { escribirJson } from "@/engine/json/escritor";
+import { leerJson, type LecturaJson } from "@/engine/json/lector";
+import { ErrorDeJson } from "@/engine/json/tipos";
+import type { EstructuraJson } from "@/engine/json/tipos";
+import {
+  EXTENSION_DEL_FORMATO,
+  MIME_DEL_FORMATO,
+} from "@/engine/metadatos/deteccion";
+import {
+  ErrorDeMetadatos,
+  type FormatoBinario,
+} from "@/engine/metadatos/tipos";
 import { muestraDeColumna } from "@/engine/muestra";
 import { hashDePolitica, type Politica } from "@/engine/politica";
 import {
@@ -50,7 +62,7 @@ import {
 import { estimarRiesgo } from "@/engine/riesgo-estimado";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
-import { formatoDeArchivo } from "@/lib/archivo";
+import { esDeMetadatos, formatoDeArchivo, motivoDelTope } from "@/lib/archivo";
 import {
   abrirBitacora,
   sellarBitacora,
@@ -67,15 +79,29 @@ import { Sha256 } from "@/lib/sha256";
 
 import type {
   EtapaDelWorker,
+  FormatoDeArchivo,
   Informe,
   MensajeAlWorker,
   MensajeDelWorker,
 } from "./contrato";
+import { ArchivoCambio, fuenteDeArchivo } from "./json";
+import { FormatoNoCoincide, leerBinario, limpiarBinario } from "./metadatos";
 
 const alcance = self as unknown as DedicatedWorkerGlobalScope;
 
 /** La tabla vive en el worker entre mensajes: la UI la consulta, nunca la recibe. */
 let tabla: TablaColumnar | null = null;
+
+/** Qué formato tenía el archivo que entró: decide cómo se escribe el de salida. */
+let formatoOriginal: FormatoDeArchivo = "csv";
+
+/**
+ * Solo en un JSON: la lectura (con las clases de cada celda) y el archivo, que se vuelve a leer
+ * UNA vez más para escribir la salida con la estructura y el orden de claves del original. El
+ * archivo no se guarda en memoria: se guarda la referencia, y se lee por trozos.
+ */
+let lecturaJson: LecturaJson | null = null;
+let archivoDeEntrada: File | null = null;
 
 /** El diagnóstico se guarda porque la transformación lo necesita: qué es cada columna. */
 let diagnosticoActual: Diagnostico | null = null;
@@ -121,11 +147,176 @@ async function analizar(archivo: File): Promise<void> {
     return;
   }
 
-  if (formatoDeArchivo(archivo.name) === "excel") {
+  const formato = formatoDeArchivo(archivo.name);
+  if (formato !== null && esDeMetadatos(formato)) {
+    void leerMetadatos(archivo, formato);
+    return;
+  }
+  if (formato === "excel") {
     void leerExcel(archivo);
     return;
   }
+  if (formato === "json") {
+    void leerJsonDelArchivo(archivo);
+    return;
+  }
   leerCsv(archivo);
+}
+
+/**
+ * JSON y JSON Lines. El lector es PROPIO (ver `src/engine/json/`): `JSON.parse` reordena las claves
+ * enteras, pierde los números que no caben en un double y, cuando falla, cita el contenido. Aquí
+ * solo se le da el archivo como texto y se traduce su único error a un mensaje que NO cita nada:
+ * la clave del motivo y, si la hay, la línea.
+ */
+async function leerJsonDelArchivo(archivo: File): Promise<void> {
+  const inicio = performance.now();
+  if (archivo.size === 0) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+  try {
+    const lectura = await leerJson(
+      fuenteDeArchivo(archivo, {
+        alAvanzar: (leidos) => avisar("leyendo", 0, leidos, archivo.size),
+      }),
+    );
+    tabla = lectura.tabla;
+    lecturaJson = lectura;
+    archivoDeEntrada = archivo;
+    formatoOriginal = "json";
+    diagnosticar(
+      archivo,
+      "json",
+      performance.now() - inicio,
+      lectura.estructura,
+    );
+  } catch (error) {
+    // El mensaje de la excepción NUNCA se reenvía: solo la clave del motivo y el número de línea.
+    if (error instanceof ErrorDeJson)
+      enviar({
+        tipo: "error",
+        motivo: error.motivo,
+        ...(error.linea === null ? {} : { linea: error.linea }),
+      });
+    else enviar({ tipo: "error", motivo: "lectura-fallida" });
+  }
+}
+
+// ── PDF e imágenes (S6): metadatos, no tablas ─────────────────────────────────────────────────
+//
+// El archivo entero entra a la memoria del worker —un PDF no se reescribe por trozos— y por eso
+// tiene tope por bytes, comprobado aquí otra vez aunque la página ya lo hizo: la frontera no se fía
+// de lo que diga el otro lado. Lo que cruza son nombres de campo, valores enmascarados y tamaños.
+
+/** El archivo que se diagnosticó, para limpiarlo sin volver a pedirlo. Muere con el worker. */
+let binario: {
+  readonly bytes: Uint8Array;
+  readonly formato: FormatoBinario;
+  readonly campos: number;
+  readonly revisiones: number | null;
+} | null = null;
+
+async function leerMetadatos(
+  archivo: File,
+  formato: "pdf" | "imagen",
+): Promise<void> {
+  const inicio = performance.now();
+  if (archivo.size === 0) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+  const tope = motivoDelTope(formato, archivo.size);
+  if (tope) {
+    enviar({ tipo: "error", motivo: tope });
+    return;
+  }
+  try {
+    avisar("leyendo-metadatos", 0, 0, archivo.size);
+    const bytes = new Uint8Array(await archivo.arrayBuffer());
+    const msLectura = performance.now() - inicio;
+    const lectura = await leerBinario(bytes, archivo.name);
+    binario = {
+      bytes,
+      formato: lectura.formato,
+      campos: lectura.diagnostico.campos.length,
+      revisiones: lectura.analisis.revisiones?.revisiones ?? null,
+    };
+    enviar({
+      tipo: "metadatos-listos",
+      informe: {
+        archivo: {
+          nombre: archivo.name,
+          bytes: archivo.size,
+          formato: lectura.formato,
+          sha256: huella,
+        },
+        metadatos: lectura.diagnostico,
+        medicion: {
+          msLectura: Math.round(msLectura),
+          msDiagnostico: Math.round(performance.now() - inicio - msLectura),
+          heapMb: heapUsadoMb(),
+        },
+      },
+    });
+  } catch (error) {
+    // El mensaje de la excepción NUNCA se reenvía: un lector de PDF cita lo que no entendió.
+    enviar({ tipo: "error", motivo: motivoDeMetadatos(error, formato) });
+  }
+}
+
+function motivoDeMetadatos(
+  error: unknown,
+  formato: "pdf" | "imagen",
+): ErrorDeMetadatos["motivo"] | "formato-no-coincide" {
+  if (error instanceof ErrorDeMetadatos) return error.motivo;
+  if (error instanceof FormatoNoCoincide) return "formato-no-coincide";
+  return formato === "pdf" ? "pdf-ilegible" : "imagen-ilegible";
+}
+
+async function limpiar(): Promise<void> {
+  if (!binario) {
+    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+  const inicio = performance.now();
+  const { bytes, formato, campos, revisiones } = binario;
+  try {
+    avisar("limpiando", 0, 0, bytes.length);
+    const { limpieza, poscomprobacion } = await limpiarBinario(bytes, formato);
+    avisar("comprobando", 0, 0, limpieza.bytes.length);
+    // La huella de SALIDA se toma sobre los mismos bytes que forman el `Blob`, como en una tabla.
+    const sha256 = new Sha256().actualizar(limpieza.bytes).terminar();
+    // Los bytes nacen en un `ArrayBuffer` corriente (Velo no usa memoria compartida): el tipo
+    // amplio es de la firma de pdf-lib, no del dato.
+    const blob = new Blob([limpieza.bytes as Uint8Array<ArrayBuffer>], {
+      type: MIME_DEL_FORMATO[formato],
+    });
+    enviar({
+      tipo: "limpiado",
+      resumen: {
+        formato,
+        quitados: limpieza.quitados,
+        conservados: limpieza.conservados,
+        campos,
+        revisionesQuitadas: revisiones === null ? 0 : revisiones - 1,
+        idNuevo: limpieza.idNuevo,
+        poscomprobacion,
+        sha256,
+        bytes: blob.size,
+        ms: Math.round(performance.now() - inicio),
+      },
+      blob,
+      // El nombre sale de la huella del ORIGINAL, no de su nombre (que puede ser lo más sensible de
+      // todo) ni del idioma: el mismo archivo da siempre el mismo nombre.
+      nombre: `velo-limpio-${huella.slice(0, 8)}.${EXTENSION_DEL_FORMATO[formato]}`,
+    });
+  } catch (error) {
+    enviar({
+      tipo: "error",
+      motivo: motivoDeMetadatos(error, formato === "pdf" ? "pdf" : "imagen"),
+    });
+  }
 }
 
 /**
@@ -161,6 +352,7 @@ async function leerExcel(archivo: File): Promise<void> {
     const constructor = new ConstructorColumnar(matriz[0], matriz.length);
     for (let i = 1; i < matriz.length; i++) constructor.agregarFila(matriz[i]);
     tabla = constructor.finalizar();
+    formatoOriginal = "excel";
     diagnosticar(archivo, "excel", performance.now() - inicio);
   } catch {
     // El mensaje de la excepción NUNCA se reenvía: puede citar contenido de la hoja.
@@ -203,6 +395,7 @@ function leerCsv(archivo: File): void {
         return;
       }
       tabla = constructor.finalizar();
+      formatoOriginal = "csv";
       diagnosticar(archivo, "csv", performance.now() - inicio);
     },
     error() {
@@ -219,8 +412,9 @@ function leerCsv(archivo: File): void {
  */
 function diagnosticar(
   archivo: File,
-  formato: "csv" | "excel",
+  formato: FormatoDeArchivo,
   msLectura: number,
+  estructura?: EstructuraJson,
 ): void {
   if (!tabla) return;
   if (tabla.filas === 0) {
@@ -246,6 +440,7 @@ function diagnosticar(
     diagnostico,
     riesgo,
     advisor,
+    ...(estructura ? { estructura } : {}),
     medicion: {
       msLectura: Math.round(msLectura),
       msDiagnostico: Math.round(performance.now() - inicio),
@@ -307,7 +502,7 @@ async function derivar(frase: string, sal: string): Promise<void> {
   enviar({ tipo: "llave-lista", huella: proyecto.huella });
 }
 
-async function transformar(politica: Politica): Promise<void> {
+async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
   if (!tabla || !diagnosticoActual) {
     enviar({ tipo: "error", motivo: "sin-tabla" });
     return;
@@ -319,7 +514,10 @@ async function transformar(politica: Politica): Promise<void> {
 
   try {
     avisar("transformando", original.filas, 0, 0);
-    const resultado = await aplicarPolitica(original, politica, llave);
+    // El idioma del trabajo llega como dato (la pantalla al pulsar «transformar») y se queda en el
+    // resultado: el certificado lo lee de ahí, no del idioma que tenga la pantalla al descargarlo.
+    // `construirArchivo` no lee ningún idioma: la tabla que escribe ya nació en el del trabajo.
+    const resultado = await aplicarPolitica(original, politica, llave, idioma);
 
     avisar("midiendo-el-despues", original.filas, 0, 0);
     const sensibles = diagnostico.columnas
@@ -391,6 +589,7 @@ async function transformar(politica: Politica): Promise<void> {
       // del balance, ya ordenadas y con su gravedad decidida.
       resultado: {
         hashDePolitica: hashDeLaPolitica,
+        idioma,
         balance,
         utilidad: medirUtilidad(original, resultado.tabla),
         suprimidas: resultado.suprimidas,
@@ -410,12 +609,16 @@ async function transformar(politica: Politica): Promise<void> {
 /** Cuántas filas se juntan antes de cerrar un trozo del Blob. */
 const FILAS_POR_TROZO = 20_000;
 
-function construirArchivo(): void {
+async function construirArchivo(): Promise<void> {
   if (!transformada) {
     enviar({ tipo: "error", motivo: "sin-tabla" });
     return;
   }
   avisar("escribiendo", transformada.filas, 0, 0);
+  if (formatoOriginal === "json") {
+    await construirArchivoJson(transformada);
+    return;
+  }
 
   // El CSV se acumula en trozos y no en una sola cadena: 500.000 filas × 24 columnas son ~130 MB
   // de texto, y concatenarlos en un solo string obligaría a tener dos copias vivas al duplicar el
@@ -456,6 +659,67 @@ function construirArchivo(): void {
     tipo: "archivo",
     blob,
     nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica),
+    bytes: blob.size,
+    proposito: "anonimizado",
+    sha256: huellaDeSalida.terminar(),
+  });
+}
+
+/**
+ * La salida de un JSON: se vuelve a leer el archivo original y se reescribe registro a registro,
+ * poniendo en cada hoja lo que dice la tabla TRANSFORMADA. La huella de salida se calcula sobre los
+ * mismos trozos que forman el `Blob`, como en el CSV, y la de ENTRADA se vuelve a comprobar al
+ * terminar de leer: si el archivo cambió en el disco entre el diagnóstico y ahora, no se escribe
+ * nada, porque el certificado habría atado la huella de otro archivo.
+ */
+async function construirArchivoJson(
+  tablaTransformada: TablaColumnar,
+): Promise<void> {
+  if (!lecturaJson || !archivoDeEntrada) {
+    enviar({ tipo: "error", motivo: "sin-tabla" });
+    return;
+  }
+  const huellaDeSalida = new Sha256();
+  const codificador = new TextEncoder();
+  const trozos: string[] = [];
+  try {
+    const fuente = fuenteDeArchivo(archivoDeEntrada, {
+      huellaEsperada: huella,
+    });
+    for await (const trozo of escribirJson(
+      fuente,
+      lecturaJson,
+      tablaTransformada,
+    )) {
+      trozos.push(trozo);
+      huellaDeSalida.actualizar(codificador.encode(trozo));
+    }
+  } catch (error) {
+    // Nada del mensaje se reenvía: ni el de un parser ni el de un archivo que cambió.
+    enviar({
+      tipo: "error",
+      motivo:
+        error instanceof ArchivoCambio || !(error instanceof ErrorDeJson)
+          ? "lectura-fallida"
+          : error.motivo,
+    });
+    return;
+  }
+
+  const forma = lecturaJson.estructura.forma;
+  const blob = new Blob(trozos, {
+    type:
+      forma === "arreglo"
+        ? "application/json;charset=utf-8"
+        : "application/x-ndjson;charset=utf-8",
+  });
+  enviar({
+    tipo: "archivo",
+    blob,
+    nombre: nombreDelArchivoAnonimizado(
+      hashDeLaPolitica,
+      forma === "arreglo" ? "json" : "jsonl",
+    ),
     bytes: blob.size,
     proposito: "anonimizado",
     sha256: huellaDeSalida.terminar(),
@@ -800,8 +1064,9 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
   if (mensaje?.tipo === "analizar") void analizar(mensaje.archivo);
   if (mensaje?.tipo === "derivar-llave")
     void derivar(mensaje.frase, mensaje.sal);
-  if (mensaje?.tipo === "transformar") void transformar(mensaje.politica);
-  if (mensaje?.tipo === "construir-archivo") construirArchivo();
+  if (mensaje?.tipo === "transformar")
+    void transformar(mensaje.politica, mensaje.idioma);
+  if (mensaje?.tipo === "construir-archivo") void construirArchivo();
   if (mensaje?.tipo === "sellar-boveda") void sellar(mensaje.frase);
   if (mensaje?.tipo === "abrir-boveda")
     void abrir(mensaje.archivo, mensaje.frase);
@@ -816,4 +1081,5 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
     void abrirLaBitacora(mensaje.archivo, mensaje.frase);
   if (mensaje?.tipo === "sellar-bitacora")
     void sellarLaBitacora(mensaje.frase, mensaje.entrada);
+  if (mensaje?.tipo === "limpiar") void limpiar();
 });

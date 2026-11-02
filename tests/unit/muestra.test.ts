@@ -44,7 +44,7 @@ describe("A3 — el «después» se decide por valor, no por columna", () => {
     // usuario, en pantalla, por culpa de una fila vecina.
     const tabla = tablaDe(["ciudad"], CIUDADES);
     const politica = politicaDe({ tipo: "generalizar-prefijo", caracteres: 2 });
-    const nueva = await aplicarPolitica(tabla, politica, null);
+    const nueva = await aplicarPolitica(tabla, politica, null, "es");
 
     const muestra = muestraDeColumna(
       columna(tabla, "ciudad"),
@@ -76,7 +76,7 @@ describe("A3 — el «después» se decide por valor, no por columna", () => {
   it("cuando NADA cambió, todo va enmascarado y la columna se marca como tal", async () => {
     const tabla = tablaDe(["ciudad"], CIUDADES);
     const politica = politicaDe({ tipo: "conservar" });
-    const nueva = await aplicarPolitica(tabla, politica, null);
+    const nueva = await aplicarPolitica(tabla, politica, null, "es");
 
     const muestra = muestraDeColumna(
       columna(tabla, "ciudad"),
@@ -116,7 +116,7 @@ describe("M1 — el cambio se mide sobre el archivo, no sobre las 6 filas de la 
     ]);
     const tabla = tablaDe(["ciudad"], filas);
     const politica = politicaDe({ tipo: "generalizar-prefijo", caracteres: 2 });
-    const nueva = await aplicarPolitica(tabla, politica, null);
+    const nueva = await aplicarPolitica(tabla, politica, null, "es");
 
     expect(
       columnaCambio(columna(tabla, "ciudad"), columna(nueva.tabla, "ciudad")),
@@ -132,7 +132,7 @@ describe("M1 — el cambio se mide sobre el archivo, no sobre las 6 filas de la 
     ]);
     const tabla = tablaDe(["ciudad"], filas);
     const politica = politicaDe({ tipo: "generalizar-prefijo", caracteres: 2 });
-    const nueva = await aplicarPolitica(tabla, politica, null);
+    const nueva = await aplicarPolitica(tabla, politica, null, "es");
 
     const muestra = muestraDeColumna(
       columna(tabla, "ciudad"),
@@ -149,7 +149,7 @@ describe("M1 — el cambio se mide sobre el archivo, no sobre las 6 filas de la 
   it("una columna sensible intacta sigue sin enseñarse", async () => {
     const tabla = tablaDe(["ciudad"], CIUDADES);
     const politica = politicaDe({ tipo: "conservar" });
-    const nueva = await aplicarPolitica(tabla, politica, null);
+    const nueva = await aplicarPolitica(tabla, politica, null, "es");
 
     const muestra = muestraDeColumna(
       columna(tabla, "ciudad"),

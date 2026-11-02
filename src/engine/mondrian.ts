@@ -37,18 +37,38 @@ import {
   type ColumnaColumnar,
   type TablaColumnar,
 } from "./columnar";
+import { decir, type Idioma } from "@/lib/idioma";
+import { MOTOR_TRANSFORMAR as T } from "@/lib/idioma/textos/motor-transformar";
+
 import { clasesDeEquivalencia } from "./riesgo";
 
-/** Separador de un intervalo OBSERVADO: `"18 a 39"`, `"1987-03-14 a 1990-05-02"`. */
-const SEPARADOR = " a ";
 /**
- * Sufijo cuando el intervalo también cubre celdas vacías.
+ * Los dos rótulos que Mondrian ESCRIBE dentro del archivo, ya en el idioma del trabajo.
  *
- * No es un adorno: la etiqueta se aplica a TODAS las filas de la partición, vacías incluidas —si
- * no, dos filas de la misma clase saldrían con valores distintos y el k prometido se partiría en
- * dos. Decir «o vacío» es lo que impide que la celda afirme un dato que nunca existió.
+ * - `separador` va entre los extremos de un intervalo OBSERVADO: `"18 a 39"` / `"18 to 39"`,
+ *   `"1987-03-14 a 1990-05-02"`.
+ * - `sufijoVacio` va cuando el intervalo también cubre celdas vacías. No es un adorno: la etiqueta
+ *   se aplica a TODAS las filas de la partición, vacías incluidas —si no, dos filas de la misma
+ *   clase saldrían con valores distintos y el k prometido se partiría en dos. Decir «o vacío» es lo
+ *   que impide que la celda afirme un dato que nunca existió.
+ *
+ * El texto vive en el catálogo (`salida.mondrian.*`) y el idioma llega como PARÁMETRO OBLIGATORIO:
+ * el motor no lo lee de ninguna parte (leerlo sería leer `window`, y el gate de determinismo no lo
+ * vería). Mismo input + misma política + misma llave + mismo idioma ⇒ mismo archivo, byte por byte;
+ * el español es, palabra por palabra, el que el archivo siempre llevó.
  */
-const SUFIJO_VACIO = " (o vacío)";
+interface Rotulos {
+  readonly separador: string;
+  readonly sufijoVacio: string;
+}
+
+/** Se resuelve UNA vez por corrida: `etiquetar` está en el bucle caliente y no pasa por `decir`. */
+function rotulosDe(idioma: Idioma): Rotulos {
+  return {
+    separador: decir(T["salida.mondrian.separador"], idioma),
+    sufijoVacio: decir(T["salida.mondrian.sufijoVacio"], idioma),
+  };
+}
 
 /** Un valor es numérico si lo es del todo: nada de `Number("1e5")` ni de espacios creativos. */
 const NUMERICO = /^-?\d+(?:[.,]\d+)?$/;
@@ -171,6 +191,7 @@ function etiquetar(
   minimoNoVacio: number,
   maximo: number,
   hayVacio: boolean,
+  rotulos: Rotulos,
 ): string {
   // Toda la partición está en blanco en esta columna: sigue en blanco. Inventar un intervalo
   // afirmaría un dato que nadie escribió.
@@ -180,8 +201,8 @@ function etiquetar(
   const base =
     minimoNoVacio === maximo
       ? valoresOrdenados[maximo]
-      : `${valoresOrdenados[minimoNoVacio]}${SEPARADOR}${valoresOrdenados[maximo]}`;
-  return hayVacio ? `${base}${SUFIJO_VACIO}` : base;
+      : `${valoresOrdenados[minimoNoVacio]}${rotulos.separador}${valoresOrdenados[maximo]}`;
+  return hayVacio ? `${base}${rotulos.sufijoVacio}` : base;
 }
 
 /**
@@ -370,12 +391,17 @@ function kDeLaTabla(
  * generaliza todo lo que puede y lo devuelve dicho —`alcanzado: false`— en vez de suprimir filas
  * por su cuenta. Borrar registros del archivo de alguien es una decisión suya, y además silenciosa:
  * un archivo con menos filas de las que entró no se nota mirándolo.
+ *
+ * `idioma` es el del TRABAJO (la pantalla al pulsar «transformar») y solo decide los dos rótulos
+ * que se escriben en las etiquetas; el reparto, el k y el orden son idénticos en los dos idiomas.
  */
 export function anonimizarConMondrian(
   tabla: TablaColumnar,
   nombresDeDimension: readonly string[],
   kObjetivo: number,
+  idioma: Idioma,
 ): ResultadoDeMondrian {
+  const rotulos = rotulosDe(idioma);
   // En el ORDEN DE LA TABLA, no en el de la lista: el desempate del contrato es «menor índice de
   // columna», y ese índice tiene que significar siempre lo mismo.
   const pedidas = new Set(nombresDeDimension);
@@ -437,7 +463,13 @@ export function anonimizarConMondrian(
         if (ordinal > maximo) maximo = ordinal;
       }
       etiquetas[j].push(
-        etiquetar(dimensiones[j].proyeccion, minimoNoVacio, maximo, hayVacio),
+        etiquetar(
+          dimensiones[j].proyeccion,
+          minimoNoVacio,
+          maximo,
+          hayVacio,
+          rotulos,
+        ),
       );
     }
     for (let i = ini; i < fin; i++) particionPorFila[indices[i]] = p;

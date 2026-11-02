@@ -13,10 +13,3 @@ onlyBuiltDependencies:
   - '@tailwindcss/oxide'
 ignoredBuiltDependencies:
   - '@sentry/cli'
-
-# Regla 18 · avisos de `pnpm audit` (2026-11-02) con parche publicado cuyo paquete padre aún no lo
-# toma: `vite` (vía vitest) y `fast-uri` (vía el plugin de webpack de @sentry/nextjs). Piso en la
-# versión parchada, misma línea mayor. Quitar cada override cuando su padre suba por su cuenta.
-overrides:
-  vite: ^8.2.4
-  fast-uri: ^3.1.7

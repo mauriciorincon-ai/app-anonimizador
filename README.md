@@ -37,7 +37,7 @@ de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
 
 ## Qué hace hoy
 
-**Sprints 001–005 · El diagnóstico, el disfraz, el regreso, el cierre y el idioma.** Velo lee, mide,
+**Sprints 001–006 · El diagnóstico, el disfraz, el regreso, el cierre, el idioma y los formatos.** Velo lee, mide,
 **transforma, devuelve** y ahora **deja constancia**. El círculo está cerrado —entregas sin
 entregar, y recuperas— y además queda por escrito.
 
@@ -55,7 +55,10 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
 - **El regreso**: cargas la bóveda y el archivo que te devolvieron, y los valores originales
   vuelven. Por **valor**, no por posición: sobrevive a que el tercero reordene filas, añada
   columnas, borre otras y corrija valores a mano — y su trabajo se respeta.
-- **Carga** de CSV (sin tope) y Excel (hasta 150 MB, medido) con arrastre y con teclado.
+- **Carga** de CSV (sin tope), Excel (hasta 150 MB, medido) y JSON —un arreglo de objetos o JSON
+  Lines, hasta 20 millones de celdas—, con arrastre y con teclado. En un JSON, cada ruta anidada
+  (`paciente.contacto.correo`) es una columna; las listas se declaran y salen sin tocar, y no hay
+  regreso (el regreso lee solo CSV).
 - **Detección por columna** con validadores que **citan su fuente oficial en el código**: NIT con el
   mod 11 de la DIAN, tarjetas con Luhn (ISO/IEC 7812-1), IBAN con el 97-10 (ISO 13616), celulares y
   fijos de la CRC, placas, cédula (estructural — no existe dígito de verificación público),
@@ -89,8 +92,13 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   **l-diversity** y **t-closeness** medidas y reportadas.
 - **Balance antes/después** con una regla dura: si algo quedó sin tratar, **eso se lee antes que
   cualquier porcentaje de reducción**, y la cifra pierde el tratamiento de titular.
-- **Archivo CSV anonimizado** escrito por el navegador —nunca por un servidor— y su **reporte del
-  tratamiento**, que declara qué se le hizo y que su huella es la del archivo que _entró_.
+- **Archivo anonimizado** (un CSV, o un JSON en la forma en que entró) escrito por el navegador
+  —nunca por un servidor— y su **reporte del tratamiento**, que declara qué se le hizo y que su
+  huella es la del archivo que _entró_.
+- **Limpieza de metadatos de PDF, JPEG, PNG y WebP**: Velo enseña lo que el archivo dice de sí
+  mismo (autor, programa, fechas, GPS, identificadores, las versiones anteriores de un PDF) con
+  muestras enmascaradas, y entrega una copia sin eso y un certificado con las dos huellas. Limpia
+  metadatos, no el texto de las páginas ni lo que se ve en una foto, y lo dice antes que nada.
 
 Rendimiento medido: **500.000 filas × 24 columnas (130 MB) en unos 5 segundos** para el diagnóstico
 y **~1,4 s** para el reparto de Mondrian sobre 8 cuasi-identificadores, con **cero tareas largas** en

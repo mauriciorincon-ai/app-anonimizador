@@ -15,15 +15,18 @@ import { useSyncExternalStore } from "react";
 
 import type { Politica } from "@/engine/politica";
 import type { RiesgoEstimado } from "@/engine/riesgo-estimado";
-import { excedeElTope, excelGrande, formatoDeArchivo } from "@/lib/archivo";
+import { excelGrande, formatoDeArchivo, motivoDelTope } from "@/lib/archivo";
+import { idiomaActual } from "@/lib/idioma/estado";
 import { generarSal } from "@/lib/llave";
 import type {
   EtapaDelWorker,
   FormatoDeArchivo,
   Informe,
+  InformeDeMetadatos,
   MensajeDelWorker,
   MotivoDeError,
   ResultadoDeTransformacion,
+  ResumenDeLimpieza,
 } from "@/workers/contrato";
 
 export type EstadoDeSesion =
@@ -41,7 +44,13 @@ export type EstadoDeSesion =
       bytesTotales: number;
     }
   | { fase: "listo"; informe: Informe }
-  | { fase: "error"; motivo: MotivoDeError; nombre: string };
+  /**
+   * Un PDF o una imagen ya leídos (S6). Fase propia y no un `listo` con otro informe: así ninguna
+   * pantalla de tablas puede recibir uno por accidente —el tipo no se lo deja— y la que lo recibe
+   * sabe desde la primera línea que aquí no hay filas ni riesgo que medir.
+   */
+  | { fase: "metadatos"; informe: InformeDeMetadatos }
+  | { fase: "error"; motivo: MotivoDeError; nombre: string; linea?: number };
 
 /**
  * El taller — el estado de la transformación, al lado de la sesión y no dentro.
@@ -70,6 +79,16 @@ export type EstadoDeTransformacion =
  */
 export type EstadoDeBoveda =
   { fase: "sin-sellar" } | { fase: "sellando" } | { fase: "sellada" };
+
+/**
+ * La limpieza de un PDF o una imagen (S6). El archivo limpio llega con su resumen en el mismo
+ * mensaje, así que aquí también viven juntos: no hay un estado con archivo y sin resumen.
+ */
+export type EstadoDeLimpieza =
+  | { fase: "sin-hacer" }
+  | { fase: "limpiando" }
+  | { fase: "hecha"; resumen: ResumenDeLimpieza; archivo: AsaDeArchivo }
+  | { fase: "fallo"; motivo: MotivoDeError };
 
 export interface EstadoDelTaller {
   readonly llave: EstadoDeLlave;
@@ -105,6 +124,8 @@ export interface EstadoDelTaller {
   readonly estimacion: RiesgoEstimado | null;
   /** La población que el usuario declaró, para que la pantalla la recuerde entre intentos. */
   readonly poblacionDeclarada: number | null;
+  /** Solo para un PDF o una imagen: la limpieza de sus metadatos. */
+  readonly limpieza: EstadoDeLimpieza;
 }
 
 /**
@@ -143,6 +164,8 @@ function soltarArchivo(): void {
   if (tallerActual.archivo) URL.revokeObjectURL(tallerActual.archivo.url);
   if (tallerActual.archivoDeBoveda)
     URL.revokeObjectURL(tallerActual.archivoDeBoveda.url);
+  if (tallerActual.limpieza.fase === "hecha")
+    URL.revokeObjectURL(tallerActual.limpieza.archivo.url);
 }
 
 const VACIO: EstadoDeSesion = { fase: "vacio" };
@@ -156,6 +179,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   archivoDeBoveda: null,
   estimacion: null,
   poblacionDeclarada: null,
+  limpieza: { fase: "sin-hacer" },
 };
 
 let estadoActual: EstadoDeSesion = VACIO;
@@ -267,7 +291,13 @@ export function transformar(politica: Politica): void {
     huellaDeSalida: null,
     etapa: "transformando",
   });
-  worker.postMessage({ tipo: "transformar", politica });
+  // El idioma del trabajo se lee AQUÍ, al pulsar, y viaja como dato (igual que el del informe del
+  // regreso): el worker no conoce la pantalla y el motor no puede leerlo de ningún sitio.
+  worker.postMessage({
+    tipo: "transformar",
+    politica,
+    idioma: idiomaActual(),
+  });
 }
 
 /**
@@ -305,6 +335,15 @@ export function prepararArchivo(): void {
   worker.postMessage({ tipo: "construir-archivo" });
 }
 
+/** Limpia los metadatos del PDF o la imagen cargados. Sin opciones: ver el mensaje `limpiar`. */
+export function limpiar(): void {
+  if (!worker) return;
+  if (tallerActual.limpieza.fase === "hecha")
+    URL.revokeObjectURL(tallerActual.limpieza.archivo.url);
+  publicarTaller({ limpieza: { fase: "limpiando" }, etapa: "limpiando" });
+  worker.postMessage({ tipo: "limpiar" });
+}
+
 /**
  * La transición de estado ante un mensaje del worker, como función pura.
  *
@@ -331,8 +370,15 @@ export function siguienteEstado(
   }
   if (mensaje.tipo === "listo")
     return { fase: "listo", informe: mensaje.informe };
+  if (mensaje.tipo === "metadatos-listos")
+    return { fase: "metadatos", informe: mensaje.informe };
   if (mensaje.tipo === "error")
-    return { fase: "error", motivo: mensaje.motivo, nombre };
+    return {
+      fase: "error",
+      motivo: mensaje.motivo,
+      nombre,
+      linea: mensaje.linea,
+    };
   // Los mensajes del taller —llave, transformación, archivo— no tocan la sesión: el informe del
   // análisis sigue siendo el mismo mientras se transforma. Se atienden en `recibir`.
   return actual;
@@ -348,14 +394,12 @@ export function analizar(archivo: File): void {
     });
     return;
   }
-  if (excedeElTope(formato, archivo.size)) {
+  const tope = motivoDelTope(formato, archivo.size);
+  if (tope) {
     // Se rechaza ANTES de abrirlo: abrir un .xlsx enorme es justo la operación que tumba la
-    // pestaña, así que la decisión se toma con el único dato disponible sin abrirlo, su tamaño.
-    publicar({
-      fase: "error",
-      motivo: "excel-excede-tope",
-      nombre: archivo.name,
-    });
+    // pestaña, así que la decisión se toma con el único dato disponible sin abrirlo, su tamaño. Un
+    // PDF o una imagen (S6) se abren enteros por la misma razón, y tienen el suyo.
+    publicar({ fase: "error", motivo: tope, nombre: archivo.name });
     return;
   }
 
@@ -391,6 +435,27 @@ export function analizar(archivo: File): void {
 }
 
 function recibir(mensaje: MensajeDelWorker, nombre: string): void {
+  if (mensaje.tipo === "limpiado") {
+    publicarTaller({
+      limpieza: {
+        fase: "hecha",
+        resumen: mensaje.resumen,
+        // El `Blob` se envuelve AQUÍ, en el mismo sitio que el anonimizado (ADR-005).
+        archivo: asaDeArchivo(mensaje.blob, mensaje.nombre),
+      },
+      etapa: null,
+    });
+    return;
+  }
+  if (mensaje.tipo === "error" && tallerActual.limpieza.fase === "limpiando") {
+    // Un fallo limpiando no tumba el diagnóstico: el archivo sigue leído y la pantalla puede decir
+    // qué pasó —la limpieza no se pudo comprobar, el PDF no se dejó reescribir— sin pedirlo otra vez.
+    publicarTaller({
+      limpieza: { fase: "fallo", motivo: mensaje.motivo },
+      etapa: null,
+    });
+    return;
+  }
   if (mensaje.tipo === "llave-lista") {
     publicarTaller({
       llave: { fase: "lista", huella: mensaje.huella, sal: salPendiente },
@@ -438,7 +503,8 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
     // El progreso del taller no cambia la sesión pero sí la etiqueta que se lee en pantalla.
     if (
       tallerActual.transformacion.fase !== "sin-hacer" ||
-      tallerActual.llave.fase === "derivando"
+      tallerActual.llave.fase === "derivando" ||
+      tallerActual.limpieza.fase === "limpiando"
     )
       publicarTaller({ etapa: mensaje.etapa });
   }

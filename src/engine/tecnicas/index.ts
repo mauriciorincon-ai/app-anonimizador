@@ -14,6 +14,8 @@
 // El vacío nunca se transforma: una celda en blanco no tiene seudónimo, no se enmascara y no se
 // generaliza. Sigue en blanco, y el conteo de no-vacíos lo refleja.
 
+import type { Idioma } from "@/lib/idioma";
+
 import {
   reconstruirColumna,
   type ColumnaColumnar,
@@ -103,11 +105,17 @@ function transformarSincrono(
  * `generalizar-automatico` NO se resuelve aquí: esas columnas salen intactas y anotadas en
  * `pendientesDeMondrian`, porque Mondrian no es una técnica por columna — mira todas las marcadas a
  * la vez y decide dónde cortar. La Fase 3 recoge esa lista.
+ *
+ * `idioma` es el del TRABAJO y es obligatorio: decide únicamente los dos rótulos que Mondrian
+ * escribe dentro de las etiquetas de intervalo (`"18 a 39"` / `"18 to 39"`). No entra a la
+ * política, a su hash, a la bóveda ni al nombre del archivo; con las demás técnicas, la salida es
+ * byte-idéntica en los dos idiomas. Un valor por defecto aquí emitiría español en silencio.
  */
 export async function aplicarPolitica(
   tabla: TablaColumnar,
   politica: Politica,
   llave: CryptoKey | null,
+  idioma: Idioma,
 ): Promise<TablaTransformada> {
   if (requiereLlave(politica) && llave === null) {
     // Invariante del pipeline, no error de usuario: la UI no deja llegar aquí sin llave. Si llega,
@@ -187,7 +195,12 @@ export async function aplicarPolitica(
   const transformada: TablaColumnar = { columnas, filas: tabla.filas };
   const mondrian =
     paraMondrian.length > 0 && politica.kObjetivo !== null
-      ? anonimizarConMondrian(transformada, paraMondrian, politica.kObjetivo)
+      ? anonimizarConMondrian(
+          transformada,
+          paraMondrian,
+          politica.kObjetivo,
+          idioma,
+        )
       : null;
 
   return {
