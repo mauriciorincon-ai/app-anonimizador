@@ -54,8 +54,15 @@ Facts measured in the code before deciding:
    A changed cell is always a string (a generalized number becomes text, and the screen says so). A label
    written on a cell that was absent is appended at the end of its parent. A suppressed column
    disappears from every record and a parent left empty stays `{}`.
-6. **Reversible pseudonyms are switched off for JSON.** The return flow reads only CSV, so a vault
-   for a JSON would be a file that cannot be used; the editor says so instead of offering it.
+6. **A JSON has a return trip (amended in S7, 2026-11-02; until then reversible pseudonyms were
+   switched off for JSON).** The return flow reads a returned JSON with this same reader and restores
+   it with the same engine as a CSV, **by value and per column path**: `restaurar` matches columns by
+   content, so a third party that reorders records, reformats the file or renames nothing still gets
+   its values back. What is restored is written by this same writer over the **returned** file, so the
+   structure and key order are the ones it came back with. One addition to the vault: a column whose
+   non-empty cells were all JSON numbers is marked `numerica: true`, and its restored values are
+   written unquoted again (`12345678901234567890` comes back as a number, not as a string). The field
+   is absent for every CSV and for mixed columns, so it moves no existing vault fingerprint.
 7. **Limits, enforced in the worker and quoted from one constant (`TOPES_JSON`)**: 256 distinct paths,
    32 levels, keys of 256 characters, strings of 1 048 576 characters, and **20 000 000 cells**
    (records × paths).
@@ -78,11 +85,13 @@ forms stream): a bad line is located by its number, and most tools write and rea
 - A list inside a record can still carry personal data. Velo says so, names the fields it saw there
   and does not look inside; treating list elements, or suppressing a whole list from the policy, is
   left as a documented next step.
-- **A JSON has no return trip.** The return flow (ADR-005/006) reads only CSV, so the reversible
-  option and the vault are switched off for a JSON and the screen says why; an imported policy that
-  asked for reversible columns has them applied as plain pseudonyms, and says so. A vault nobody can
-  use would be a promise Velo does not keep. Bringing JSON into the return flow is pending, not
-  discarded: it is the owner's call, recorded in S6's closing report.
+- **A JSON comes back (S7).** If the third party did not touch the file, the restored JSON is the
+  original byte for byte (unit test `tests/unit/regreso-json.test.ts` and e2e
+  `tests/e2e/regreso-json.spec.ts`, which compares the whole file). If it did, what Velo does not know
+  stays as it is and the return report says how many cells. What the S6 version of this ADR said
+  ("a JSON has no return trip") is no longer true: the owner decided it on 2026-11-02 (planner log of
+  S6). Two limits remain and are said: values inside a list were never treated, so there is nothing
+  to restore there; and a column that mixed numbers and text comes back as text.
 - Language: nothing in this ADR depends on it, except the two words Mondrian writes into labels (ADR-009 §7).
 
 ## Rejected

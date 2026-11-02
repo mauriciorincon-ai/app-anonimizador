@@ -67,10 +67,43 @@ picture) is out of scope: Velo cleans metadata, and says so before anything else
   the certificate say it first.
 - Clean files are named `velo-limpio-<first 8 hex of the input SHA-256>.<extension by content>`: the
   original name can be the most sensitive thing about the file, and it is not repeated.
-- HEIC is not read. It is **pending the owner's decision**, not discarded: it needs an ISO-BMFF reader
-  and its metadata lives in a different structure.
+- **HEIC (S7, decided by the owner on 2026-11-02).** See the section below.
 - What the screens list is what Velo can name; what it removes is everything not on the whitelist.
   The gap between the two (an unknown block) is removed without a name, and said so.
+
+## HEIC (amendment, S7)
+
+A HEIC is a HEIF (ISO/IEC 23008-12) with HEVC images inside an ISO BMFF container (ISO/IEC
+14496-12). Metadata are **items** like the image itself: `Exif` (a TIFF behind a 4-byte offset) and
+`mime` with `application/rdf+xml` (XMP), tied to the picture by `cdsc` references; their bytes live in
+`mdat` (or `idat`) at offsets that `iloc` declares. Removing one moves everything after it, so the
+container is **rewritten**, with the same whitelist idea:
+
+- **Kept:** `ftyp` as is; image items (`hvc1`, `hvt1`, `grid`, `iden`, `iovl`, `tmap`, `jpeg`) with
+  their bytes copied untouched; the properties a decoder needs (`hvcC`, `ispe`, `irot`, `imir`,
+  `clap`, `colr`, `pixi`, `auxC`, `pasp`, `rloc`, `lsel`, `clli`, `mdcv`, `cclv`, `amve`), with
+  `ipma` re-indexed. Orientation lives in `irot`/`imir`, not in EXIF, so no minimal EXIF is needed.
+  The thumbnail item (`thmb`) and auxiliary images (`auxl`: depth, HDR boost) are pixels and are kept,
+  named in the certificate.
+- **Removed and named:** `Exif`, `mime` and `uri ` items with their references; `udes` (a user
+  description property: name, description, tags, read as fields); item names and the `hdlr` name;
+  every top-level box other than `ftyp`, `meta` and `mdat` (`free`, `skip`, `uuid`…); bytes inside
+  `mdat` or `idat` that no item uses (what an edit can leave behind); bytes after the last box. The
+  XMP that describes an HDR gain map goes too, so the photo may show less range on an HDR screen; the
+  screen says so.
+- **Rewritten:** a canonical `hdlr` and `dinf`, a new `iinf`, `iref`, `iprp`, `idat` and `iloc`
+  (4-byte offsets, recomputed), and one `mdat` with the kept extents in their original order.
+- **Refused by name (`imagen-no-soportada`)** rather than broken: sequences and Live Photos (`moov`),
+  protected items, data outside the file, items built from other items (`construction_method` 2), an
+  image built from a non-image item, and an unknown property the file marks essential.
+
+Detection is by `ftyp` brands (`heic`, `heix`, `heim`, `heis`); a HEIF with another codec (AVIF) is
+not HEIC and is not treated. The browser cannot display a HEIC (only Safari), and Velo never decodes
+one: the CI checks the container (HEVC bytes and properties byte-identical, `iloc` pointing at them,
+every sentinel gone, idempotent, truncation at every byte), and the pixels were checked once on a Mac
+with `sips` (the clean copy decodes to the same pixels as the input). The kit's HEIC is built around
+`docs/kit-de-prueba/binarios/base.heic`, made once with `sips` and versioned with its `.meta.json`
+(how, when, sha256), because the Linux CI cannot write HEIC.
 
 ## Rejected
 
