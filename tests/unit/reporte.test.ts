@@ -40,6 +40,10 @@ const seccionDelTratamiento = (datos: DatosDelTratamiento) =>
 const SALIDA = {
   sha256DeSalida: "f".repeat(64),
   nombreDeSalida: "velo-anonimizado-abc12345.csv",
+  // El idioma del TRABAJO (el de la pantalla al transformar) también viaja con el tratamiento y
+  // tampoco es lo que estos tests miden; el bloque «el certificado declara el idioma del trabajo»
+  // sí lo mide, en los cuatro cruces.
+  idiomaDelTrabajo: "es",
 } as const;
 
 function datosDe(perfil: string, filas = 400): DatosDelReporte {
@@ -286,7 +290,7 @@ async function reporteConTratamiento(politica: Politica) {
   const tabla = constructor.finalizar();
 
   const diagnostico = clasificar(tabla);
-  const transformada = await aplicarPolitica(tabla, politica, null);
+  const transformada = await aplicarPolitica(tabla, politica, null, "es");
   const balance = balanceDelTratamiento({
     tablaOriginal: tabla,
     tablaTransformada: transformada.tabla,
@@ -730,6 +734,75 @@ describe("el certificado en cada idioma", () => {
     expect(construirReporte({ ...datos, idioma: "en" })).toContain(
       '<html lang="en-US">',
     );
+  });
+
+  describe("declara el idioma del trabajo, en el idioma del documento", () => {
+    const FRASE = {
+      es: {
+        es: "Idioma del trabajo: español.",
+        en: "Idioma del trabajo: inglés.",
+      },
+      en: {
+        es: "Job language: Spanish.",
+        en: "Job language: English.",
+      },
+    } as const;
+    // Los dos rótulos, tal como quedaron escritos en el archivo (idioma del TRABAJO) y sin los
+    // espacios de borde, dentro de la frase del documento (idioma del DOCUMENTO).
+    const ROTULOS = {
+      es: {
+        es: "«a» entre los extremos y «(o vacío)»",
+        en: "«to» entre los extremos y «(or empty)»",
+      },
+      en: {
+        es: "“a” between the ends and “(o vacío)”",
+        en: "“to” between the ends and “(or empty)”",
+      },
+    } as const;
+
+    it.each([
+      ["es", "es"],
+      ["es", "en"],
+      ["en", "es"],
+      ["en", "en"],
+    ] as const)(
+      "documento en %s, trabajo en %s",
+      async (idiomaDelDocumento, idiomaDelTrabajo) => {
+        const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+        const html = construirReporte({
+          ...datos,
+          idioma: idiomaDelDocumento,
+          fecha: fechaDe(idiomaDelDocumento),
+          tratamiento: { ...datos.tratamiento, idiomaDelTrabajo },
+        });
+        const texto = new DOMParser().parseFromString(html, "text/html").body
+          .textContent!;
+        expect(texto).toContain(FRASE[idiomaDelDocumento][idiomaDelTrabajo]);
+        expect(texto).toContain(ROTULOS[idiomaDelDocumento][idiomaDelTrabajo]);
+        // El nombre del idioma va en el idioma del DOCUMENTO: «Español» (el nombre propio del
+        // conmutador) no se cuela en el certificado en inglés.
+        expect(texto).not.toContain("Español");
+      },
+    );
+
+    it("sale del resultado de la transformación, no del idioma con que se redacta el documento", async () => {
+      const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+      // Trabajo hecho en inglés, certificado descargado con la pantalla en español.
+      const html = construirReporte({
+        ...datos,
+        idioma: "es",
+        tratamiento: { ...datos.tratamiento, idiomaDelTrabajo: "en" },
+      });
+      expect(html).toContain("Idioma del trabajo: <b>inglés</b>.");
+      expect(html).toContain('<html lang="es-CO">');
+    });
+
+    it("el diagnóstico (sin tratamiento) no habla de un trabajo que no existe", async () => {
+      for (const idioma of ["es", "en"] as const)
+        expect(construirReporte({ ...datosDe("clinico"), idioma })).not.toMatch(
+          /Idioma del trabajo|Job language/,
+        );
+    });
   });
 
   it("los dos idiomas son documentos distintos, y el inglés no arrastra español", async () => {

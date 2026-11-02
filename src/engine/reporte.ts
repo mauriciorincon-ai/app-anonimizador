@@ -32,6 +32,7 @@ import {
 } from "@/lib/idioma";
 import { decirMensaje } from "@/lib/idioma/mensajes";
 import { DOCUMENTOS as D } from "@/lib/idioma/textos/documentos";
+import { MOTOR_TRANSFORMAR as M } from "@/lib/idioma/textos/motor-transformar";
 
 import type { BalanceDelTratamiento, Salvedad } from "./balance";
 import type { Diagnostico, HallazgoDeColumna } from "./clasificador";
@@ -49,6 +50,14 @@ export interface DatosDelTratamiento {
   utilidad: Utilidad;
   /** Identidad de la política aplicada: mismo hash ⇒ mismo tratamiento. */
   hashDePolitica: string;
+  /**
+   * El idioma del TRABAJO: el de la pantalla cuando se pulsó «transformar», con el que Velo
+   * escribió los rótulos de dentro del archivo (los de un intervalo de Mondrian). Sale del
+   * resultado de la transformación, **no** del idioma del documento: este puede ser otro (se pide
+   * al descargar, y decide en qué idioma se redacta el certificado), y por eso el certificado lo
+   * declara — quien reciba el archivo sabe en qué idioma leer sus rótulos.
+   */
+  idiomaDelTrabajo: Idioma;
   suprimidas: readonly string[];
   /**
    * SHA-256 del archivo que SALE, calculado en el worker sobre los bytes del `Blob`.
@@ -460,7 +469,7 @@ export function seccionDelTratamiento(
   datos: DatosDelTratamiento,
   idioma: Idioma,
 ): string {
-  const { balance, hashDePolitica, suprimidas } = datos;
+  const { balance, hashDePolitica, idiomaDelTrabajo, suprimidas } = datos;
   const { antes, despues, reduccion, salvedades } = balance;
   const T = D.tratamiento;
 
@@ -511,6 +520,18 @@ ${cifra}
   })}</p>
 <p class="por-que">${h(D.comun.huellaDelTratamiento, idioma)}</p>
 <p class="huella">${escapar(hashDePolitica)}</p>
+<p class="por-que">${h(T.idiomaDelTrabajo, idioma, {
+    // El nombre del idioma va en el idioma del DOCUMENTO; los dos rótulos, tal como quedaron
+    // escritos en el archivo (en el idioma del TRABAJO) y sin los espacios de borde.
+    idioma: decir(
+      idiomaDelTrabajo === "es"
+        ? T.nombreDelIdioma.espanol
+        : T.nombreDelIdioma.ingles,
+      idioma,
+    ),
+    separador: decir(M["salida.mondrian.separador"], idiomaDelTrabajo).trim(),
+    vacio: decir(M["salida.mondrian.sufijoVacio"], idiomaDelTrabajo).trim(),
+  })}</p>
 </section>`;
 }
 

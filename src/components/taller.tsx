@@ -234,6 +234,9 @@ export function Taller({ informe }: { informe: Informe }) {
                 balance: hecha.balance,
                 utilidad: hecha.utilidad,
                 hashDePolitica: hecha.hashDePolitica,
+                // El del TRABAJO (el de la pantalla al transformar), no el de ahora: el certificado
+                // se redacta en el idioma de al descargar, pero declara el del archivo.
+                idiomaDelTrabajo: hecha.idioma,
                 suprimidas: hecha.suprimidas,
               }}
             />
