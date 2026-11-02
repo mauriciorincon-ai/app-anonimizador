@@ -18,6 +18,14 @@ import type {
   SalvedadDelRegreso,
 } from "@/engine/restaurar";
 import type { EstructuraJson, MotivoJson } from "@/engine/json/tipos";
+import type {
+  Aviso,
+  CampoDeMetadato,
+  Elemento,
+  FormatoBinario,
+  MotivoDeMetadatos,
+  RevisionesDePdf,
+} from "@/engine/metadatos/tipos";
 import type { AdvisorDeQis, RiesgoExacto } from "@/engine/riesgo";
 import type { RiesgoEstimado } from "@/engine/riesgo-estimado";
 import type { Utilidad } from "@/engine/utilidad";
@@ -28,7 +36,9 @@ import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
  * `json` cubre un arreglo de objetos Y JSON Lines (`.json`, `.jsonl`, `.ndjson`): cuál de las dos
  * formas es lo decide el worker mirando el contenido (`EstructuraJson.forma`), no la extensión.
  */
-export type FormatoDeArchivo = "csv" | "excel" | "json";
+// `pdf` e `imagen` (S6) no son tablas: Velo les limpia los METADATOS, no el contenido. La extensión
+// solo decide por qué puerta entran; qué son de verdad lo deciden sus bytes (`FormatoBinario`).
+export type FormatoDeArchivo = "csv" | "excel" | "json" | "pdf" | "imagen";
 
 export type MensajeAlWorker =
   | { tipo: "analizar"; archivo: File }
@@ -96,7 +106,13 @@ export type MensajeAlWorker =
       tipo: "sellar-bitacora";
       frase: string;
       entrada: EntradaDeBitacora | null;
-    };
+    }
+  /**
+   * Limpia los metadatos del PDF o la imagen que se diagnosticó. No lleva nada: el archivo ya está
+   * en el worker, y la limpieza no tiene opciones — se quita todo lo que no hace falta para ver la
+   * imagen o abrir el documento, y la pantalla dijo antes qué era.
+   */
+  | { tipo: "limpiar" };
 
 /** Etapas del trabajo, en el orden en que ocurren. La UI las nombra tal cual. */
 export type EtapaDelWorker =
@@ -112,7 +128,11 @@ export type EtapaDelWorker =
   | "abriendo-boveda"
   | "restaurando"
   | "abriendo-bitacora"
-  | "sellando-bitacora";
+  | "sellando-bitacora"
+  | "leyendo-metadatos"
+  | "limpiando"
+  /** El lector vuelve a correr sobre el archivo LIMPIO: es la prueba, no una formalidad. */
+  | "comprobando";
 
 /**
  * Lo que la página sabe de una bóveda abierta. **Ni un par de la correspondencia cruza** — eso son
@@ -210,7 +230,11 @@ export type MotivoDeError =
   | "sin-boveda"
   | "sin-devuelto"
   | "restauracion-fallida"
-  | "sin-bitacora";
+  | "sin-bitacora"
+  /** Los de `MotivoDeMetadatos`: un PDF cifrado o ilegible, una imagen rota, una limpieza incompleta. */
+  | MotivoDeMetadatos
+  | "pdf-excede-tope"
+  | "imagen-excede-tope";
 
 export interface Informe {
   archivo: {
@@ -241,6 +265,71 @@ export interface Informe {
     /** Heap del worker en MB. Solo Chromium lo expone; en el resto, null. */
     heapMb: number | null;
   };
+}
+
+/**
+ * Lo que la página sabe de un PDF o una imagen (S6). No es un `Informe` con huecos: un archivo que
+ * no es tabla no tiene filas, ni riesgo de reidentificación, ni consejero, y fingir que sí sería
+ * enseñar ceros que no significan nada. Va por otro mensaje (`metadatos-listos`) y vive en otra fase
+ * de la sesión, así que ningún componente de tablas lo recibe por accidente.
+ *
+ * Cruzan NOMBRES de campo y valores ENMASCARADOS (`CampoDeMetadato`), tamaños y avisos. El valor
+ * completo de un metadato —el autor, las coordenadas— se queda en el worker.
+ */
+export interface InformeDeMetadatos {
+  readonly archivo: {
+    readonly nombre: string;
+    readonly bytes: number;
+    /** Por los bytes, no por la extensión. Si no coinciden, `avisos` lleva `extension-distinta`. */
+    readonly formato: FormatoBinario;
+    /** SHA-256 del archivo tal como está en el disco, igual que el de una tabla. */
+    readonly sha256: string;
+  };
+  readonly metadatos: DiagnosticoDeMetadatos;
+  readonly medicion: {
+    readonly msLectura: number;
+    readonly msDiagnostico: number;
+    readonly heapMb: number | null;
+  };
+}
+
+export interface DiagnosticoDeMetadatos {
+  readonly campos: readonly CampoDeMetadato[];
+  /** Etiquetas técnicas sin nada personal (exposición, ISO…): se quitan con el bloque y se cuentan. */
+  readonly otrasEtiquetas: number;
+  readonly quitables: readonly Elemento[];
+  readonly conservables: readonly Elemento[];
+  readonly avisos: readonly Aviso[];
+  /** Solo en un PDF: cuántas versiones guarda dentro. */
+  readonly revisiones: RevisionesDePdf | null;
+}
+
+/**
+ * Lo que hizo la limpieza, para la pantalla y para el certificado. **La poscomprobación viaja
+ * aquí como cifra**: el lector volvió a correr sobre el archivo limpio y esto es lo que encontró.
+ * Un archivo en el que encontrara campos no se entrega (`limpieza-incompleta`), así que entregado
+ * siempre dice 0 — y dicho, porque es la parte que alguien puede volver a comprobar.
+ */
+export interface ResumenDeLimpieza {
+  readonly formato: FormatoBinario;
+  readonly quitados: readonly Elemento[];
+  readonly conservados: readonly Elemento[];
+  /** Campos con nombre que tenía el original (los de la tabla del diagnóstico). */
+  readonly campos: number;
+  /** Solo en un PDF: las versiones anteriores que había dentro y ya no están. */
+  readonly revisionesQuitadas: number;
+  /** Solo en un PDF: el `/ID` nuevo, derivado del contenido limpio (32 hex). */
+  readonly idNuevo: string | null;
+  readonly poscomprobacion: {
+    /** Campos con nombre hallados en la SALIDA. */
+    readonly campos: number;
+    /** Solo en un PDF: revisiones de la SALIDA (1 = ninguna anterior). */
+    readonly revisiones: number | null;
+  };
+  /** SHA-256 del archivo limpio, sobre los mismos bytes del `Blob`. */
+  readonly sha256: string;
+  readonly bytes: number;
+  readonly ms: number;
 }
 
 /**
@@ -309,6 +398,18 @@ export type MensajeDelWorker =
       bytesTotales: number;
     }
   | { tipo: "listo"; informe: Informe }
+  /** Un PDF o una imagen, ya leídos: lo que llevan dentro, nombrado y enmascarado. */
+  | { tipo: "metadatos-listos"; informe: InformeDeMetadatos }
+  /**
+   * El archivo limpio, como asa opaca (ADR-005), con lo que se le quitó. Va en UN mensaje para que
+   * la pantalla nunca tenga un archivo sin su resumen ni un resumen sin su archivo.
+   */
+  | {
+      tipo: "limpiado";
+      resumen: ResumenDeLimpieza;
+      blob: Blob;
+      nombre: string;
+    }
   | { tipo: "llave-lista"; huella: string }
   | { tipo: "transformado"; resultado: ResultadoDeTransformacion }
   /**

@@ -39,6 +39,14 @@ import { escribirJson } from "@/engine/json/escritor";
 import { leerJson, type LecturaJson } from "@/engine/json/lector";
 import { ErrorDeJson } from "@/engine/json/tipos";
 import type { EstructuraJson } from "@/engine/json/tipos";
+import {
+  EXTENSION_DEL_FORMATO,
+  MIME_DEL_FORMATO,
+} from "@/engine/metadatos/deteccion";
+import {
+  ErrorDeMetadatos,
+  type FormatoBinario,
+} from "@/engine/metadatos/tipos";
 import { muestraDeColumna } from "@/engine/muestra";
 import { hashDePolitica, type Politica } from "@/engine/politica";
 import {
@@ -54,7 +62,7 @@ import {
 import { estimarRiesgo } from "@/engine/riesgo-estimado";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
-import { formatoDeArchivo } from "@/lib/archivo";
+import { esDeMetadatos, formatoDeArchivo, motivoDelTope } from "@/lib/archivo";
 import {
   abrirBitacora,
   sellarBitacora,
@@ -77,6 +85,7 @@ import type {
   MensajeDelWorker,
 } from "./contrato";
 import { ArchivoCambio, fuenteDeArchivo } from "./json";
+import { FormatoNoCoincide, leerBinario, limpiarBinario } from "./metadatos";
 
 const alcance = self as unknown as DedicatedWorkerGlobalScope;
 
@@ -139,6 +148,10 @@ async function analizar(archivo: File): Promise<void> {
   }
 
   const formato = formatoDeArchivo(archivo.name);
+  if (formato !== null && esDeMetadatos(formato)) {
+    void leerMetadatos(archivo, formato);
+    return;
+  }
   if (formato === "excel") {
     void leerExcel(archivo);
     return;
@@ -187,6 +200,122 @@ async function leerJsonDelArchivo(archivo: File): Promise<void> {
         ...(error.linea === null ? {} : { linea: error.linea }),
       });
     else enviar({ tipo: "error", motivo: "lectura-fallida" });
+  }
+}
+
+// ── PDF e imágenes (S6): metadatos, no tablas ─────────────────────────────────────────────────
+//
+// El archivo entero entra a la memoria del worker —un PDF no se reescribe por trozos— y por eso
+// tiene tope por bytes, comprobado aquí otra vez aunque la página ya lo hizo: la frontera no se fía
+// de lo que diga el otro lado. Lo que cruza son nombres de campo, valores enmascarados y tamaños.
+
+/** El archivo que se diagnosticó, para limpiarlo sin volver a pedirlo. Muere con el worker. */
+let binario: {
+  readonly bytes: Uint8Array;
+  readonly formato: FormatoBinario;
+  readonly campos: number;
+  readonly revisiones: number | null;
+} | null = null;
+
+async function leerMetadatos(
+  archivo: File,
+  formato: "pdf" | "imagen",
+): Promise<void> {
+  const inicio = performance.now();
+  if (archivo.size === 0) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+  const tope = motivoDelTope(formato, archivo.size);
+  if (tope) {
+    enviar({ tipo: "error", motivo: tope });
+    return;
+  }
+  try {
+    avisar("leyendo-metadatos", 0, 0, archivo.size);
+    const bytes = new Uint8Array(await archivo.arrayBuffer());
+    const msLectura = performance.now() - inicio;
+    const lectura = await leerBinario(bytes, archivo.name);
+    binario = {
+      bytes,
+      formato: lectura.formato,
+      campos: lectura.diagnostico.campos.length,
+      revisiones: lectura.analisis.revisiones?.revisiones ?? null,
+    };
+    enviar({
+      tipo: "metadatos-listos",
+      informe: {
+        archivo: {
+          nombre: archivo.name,
+          bytes: archivo.size,
+          formato: lectura.formato,
+          sha256: huella,
+        },
+        metadatos: lectura.diagnostico,
+        medicion: {
+          msLectura: Math.round(msLectura),
+          msDiagnostico: Math.round(performance.now() - inicio - msLectura),
+          heapMb: heapUsadoMb(),
+        },
+      },
+    });
+  } catch (error) {
+    // El mensaje de la excepción NUNCA se reenvía: un lector de PDF cita lo que no entendió.
+    enviar({ tipo: "error", motivo: motivoDeMetadatos(error, formato) });
+  }
+}
+
+function motivoDeMetadatos(
+  error: unknown,
+  formato: "pdf" | "imagen",
+): ErrorDeMetadatos["motivo"] | "formato-no-coincide" {
+  if (error instanceof ErrorDeMetadatos) return error.motivo;
+  if (error instanceof FormatoNoCoincide) return "formato-no-coincide";
+  return formato === "pdf" ? "pdf-ilegible" : "imagen-ilegible";
+}
+
+async function limpiar(): Promise<void> {
+  if (!binario) {
+    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+  const inicio = performance.now();
+  const { bytes, formato, campos, revisiones } = binario;
+  try {
+    avisar("limpiando", 0, 0, bytes.length);
+    const { limpieza, poscomprobacion } = await limpiarBinario(bytes, formato);
+    avisar("comprobando", 0, 0, limpieza.bytes.length);
+    // La huella de SALIDA se toma sobre los mismos bytes que forman el `Blob`, como en una tabla.
+    const sha256 = new Sha256().actualizar(limpieza.bytes).terminar();
+    // Los bytes nacen en un `ArrayBuffer` corriente (Velo no usa memoria compartida): el tipo
+    // amplio es de la firma de pdf-lib, no del dato.
+    const blob = new Blob([limpieza.bytes as Uint8Array<ArrayBuffer>], {
+      type: MIME_DEL_FORMATO[formato],
+    });
+    enviar({
+      tipo: "limpiado",
+      resumen: {
+        formato,
+        quitados: limpieza.quitados,
+        conservados: limpieza.conservados,
+        campos,
+        revisionesQuitadas: revisiones === null ? 0 : revisiones - 1,
+        idNuevo: limpieza.idNuevo,
+        poscomprobacion,
+        sha256,
+        bytes: blob.size,
+        ms: Math.round(performance.now() - inicio),
+      },
+      blob,
+      // El nombre sale de la huella del ORIGINAL, no de su nombre (que puede ser lo más sensible de
+      // todo) ni del idioma: el mismo archivo da siempre el mismo nombre.
+      nombre: `velo-limpio-${huella.slice(0, 8)}.${EXTENSION_DEL_FORMATO[formato]}`,
+    });
+  } catch (error) {
+    enviar({
+      tipo: "error",
+      motivo: motivoDeMetadatos(error, formato === "pdf" ? "pdf" : "imagen"),
+    });
   }
 }
 
@@ -952,4 +1081,5 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
     void abrirLaBitacora(mensaje.archivo, mensaje.frase);
   if (mensaje?.tipo === "sellar-bitacora")
     void sellarLaBitacora(mensaje.frase, mensaje.entrada);
+  if (mensaje?.tipo === "limpiar") void limpiar();
 });

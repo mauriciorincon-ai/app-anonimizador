@@ -21,12 +21,35 @@ export const TOPE_EXCEL_BYTES = 150 * 1024 * 1024;
 /** Desde aquí el archivo sigue entrando, pero se avisa y se ofrece la salida (guardar como CSV). */
 export const AVISO_EXCEL_BYTES = 40 * 1024 * 1024;
 
+/**
+ * Topes de un PDF y de una imagen (S6). Los dos se abren ENTEROS en el worker —un PDF no se puede
+ * reescribir por trozos, y una imagen se reescribe de una vez—, así que, como el Excel, tienen tope
+ * por bytes y se decide sin abrirlos.
+ *
+ * El del PDF es medido (tabla en `src/workers/limpiar-pdf.ts`): lo que cuesta memoria son sus
+ * objetos, y con 50 MB el peor caso aceptado queda en ≈ 0,75 GB de pico; el worker añade un tope de
+ * objetos y uno de lo que se infla. Una imagen solo vive dos veces (la entrada y la copia limpia),
+ * sin grafo encima: 100 MB son ≈ 200 MB.
+ */
+export const TOPE_PDF_BYTES = 50 * 1024 * 1024;
+export const TOPE_IMAGEN_BYTES = 100 * 1024 * 1024;
+
 export function formatoDeArchivo(nombre: string): FormatoDeArchivo | null {
   if (/\.csv$/i.test(nombre)) return "csv";
   if (/\.xlsx?$/i.test(nombre)) return "excel";
   // JSON y JSON Lines son el mismo formato para la interfaz: cuál de los dos es lo decide el worker.
   if (/\.(json|jsonl|ndjson)$/i.test(nombre)) return "json";
+  // PDF e imágenes: la extensión solo abre la puerta. Qué son lo deciden sus bytes, en el worker.
+  if (/\.pdf$/i.test(nombre)) return "pdf";
+  if (/\.(jpe?g|jpe|png|webp)$/i.test(nombre)) return "imagen";
   return null;
+}
+
+/** ¿Es un formato al que Velo le limpia los metadatos (no una tabla)? */
+export function esDeMetadatos(
+  formato: FormatoDeArchivo,
+): formato is "pdf" | "imagen" {
+  return formato === "pdf" || formato === "imagen";
 }
 
 /** ¿Un Excel lo bastante grande como para avisar, pero por debajo del tope? */
@@ -38,9 +61,22 @@ export function excelGrande(formato: FormatoDeArchivo, bytes: number): boolean {
   );
 }
 
+/** El motivo con el que se rechaza, sin abrirlo, un archivo por encima de su tope; o null. */
+export function motivoDelTope(
+  formato: FormatoDeArchivo,
+  bytes: number,
+): "excel-excede-tope" | "pdf-excede-tope" | "imagen-excede-tope" | null {
+  if (formato === "excel" && bytes > TOPE_EXCEL_BYTES)
+    return "excel-excede-tope";
+  if (formato === "pdf" && bytes > TOPE_PDF_BYTES) return "pdf-excede-tope";
+  if (formato === "imagen" && bytes > TOPE_IMAGEN_BYTES)
+    return "imagen-excede-tope";
+  return null;
+}
+
 export function excedeElTope(
   formato: FormatoDeArchivo,
   bytes: number,
 ): boolean {
-  return formato === "excel" && bytes > TOPE_EXCEL_BYTES;
+  return motivoDelTope(formato, bytes) !== null;
 }

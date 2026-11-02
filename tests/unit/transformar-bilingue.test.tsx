@@ -54,6 +54,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   archivoDeBoveda: null,
   estimacion: null,
   poblacionDeclarada: null,
+  limpieza: { fase: "sin-hacer" },
 };
 
 beforeEach(() => {
