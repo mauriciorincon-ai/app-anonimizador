@@ -476,7 +476,7 @@ describe("PDF e imágenes en la zona de carga (S6)", () => {
       nombre: "notas.txt",
     });
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "limpia los metadatos de PDF (.pdf) e imágenes (.jpg, .png, .webp)",
+      "limpia los metadatos de PDF (.pdf) e imágenes (.jpg, .png, .webp, .heic)",
     );
   });
 

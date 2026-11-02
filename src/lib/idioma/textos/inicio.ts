@@ -224,11 +224,11 @@ export const INICIO = {
         salida: {
           es:
             "Lee tablas: CSV (.csv), Excel (.xlsx, .xls) y JSON (.json, .jsonl, .ndjson), y " +
-            "limpia los metadatos de PDF (.pdf) e imágenes (.jpg, .png, .webp). Si tu archivo " +
+            "limpia los metadatos de PDF (.pdf) e imágenes (.jpg, .png, .webp, .heic). Si tu archivo " +
             "viene de una hoja de cálculo, ábrelo y guárdalo como CSV.",
           en:
             "It reads tables: CSV (.csv), Excel (.xlsx, .xls) and JSON (.json, .jsonl, .ndjson), " +
-            "and cleans the metadata of PDFs (.pdf) and images (.jpg, .png, .webp). If your file " +
+            "and cleans the metadata of PDFs (.pdf) and images (.jpg, .png, .webp, .heic). If your file " +
             "comes from a spreadsheet, open it and save it as CSV.",
         },
       },
