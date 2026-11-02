@@ -214,6 +214,7 @@ export function Taller({ informe }: { informe: Informe }) {
               filas={informe.diagnostico.filas}
               suprimidas={hecha.suprimidas}
               hashDePolitica={hecha.hashDePolitica}
+              idiomaDelTrabajo={hecha.idioma}
               onPreparar={prepararArchivo}
             />
             {/* El archivo no puede salir solo. Un CSV anonimizado sin un documento que diga qué se

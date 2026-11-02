@@ -292,6 +292,7 @@ describe("la entrega del archivo", () => {
     filas: 1_234,
     suprimidas: ["correo", "telefono"],
     hashDePolitica: "0123456789abcdef",
+    idiomaDelTrabajo: "en" as const,
     onPreparar: () => {},
   };
 
@@ -306,6 +307,35 @@ describe("la entrega del archivo", () => {
     expect(
       screen.getByRole("button", { name: "Prepare the file" }),
     ).toBeEnabled();
+  });
+
+  it("si el idioma cambió después de transformar, dice en cuál se escribió el archivo", () => {
+    fijarIdioma("en");
+    render(<DescargaDelArchivo {...ENTREGA} idiomaDelTrabajo="es" />);
+    expect(screen.getByText(/This file was written in/)).toHaveTextContent(
+      /written in Spanish, the language you had when you transformed/,
+    );
+    act(() => fijarIdioma("es"));
+    // Misma pantalla que el trabajo: no hay nada que avisar.
+    expect(
+      screen.queryByText(/Este archivo se escribió en/),
+    ).not.toBeInTheDocument();
+    act(() => fijarIdioma("en"));
+  });
+
+  it("y la misma frase, en español, nombra el inglés", () => {
+    render(<DescargaDelArchivo {...ENTREGA} idiomaDelTrabajo="en" />);
+    expect(screen.getByText(/Este archivo se escribió en/)).toHaveTextContent(
+      /escribió en inglés, el idioma que tenías al transformar/,
+    );
+  });
+
+  it("con el mismo idioma del trabajo no hay aviso", () => {
+    fijarIdioma("en");
+    render(<DescargaDelArchivo {...ENTREGA} />);
+    expect(
+      screen.queryByText(/This file was written in/),
+    ).not.toBeInTheDocument();
   });
 
   it("el tamaño del archivo listo sigue la convención del idioma", () => {

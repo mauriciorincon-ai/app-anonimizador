@@ -570,6 +570,18 @@ export const TRANSFORMAR = {
           "the same treatment; the report carries the full hash.",
       },
     },
+    // Solo se muestra cuando el idioma de la pantalla ya no es el del trabajo (se cambió DESPUÉS de
+    // transformar): el archivo se escribió en el idioma de entonces y no se reescribe solo.
+    idiomaDelTrabajo: {
+      es:
+        "Este archivo se escribió en **{idioma}**, el idioma que tenías al transformar: los " +
+        "rótulos de un intervalo agrupado salen en él. Si lo quieres en el otro idioma, cámbialo " +
+        "y vuelve a transformar.",
+      en:
+        "This file was written in **{idioma}**, the language you had when you transformed: the " +
+        "labels of a grouped range come out in it. If you want it in the other language, switch " +
+        "and transform again.",
+    },
     preparar: { es: "Preparar el archivo", en: "Prepare the file" },
     preparando: { es: "Escribiendo el archivo…", en: "Writing the file…" },
     guardar: { es: "Guardar", en: "Save" },

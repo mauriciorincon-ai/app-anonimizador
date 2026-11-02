@@ -19,6 +19,8 @@ import { Panel } from "@/components/panel";
 import { IconoDescargar, IconoDocumento } from "@/components/iconos";
 import { Rico, useT } from "@/components/texto";
 import { bytes as enBytes } from "@/lib/formato";
+import type { Idioma } from "@/lib/idioma";
+import { DOCUMENTOS } from "@/lib/idioma/textos/documentos";
 import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import type { AsaDeArchivo } from "@/lib/sesion";
 
@@ -30,6 +32,7 @@ export function DescargaDelArchivo({
   filas,
   suprimidas,
   hashDePolitica,
+  idiomaDelTrabajo,
   onPreparar,
 }: {
   archivo: AsaDeArchivo | null;
@@ -37,6 +40,8 @@ export function DescargaDelArchivo({
   filas: number;
   suprimidas: readonly string[];
   hashDePolitica: string;
+  /** El idioma de la pantalla al pulsar «transformar»: el del archivo, aunque ahora haya otro. */
+  idiomaDelTrabajo: Idioma;
   onPreparar: () => void;
 }) {
   const { t, idioma } = useT();
@@ -73,6 +78,21 @@ export function DescargaDelArchivo({
         </span>
         <Rico texto={E.huella.despues} />
       </p>
+
+      {idiomaDelTrabajo !== idioma ? (
+        <p className="text-tinta-suave mt-3 text-[0.875rem] leading-relaxed">
+          <Rico
+            texto={E.idiomaDelTrabajo}
+            datos={{
+              idioma: t(
+                idiomaDelTrabajo === "es"
+                  ? DOCUMENTOS.tratamiento.nombreDelIdioma.espanol
+                  : DOCUMENTOS.tratamiento.nombreDelIdioma.ingles,
+              ),
+            }}
+          />
+        </p>
+      ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         {archivo === null ? (
