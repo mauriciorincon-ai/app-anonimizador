@@ -71,7 +71,7 @@ export interface TopesJson {
 
 export const TOPES_JSON: TopesJson = {
   rutas: 256,
-  celdas: 40_000_000,
+  celdas: 20_000_000,
   profundidad: 32,
   largoDeClave: 256,
   largoDeTexto: 1_048_576,
