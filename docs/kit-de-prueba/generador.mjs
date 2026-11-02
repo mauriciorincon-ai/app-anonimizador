@@ -351,7 +351,42 @@ const COLUMNAS_SESGADAS = {
   },
 };
 
-const TODAS_LAS_COLUMNAS = { ...COLUMNAS, ...COLUMNAS_SESGADAS };
+// ── Columnas de JERARQUÍAS (S7) — lo que sube por las escaleras de fábrica ────────────────────
+//
+// Códigos OFICIALES, no datos de nadie: municipios de la DIVIPOLA y clases de la CIIU Rev. 4 A.C.
+// del DANE, tomados de las tablas de fábrica (`src/engine/jerarquias/fabrica/`); un test exige que
+// cada uno siga existiendo allí. Con `tasaInvalida` salen los casos FUERA de rango que la escalera
+// tiene que dejar como están: un código de municipio que no existe, una clase CIIU que no existe y
+// una edad imposible. Fuera de `COLUMNAS` por la misma razón que las sesgadas.
+export const MUNICIPIOS_DIVIPOLA = [
+  "05001", "05088", "08001", "11001", "13001", "17001", "19001", "50001", "52001",
+  "54001", "63001", "66001", "68001", "73001", "76001", "91001", "94001", "99001",
+];
+export const CLASES_CIIU = [
+  "0111", "0141", "1011", "1410", "2410", "3511", "4111", "4711", "4921",
+  "5511", "6201", "6411", "6810", "7020", "8411", "8521", "8610", "9001",
+];
+const COLUMNAS_DE_JERARQUIAS = {
+  edad: {
+    tipo: "numero",
+    categoria: "cuasi-identificador",
+    gen: (a, c) => (a.conProbabilidad(c.tasaInvalida) ? "130" : String(a.entero(0, 99))),
+  },
+  codigo_municipio: {
+    tipo: "numero",
+    categoria: "cuasi-identificador",
+    gen: (a, c) => (a.conProbabilidad(c.tasaInvalida) ? "99999" : a.de(MUNICIPIOS_DIVIPOLA)),
+  },
+  // La actividad económica sola no es un dato personal, y el motor no la marca: quien la quiera en
+  // el reparto la elige a mano en el editor.
+  actividad_ciiu: {
+    tipo: "numero",
+    categoria: "no-personal",
+    gen: (a, c) => (a.conProbabilidad(c.tasaInvalida) ? "9999" : a.de(CLASES_CIIU)),
+  },
+};
+
+const TODAS_LAS_COLUMNAS = { ...COLUMNAS, ...COLUMNAS_SESGADAS, ...COLUMNAS_DE_JERARQUIAS };
 
 const PERFILES = {
   clinico: Object.keys(COLUMNAS),
@@ -391,6 +426,16 @@ const PERFILES = {
   // archivo), y no solo en un test con un informe de mentira. `limpio` no sirve para eso: su
   // `estrato` es un cuasi-identificador de manual, y así debe seguir siendo.
   "sin-personales": ["sucursal", "monto", "fecha_atencion"],
+  // Para la generalización óptima (S7): un campo por escalera de fábrica (edad, fecha, DIVIPOLA,
+  // CIIU), uno que solo se suprime (sexo) y un dato sensible para pedir la ℓ distinta.
+  jerarquias: [
+    "edad",
+    "fecha_nacimiento",
+    "codigo_municipio",
+    "actividad_ciiu",
+    "sexo",
+    "diagnostico",
+  ],
 };
 
 // ── Escritura CSV ─────────────────────────────────────────────────────────────────────────────
