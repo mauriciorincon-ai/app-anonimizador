@@ -11,7 +11,9 @@
 //   • Una celda que NO cambió se copia con su texto crudo original: `1E3` sigue siendo `1E3`, el
 //     número de 20 dígitos no pasa por un `double`, los escapes `é` se quedan como estaban.
 //   • Una celda que SÍ cambió sale siempre como TEXTO (`JSON.stringify`): un número seudonimizado o
-//     generalizado a un rango ya no es un número, y escribirlo sin comillas sería mentir.
+//     generalizado a un rango ya no es un número, y escribirlo sin comillas sería mentir. La única
+//     excepción la pide el regreso (S7): una columna que en el original era toda números vuelve a
+//     escribirse como número cuando lo restaurado es un número JSON válido (`numericas`).
 //   • Una celda que quedó vacía sale como lo que era: `null` si era `null` (o un número, un booleano),
 //     `""` si era un texto, y NO sale si la clave no existía en ese registro.
 //   • Una celda que no existía en el original pero la transformación llenó (Mondrian etiqueta todas
@@ -60,8 +62,13 @@ class NodoDeEscritura {
   }
 }
 
+/** Un número JSON (RFC 8259, §6), tal cual: lo único que puede escribirse sin comillas. */
+const NUMERO_JSON = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
+
 interface ColumnaDeEscritura {
   readonly original: ColumnaColumnar;
+  /** Lo que cambió en esta columna vuelve a escribirse como número si lo es (el regreso). */
+  readonly numerica: boolean;
   readonly clases: Uint8Array;
   /** La misma columna en la tabla transformada, o null si la transformación la suprimió. */
   readonly transformada: ColumnaColumnar | null;
@@ -223,6 +230,7 @@ class VisitanteDeEscritura implements VisitanteDeJson {
     if (nuevo === "") {
       return columna.clases[fila] === CLASE_DE_CELDA.texto ? '""' : "null";
     }
+    if (columna.numerica && NUMERO_JSON.test(nuevo)) return nuevo;
     return JSON.stringify(nuevo);
   }
 
@@ -325,6 +333,7 @@ class VisitanteDeEscritura implements VisitanteDeJson {
  * - `fuente` entrega el MISMO texto que la primera pasada, desde el principio.
  * - `transformada` tiene las mismas filas, en el mismo orden; sus columnas se emparejan POR NOMBRE
  *   con las de `lectura.tabla`, y una columna que falte se considera suprimida.
+ * - `numericas` (el regreso): nombres de columna cuyas celdas cambiadas vuelven a ser números.
  *
  * Cada trozo que sale (≈ 64 KB) contiene registros COMPLETOS, así que quien lo codifique a bytes
  * nunca parte un carácter ni un registro. Arreglo: `[\n` + registros separados por `,\n` + `\n]\n`;
@@ -334,6 +343,7 @@ export async function* escribirJson(
   fuente: FuenteDeTexto,
   lectura: LecturaJson,
   transformada: TablaColumnar,
+  numericas: ReadonlySet<string> = new Set(),
 ): AsyncGenerator<string> {
   const { tabla, clases, estructura } = lectura;
   if (transformada.filas !== tabla.filas) {
@@ -351,6 +361,7 @@ export async function* escribirJson(
     const nueva = porNombre.get(original.nombre) ?? null;
     return {
       original,
+      numerica: numericas.has(original.nombre),
       clases: clases[c],
       transformada: nueva,
       segmentos: original.ruta ?? partirRuta(original.nombre),

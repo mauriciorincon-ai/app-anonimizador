@@ -337,3 +337,24 @@ export async function leerJson(
     analizador.profundidadMaxima,
   );
 }
+
+/**
+ * Las columnas cuyas celdas con valor son TODAS números JSON (`null` y ausente no cuentan; un solo
+ * texto o booleano la saca). Es lo que la bóveda anota para que el regreso escriba lo restaurado sin
+ * comillas (ADR-011): una columna mixta vuelve como texto, que es lo honesto.
+ */
+export function columnasNumericas(lectura: LecturaJson): Set<string> {
+  const numericas = new Set<string>();
+  lectura.tabla.columnas.forEach((columna, c) => {
+    const clases = lectura.clases[c];
+    let numeros = 0;
+    for (let fila = 0; fila < clases.length; fila++) {
+      const clase = clases[fila];
+      if (clase === CLASE_DE_CELDA.numero) numeros++;
+      else if (clase !== CLASE_DE_CELDA.ausente && clase !== CLASE_DE_CELDA.nulo)
+        return;
+    }
+    if (numeros > 0) numericas.add(columna.nombre);
+  });
+  return numericas;
+}

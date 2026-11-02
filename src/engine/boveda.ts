@@ -44,6 +44,12 @@ export interface CorrespondenciaDeColumna {
   readonly seudonimos: readonly string[];
   /** En paralelo a `seudonimos`. Casi siempre un elemento; dos o más es una colisión. */
   readonly originales: readonly (readonly string[])[];
+  /**
+   * Solo en un JSON (S7): todas las celdas no vacías de la columna original eran NÚMEROS JSON, así
+   * que lo restaurado vuelve a escribirse sin comillas. Ausente en todo lo demás, y por eso no mueve
+   * la huella de ninguna bóveda de un CSV: lo que no existe no se serializa.
+   */
+  readonly numerica?: true;
 }
 
 /** Lo que ata una bóveda a un proyecto concreto. */
@@ -82,6 +88,8 @@ export interface EntradaDeBoveda {
   readonly originales: readonly string[];
   /** Seudónimos, en el MISMO orden que `originales`. */
   readonly seudonimos: readonly string[];
+  /** Ver `CorrespondenciaDeColumna.numerica`. */
+  readonly numerica?: true;
 }
 
 /**
@@ -126,6 +134,7 @@ export function construirBoveda(
       originales: seudonimos.map((seudonimo) =>
         [...porSeudonimo.get(seudonimo)!].sort(porPuntoDeCodigo),
       ),
+      ...(entrada.numerica ? { numerica: true as const } : {}),
     };
   });
 
@@ -272,6 +281,7 @@ export function deserializarBoveda(texto: string): ResultadoDeApertura {
       columna: columna.columna,
       seudonimos: columna.seudonimos as string[],
       originales: columna.originales as string[][],
+      ...(columna.numerica === true ? { numerica: true as const } : {}),
     });
   }
 
