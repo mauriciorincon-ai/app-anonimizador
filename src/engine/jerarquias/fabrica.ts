@@ -8,9 +8,9 @@
 //
 //   · `divipola`  — municipio → departamento → región → `*`. DIVIPOLA del DANE; la región, de una
 //                   regionalización oficial citada en `divipola.meta.json`.
-//   · `edad-dane` — edad → quinquenio → gran grupo (0-14 · 15-64 · 65+) → `*`. Los grupos que el DANE
-//                   usa en sus proyecciones y en los indicadores del censo; no hay tabla que bajar,
-//                   así que la fuente se cita aquí y en el ADR-013.
+//   · `edad-dane` — edad → quinquenio → gran grupo (0-14 · 15-59 · 60+) → `*`. Los de las proyecciones
+//                   vigentes del DANE (PPED, julio de 2025); no hay tabla que bajar, así que la
+//                   fuente se cita abajo, en `fuentes.ts` y en el ADR-013.
 //   · `ciiu`      — clase → grupo → división → sección → `*`. CIIU Rev. 4 adaptada para Colombia
 //                   (DANE); la lista de clases y las secciones, de `ciiu.meta.json`.
 //
@@ -168,18 +168,25 @@ function granGrupoDe(valor: string): string | null {
   return granGrupo(hasta) === grupo ? grupo : null;
 }
 
-/** Quinquenios `0-4` … `95-99` y `100+`: los grupos de las proyecciones de población del DANE. */
+// La escalera de edad sale de UNA fuente, la vigente: las Proyecciones de Población y Estudios
+// Demográficos (PPED) del DANE, actualización de julio de 2025 (`fuentes.ts`). No hay tabla que
+// bajar: la serie va por edades simples de 0 a 99 con un grupo abierto de «100 años y más», y los
+// quinquenios son su agregación de cinco en cinco; los grandes grupos son los de su nota técnica
+// (Tabla 3: «0 a 14 años», «15 a 59 años», «60 años y más»). El censo de 2018 usaba 15-64 y 65+; las
+// proyecciones vigentes, 15-59 y 60+, y esas son las que Velo cita.
+
+/** Quinquenios `0-4` … `95-99` y `100+`: las edades simples de las PPED, de cinco en cinco. */
 export function quinquenio(edad: number): string {
   if (edad >= 100) return "100+";
   const piso = Math.floor(edad / 5) * 5;
   return `${piso}-${piso + 4}`;
 }
 
-/** Los grandes grupos de edad de los indicadores demográficos del DANE: 0-14, 15-64 y 65+. */
+/** Los grandes grupos de edad de las PPED del DANE (nota técnica de julio de 2025): 0-14, 15-59 y 60+. */
 export function granGrupo(edad: number): string {
   if (edad < 15) return "0-14";
-  if (edad < 65) return "15-64";
-  return "65+";
+  if (edad < 60) return "15-59";
+  return "60+";
 }
 
 const PASOS_EDAD: readonly Nivel[] = [

@@ -153,3 +153,23 @@ describe("el kit usa códigos que existen en las tablas de fábrica", () => {
     expect(ciiu.clases).not.toContain("9999");
   });
 });
+
+describe("lo que cita el certificado es lo que dice el .meta.json", () => {
+  // El certificado se arma en la página y no lee los `.meta.json` (solo el worker los tiene): cita
+  // las URL y fechas de `fuentes.ts`. Si una tabla se regenera con otra fuente, esto cae antes de
+  // que un certificado cite la vieja.
+  it("cada URL y fecha de consulta de `fuentes.ts` está en el .meta.json de su tabla", async () => {
+    const { FUENTES } = await import("@/engine/jerarquias/fuentes");
+    const citadas = [
+      ["divipola.json", FUENTES.divipola],
+      ["divipola.json", FUENTES.regiones],
+      ["ciiu.json", FUENTES.ciiu],
+    ] as const;
+    for (const [tabla, fuente] of citadas) {
+      const meta = leerMeta(tabla);
+      const enElMeta = meta.fuentes.find((f) => f.url === fuente.url);
+      expect(enElMeta, `${tabla}: ${fuente.url}`).toBeDefined();
+      expect(enElMeta!.fecha_de_consulta).toBe(fuente.consultada);
+    }
+  });
+});

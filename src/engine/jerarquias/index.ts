@@ -2,7 +2,7 @@
 //
 // Una jerarquía es una lista de NIVELES: el 0 es el valor tal cual y el último es `*`, que no dice
 // nada. La propiedad que sostiene todo lo demás es que son **anidados**: el nivel j+1 es función del
-// nivel j (el quinquenio `35-39` siempre cae en el gran grupo `15-64`; el mes `1987-03` siempre en el
+// nivel j (el quinquenio `35-39` siempre cae en el gran grupo `15-59`; el mes `1987-03` siempre en el
 // trimestre `1987-01/1987-03`). Con niveles anidados, subir un campo de nivel solo puede JUNTAR clases
 // de equivalencia, nunca partirlas: eso hace monótono el k (y la ℓ distinta), y monótona la pérdida
 // medida en bits. Las dos monotonías son las que dejan a OLA podar la retícula sin perder el óptimo

@@ -277,13 +277,14 @@ describe("Edad (DANE): quinquenio → gran grupo", () => {
   const EDAD: Jerarquia = { tipo: "edad-dane" };
 
   it("quinquenios hasta 100+ y los tres grandes grupos", () => {
-    expect(escalera(EDAD, "37")).toEqual(["37", "35-39", "15-64", SUPRIMIDO]);
+    expect(escalera(EDAD, "37")).toEqual(["37", "35-39", "15-59", SUPRIMIDO]);
     expect(escalera(EDAD, "14")).toEqual(["14", "10-14", "0-14", SUPRIMIDO]);
-    expect(escalera(EDAD, "65")).toEqual(["65", "65-69", "65+", SUPRIMIDO]);
-    expect(escalera(EDAD, "100")).toEqual(["100", "100+", "65+", SUPRIMIDO]);
+    expect(escalera(EDAD, "59")).toEqual(["59", "55-59", "15-59", SUPRIMIDO]);
+    expect(escalera(EDAD, "60")).toEqual(["60", "60-64", "60+", SUPRIMIDO]);
+    expect(escalera(EDAD, "100")).toEqual(["100", "100+", "60+", SUPRIMIDO]);
     expect(escalera(EDAD, "37,5")[1]).toBe("35-39");
     expect(quinquenio(0)).toBe("0-4");
-    expect(granGrupo(64)).toBe("15-64");
+    expect(granGrupo(64)).toBe("60+");
   });
 
   it("fuera de rango: una edad imposible, un negativo y un texto se quedan como están", () => {
@@ -296,7 +297,7 @@ describe("Edad (DANE): quinquenio → gran grupo", () => {
     expect(escalera(EDAD, "35-39")).toEqual([
       "35-39",
       "35-39",
-      "15-64",
+      "15-59",
       SUPRIMIDO,
     ]);
     expect(escalera(EDAD, "10-19").slice(0, 3)).toEqual(Array(3).fill("10-19"));
