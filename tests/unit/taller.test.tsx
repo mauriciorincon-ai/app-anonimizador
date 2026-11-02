@@ -20,6 +20,7 @@ import {
   derivarLlaveDelProyecto,
   descartar,
   invalidarTransformacion,
+  limpiar,
   pedirEstimacion,
   prepararArchivo,
   sellarLaBoveda,
@@ -435,6 +436,7 @@ describe("sin worker no hay taller", () => {
       prepararArchivo();
       sellarLaBoveda("frase de la boveda");
       pedirEstimacion(1000);
+      limpiar();
     });
     expect(WorkerDeMentira.ultimo).toBeNull();
     // La forma COMPLETA, a propósito: un campo nuevo en el taller tiene que pasar por aquí y ser
@@ -452,6 +454,8 @@ describe("sin worker no hay taller", () => {
       // Sin worker, `pedirEstimacion` sale antes de tocar el estado: si publicara la población
       // primero, la pantalla enseñaría un dato declarado que nadie va a poder usar.
       poblacionDeclarada: null,
+      // Y la limpieza de metadatos (S6): sin worker, `limpiar` tampoco publica «limpiando».
+      limpieza: { fase: "sin-hacer" },
     });
   });
 });

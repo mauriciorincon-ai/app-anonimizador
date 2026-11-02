@@ -40,7 +40,7 @@ import {
   guardarBitacora,
   useBitacora,
 } from "@/lib/bitacora";
-import { numero, porcentaje } from "@/lib/formato";
+import { NOMBRE_DEL_FORMATO, numero, porcentaje } from "@/lib/formato";
 import { plural } from "@/lib/idioma";
 import { BITACORA } from "@/lib/idioma/textos/bitacora";
 import { nombreDeTecnica } from "@/lib/tecnicas-en-palabras";
@@ -389,23 +389,28 @@ function Entradas({
                   {entrada.archivo}
                 </span>
                 <span className="text-tinta-tenue mt-0.5 block text-[0.8125rem]">
-                  {t(BITACORA.entradas.linea, {
-                    fecha: entrada.fecha,
-                    filas: entrada.filas,
-                    unidadFilas: t(
-                      plural(
-                        entrada.filas,
-                        BITACORA.unidades.fila,
-                        BITACORA.unidades.filas,
-                      ),
-                    ),
-                    tecnicas:
-                      entrada.tecnicas.length === 0
-                        ? t(BITACORA.entradas.sinTecnicas)
-                        : entrada.tecnicas
-                            .map((clave) => nombreDeTecnica(clave, idioma))
-                            .join(", "),
-                  })}
+                  {entrada.metadatos
+                    ? t(BITACORA.entradas.lineaMetadatos, {
+                        fecha: entrada.fecha,
+                        formato: NOMBRE_DEL_FORMATO[entrada.metadatos.formato],
+                      })
+                    : t(BITACORA.entradas.linea, {
+                        fecha: entrada.fecha,
+                        filas: entrada.filas,
+                        unidadFilas: t(
+                          plural(
+                            entrada.filas,
+                            BITACORA.unidades.fila,
+                            BITACORA.unidades.filas,
+                          ),
+                        ),
+                        tecnicas:
+                          entrada.tecnicas.length === 0
+                            ? t(BITACORA.entradas.sinTecnicas)
+                            : entrada.tecnicas
+                                .map((clave) => nombreDeTecnica(clave, idioma))
+                                .join(", "),
+                      })}
                 </span>
               </button>
               {desplegada ? (
@@ -447,6 +452,9 @@ function Entradas({
 /** El detalle de una entrada. Lo usan la anotación pendiente y la lista, para que digan lo mismo. */
 function ResumenDeEntrada({ entrada }: { entrada: EntradaDeBitacora }) {
   const { t, idioma } = useT();
+  // Una limpieza de metadatos (S6) tiene su propio detalle: nunca las líneas de filas, técnicas y
+  // riesgo, que en ella son ceros que no significan nada y se leerían como una medición.
+  if (entrada.metadatos) return <ResumenDeLimpieza entrada={entrada} />;
   return (
     <dl className="text-[0.875rem] leading-relaxed">
       <Dato termino={t(BITACORA.detalle.archivo)} valor={entrada.archivo} />
@@ -510,6 +518,55 @@ function ResumenDeEntrada({ entrada }: { entrada: EntradaDeBitacora }) {
           <Rico texto={BITACORA.detalle.salvedades} />
         </div>
       ) : null}
+    </dl>
+  );
+}
+
+/** El detalle de una LIMPIEZA de metadatos: qué formato, qué se quitó, y las dos huellas. */
+function ResumenDeLimpieza({ entrada }: { entrada: EntradaDeBitacora }) {
+  const { t, idioma } = useT();
+  const L = BITACORA.detalle.limpieza;
+  const metadatos = entrada.metadatos;
+  if (!metadatos) return null;
+  return (
+    <dl className="text-[0.875rem] leading-relaxed">
+      <Dato termino={t(BITACORA.detalle.archivo)} valor={entrada.archivo} />
+      <Dato termino={t(BITACORA.detalle.fecha)} valor={entrada.fecha} />
+      <Dato termino={t(L.tratamiento)} valor={t(L.tratamientoValor)} />
+      <Dato
+        termino={t(L.formato)}
+        valor={NOMBRE_DEL_FORMATO[metadatos.formato]}
+      />
+      <Dato termino={t(L.campos)} valor={numero(metadatos.campos, idioma)} />
+      <Dato
+        termino={t(L.bloques)}
+        valor={numero(metadatos.elementos, idioma)}
+      />
+      {metadatos.formato === "pdf" ? (
+        <Dato
+          termino={t(L.versiones)}
+          valor={numero(metadatos.revisionesQuitadas, idioma)}
+        />
+      ) : null}
+      <Dato
+        termino={t(BITACORA.detalle.huellaDeEntrada)}
+        valor={
+          <code className="font-mono text-[0.75rem]">
+            {entrada.huellaDeEntrada.slice(0, 16)}…
+          </code>
+        }
+      />
+      <Dato
+        termino={t(BITACORA.detalle.huellaDeSalida)}
+        valor={
+          <code className="font-mono text-[0.75rem]">
+            {entrada.huellaDeSalida.slice(0, 16)}…
+          </code>
+        }
+      />
+      <p className="text-tinta-tenue mt-2 text-[0.8125rem] leading-relaxed">
+        {t(L.nota)}
+      </p>
     </dl>
   );
 }

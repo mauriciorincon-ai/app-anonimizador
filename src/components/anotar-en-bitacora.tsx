@@ -24,6 +24,7 @@ import { Rico, useT } from "@/components/texto";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
 import { anotarTratamiento } from "@/lib/bitacora";
 import { LOCALE } from "@/lib/idioma";
+import { METADATOS } from "@/lib/idioma/textos/metadatos";
 import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import { nombreDeTecnica } from "@/lib/tecnicas-en-palabras";
 
@@ -41,15 +42,18 @@ type EntradaSinFecha = Omit<EntradaDeBitacora, "fecha">;
 export function AnotarEnBitacora({ entrada }: { entrada: EntradaSinFecha }) {
   const router = useRouter();
   const { t, idioma } = useT();
+  // Una LIMPIEZA de metadatos (S6) llega con su bloque `metadatos`: no tiene técnicas, filas ni
+  // riesgo, así que dice qué se anota de ella en vez de repetir lo de una tabla.
+  const esLimpieza = entrada.metadatos !== undefined;
 
   return (
     <Panel
-      etiqueta={t(A.etiqueta)}
+      etiqueta={t(esLimpieza ? METADATOS.anotar.etiqueta : A.etiqueta)}
       titulo={t(A.titulo)}
       nota={<Rico texto={A.nota} />}
     >
       <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-        <Rico texto={A.cuerpo} />{" "}
+        <Rico texto={esLimpieza ? METADATOS.anotar.cuerpo : A.cuerpo} />{" "}
         {entrada.tecnicas.length > 0 ? (
           <>
             {t(A.aqui)}{" "}

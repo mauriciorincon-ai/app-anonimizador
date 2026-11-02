@@ -32,6 +32,27 @@ export const DIAGNOSTICO = {
         "is done to each column, see the before and the after, and take away the treated file. " +
         "Without leaving this tab.",
     },
+    // Un PDF o una imagen (S6) no se transforma: se limpia. Viven aquí y no en `metadatos.ts` porque
+    // la página del diagnóstico los pinta sin esperar al chunk del informe, y ese catálogo no
+    // tiene por qué viajar con un CSV.
+    abriendoMetadatos: {
+      es: "Abriendo el diagnóstico…",
+      en: "Opening the diagnosis…",
+    },
+    limpiar: {
+      es: "Limpiar este archivo",
+      en: "Clean this file",
+    },
+    explicacionLimpieza: {
+      es:
+        "El diagnóstico dice qué guarda el archivo de sí mismo. La limpieza no tiene opciones: " +
+        "quita todo lo que no hace falta para verlo o abrirlo, vuelve a leer la copia para " +
+        "comprobarlo y te la entrega. Sin salir de esta pestaña.",
+      en:
+        "The diagnosis says what the file keeps about itself. The cleaning has no options: it " +
+        "removes everything not needed to view or open it, reads the copy again to check it and " +
+        "hands it to you. Without leaving this tab.",
+    },
     otroArchivo: {
       es: "Analizar otro archivo",
       en: "Analyze another file",

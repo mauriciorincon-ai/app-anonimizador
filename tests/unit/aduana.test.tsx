@@ -3,12 +3,14 @@
 // Se prueba el componente presentacional, no la página: así los cinco estados se recorren sin
 // levantar un Worker ni un router, y cada uno queda fijado como comportamiento y no como captura.
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ZonaDeCarga } from "@/components/zona-de-carga";
 import { fijarIdioma } from "@/lib/idioma/estado";
 import type { EstadoDeSesion } from "@/lib/sesion";
+
+import { INFORME_PDF } from "./metadatos-informes";
 
 const ANALIZANDO: Extract<EstadoDeSesion, { fase: "analizando" }> = {
   fase: "analizando",
@@ -412,5 +414,239 @@ describe("JSON en la zona de carga (S6)", () => {
       linea: 1,
     });
     expect(screen.getByRole("alert")).toHaveTextContent(/en la línea 1:/);
+  });
+});
+
+describe("PDF e imágenes en la zona de carga (S6)", () => {
+  it("el selector de archivos acepta PDF, JPEG, PNG y WebP además de las tablas", () => {
+    montar({ fase: "vacio" });
+    const accept = screen
+      .getByLabelText("Elegir archivo")
+      .getAttribute("accept");
+    for (const admitido of [
+      ".csv",
+      ".json",
+      ".pdf",
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ])
+      expect(accept).toContain(admitido);
+  });
+
+  it("la pista nombra el PDF y las imágenes con SU tope, aparte del de Excel", () => {
+    montar({ fase: "vacio" });
+    expect(screen.getByText(/hasta 150 MB/)).toHaveTextContent(
+      "También limpia los metadatos de un PDF (hasta 50 MB) o de una imagen JPEG, PNG o WebP (hasta 100 MB).",
+    );
+  });
+
+  it("la pista en inglés también", () => {
+    fijarIdioma("en");
+    montar({ fase: "vacio" });
+    expect(screen.getByText(/up to 150 MB/)).toHaveTextContent(
+      "Velo also cleans the metadata of a PDF (up to 50 MB) or of a JPEG, PNG or WebP image (up to 100 MB).",
+    );
+  });
+
+  it("soltar un .pdf avisa del archivo igual que una tabla", () => {
+    const onArchivo = vi.fn();
+    const { container } = montar({ fase: "vacio" }, { onArchivo });
+    const archivo = new File(["%PDF-1.7"], "informe.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.drop(container.firstElementChild!, {
+      dataTransfer: { files: [archivo] },
+    });
+    expect(onArchivo).toHaveBeenCalledWith(archivo);
+  });
+
+  it("el formato no soportado ya nombra el PDF y las imágenes entre lo que sí limpia", () => {
+    montar({
+      fase: "error",
+      motivo: "formato-no-soportado",
+      nombre: "notas.txt",
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "limpia los metadatos de PDF (.pdf) e imágenes (.jpg, .png, .webp)",
+    );
+  });
+
+  // Mientras lee: no hay filas que contar, y decir «0 filas leídas» sería contar algo que no pasa.
+  const PDF_LEYENDO: Extract<EstadoDeSesion, { fase: "analizando" }> = {
+    ...ANALIZANDO,
+    nombre: "informe.pdf",
+    formato: "pdf",
+    etapa: "leyendo-metadatos",
+    filas: 0,
+    bytesLeidos: 0,
+    bytesTotales: 2_400_000,
+  };
+
+  it("nombra la etapa de leer los metadatos y no inventa filas ni barra", () => {
+    montar(PDF_LEYENDO);
+    expect(
+      screen.getByText("Leyendo lo que el archivo dice de sí mismo"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.queryByText(/filas leídas/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Velo abre el archivo entero en memoria/),
+    ).toBeInTheDocument();
+  });
+
+  it("la etapa y la nota de memoria también salen en inglés", () => {
+    fijarIdioma("en");
+    montar(PDF_LEYENDO);
+    expect(
+      screen.getByText("Reading what the file says about itself"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/rows read/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Velo opens the whole file in memory/),
+    ).toBeInTheDocument();
+  });
+
+  it("antes de leer, la huella sí lleva barra y ningún conteo de filas", () => {
+    montar({ ...PDF_LEYENDO, etapa: "huella", bytesLeidos: 600_000 });
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "25",
+    );
+    expect(screen.queryByText(/filas leídas/)).not.toBeInTheDocument();
+  });
+
+  it("al terminar cuenta los campos con nombre —no filas— y ofrece el diagnóstico", () => {
+    montar({ fase: "metadatos", informe: INFORME_PDF });
+    expect(screen.getByRole("status")).toHaveTextContent("Listo");
+    expect(screen.getByText("informe-trimestral.pdf")).toBeInTheDocument();
+    expect(screen.getByText("5 campos con nombre encontrados")).toBeVisible();
+    expect(screen.queryByText(/filas revisadas/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Ver el diagnóstico" }),
+    ).toHaveAttribute("href", "/diagnostico");
+  });
+
+  it("al terminar con un solo campo habla en singular, y en inglés con su convención", () => {
+    const uno = {
+      ...INFORME_PDF,
+      metadatos: {
+        ...INFORME_PDF.metadatos,
+        campos: INFORME_PDF.metadatos.campos.slice(0, 1),
+      },
+    };
+    montar({ fase: "metadatos", informe: uno });
+    expect(screen.getByText("1 campo con nombre encontrado")).toBeVisible();
+    cleanup();
+    fijarIdioma("en");
+    montar({ fase: "metadatos", informe: INFORME_PDF });
+    expect(screen.getByText("5 named fields found")).toBeVisible();
+  });
+
+  // Cada motivo nuevo: qué está mal (el título del alert) y qué hacer (un trozo de la salida).
+  const MOTIVOS_BINARIOS = [
+    {
+      motivo: "pdf-cifrado",
+      es: [
+        "Ese PDF está protegido con contraseña",
+        /Velo no pide contraseñas.*Quita la protección con el programa que lo creó/,
+      ],
+      en: [
+        "That PDF is password-protected",
+        /Velo does not ask for passwords.*Remove the protection with the program that made it/,
+      ],
+    },
+    {
+      motivo: "pdf-ilegible",
+      es: ["No se pudo leer ese PDF", /imprímelo a PDF o guárdalo de nuevo/],
+      en: [
+        "That PDF could not be read",
+        /print it to PDF or save it again from there/,
+      ],
+    },
+    {
+      motivo: "imagen-ilegible",
+      es: [
+        "No se pudo leer esa imagen",
+        /Velo lee JPEG, PNG y WebP.*expórtala de nuevo/,
+      ],
+      en: [
+        "That image could not be read",
+        /Velo reads JPEG, PNG and WebP.*export it again/,
+      ],
+    },
+    {
+      motivo: "pdf-excede-tope",
+      es: [
+        "Ese PDF es más grande de lo que Velo puede abrir",
+        /El tope para un PDF es 50 MB.*Divídelo en partes más pequeñas/,
+      ],
+      en: [
+        "That PDF is bigger than Velo can open",
+        /The limit for a PDF is 50 MB.*Split it into smaller parts/,
+      ],
+    },
+    {
+      motivo: "imagen-excede-tope",
+      es: [
+        "Esa imagen es más grande de lo que Velo puede abrir",
+        /El tope para una imagen es 100 MB.*Expórtala de nuevo con menos peso/,
+      ],
+      en: [
+        "That image is bigger than Velo can open",
+        /The limit for an image is 100 MB.*Export it again at a lower weight/,
+      ],
+    },
+    {
+      motivo: "limpieza-incompleta",
+      es: [
+        "Velo no pudo dejar limpio ese archivo",
+        /por eso no te la entrega.*genera una copia nueva desde su origen/,
+      ],
+      en: [
+        "Velo could not leave that file clean",
+        /it will not hand it over.*make a fresh copy from its source/,
+      ],
+    },
+  ] as const;
+
+  it.each(MOTIVOS_BINARIOS)(
+    "$motivo: dice qué está mal y qué hacer, en español",
+    ({ motivo, es }) => {
+      montar({ fase: "error", motivo, nombre: "archivo.pdf" });
+      const alerta = screen.getByRole("alert", { name: es[0] });
+      expect(alerta).toHaveTextContent(es[1]);
+      expect(alerta).toHaveTextContent("archivo.pdf");
+      // Nunca la clave cruda del motivo, ni un marcador sin llenar.
+      expect(alerta.textContent).not.toContain(motivo);
+      expect(alerta.textContent).not.toMatch(/\{[A-Za-z]+\}/);
+      expect(
+        screen.getByRole("button", { name: "Elegir otro archivo" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it.each(MOTIVOS_BINARIOS)(
+    "$motivo: dice qué está mal y qué hacer, en inglés",
+    ({ motivo, en }) => {
+      fijarIdioma("en");
+      montar({ fase: "error", motivo, nombre: "file.pdf" });
+      const alerta = screen.getByRole("alert", { name: en[0] });
+      expect(alerta).toHaveTextContent(en[1]);
+      expect(alerta.textContent).not.toContain(motivo);
+      expect(alerta.textContent).not.toMatch(/\{[A-Za-z]+\}/);
+      expect(alerta.textContent).not.toMatch(/[¿¡]/);
+    },
+  );
+
+  it("el PDF cifrado dice que Velo no pide contraseñas, y no pide una", () => {
+    montar({ fase: "error", motivo: "pdf-cifrado", nombre: "cerrado.pdf" });
+    expect(document.querySelector("input")).toBeNull();
+    expect(screen.queryByRole("textbox")).toBeNull();
   });
 });

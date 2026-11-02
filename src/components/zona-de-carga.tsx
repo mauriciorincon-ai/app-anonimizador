@@ -18,10 +18,15 @@ import { clasesDeBoton } from "@/components/boton";
 import { IconoLupa, IconoReiniciar, IconoTabla } from "@/components/iconos";
 import { Rico, useT } from "@/components/texto";
 import { bytes as enBytes, porcentaje } from "@/lib/formato";
-import type { Texto } from "@/lib/idioma";
+import { plural, type Texto } from "@/lib/idioma";
 import { INICIO } from "@/lib/idioma/textos/inicio";
 import type { EstadoDeSesion } from "@/lib/sesion";
-import { TOPE_EXCEL_BYTES } from "@/lib/archivo";
+import {
+  esDeMetadatos,
+  TOPE_EXCEL_BYTES,
+  TOPE_IMAGEN_BYTES,
+  TOPE_PDF_BYTES,
+} from "@/lib/archivo";
 import { TOPES_JSON } from "@/engine/json/tipos";
 import type { EtapaDelWorker, MotivoDeError } from "@/workers/contrato";
 
@@ -32,6 +37,7 @@ const ETAPAS: Partial<Record<EtapaDelWorker, Texto>> = {
   leyendo: INICIO.carga.etapas.leyendo,
   clasificando: INICIO.carga.etapas.clasificando,
   "midiendo-riesgo": INICIO.carga.etapas.midiendoRiesgo,
+  "leyendo-metadatos": INICIO.carga.etapas.leyendoMetadatos,
 };
 
 /** Los errores dicen QUÉ HACER. Decir "error al procesar" es dejar al usuario donde estaba. */
@@ -51,7 +57,25 @@ const ERRORES: Partial<
   "json-claves-duplicadas": INICIO.carga.errores.jsonClavesDuplicadas,
   "json-excede-tope": INICIO.carga.errores.jsonExcedeTope,
   "formato-no-coincide": INICIO.carga.errores.formatoNoCoincide,
+  // PDF e imágenes (S6): el cifrado, lo ilegible y los topes por bytes. `limpieza-incompleta` nace
+  // limpiando, en `/transformar`, y allá tiene su pantalla; aquí solo llegaría con la sesión ya
+  // devuelta a la aduana, y tiene que decir lo mismo en vez de un «se perdió el archivo».
+  "limpieza-incompleta": INICIO.carga.errores.limpiezaIncompleta,
+  "pdf-cifrado": INICIO.carga.errores.pdfCifrado,
+  "pdf-ilegible": INICIO.carga.errores.pdfIlegible,
+  "imagen-ilegible": INICIO.carga.errores.imagenIlegible,
+  "pdf-excede-tope": INICIO.carga.errores.pdfExcedeTope,
+  "imagen-excede-tope": INICIO.carga.errores.imagenExcedeTope,
 };
+
+/** Los topes, citados de la fuente: el mismo número del worker, no una copia que envejezca. */
+function topes(idioma: Parameters<typeof enBytes>[1]) {
+  return {
+    tope: enBytes(TOPE_EXCEL_BYTES, idioma),
+    topePdf: enBytes(TOPE_PDF_BYTES, idioma),
+    topeImagen: enBytes(TOPE_IMAGEN_BYTES, idioma),
+  };
+}
 
 export function ZonaDeCarga({
   estado,
@@ -72,7 +96,11 @@ export function ZonaDeCarga({
     if (archivo) onArchivo(archivo);
   }
 
-  if (estado.fase === "analizando" || estado.fase === "listo") {
+  if (
+    estado.fase === "analizando" ||
+    estado.fase === "listo" ||
+    estado.fase === "metadatos"
+  ) {
     return <EnCurso estado={estado} />;
   }
 
@@ -117,7 +145,7 @@ export function ZonaDeCarga({
         <input
           id="archivo"
           type="file"
-          accept=".csv,.xlsx,.xls,text/csv,.json,.jsonl,.ndjson,application/json"
+          accept=".csv,.xlsx,.xls,text/csv,.json,.jsonl,.ndjson,application/json,.pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
           className="peer sr-only"
           onChange={(e) => {
             const archivo = e.target.files?.[0];
@@ -134,9 +162,7 @@ export function ZonaDeCarga({
       </div>
 
       <p className="text-tinta-tenue text-[0.8125rem]">
-        {t(INICIO.carga.formatos, {
-          tope: enBytes(TOPE_EXCEL_BYTES, idioma),
-        })}
+        {t(INICIO.carga.formatos, topes(idioma))}
       </p>
     </div>
   );
@@ -145,10 +171,18 @@ export function ZonaDeCarga({
 function EnCurso({
   estado,
 }: {
-  estado: Extract<EstadoDeSesion, { fase: "analizando" | "listo" }>;
+  estado: Extract<
+    EstadoDeSesion,
+    { fase: "analizando" | "listo" | "metadatos" }
+  >;
 }) {
   const { t, idioma } = useT();
-  const terminado = estado.fase === "listo";
+  const terminado = estado.fase !== "analizando";
+  // Un PDF o una imagen (S6) no tienen filas: ni se cuentan al leer ni se resumen al terminar.
+  // Decir «0 filas leídas» sería contar algo que no está pasando.
+  const sinFilas =
+    estado.fase === "metadatos" ||
+    (estado.fase === "analizando" && esDeMetadatos(estado.formato));
   const nombre = terminado ? estado.informe.archivo.nombre : estado.nombre;
   const etapa = terminado ? "midiendo-riesgo" : estado.etapa;
   // Solo hay barra cuando hay una medida real que enseñar. Un Excel no reporta avance mientras
@@ -211,11 +245,22 @@ function EnCurso({
         </div>
       ) : (
         <p className="cifra text-tinta-tenue text-[0.8125rem]">
-          {terminado
-            ? t(INICIO.carga.filasRevisadas, {
-                n: estado.informe.diagnostico.filas,
-              })
-            : t(INICIO.carga.filasLeidas, { n: estado.filas })}
+          {estado.fase === "metadatos"
+            ? t(
+                plural(
+                  estado.informe.metadatos.campos.length,
+                  INICIO.carga.camposEncontradosUno,
+                  INICIO.carga.camposEncontrados,
+                ),
+                { n: estado.informe.metadatos.campos.length },
+              )
+            : sinFilas
+              ? t(INICIO.carga.leyendoBinario)
+              : estado.fase === "listo"
+                ? t(INICIO.carga.filasRevisadas, {
+                    n: estado.informe.diagnostico.filas,
+                  })
+                : t(INICIO.carga.filasLeidas, { n: estado.filas })}
         </p>
       )}
 
@@ -264,7 +309,7 @@ function Fallo({
   // Los topes del lector de JSON son los mismos en el worker y aquí: el mensaje los cita de la
   // fuente, no los copia, para que un cambio de tope no deje una cifra vieja en pantalla.
   const datos = {
-    tope: enBytes(TOPE_EXCEL_BYTES, idioma),
+    ...topes(idioma),
     profundidad: TOPES_JSON.profundidad,
     rutas: TOPES_JSON.rutas,
     celdas: TOPES_JSON.celdas,

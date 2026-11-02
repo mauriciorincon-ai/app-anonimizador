@@ -9,8 +9,20 @@
 // Y una regla propia del producto: **todo número enseña su denominador**. "412 registros únicos"
 // sin "de 3.000" no es información, es alarma. De ahí `deCada()`.
 
+import type { FormatoBinario } from "@/engine/metadatos/tipos";
 import { decir, formatoNumerico, type Idioma } from "@/lib/idioma";
 import { COMUN } from "@/lib/idioma/textos/comun";
+
+/**
+ * Cómo se escribe cada formato de un PDF o una imagen. Son nombres propios y se escriben igual en
+ * los dos idiomas, por eso no viven en un catálogo (donde una cara igual a la otra es una falta).
+ */
+export const NOMBRE_DEL_FORMATO: Readonly<Record<FormatoBinario, string>> = {
+  pdf: "PDF",
+  jpeg: "JPEG",
+  png: "PNG",
+  webp: "WebP",
+};
 
 export function numero(valor: number, idioma: Idioma): string {
   return formatoNumerico(idioma, { maximumFractionDigits: 0 }).format(valor);
@@ -70,5 +82,7 @@ export function milisegundos(valor: number, idioma: Idioma): string {
  */
 export function unoEn(riesgo: number, idioma: Idioma): string {
   if (riesgo <= 0) return "—";
-  return decir(COMUN.formato.unoEn, idioma, { n: numero(Math.round(1 / riesgo), idioma) });
+  return decir(COMUN.formato.unoEn, idioma, {
+    n: numero(Math.round(1 / riesgo), idioma),
+  });
 }

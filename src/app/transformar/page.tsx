@@ -2,9 +2,9 @@
 
 // P3 — `/transformar`: la puerta del taller.
 //
-// Esta página hace UNA cosa: decidir si hay archivo. Si lo hay, carga el taller bajo demanda; si no,
-// enseña el callejón sin salida y no descarga ni un byte de la maquinaria. La razón está escrita en
-// `src/components/taller.tsx`, y es medida.
+// Esta página hace UNA cosa: decidir si hay archivo. Si lo hay, carga bajo demanda el taller (una
+// tabla) o la limpieza (un PDF o una imagen); si no, enseña el callejón sin salida y no descarga ni
+// un byte de la maquinaria. La razón está escrita en `src/components/taller.tsx`, y es medida.
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -32,8 +32,27 @@ const Taller = dynamic(
   },
 );
 
+/**
+ * La limpieza de metadatos (S6), por la misma razón que el taller: es lo que se usa con un PDF o una
+ * imagen delante, y quien abre la ruta sin nada o con una tabla no la necesita.
+ */
+const Limpieza = dynamic(
+  () => import("@/components/limpieza").then((m) => m.Limpieza),
+  {
+    ssr: false,
+    loading: () => (
+      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
+        <p className="text-tinta-suave" role="status">
+          <Rico texto={TRANSFORMAR.puerta.abriendoLimpieza} />
+        </p>
+      </main>
+    ),
+  },
+);
+
 export default function PaginaDeTransformacion() {
   const estado = useSesion();
+  if (estado.fase === "metadatos") return <Limpieza informe={estado.informe} />;
   if (estado.fase !== "listo") return <SinDatos />;
   return <Taller informe={estado.informe} />;
 }

@@ -231,6 +231,11 @@ export const BITACORA = {
       en: "{fecha} · {filas} {unidadFilas} · {tecnicas}",
     },
     sinTecnicas: { es: "sin técnicas", en: "no techniques" },
+    // La línea de una LIMPIEZA de metadatos (S6): no hay filas ni técnicas que contar.
+    lineaMetadatos: {
+      es: "{fecha} · limpieza de metadatos · {formato}",
+      en: "{fecha} · metadata cleaning · {formato}",
+    },
     huellaAntes: {
       es: "Huella de la bitácora:",
       en: "Log fingerprint:",
@@ -264,6 +269,30 @@ export const BITACORA = {
     politica: { es: "Política", en: "Policy" },
     huellaDeEntrada: { es: "Huella de entrada", en: "Input fingerprint" },
     huellaDeSalida: { es: "Huella de salida", en: "Output fingerprint" },
+    // Una entrada de LIMPIEZA de metadatos (S6) no muestra filas, técnicas ni riesgo: en ella son
+    // ceros que no significan nada, y enseñarlos sería inventar una medición que no se hizo.
+    limpieza: {
+      tratamiento: { es: "Tratamiento", en: "Treatment" },
+      tratamientoValor: {
+        es: "Limpieza de metadatos",
+        en: "Metadata cleaning",
+      },
+      formato: { es: "Formato", en: "Format" },
+      campos: { es: "Campos con nombre", en: "Named fields" },
+      bloques: { es: "Bloques quitados", en: "Blocks removed" },
+      versiones: {
+        es: "Versiones anteriores quitadas",
+        en: "Earlier versions removed",
+      },
+      nota: {
+        es:
+          "El contenido —el texto de las páginas, lo que se ve en la imagen— no se tocó: esta " +
+          "limpieza quita lo que el archivo decía de sí mismo, nada más.",
+        en:
+          "The contents —the text on the pages, what can be seen in the image— were not " +
+          "touched: this cleaning removes what the file said about itself, nothing more.",
+      },
+    },
     salvedades: {
       es:
         "Aquel tratamiento llevaba salvedades que descalificaban su cifra de reducción. Las " +

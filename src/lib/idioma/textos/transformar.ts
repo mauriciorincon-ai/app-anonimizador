@@ -25,6 +25,12 @@ export const TRANSFORMAR = {
       es: "Abriendo el taller…",
       en: "Opening the workshop…",
     },
+    // La puerta también abre la limpieza de un PDF o una imagen (S6): su texto vive en esta
+    // página, que ya la importa, y no en `metadatos.ts`, que solo viaja con quien lo necesita.
+    abriendoLimpieza: {
+      es: "Abriendo la limpieza…",
+      en: "Opening the cleaning…",
+    },
     vacio: {
       titulo: {
         es: "No hay nada que transformar",
