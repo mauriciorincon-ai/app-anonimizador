@@ -589,8 +589,9 @@ the sum of the ε of the columns with noise, because that is how they compose. V
 - **The other columns.** The ones without noise are not protected by ε, but by whatever you applied
   to them.
 - **Repeated deliveries.** Each different file you hand over with the same data spends its own ε,
-  and the ε add up. The same file with the same key gets the same noise, so it cannot be averaged
-  away by running it twice; another file, other noise.
+  and the ε add up. The same file with the same key and the same technique (the same ε, the same
+  range) gets the same noise, so it cannot be averaged away by running it twice; another file, or
+  another ε or range on the same file, gets other noise, independent, and spends its own ε.
 - **The k.** The k is measured apart, over the file, and **does not add up with ε**: they are two
   different measures and Velo does not make up a number that joins them.
 

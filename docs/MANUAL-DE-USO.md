@@ -579,8 +579,10 @@ equivoca por el lado de decir menos protección, no más.
 - **Las demás columnas.** Las que no llevan ruido no están protegidas por ε, sino por lo que les
   hayas aplicado a ellas.
 - **Las entregas repetidas.** Cada archivo distinto que entregues con los mismos datos gasta su
-  propio ε, y los ε se suman. El mismo archivo con la misma llave da el mismo ruido, así que no se
-  puede promediar corriéndolo dos veces; otro archivo, otro ruido.
+  propio ε, y los ε se suman. El mismo archivo con la misma llave y la misma técnica (el mismo ε,
+  el mismo rango) da el mismo ruido, así que no se puede promediar corriéndolo dos veces; otro
+  archivo, u otro ε u otro rango sobre el mismo archivo, da otro ruido, independiente, y gasta su
+  propio ε.
 - **El k.** El k se mide aparte, sobre el archivo, y **no se suma con ε**: son dos medidas distintas
   y Velo no inventa un número que las junte.
 

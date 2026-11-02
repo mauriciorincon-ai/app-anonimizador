@@ -110,7 +110,8 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   El ε se muestra siempre con su alcance, redondeado hacia arriba, en un panel aparte del balance
   —el k y el ε se miden por separado y no se suman, y cada archivo distinto que entregues con los
   mismos datos gasta su propio ε—, y queda en el certificado y en la bitácora. El ruido sale de la
-  llave del proyecto: el mismo archivo con la misma llave da el mismo ruido, byte por byte.
+  llave del proyecto: el mismo archivo con la misma llave y la misma técnica da el mismo ruido,
+  byte por byte; otro ε u otro rango sobre el mismo archivo da otro ruido, independiente.
 - **Balance antes/después** con una regla dura: si algo quedó sin tratar, **eso se lee antes que
   cualquier porcentaje de reducción**, y la cifra pierde el tratamiento de titular.
 - **Archivo anonimizado** (un CSV, o un JSON en la forma en que entró) escrito por el navegador

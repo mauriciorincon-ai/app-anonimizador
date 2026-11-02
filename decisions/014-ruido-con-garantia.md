@@ -39,7 +39,8 @@ the sprint order.
    bound** of e^ε, so no engine's `Math.exp` rounding can change which cells are randomized and the
    effective ε is never above the one asked.
 4. **Randomness from the key.** Each cell's seed is
-   HMAC-SHA256(key, `velo-ruido-v1` ‖ 0 ‖ input-file SHA-256 ‖ 0 ‖ field ‖ 0 ‖ row); further words
+   HMAC-SHA256(key, `velo-ruido-v1` ‖ 0 ‖ input-file SHA-256 ‖ 0 ‖ technique ‖ 0 ‖ field ‖ 0 ‖ row),
+   where _technique_ is the canonical serialization of the technique and its parameters; further words
    come from SHA-256(seed ‖ counter) with the repo's own FIPS 180-4 implementation (the key is not
    extractable and Web Crypto is asynchronous, so the HMAC gives the seed and the rest is expanded
    synchronously). The label separates this domain from the pseudonyms', which do not change.
@@ -49,6 +50,13 @@ the sprint order.
      and whoever knew one month's value would solve the noise and read the other month exactly.
      With it, the same file and key give the same noise (it cannot be averaged by re-running), and
      two different files get independent noise, so each delivery spends its own ε and they add up.
+   - **The technique is in the seed too** (found by the sprint's audit). Without it, the same file
+     delivered with ε = 1 and with ε = 2 would share the randomness: the second noise is the first
+     one rescaled (same sign in every cell), and subtracting the two deliveries solves the value to
+     one grid step, whatever the ε. With it, another ε, range or mechanism draws independent noise,
+     so the two deliveries compose as ε₁ + ε₂; the same technique repeats the same noise, and a
+     repeated delivery teaches nothing new. The JSON of the technique holds no raw 0 byte, so it
+     cannot run into the field that follows it.
 5. **How ε is said.** Every figure carries its ε and its scope: "local differential privacy,
    ε = X per value of this field". The panel after transforming is **apart from the balance**: k
    and ε are two different guarantees and do not add up. The ε per row is the sum over the

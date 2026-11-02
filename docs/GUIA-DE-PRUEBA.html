@@ -3674,10 +3674,14 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               <strong>sin cambiar nada</strong>, prepara y guarda de nuevo (el
               navegador le pone un « (1)» al nombre).
               <code>shasum -a 256</code> de los dos da
-              <strong>la misma huella</strong>: mismo archivo y misma llave dan
-              el mismo ruido, byte por byte. Es a propósito: si cada corrida
-              diera un ruido distinto, bastaría correr Velo muchas veces y
-              promediar para quitarlo.
+              <strong>la misma huella</strong>: mismo archivo, misma llave y
+              misma técnica dan el mismo ruido, byte por byte. Es a propósito:
+              si cada corrida diera un ruido distinto, bastaría correr Velo
+              muchas veces y promediar para quitarlo. Ahora cambia el ε de
+              <code>edad</code> a 2, transforma y guarda una tercera copia: su
+              huella es <strong>otra</strong>, porque otro ε es otro azar,
+              independiente del primero (si no, restando las dos entregas se
+              despejaría la edad).
               <span class="origen origen-nuevo">Nuevo · S7</span></label
             >
           </li>
