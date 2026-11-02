@@ -33,8 +33,18 @@ export const BITACORA_GRANDE = join(
   "bitacora-grande.velolog",
 );
 
+/** Formatos que el kit sabe escribir (`--formato` del generador). */
+export type FormatoDeFixture = "csv" | "xlsx" | "json" | "jsonl";
+
+interface Fixture {
+  perfil: string;
+  filas: number;
+  seed: number;
+  formato: FormatoDeFixture;
+}
+
 /** Cada fixture con su semilla: el mismo archivo, byte por byte, en cada corrida y en cada máquina. */
-const FIXTURES = [
+const FIXTURES: readonly Fixture[] = [
   { perfil: "clinico", filas: 2_000, seed: 42, formato: "csv" },
   { perfil: "sin-personales", filas: 800, seed: 42, formato: "csv" },
   // Excel de verdad, para probar la otra vía de lectura de punta a punta.
@@ -42,16 +52,52 @@ const FIXTURES = [
   // El grande: 500.000 × 24 ≈ 130 MB. No se commitea (el repo es público y clonarlo no puede
   // costar eso); se regenera con su semilla en cada corrida, en unos dos segundos.
   { perfil: "clinico", filas: 500_000, seed: 42, formato: "csv" },
+  // JSON, el tercer formato. Un objeto anidado en las dos formas (arreglo y JSON Lines, el mismo
+  // dato), uno con listas que Velo debe declarar «no tratadas» y uno heterogéneo (claves que
+  // faltan, tipos mezclados, `__proto__`, un número mayor que 2⁵³). Solo existen en json/jsonl.
+  { perfil: "anidado", filas: 2_000, seed: 42, formato: "json" },
+  { perfil: "anidado", filas: 2_000, seed: 42, formato: "jsonl" },
+  { perfil: "con-listas", filas: 500, seed: 42, formato: "json" },
+  { perfil: "heterogeneo", filas: 500, seed: 42, formato: "json" },
 ];
 
 export function nombreDeFixture(
   perfil: string,
   filas: number,
   seed: number,
-  formato = "csv",
+  formato: FormatoDeFixture = "csv",
 ) {
   return join(DIRECTORIO_DE_FIXTURES, `${perfil}-${filas}-s${seed}.${formato}`);
 }
+
+/**
+ * Las rutas de los fixtures JSON que generan estas corridas, para que los specs no armen el nombre
+ * a mano. Cada una nombra un archivo que `generarFixtures` deja en `tmp/e2e/`.
+ */
+export const FIXTURE_ANIDADO_JSON = nombreDeFixture(
+  "anidado",
+  2_000,
+  42,
+  "json",
+);
+export const FIXTURE_ANIDADO_JSONL = nombreDeFixture(
+  "anidado",
+  2_000,
+  42,
+  "jsonl",
+);
+export const FIXTURE_CON_LISTAS_JSON = nombreDeFixture(
+  "con-listas",
+  500,
+  42,
+  "json",
+);
+export const FIXTURE_HETEROGENEO_JSON = nombreDeFixture(
+  "heterogeneo",
+  500,
+  42,
+  "json",
+);
 
 export default async function generarFixtures(): Promise<void> {
   mkdirSync(DIRECTORIO_DE_FIXTURES, { recursive: true });

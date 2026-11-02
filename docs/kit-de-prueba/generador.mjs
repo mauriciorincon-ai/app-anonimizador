@@ -20,10 +20,26 @@
 //   node docs/kit-de-prueba/generador.mjs --filas 1000 --seed 42 --salida datos.csv
 //   node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil clinico
 //   pnpm kit:generar -- --filas 5000 --perfil limpio --salida tmp/limpio.csv
+//   pnpm kit:generar -- --filas 2000 --perfil anidado --formato json --salida tmp/anidado.json
+//   pnpm kit:generar -- --filas 2000 --perfil anidado --formato jsonl --salida tmp/anidado.jsonl
 //
-// Perfiles: clinico (default, mezcla completa con datos del art. 5) · limpio (cero datos
-// personales: el estado "archivo limpio" de la UI) · trampas (concentra los señuelos) ·
-// sin-personales (ni un cuasi-identificador) · mediana-repetida (el caso duro de Mondrian).
+// Formatos (`--formato`): csv (default) · xlsx · json (UN arreglo de objetos) · jsonl (JSON Lines,
+// un objeto por línea). Un formato desconocido es un error: jamás cae en silencio a CSV.
+//
+// Perfiles planos (valen en los cuatro formatos; en JSON las columnas numéricas salen como número):
+// clinico (default, mezcla completa con datos del art. 5) · limpio (cero datos personales: el
+// estado "archivo limpio" de la UI) · trampas (concentra los señuelos) · sin-personales (ni un
+// cuasi-identificador) · mediana-repetida (el caso duro de Mondrian) · colisiones-de-formato.
+//
+// Perfiles solo JSON (`--formato json|jsonl`): anidado (objetos dentro de objetos) · con-listas
+// (anidado + `contactos[]` y `etiquetas[]`, que Velo debe DECLARAR como no tratadas) ·
+// heterogeneo (claves que faltan, tipos mezclados, null vs ausente vs "", un número mayor que
+// 2⁵³, la clave `__proto__` y claves enteras fuera de orden).
+//
+// La forma canónica de JSON que escribe el kit: compacta (sin espacios), una línea por registro.
+//   json  : "[\n" + registros.join(",\n") + "\n]\n"
+//   jsonl : cada registro + "\n"
+// Es la misma que reescribe el motor de Velo, así que el viaje de identidad es byte-igual.
 
 import { createHash } from "node:crypto";
 import { createWriteStream, mkdirSync } from "node:fs";
@@ -206,6 +222,17 @@ function correo(azar, nombre, apellido) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, ""); // sin tildes: como las escribe un sistema de correo
   return `${usuario}@${azar.de(DOMINIOS)}`;
+}
+
+/**
+ * El nombre se sortea una vez por registro para que `correo` y `nombre` sean coherentes: sin esa
+ * coherencia, el riesgo por clases de equivalencia sería irreal. Con probabilidad `tasaInvalida`
+ * el registro lleva un nombre FUERA del diccionario del motor (ver NOMBRES_RAROS).
+ */
+function sortearPersona(azar, tasaInvalida) {
+  return azar.conProbabilidad(tasaInvalida)
+    ? { nombre: azar.de(NOMBRES_RAROS), apellido: azar.de(APELLIDOS_RAROS) }
+    : { nombre: azar.de(NOMBRES), apellido: azar.de(APELLIDOS) };
 }
 
 function fecha(azar, anioMin, anioMax) {
@@ -419,11 +446,7 @@ export function* generarFilas({ filas, seed, perfil, tasaInvalida, tasaVacia }) 
   yield columnas;
 
   for (let i = 0; i < filas; i++) {
-    // El nombre se sortea una vez por fila para que `correo` y `nombre_completo` sean coherentes:
-    // sin esa coherencia, el riesgo por clases de equivalencia sería irreal.
-    const fila = azar.conProbabilidad(tasaInvalida)
-      ? { nombre: azar.de(NOMBRES_RAROS), apellido: azar.de(APELLIDOS_RAROS) }
-      : { nombre: azar.de(NOMBRES), apellido: azar.de(APELLIDOS) };
+    const fila = sortearPersona(azar, tasaInvalida);
     yield columnas.map((nombre) => {
       const valor = TODAS_LAS_COLUMNAS[nombre].gen(azar, config, fila);
       // Las celdas vacías son parte del terreno: un archivo real las trae y el motor no puede
@@ -480,12 +503,405 @@ export async function generarXlsx(opciones) {
   return { sha256: null, columnas: matriz[0] };
 }
 
+// ── JSON y JSON Lines ─────────────────────────────────────────────────────────────────────────
+//
+// Un registro JSON NO se construye con objetos de JavaScript: un objeto reordena las claves que
+// parecen enteros ("2" va después de "1"), traga la clave `__proto__` como si fuera el prototipo
+// y redondea los números que pasan de 2⁵³. Justo lo que este kit necesita poder escribir. Por eso
+// el registro es un `Map` (conserva el orden de inserción de CUALQUIER clave) y el número que
+// debe salir tal cual se escribe va envuelto en `NumeroCrudo`. La clave que no debe estar, no se
+// inserta: «ausente» y «null» son cosas distintas y el kit emite las dos.
+
+class NumeroCrudo {
+  constructor(texto) {
+    this.texto = texto;
+  }
+}
+
+/** Forma canónica: compacta, claves en el orden de inserción, cadenas como las deja JSON.stringify. */
+export function serializarRegistro(valor) {
+  if (valor === null) return "null";
+  if (valor instanceof NumeroCrudo) return valor.texto;
+  if (valor instanceof Map) {
+    let cuerpo = "";
+    for (const [clave, hijo] of valor) {
+      cuerpo += `${cuerpo ? "," : ""}${JSON.stringify(clave)}:${serializarRegistro(hijo)}`;
+    }
+    return `{${cuerpo}}`;
+  }
+  if (Array.isArray(valor)) return `[${valor.map(serializarRegistro).join(",")}]`;
+  if (typeof valor === "string" || typeof valor === "boolean") return JSON.stringify(valor);
+  if (typeof valor === "number" && Number.isFinite(valor)) return JSON.stringify(valor);
+  throw new Error(`valor que el kit no sabe escribir como JSON: ${String(valor)}`);
+}
+
+// Léxicos de los perfiles JSON (palabras inventadas, como los de arriba).
+const CALLES = ["Calle", "Carrera", "Avenida", "Diagonal", "Transversal"];
+const PARENTESCOS = ["madre", "padre", "hermana", "hermano", "pareja", "vecina"];
+const ETIQUETAS = [
+  "seguimiento",
+  "control",
+  "prioritario",
+  "pendiente-de-pago",
+  "domicilio",
+  "teleconsulta",
+];
+// Textos libres con lo que un serializador suele estropear: comillas, barra invertida, salto de
+// línea, tildes y un carácter fuera del plano básico. JSON.stringify los escapa de UNA sola
+// manera, y esa es la forma canónica que el motor debe reproducir al re-escribirlos.
+const OBSERVACIONES = [
+  "sin novedad",
+  'dijo "vuelvo mañana"',
+  "ruta C:\\datos\\sede",
+  "línea 1\nlínea 2",
+  "muy amable 👍",
+  "control en 15 días / ver anexo #3",
+];
+const NOTAS_INTERNAS = ["nota interna", "sin marca", "revisado"];
+// Números que deben salir EXACTAMENTE como se escribieron: exponente, ceros finales, cero negativo.
+const NUMEROS_CRUDOS = ["1E3", "2.50", "1.5e-3", "-0.0", "0.10", "100", "3.14159"];
+
+function direccion(azar) {
+  return `${azar.de(CALLES)} ${azar.entero(1, 170)} # ${azar.entero(1, 99)}-${azar.entero(1, 99)}`;
+}
+
+/** Con probabilidad `tasaVacia` la hoja sale vacía ("" en texto, null en número). */
+function conVacio(azar, config, valor, vacio = "") {
+  return azar.conProbabilidad(config.tasaVacia) ? vacio : valor;
+}
+
+/** Anidado: objetos dentro de objetos, todas las rutas presentes en todos los registros. */
+function registroAnidado(azar, config) {
+  const { tasaInvalida } = config;
+  const persona = sortearPersona(azar, tasaInvalida);
+  const nacimiento = fecha(azar, 1940, 2010);
+  const paciente = new Map([
+    ["documento", conVacio(azar, config, cedula(azar, tasaInvalida))],
+    ["nombre", conVacio(azar, config, `${persona.nombre} ${persona.apellido}`)],
+    ["nacimiento", conVacio(azar, config, nacimiento)],
+    [
+      "contacto",
+      new Map([
+        ["correo", conVacio(azar, config, correo(azar, persona.nombre, persona.apellido))],
+        ["celular", conVacio(azar, config, celular(azar, tasaInvalida))],
+      ]),
+    ],
+  ]);
+  const ubicacion = new Map([
+    ["ciudad", conVacio(azar, config, azar.de(MUNICIPIOS))],
+    ["direccion", conVacio(azar, config, direccion(azar))],
+  ]);
+  const empleador = new Map([["nit", conVacio(azar, config, nit(azar, tasaInvalida))]]);
+  const atencion = new Map([
+    ["fecha", conVacio(azar, config, fecha(azar, 2024, 2026))],
+    ["diagnostico", conVacio(azar, config, azar.de(DIAGNOSTICOS))],
+    // La edad sale coherente con el nacimiento: es un NÚMERO JSON, no un texto.
+    ["edad", conVacio(azar, config, 2026 - Number(nacimiento.slice(0, 4)), null)],
+  ]);
+  return new Map([
+    ["paciente", paciente],
+    ["ubicacion", ubicacion],
+    ["empleador", empleador],
+    ["atencion", atencion],
+  ]);
+}
+
+/** Con listas: lo anterior más dos listas, que Velo declara «no tratadas» y copia crudas. */
+function registroConListas(azar, config) {
+  const registro = registroAnidado(azar, config);
+  const contactos = [];
+  for (let i = azar.entero(0, 3); i > 0; i--) {
+    contactos.push(
+      new Map([
+        [
+          "correo",
+          conVacio(azar, config, correo(azar, azar.de(NOMBRES), azar.de(APELLIDOS))),
+        ],
+        ["parentesco", azar.de(PARENTESCOS)],
+      ]),
+    );
+  }
+  const etiquetas = [];
+  for (let i = azar.entero(0, 4); i > 0; i--) etiquetas.push(azar.de(ETIQUETAS));
+  registro.set("contactos", contactos);
+  registro.set("etiquetas", etiquetas);
+  return registro;
+}
+
+/**
+ * Heterogéneo: el JSON del mundo real, donde cada registro es un poco distinto. Cada rareza está
+ * ahí a propósito (ver `CAMPOS_HETEROGENEO`): claves que faltan, un camino que es texto en unos
+ * registros y objeto en otros, null vs ausente vs "", un número mayor que 2⁵³ escrito como número,
+ * la clave `__proto__` y claves enteras en un orden que un objeto de JavaScript no respetaría.
+ * Los dos primeros registros llevan números largos fijos para que un test pueda buscarlos.
+ */
+function registroHeterogeneo(azar, config, indice) {
+  const { tasaInvalida } = config;
+  const persona = sortearPersona(azar, tasaInvalida);
+  const serialLargo = azar.conProbabilidad(0.2);
+  const serialSorteado = azar.digitos(serialLargo ? 20 : 17, "1");
+  const serial =
+    indice === 0 ? "12345678901234567" : indice === 1 ? "12345678901234567890" : serialSorteado;
+
+  const documento = cedula(azar, tasaInvalida);
+  const documentoComoNumero = azar.conProbabilidad(0.3) && /^[1-9]\d*$/.test(documento);
+  const tipoDeEdad = azar.entero(0, 6); // 0-4 número · 5 texto · 6 null
+  const edad = azar.entero(18, 90);
+  const estadoDelCelular = azar.entero(0, 4); // 0-1 valor · 2 "" · 3 null · 4 ausente
+  const celularValor = celular(azar, tasaInvalida);
+  const contactoEsObjeto = azar.conProbabilidad(0.5);
+  const correoValor = correo(azar, persona.nombre, persona.apellido);
+  const celularDeContacto = celular(azar, tasaInvalida);
+
+  const paciente = new Map();
+  paciente.set("documento", documentoComoNumero ? Number(documento) : documento);
+  paciente.set("nombre", conVacio(azar, config, `${persona.nombre} ${persona.apellido}`));
+  paciente.set("edad", tipoDeEdad <= 4 ? edad : tipoDeEdad === 5 ? String(edad) : null);
+  if (estadoDelCelular <= 1) paciente.set("celular", celularValor);
+  else if (estadoDelCelular === 2) paciente.set("celular", "");
+  else if (estadoDelCelular === 3) paciente.set("celular", null);
+  paciente.set(
+    "contacto",
+    contactoEsObjeto
+      ? new Map([
+          ["correo", correoValor],
+          ["celular", celularDeContacto],
+        ])
+      : correoValor,
+  );
+
+  const ciudad = azar.de(MUNICIPIOS);
+  const hayCiudad = !azar.conProbabilidad(0.2);
+  const nitValor = nit(azar, tasaInvalida);
+  const hayEmpleador = azar.conProbabilidad(0.3);
+  const protoDocumento = cedula(azar, tasaInvalida);
+  const protoNota = azar.de(NOTAS_INTERNAS);
+  const referenciaDos = celular(azar, tasaInvalida);
+  const referenciaUno = correo(azar, azar.de(NOMBRES), azar.de(APELLIDOS));
+  const lectura = azar.de(NUMEROS_CRUDOS);
+  const activo = azar.conProbabilidad(0.5);
+  const observacion = azar.de(OBSERVACIONES);
+  const hayObservacion = !azar.conProbabilidad(0.3);
+
+  const registro = new Map();
+  registro.set("id", indice + 1);
+  registro.set("serial", new NumeroCrudo(serial));
+  registro.set("paciente", paciente);
+  if (hayCiudad) registro.set("ciudad", conVacio(azar, config, ciudad));
+  if (hayEmpleador) registro.set("empleador", new Map([["nit", nitValor]]));
+  registro.set(
+    "__proto__",
+    new Map([
+      ["documento", protoDocumento],
+      ["nota", protoNota],
+    ]),
+  );
+  // Claves enteras: un objeto de JavaScript las pondría como "1", "2". El archivo dice "2", "1".
+  registro.set(
+    "referencias",
+    new Map([
+      ["2", conVacio(azar, config, referenciaDos)],
+      ["1", conVacio(azar, config, referenciaUno)],
+    ]),
+  );
+  registro.set("lectura", new NumeroCrudo(lectura));
+  registro.set("activo", activo);
+  if (hayObservacion) registro.set("observacion", observacion);
+  return registro;
+}
+
+// Cada ruta declara qué DEBERÍA detectar el motor, igual que `COLUMNAS` para los perfiles planos.
+// `presencia`: "siempre" (en todos los registros) o "parcial" (en algunos). `tipos`: los tipos de
+// valor JSON que puede traer, con las tasas por defecto. Las rutas usan «.» y, para listas, `[]`
+// (`contactos[]`); ninguna clave del kit lleva «.», «[», «]» ni «\», así que no hay escapes.
+function campo(ruta, tipo, categoria, tipos, presencia = "siempre") {
+  return { ruta, tipo, categoria, tipos, presencia };
+}
+
+const CAMPOS_ANIDADO = [
+  campo("paciente.documento", "cedula", "identificador-directo", ["string"]),
+  campo("paciente.nombre", "nombre", "identificador-directo", ["string"]),
+  campo("paciente.nacimiento", "fecha", "cuasi-identificador", ["string"]),
+  campo("paciente.contacto.correo", "email", "identificador-directo", ["string"]),
+  campo("paciente.contacto.celular", "celular-co", "identificador-directo", ["string"]),
+  campo("ubicacion.ciudad", "categoria", "cuasi-identificador", ["string"]),
+  // Sin validador de valores: el encabezado «direccion» es lo único que la delata.
+  campo("ubicacion.direccion", "texto", "identificador-directo", ["string"]),
+  campo("empleador.nit", "nit", "identificador-directo", ["string"]),
+  campo("atencion.fecha", "fecha", "no-personal", ["string"]),
+  campo("atencion.diagnostico", "categoria", "dato-sensible", ["string"]),
+  campo("atencion.edad", "numero", "cuasi-identificador", ["number", "null"]),
+];
+
+const LISTAS_CON_LISTAS = [
+  {
+    ruta: "contactos[]",
+    elementos: "objetos",
+    rutasHijas: ["contactos[].correo", "contactos[].parentesco"],
+  },
+  { ruta: "etiquetas[]", elementos: "textos", rutasHijas: [] },
+];
+
+const CAMPOS_HETEROGENEO = [
+  campo("id", "numero", "no-personal", ["number"]),
+  // Número de 17 o 20 dígitos, mayor que 2⁵³, escrito como NÚMERO JSON (no como texto).
+  campo("serial", "numero", "no-personal", ["number"]),
+  campo("paciente.documento", "cedula", "identificador-directo", ["string", "number"]),
+  campo("paciente.nombre", "nombre", "identificador-directo", ["string"]),
+  campo("paciente.edad", "numero", "cuasi-identificador", ["number", "string", "null"]),
+  // Valor, "", null o ausente, en proporciones parecidas.
+  campo("paciente.celular", "celular-co", "identificador-directo", ["string", "null"], "parcial"),
+  // Texto (un correo) en unos registros, objeto en otros: la misma ruta con dos formas.
+  campo("paciente.contacto", "email", "identificador-directo", ["string", "object"]),
+  campo("paciente.contacto.correo", "email", "identificador-directo", ["string"], "parcial"),
+  campo("paciente.contacto.celular", "celular-co", "identificador-directo", ["string"], "parcial"),
+  campo("ciudad", "categoria", "cuasi-identificador", ["string"], "parcial"),
+  campo("empleador.nit", "nit", "identificador-directo", ["string"], "parcial"),
+  // La clave `__proto__` como clave de datos, con hijos.
+  campo("__proto__.documento", "cedula", "identificador-directo", ["string"]),
+  campo("__proto__.nota", "texto", "no-personal", ["string"]),
+  // Claves enteras, escritas "2" antes que "1".
+  campo("referencias.2", "celular-co", "identificador-directo", ["string"]),
+  campo("referencias.1", "email", "identificador-directo", ["string"]),
+  // Números que deben salir tal cual: 1E3, 2.50, -0.0…
+  campo("lectura", "numero", "no-personal", ["number"]),
+  campo("activo", "booleano", "no-personal", ["boolean"]),
+  campo("observacion", "texto", "no-personal", ["string"], "parcial"),
+];
+
+const PERFILES_JSON = {
+  anidado: { construir: registroAnidado, campos: CAMPOS_ANIDADO, listas: [] },
+  "con-listas": {
+    construir: registroConListas,
+    campos: CAMPOS_ANIDADO,
+    listas: LISTAS_CON_LISTAS,
+  },
+  heterogeneo: { construir: registroHeterogeneo, campos: CAMPOS_HETEROGENEO, listas: [] },
+};
+
+// Los perfiles planos también se escriben como JSON, con el mismo dato que su CSV. Lo único que
+// cambia es el tipo: lo que el CSV llama número, JSON lo escribe como número (una celda vacía,
+// como null) y las coordenadas conservan sus ceros finales (`-3.475030`).
+const NUMEROS_EN_JSON = new Set(["estrato", "monto", "edad_reportada", "puntaje_triage"]);
+const DECIMALES_EN_JSON = new Set(["latitud", "longitud"]);
+
+function registroPlano(columnas, fila) {
+  const registro = new Map();
+  columnas.forEach((nombre, i) => {
+    const celda = fila[i];
+    if (NUMEROS_EN_JSON.has(nombre)) registro.set(nombre, celda === "" ? null : Number(celda));
+    else if (DECIMALES_EN_JSON.has(nombre))
+      registro.set(nombre, celda === "" ? null : new NumeroCrudo(celda));
+    else registro.set(nombre, celda);
+  });
+  return registro;
+}
+
+export const FORMATOS = ["csv", "xlsx", "json", "jsonl"];
+export const PERFILES_SOLO_JSON = Object.keys(PERFILES_JSON);
+
+/**
+ * Un registro por vez, como `Map`, listo para `serializarRegistro`. Los perfiles planos salen de
+ * `generarFilas` (el mismo dato que su CSV, con la misma semilla); los perfiles JSON, de su propio
+ * constructor.
+ */
+export function* generarRegistros({ filas, seed, perfil, tasaInvalida, tasaVacia }) {
+  const perfilJson = PERFILES_JSON[perfil];
+  if (perfilJson) {
+    const azar = crearAzar(seed);
+    const config = { tasaInvalida, tasaVacia };
+    for (let i = 0; i < filas; i++) yield perfilJson.construir(azar, config, i);
+    return;
+  }
+  const origen = generarFilas({ filas, seed, perfil, tasaInvalida, tasaVacia });
+  const columnas = origen.next().value;
+  for (const fila of origen) yield registroPlano(columnas, fila);
+}
+
+/** Las rutas (o columnas) que tiene cada registro de un perfil, en el orden del oráculo. */
+function rutasDelPerfil(perfil) {
+  return PERFILES_JSON[perfil]
+    ? PERFILES_JSON[perfil].campos.map((c) => c.ruta)
+    : PERFILES[perfil];
+}
+
+/**
+ * Escribe JSON (`forma: "json"`) o JSON Lines (`forma: "jsonl"`) en bloques de ~1 MB: 500 000
+ * registros no caben cómodos como UNA cadena. La forma canónica es exactamente:
+ *   json  → "[\n" + registros.join(",\n") + "\n]\n"
+ *   jsonl → cada registro + "\n"
+ */
+async function escribirRegistros(opciones, forma) {
+  const { salida } = opciones;
+  const hash = createHash("sha256");
+  mkdirSync(dirname(salida), { recursive: true });
+  const stream = createWriteStream(salida);
+  const emitir = async (texto) => {
+    hash.update(texto);
+    await escribir(stream, texto);
+  };
+
+  let bloque = forma === "json" ? "[\n" : "";
+  let primero = true;
+  for (const registro of generarRegistros(opciones)) {
+    const texto = serializarRegistro(registro);
+    bloque += forma === "json" ? `${primero ? "" : ",\n"}${texto}` : `${texto}\n`;
+    primero = false;
+    if (bloque.length > 1 << 20) {
+      await emitir(bloque);
+      bloque = "";
+    }
+  }
+  if (forma === "json") bloque += "\n]\n";
+  if (bloque) await emitir(bloque);
+
+  stream.end();
+  await once(stream, "finish");
+  return { sha256: hash.digest("hex"), columnas: rutasDelPerfil(opciones.perfil) };
+}
+
+export const generarJson = (opciones) => escribirRegistros(opciones, "json");
+export const generarJsonl = (opciones) => escribirRegistros(opciones, "jsonl");
+
+/**
+ * La puerta única del kit: valida y reparte por formato. Un formato o un perfil que no existen son
+ * un error, no un CSV: un fixture generado con la opción equivocada no puede pasar por bueno.
+ */
+export async function generar(opciones) {
+  const { formato = "csv", perfil = "clinico", filas } = opciones;
+  if (!FORMATOS.includes(formato)) {
+    throw new Error(`formato desconocido: «${formato}» (los válidos: ${FORMATOS.join(", ")})`);
+  }
+  if (!PERFILES[perfil] && !PERFILES_JSON[perfil]) {
+    const validos = [...Object.keys(PERFILES), ...PERFILES_SOLO_JSON].join(", ");
+    throw new Error(`perfil desconocido: «${perfil}» (los válidos: ${validos})`);
+  }
+  const esJson = formato === "json" || formato === "jsonl";
+  if (PERFILES_JSON[perfil] && !esJson) {
+    throw new Error(`el perfil «${perfil}» solo existe en los formatos json y jsonl`);
+  }
+  if (!Number.isInteger(filas) || filas < 0) {
+    throw new Error(`filas debe ser un entero de 0 en adelante: ${String(filas)}`);
+  }
+  const escritores = {
+    csv: generarCsv,
+    xlsx: generarXlsx,
+    json: generarJson,
+    jsonl: generarJsonl,
+  };
+  return escritores[formato]({ ...opciones, formato, perfil });
+}
+
 /**
  * Oráculo del kit: qué debería detectar el motor en cada columna. Lo consumen los tests, así que
  * el generador no es solo la fuente de datos — es también la respuesta correcta contra la que se
  * mide el motor.
  */
 export function esperadoPorColumna(perfil = "clinico") {
+  // Los perfiles JSON declaran RUTAS, no columnas: mismo oráculo (`tipo`, `categoria`, `trampa`),
+  // más `presencia` y `tipos`. Ver también `esperadoPorRuta` y `listasEsperadas`.
+  if (PERFILES_JSON[perfil]) return esperadoPorRuta(perfil);
+  if (!PERFILES[perfil]) throw new Error(`perfil desconocido: ${perfil}`);
   return Object.fromEntries(
     PERFILES[perfil].map((nombre) => [
       nombre,
@@ -496,6 +912,35 @@ export function esperadoPorColumna(perfil = "clinico") {
       },
     ]),
   );
+}
+
+/**
+ * Oráculo de los perfiles JSON, por ruta (`paciente.contacto.correo`): qué debería detectar el
+ * motor, si la ruta está en todos los registros o solo en algunos, y qué tipos de valor trae.
+ * Solo para perfiles JSON; los planos tienen `esperadoPorColumna`.
+ */
+export function esperadoPorRuta(perfil = "anidado") {
+  const perfilJson = PERFILES_JSON[perfil];
+  if (!perfilJson) {
+    throw new Error(`«${perfil}» no es un perfil JSON: para los planos usa esperadoPorColumna`);
+  }
+  return Object.fromEntries(
+    perfilJson.campos.map(({ ruta, tipo, categoria, tipos, presencia }) => [
+      ruta,
+      { tipo, categoria, trampa: null, presencia, tipos: [...tipos] },
+    ]),
+  );
+}
+
+/**
+ * Las listas que un perfil JSON trae y que Velo debe DECLARAR como no tratadas (se copian crudas).
+ * `[]` para los perfiles sin listas. `rutasHijas` son los caminos dentro de los elementos.
+ * @returns {{ ruta: string, elementos: "objetos" | "textos", rutasHijas: string[] }[]}
+ */
+export function listasEsperadas(perfil = "con-listas") {
+  const perfilJson = PERFILES_JSON[perfil];
+  if (!perfilJson) return [];
+  return perfilJson.listas.map((l) => ({ ...l, rutasHijas: [...l.rutasHijas] }));
 }
 
 // ── CLI ───────────────────────────────────────────────────────────────────────────────────────
@@ -529,12 +974,21 @@ if (esEjecucionDirecta) {
   const opciones = leerArgumentos(process.argv.slice(2));
   opciones.salida = resolve(process.cwd(), opciones.salida);
   const inicio = Date.now();
-  const generar = opciones.formato === "xlsx" ? generarXlsx : generarCsv;
-  const { sha256, columnas } = await generar(opciones);
-  const segundos = ((Date.now() - inicio) / 1000).toFixed(2);
-  console.log(`✓ ${opciones.filas} filas × ${columnas.length} columnas · perfil ${opciones.perfil}`);
-  console.log(`  archivo : ${opciones.salida}`);
-  console.log(`  semilla : ${opciones.seed}  (misma semilla ⇒ mismo archivo, byte por byte)`);
-  if (sha256) console.log(`  sha-256 : ${sha256}`);
-  console.log(`  tiempo  : ${segundos} s`);
+  try {
+    const { sha256, columnas } = await generar(opciones);
+    const segundos = ((Date.now() - inicio) / 1000).toFixed(2);
+    const esJson = opciones.formato === "json" || opciones.formato === "jsonl";
+    console.log(
+      esJson
+        ? `✓ ${opciones.filas} registros × ${columnas.length} rutas · perfil ${opciones.perfil} · ${opciones.formato}`
+        : `✓ ${opciones.filas} filas × ${columnas.length} columnas · perfil ${opciones.perfil}`,
+    );
+    console.log(`  archivo : ${opciones.salida}`);
+    console.log(`  semilla : ${opciones.seed}  (misma semilla ⇒ mismo archivo, byte por byte)`);
+    if (sha256) console.log(`  sha-256 : ${sha256}`);
+    console.log(`  tiempo  : ${segundos} s`);
+  } catch (error) {
+    console.error(`✗ ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  }
 }
