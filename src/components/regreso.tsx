@@ -274,7 +274,7 @@ function PanelDelDevuelto({ estado }: { estado: EstadoDelRegreso }) {
         <input
           ref={entrada}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,text/csv,.json,.jsonl,.ndjson,application/json"
           className="sr-only"
           aria-label={t(REGRESO.devuelto.ariaArchivo)}
           onChange={(evento) => {

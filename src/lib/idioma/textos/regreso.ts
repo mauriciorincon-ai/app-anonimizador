@@ -151,13 +151,14 @@ export const REGRESO = {
     },
     nota: {
       es:
-        "CSV. Puede traer las filas en otro orden, columnas nuevas, columnas borradas y valores " +
-        "corregidos: nada de eso estorba, porque la restauración es **por valor** y no por " +
-        "posición.",
+        "CSV o JSON (también JSON Lines). Puede traer las filas en otro orden, columnas nuevas, " +
+        "columnas borradas y valores corregidos: nada de eso estorba, porque la restauración es " +
+        "**por valor** y no por posición. Un JSON vuelve con su estructura y el orden de sus claves.",
       en:
-        "CSV. It can come back with the rows in a different order, new columns, deleted columns " +
-        "and corrected values: none of that gets in the way, because restoring works **by " +
-        "value**, not by position.",
+        "CSV or JSON (JSON Lines too). It can come back with the rows in a different order, new " +
+        "columns, deleted columns and corrected values: none of that gets in the way, because " +
+        "restoring works **by value**, not by position. A JSON comes back with its structure and " +
+        "the order of its keys.",
     },
     elegir: {
       es: "Elegir el archivo devuelto",
@@ -182,17 +183,26 @@ export const REGRESO = {
         en: "That file has no rows to restore. Check that it is the one you were sent back, and that it is not empty.",
       },
       "formato-no-soportado": {
-        es: "Velo no sabe leer ese formato aquí. El archivo devuelto tiene que ser CSV: si te lo devolvieron en Excel, ábrelo y guárdalo como CSV.",
-        en: "Velo cannot read that format here. The returned file has to be a CSV: if it came back to you as Excel, open it and save it as CSV.",
+        es: "Velo no sabe leer ese formato aquí. El archivo devuelto tiene que ser CSV o JSON: si te lo devolvieron en Excel, ábrelo y guárdalo como CSV.",
+        en: "Velo cannot read that format here. The returned file has to be a CSV or a JSON: if it came back to you as Excel, open it and save it as CSV.",
       },
       "lectura-fallida": {
-        es: "No se pudo leer ese archivo. Tiene que ser un CSV: si te lo devolvieron en Excel, ábrelo y guárdalo como CSV.",
-        en: "That file could not be read. It has to be a CSV: if it came back to you as Excel, open it and save it as CSV.",
+        es: "No se pudo leer ese archivo. Tiene que ser un CSV o un JSON: si te lo devolvieron en Excel, ábrelo y guárdalo como CSV.",
+        en: "That file could not be read. It has to be a CSV or a JSON: if it came back to you as Excel, open it and save it as CSV.",
+      },
+      // Un JSON que el lector no acepta. Velo no repite nada de lo que hay dentro: solo la línea.
+      "json-invalido": {
+        es: "Ese JSON no se pudo leer: está cortado o tiene un error de sintaxis. Ábrelo en un editor, corrígelo o pide que te lo vuelvan a mandar.",
+        en: "That JSON could not be read: it is cut off or has a syntax error. Open it in an editor, fix it, or ask for it to be sent again.",
+      },
+      "json-no-es-registros": {
+        es: "Ese JSON no es una lista de registros ni JSON Lines, que es como salió de Velo: no hay filas que restaurar.",
+        en: "That JSON is neither a list of records nor JSON Lines, which is how it left Velo: there are no rows to restore.",
       },
     },
     falloPorDefecto: {
-      es: "No se pudo usar ese archivo. Tiene que ser el CSV que te devolvió el tercero.",
-      en: "That file could not be used. It has to be the CSV the third party sent back to you.",
+      es: "No se pudo usar ese archivo. Tiene que ser el CSV o el JSON que te devolvió el tercero.",
+      en: "That file could not be used. It has to be the CSV or the JSON the third party sent back to you.",
     },
   },
 

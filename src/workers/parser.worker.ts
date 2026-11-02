@@ -36,7 +36,11 @@ import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { filasDeCsv, nombreDelArchivoAnonimizado } from "@/engine/csv";
 import { medirDiversidad } from "@/engine/diversidad";
 import { escribirJson } from "@/engine/json/escritor";
-import { leerJson, type LecturaJson } from "@/engine/json/lector";
+import {
+  columnasNumericas,
+  leerJson,
+  type LecturaJson,
+} from "@/engine/json/lector";
 import { ErrorDeJson } from "@/engine/json/tipos";
 import type { EstructuraJson } from "@/engine/json/tipos";
 import {
@@ -575,7 +579,10 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
     hashDeLaPolitica = hashDePolitica(politica);
     // El material de la bóveda se guarda AQUÍ, del lado de la frontera donde están los originales.
     // Sellarlo es un mensaje aparte porque exige la frase de paso del usuario, que se pide después.
-    correspondencias = resultado.correspondencias;
+    correspondencias =
+      formatoOriginal === "json" && lecturaJson !== null
+        ? conNumericas(resultado.correspondencias, columnasNumericas(lecturaJson))
+        : resultado.correspondencias;
 
     // Aquí vivía la proyección campo a campo del reparto de Mondrian, para que su tabla —el archivo
     // entero— no cruzara la frontera dentro de `ResultadoDeMondrian`. **Ya no hace falta porque el
@@ -741,6 +748,22 @@ let bovedaActual: Boveda | null = null;
 let devuelta: TablaColumnar | null = null;
 let restaurada: Restauracion | null = null;
 let datosDelDevuelto = { nombre: "", bytes: 0, sha256: "" };
+/**
+ * Solo si lo devuelto es un JSON (S7): su lectura y el archivo, para escribir lo restaurado con SU
+ * estructura y el orden de SUS claves —los del archivo que volvió, no los del que salió—.
+ */
+let lecturaDevuelta: LecturaJson | null = null;
+let archivoDevuelto: File | null = null;
+
+/** En un JSON, las columnas reversibles que eran todas números vuelven sin comillas (ADR-011). */
+function conNumericas(
+  entradas: readonly EntradaDeBoveda[],
+  numericas: ReadonlySet<string>,
+): EntradaDeBoveda[] {
+  return entradas.map((e) =>
+    numericas.has(e.columna) ? { ...e, numerica: true } : e,
+  );
+}
 
 /** Sella la bóveda del tratamiento recién hecho y la entrega como asa (ADR-005). */
 async function sellar(frase: string): Promise<void> {
@@ -915,6 +938,42 @@ async function sellarLaBitacora(
   }
 }
 
+/** El devuelto está listo: lo que la página puede saber de él son conteos. */
+function anunciarDevuelto(tabla: TablaColumnar): void {
+  enviar({
+    tipo: "devuelto-listo",
+    nombre: datosDelDevuelto.nombre,
+    bytes: datosDelDevuelto.bytes,
+    filas: tabla.filas,
+    columnas: tabla.columnas.length,
+    sha256: datosDelDevuelto.sha256,
+  });
+}
+
+/** Un JSON devuelto: el mismo lector propio de la ida, con la misma regla de no citar nada. */
+async function analizarJsonDevuelto(archivo: File): Promise<void> {
+  try {
+    const lectura = await leerJson(
+      fuenteDeArchivo(archivo, {
+        alAvanzar: (leidos) => avisar("leyendo", 0, leidos, archivo.size),
+      }),
+    );
+    if (lectura.tabla.filas === 0) {
+      enviar({ tipo: "error", motivo: "archivo-vacio" });
+      return;
+    }
+    devuelta = lectura.tabla;
+    lecturaDevuelta = lectura;
+    archivoDevuelto = archivo;
+    anunciarDevuelto(lectura.tabla);
+  } catch (error) {
+    enviar({
+      tipo: "error",
+      motivo: error instanceof ErrorDeJson ? error.motivo : "lectura-fallida",
+    });
+  }
+}
+
 /** Parsea el archivo devuelto. Sin clasificar y sin medir riesgo: es otro flujo. */
 async function analizarDevuelto(archivo: File): Promise<void> {
   try {
@@ -925,6 +984,22 @@ async function analizarDevuelto(archivo: File): Promise<void> {
     };
   } catch {
     enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+  devuelta = null;
+  restaurada = null;
+  lecturaDevuelta = null;
+  archivoDevuelto = null;
+
+  // El regreso lee CSV y JSON. Un Excel, un PDF o una imagen se vetan aquí y no se leen «como
+  // texto»: la página filtra por extensión, pero la frontera no se fía de lo que diga el otro lado.
+  const formato = formatoDeArchivo(archivo.name);
+  if (formato === "json") {
+    await analizarJsonDevuelto(archivo);
+    return;
+  }
+  if (formato !== null && formato !== "csv") {
+    enviar({ tipo: "error", motivo: "formato-no-soportado" });
     return;
   }
 
@@ -961,14 +1036,7 @@ async function analizarDevuelto(archivo: File): Promise<void> {
         enviar({ tipo: "error", motivo: "archivo-vacio" });
         return;
       }
-      enviar({
-        tipo: "devuelto-listo",
-        nombre: datosDelDevuelto.nombre,
-        bytes: datosDelDevuelto.bytes,
-        filas: devuelta.filas,
-        columnas: devuelta.columnas.length,
-        sha256: datosDelDevuelto.sha256,
-      });
+      anunciarDevuelto(devuelta);
     },
     error() {
       enviar({ tipo: "error", motivo: "lectura-fallida" });
@@ -1004,12 +1072,66 @@ function restaurarDevuelto(): void {
   }
 }
 
-function construirRestaurado(): void {
+/**
+ * Un JSON restaurado: la segunda pasada del escritor sobre el archivo DEVUELTO, con la tabla
+ * restaurada mandando. Las columnas que en el original eran todas números (la bóveda lo dice)
+ * vuelven a escribirse como números. Si el archivo cambió en el disco desde que se leyó, no se
+ * escribe nada.
+ */
+async function construirRestauradoJson(
+  restauracion: Restauracion,
+  lectura: LecturaJson,
+  archivo: File,
+): Promise<void> {
+  const numericas = new Set<string>();
+  const deLaBoveda = new Map(
+    (bovedaActual?.columnas ?? []).map((c) => [c.columna, c]),
+  );
+  for (const columna of restauracion.columnas)
+    if (
+      columna.deLaBoveda !== null &&
+      deLaBoveda.get(columna.deLaBoveda)?.numerica === true
+    )
+      numericas.add(columna.columna);
+
+  const trozos: string[] = [];
+  try {
+    for await (const trozo of escribirJson(
+      fuenteDeArchivo(archivo, { huellaEsperada: datosDelDevuelto.sha256 }),
+      lectura,
+      restauracion.tabla,
+      numericas,
+    ))
+      trozos.push(trozo);
+  } catch {
+    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+  const arreglo = lectura.estructura.forma === "arreglo";
+  const blob = new Blob(trozos, {
+    type: arreglo
+      ? "application/json;charset=utf-8"
+      : "application/x-ndjson;charset=utf-8",
+  });
+  enviar({
+    tipo: "archivo",
+    blob,
+    nombre: `velo-restaurado-${datosDelDevuelto.sha256.slice(0, 8)}.${arreglo ? "json" : "jsonl"}`,
+    bytes: blob.size,
+    proposito: "restaurado",
+  });
+}
+
+async function construirRestaurado(): Promise<void> {
   if (!restaurada) {
     enviar({ tipo: "error", motivo: "sin-devuelto" });
     return;
   }
   avisar("escribiendo", restaurada.tabla.filas, 0, 0);
+  if (lecturaDevuelta !== null && archivoDevuelto !== null) {
+    await construirRestauradoJson(restaurada, lecturaDevuelta, archivoDevuelto);
+    return;
+  }
   const trozos: string[] = [];
   let acumulado = "";
   let filas = 0;
@@ -1073,7 +1195,7 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
   if (mensaje?.tipo === "analizar-devuelto")
     void analizarDevuelto(mensaje.archivo);
   if (mensaje?.tipo === "restaurar") restaurarDevuelto();
-  if (mensaje?.tipo === "construir-restaurado") construirRestaurado();
+  if (mensaje?.tipo === "construir-restaurado") void construirRestaurado();
   if (mensaje?.tipo === "construir-informe-del-regreso")
     construirInformeDelRegreso(mensaje.fecha, mensaje.idioma);
   if (mensaje?.tipo === "estimar-riesgo") estimar(mensaje.poblacion);
