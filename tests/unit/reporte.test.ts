@@ -1036,7 +1036,7 @@ describe("el ruido con garantía en el certificado (S7)", () => {
     expect(html).toContain("4 fuera del rango declarado");
     expect(html).toContain("1 (pedido: 1)");
     expect(html).toContain("sacado del archivo");
-    expect(html).toContain("Perturbación ±%, sin garantía formal");
+    expect(html).toContain("Perturbación porcentual, sin garantía formal");
     expect(html).toContain("Canonne, Kamath y Steinke");
     expect(html).toContain("no se suma con ε");
   });

@@ -694,7 +694,7 @@ function seccionDePrivacidad(
       : h(P.sinEpsilon, idioma)
   }</p>
 <table style="margin-top:16px">
-<thead><tr><th>${h(P.encabezados.columna, idioma)}</th><th>${h(P.encabezados.mecanismo, idioma)}</th><th>${h(P.encabezados.epsilon, idioma)}</th><th>${h(P.encabezados.celdas, idioma)}</th><th>${h(P.encabezados.notas, idioma)}</th></tr></thead>
+<thead><tr><th>${h(P.encabezados.columna, idioma)}</th><th>${h(P.encabezados.mecanismo, idioma)}</th><th style="text-transform:none">${h(P.encabezados.epsilon, idioma)}</th><th>${h(P.encabezados.celdas, idioma)}</th><th>${h(P.encabezados.notas, idioma)}</th></tr></thead>
 <tbody>${filas}</tbody></table>
 <p class="por-que" style="margin-top:14px">${h(P.fuente, idioma)}</p>
 </section>`;

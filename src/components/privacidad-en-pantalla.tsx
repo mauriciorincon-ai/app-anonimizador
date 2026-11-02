@@ -50,8 +50,18 @@ export function PrivacidadEnPantalla({
         <table className="w-full min-w-[20rem] border-collapse text-[0.875rem]">
           <thead>
             <tr className="border-borde border-b">
-              {(["columna", "mecanismo", "epsilon", "notas"] as const).map((c) => (
-                <th key={c} scope="col" className="etiqueta py-2 pr-3 text-left">
+              {/* Tres columnas y las notas DEBAJO del mecanismo: en 412 px una cuarta columna
+                  quedaba de dos letras de ancho. La ε va sin mayúsculas: la etiqueta pone todo en
+                  mayúsculas, y «Ε» (épsilon mayúscula) se lee como una E latina. */}
+              {(["columna", "mecanismo", "epsilon"] as const).map((c) => (
+                <th
+                  key={c}
+                  scope="col"
+                  className="etiqueta py-2 pr-3 text-left"
+                  // En línea y no `normal-case`: `.etiqueta` vive fuera de las capas de Tailwind
+                  // y le gana a cualquier utilidad.
+                  style={c === "epsilon" ? { textTransform: "none" } : undefined}
+                >
                   {t(P.encabezados[c])}
                 </th>
               ))}
@@ -85,7 +95,14 @@ export function PrivacidadEnPantalla({
                   >
                     {c.columna}
                   </th>
-                  <td className="text-tinta py-2 pr-3">{t(P.mecanismos[c.mecanismo])}</td>
+                  <td className="text-tinta py-2 pr-3">
+                    {t(P.mecanismos[c.mecanismo])}
+                    {notas.length > 0 ? (
+                      <span className="text-tinta-suave mt-1 block text-[0.8125rem] leading-relaxed">
+                        {notas.join(" · ")}
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="text-tinta py-2 pr-3 tabular-nums">
                     {!c.aplicado ? (
                       <span className="text-alerta">
@@ -102,9 +119,6 @@ export function PrivacidadEnPantalla({
                         pedido: epsilon(c.epsilon ?? 0, idioma),
                       })
                     )}
-                  </td>
-                  <td className="text-tinta-suave py-2 text-[0.8125rem] leading-relaxed">
-                    {notas.join(" · ") || "—"}
                   </td>
                 </tr>
               );

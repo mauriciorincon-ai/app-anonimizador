@@ -47,8 +47,8 @@ export const PRIVACIDAD = {
       en: "Randomized response",
     },
     perturbar: {
-      es: "Perturbación ±%, sin garantía formal",
-      en: "±% perturbation, no formal guarantee",
+      es: "Perturbación porcentual, sin garantía formal",
+      en: "Percentage perturbation, no formal guarantee",
     },
   },
   efectivo: {

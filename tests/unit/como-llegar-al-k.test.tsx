@@ -11,6 +11,7 @@ import { ComoLlegarAlK } from "@/components/como-llegar-al-k";
 import type { HallazgoDeColumna } from "@/engine/clasificador";
 import type { Politica } from "@/engine/politica";
 import { fijarIdioma } from "@/lib/idioma/estado";
+import { firmaDeComparacion } from "@/lib/sesion";
 import type { LadoDeLaComparacion } from "@/workers/contrato";
 
 const sesion = vi.hoisted(() => ({
@@ -53,6 +54,9 @@ const OPTIMA: Politica = {
     },
   },
 };
+
+/** La firma de lo que la pantalla compara con CON_REPARTO: las escaleras propuestas, sin ℓ. */
+const FIRMA = firmaDeComparacion(OPTIMA, OPTIMA.generalizacion!.jerarquias);
 
 function pintar(politica: Politica) {
   const onCambio = vi.fn();
@@ -194,6 +198,7 @@ describe("la comparación", () => {
   it("la tabla lado a lado dice cada veredicto con símbolo y palabra, y su alcance", () => {
     sesion.comparacion = {
       fase: "hecha",
+      firma: FIRMA,
       comparacion: {
         kObjetivo: 5,
         lObjetivo: null,
@@ -237,6 +242,7 @@ describe("la comparación", () => {
   it("si la retícula pasa del tope, la óptima dice «sin calcular» en vez de una cifra", () => {
     sesion.comparacion = {
       fase: "hecha",
+      firma: FIRMA,
       comparacion: {
         kObjetivo: 5,
         lObjetivo: null,
@@ -251,8 +257,40 @@ describe("la comparación", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("elegir el camino NO esconde la comparación; cambiar el k sí", () => {
+    sesion.comparacion = {
+      fase: "hecha",
+      firma: FIRMA,
+      comparacion: {
+        kObjetivo: 5,
+        lObjetivo: null,
+        dimensiones: ["edad", "municipio"],
+        mondrian: lado({}),
+        optima: lado({}),
+      },
+    };
+    pintar(OPTIMA);
+    expect(screen.getByRole("table")).toBeInTheDocument();
+  });
+
+  it("con otro k, la comparación de antes describe otra cosa y se esconde", () => {
+    sesion.comparacion = {
+      fase: "hecha",
+      firma: FIRMA,
+      comparacion: {
+        kObjetivo: 5,
+        lObjetivo: null,
+        dimensiones: ["edad", "municipio"],
+        mondrian: lado({}),
+        optima: lado({}),
+      },
+    };
+    pintar({ ...CON_REPARTO, kObjetivo: 10 });
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
   it("un fallo se dice, no se queda en blanco", () => {
-    sesion.comparacion = { fase: "fallo" };
+    sesion.comparacion = { fase: "fallo", firma: FIRMA };
     pintar(CON_REPARTO);
     expect(screen.getByRole("alert")).toHaveTextContent("No se pudo comparar");
   });

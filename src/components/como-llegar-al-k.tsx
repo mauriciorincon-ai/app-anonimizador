@@ -23,7 +23,11 @@ import type { JerarquiaDeLaPolitica, Politica } from "@/engine/politica";
 import { numero, unoEn } from "@/lib/formato";
 import type { Idioma } from "@/lib/idioma";
 import { GENERALIZACION as G } from "@/lib/idioma/textos/generalizacion";
-import { compararGeneralizacion, useTaller } from "@/lib/sesion";
+import {
+  compararGeneralizacion,
+  firmaDeComparacion,
+  useTaller,
+} from "@/lib/sesion";
 import { nivelEnPalabras } from "@/lib/tecnicas-en-palabras";
 import type { LadoDeLaComparacion } from "@/workers/contrato";
 
@@ -129,15 +133,20 @@ export function ComoLlegarAlK({
       });
   }
 
+  // Lo que la pantalla compara AHORA. La comparación que llegue se enseña solo si firma igual: con
+  // otro k, otra escalera u otra ℓ, sus cifras describirían otra cosa y se esconden.
+  const pedida = { ...politica, generalizacion: generalizacionCon(jerarquias, l) };
+  const firma = firmaDeComparacion(pedida, jerarquias);
+  const vigente =
+    taller.comparacion.fase !== "sin-hacer" && taller.comparacion.firma === firma
+      ? taller.comparacion
+      : null;
+
   function comparar(): void {
-    compararGeneralizacion(
-      { ...politica, generalizacion: generalizacionCon(jerarquias, l) },
-      jerarquias,
-    );
+    compararGeneralizacion(pedida, jerarquias);
   }
 
-  const comparacion =
-    taller.comparacion.fase === "hecha" ? taller.comparacion.comparacion : null;
+  const comparacion = vigente?.fase === "hecha" ? vigente.comparacion : null;
 
   return (
     <section
@@ -266,7 +275,7 @@ export function ComoLlegarAlK({
         </Boton>
       </div>
 
-      {taller.comparacion.fase === "fallo" ? (
+      {vigente?.fase === "fallo" ? (
         <p role="alert" className="text-alerta mt-3 text-[0.875rem]">
           {t(G.fallo)}
         </p>
