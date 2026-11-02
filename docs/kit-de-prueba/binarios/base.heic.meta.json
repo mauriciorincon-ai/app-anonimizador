@@ -1,0 +1,10 @@
+{
+  "archivo": "base.heic",
+  "sha256": "cbbd1f1e48499dc311340431f6988791a5dcde1a66d07eccf8f20843a8c36ad5",
+  "bytes": 551,
+  "que_es": "Una imagen HEIC de 64×48 píxeles con cuatro bandas verticales de color plano (azul, ocre, verde y rojo), sin EXIF, sin XMP y sin ningún otro metadato. Es la base de la que heic.mjs toma el flujo HEVC y sus propiedades para armar las fotos del kit.",
+  "como_se_hizo": "Un PNG de cuatro bandas de color plano escrito a mano (solo IHDR, IDAT e IEND, 142 bytes, sha256 c062fe88df9cf1a45828dd8f8877b33079767ea33d08b18a673ffd7893dcdf1f) convertido una vez con `sips -s format heic plano.png --out base.heic` en macOS 27.0.1. La CI corre en Linux, que no escribe HEIC: por eso el archivo se versiona en vez de generarse.",
+  "fecha": "2026-11-02",
+  "contenido_verificado": "Cajas ftyp (heic; mif1 MiPr miaf MiHB heic), meta (hdlr pict sin nombre, dinf, pitm, iinf con un solo elemento hvc1, iprp con colr nclx, clli, ispe, irot, pixi y hvcC, iloc) y mdat de tamaño largo. Ningún dato de la máquina que lo hizo: ni fecha, ni programa, ni nombre.",
+  "dato_real": false
+}

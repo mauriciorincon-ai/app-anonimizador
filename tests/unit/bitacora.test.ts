@@ -359,7 +359,7 @@ describe("una limpieza de metadatos en la bitácora (S6)", () => {
   it("un formato que Velo no limpia invalida el archivo", () => {
     const texto = serializarBitacora(
       anadirEntrada(bitacoraVacia(), limpieza),
-    ).replace('"jpeg"', '"heic"');
+    ).replace('"jpeg"', '"avif"');
     expect(deserializarBitacora(texto).ok).toBe(false);
   });
 });

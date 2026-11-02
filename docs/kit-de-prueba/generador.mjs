@@ -63,6 +63,7 @@ import {
   cedula,
   crearAzar,
 } from "./binarios/azar.mjs";
+import { generarHeic } from "./binarios/heic.mjs";
 import { generarJpeg } from "./binarios/jpeg.mjs";
 import { PERFILES_PDF, generarPdf } from "./binarios/pdf.mjs";
 import { generarPng } from "./binarios/png.mjs";
@@ -835,12 +836,12 @@ export const generarJson = (opciones) => escribirRegistros(opciones, "json");
 export const generarJsonl = (opciones) => escribirRegistros(opciones, "jsonl");
 
 // ── Binarios con metadatos falsos ─────────────────────────────────────────────────────────────
-export const FORMATOS_BINARIOS = ["pdf", "jpeg", "png", "webp"];
+export const FORMATOS_BINARIOS = ["pdf", "jpeg", "png", "webp", "heic"];
 export { PERFILES_PDF };
-const EXTENSIONES_BINARIAS = { pdf: "pdf", jpeg: "jpg", png: "png", webp: "webp" };
+const EXTENSIONES_BINARIAS = { pdf: "pdf", jpeg: "jpg", png: "png", webp: "webp", heic: "heic" };
 
 /**
- * Escribe un binario (PDF, JPEG, PNG o WebP) y, si se pide, el JSON de sus centinelas. El perfil solo
+ * Escribe un binario (PDF, JPEG, PNG, WebP o HEIC) y, si se pide, el JSON de sus centinelas. El perfil solo
  * existe para el PDF (por omisión `con-revisiones`); pedirlo para una imagen es un error, no algo
  * que se ignore en silencio. Devuelve `columnas: []` para que el contrato sea el de los demás.
  */
@@ -855,6 +856,8 @@ export async function generarBinario(opciones) {
     resultado = generarJpeg({ semilla: seed });
   } else if (formato === "png") {
     resultado = generarPng({ semilla: seed });
+  } else if (formato === "heic") {
+    resultado = generarHeic({ semilla: seed });
   } else {
     resultado = generarWebp({ semilla: seed });
   }
