@@ -37,9 +37,9 @@ de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
 
 ## Qué hace hoy
 
-**Sprints 001–006 · El diagnóstico, el disfraz, el regreso, el cierre, el idioma y los formatos.** Velo lee, mide,
-**transforma, devuelve** y ahora **deja constancia**. El círculo está cerrado —entregas sin
-entregar, y recuperas— y además queda por escrito.
+**Sprints 001–007 · El diagnóstico, el disfraz, el regreso, el cierre, el idioma, los formatos y la
+protección a la medida.** Velo lee, mide, **transforma, devuelve** y **deja constancia**. El círculo
+está cerrado —entregas sin entregar, y recuperas— y además queda por escrito.
 
 Sobre la reversibilidad, dicho con precisión: un seudónimo **sigue siendo irreversible por sí
 mismo** — es un HMAC, no un cifrado. Lo que el S3 añade es que puedes pedirle a Velo que guarde la
@@ -57,8 +57,10 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   columnas, borre otras y corrija valores a mano — y su trabajo se respeta.
 - **Carga** de CSV (sin tope), Excel (hasta 150 MB, medido) y JSON —un arreglo de objetos o JSON
   Lines, hasta 20 millones de celdas—, con arrastre y con teclado. En un JSON, cada ruta anidada
-  (`paciente.contacto.correo`) es una columna; las listas se declaran y salen sin tocar, y no hay
-  regreso (el regreso lee solo CSV).
+  (`paciente.contacto.correo`) es una columna; las listas se declaran y salen sin tocar. Un JSON
+  también **vuelve** (Sprint 007): con su bóveda, el regreso lee el JSON o el JSON Lines que te
+  devolvieron y lo restaura con su estructura y el orden de sus claves —el original, byte por byte,
+  si el tuyo ya venía compacto, un registro por línea—.
 - **Detección por columna** con validadores que **citan su fuente oficial en el código**: NIT con el
   mod 11 de la DIAN, tarjetas con Luhn (ISO/IEC 7812-1), IBAN con el 97-10 (ISO 13616), celulares y
   fijos de la CRC, placas, cédula (estructural — no existe dígito de verificación público),
@@ -85,24 +87,47 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   la muestra no da para estimar, **lo dice** en vez de devolver un número débil.
 - **Política por columna** —o **Habeas Data** / **HIPAA Safe Harbor** de un clic, cada una citando su
   fuente— que se exporta e importa como archivo y lleva su propio **hash SHA-256** como identidad.
-- **Cuatro familias de técnicas**: enmascarar, seudonimizar (HMAC-SHA256 con llave derivada por
+- **Cinco familias de técnicas**: enmascarar, seudonimizar (HMAC-SHA256 con llave derivada por
   PBKDF2-600k), seudonimizar **conservando el formato** (con el dígito de verificación oficial
-  recalculado — no es FPE, y el código dice por qué), generalizar y suprimir.
+  recalculado — no es FPE, y el código dice por qué), generalizar y suprimir; y, desde el Sprint 007,
+  **ruido** (más abajo).
 - **k-anonimato con Mondrian** (LeFevre et al., ICDE 2006) sobre las columnas que se marquen, con
   **l-diversity** y **t-closeness** medidas y reportadas.
+- **La generalización óptima, «Cómo llegar al k»** (Sprint 007; algoritmo OLA, El Emam et al.,
+  JAMIA 2009, [ADR-013](decisions/013-generalizacion-optima.md)): el otro camino hacia el k. Cada
+  columna sube por su **escalera** hasta un nivel, **el mismo en todo el archivo**, y de todas las
+  combinaciones se elige la que cumple el k perdiendo menos información (medida en bits), sin borrar
+  filas y con una ℓ distinta opcional. Trae escaleras de fábrica para Colombia —municipio →
+  departamento → región (DIVIPOLA del DANE, regiones de la Ley 2056 de 2020), edad en quinquenios y
+  grandes grupos (proyecciones del DANE), actividad económica CIIU Rev. 4 A.C.— y otras genéricas
+  (rangos, fechas, prefijos). Compara lado a lado con Mondrian, y el certificado cuenta cómo se llegó
+  al k, con la fuente y la fecha de cada escalera de fábrica. Una retícula de más de 20.000
+  combinaciones no se recorre: las columnas salen intactas y el balance lo dice primero.
+- **Ruido con garantía** (Sprint 007, [ADR-014](decisions/014-ruido-con-garantia.md)):
+  **Laplace discreto** y **respuesta aleatorizada**, que dan privacidad diferencial **local** con un
+  ε **por valor de un campo** (muestreo exacto, sin coma flotante: Canonne, Kamath y Steinke,
+  NeurIPS 2020), y una **perturbación ±%** que se rotula **sin garantía formal** porque no la tiene.
+  El ε se muestra siempre con su alcance, redondeado hacia arriba, en un panel aparte del balance
+  —el k y el ε se miden por separado y no se suman, y cada archivo distinto que entregues con los
+  mismos datos gasta su propio ε—, y queda en el certificado y en la bitácora. El ruido sale de la
+  llave del proyecto: el mismo archivo con la misma llave da el mismo ruido, byte por byte.
 - **Balance antes/después** con una regla dura: si algo quedó sin tratar, **eso se lee antes que
   cualquier porcentaje de reducción**, y la cifra pierde el tratamiento de titular.
 - **Archivo anonimizado** (un CSV, o un JSON en la forma en que entró) escrito por el navegador
   —nunca por un servidor— y su **reporte del tratamiento**, que declara qué se le hizo y que su
   huella es la del archivo que _entró_.
-- **Limpieza de metadatos de PDF, JPEG, PNG y WebP**: Velo enseña lo que el archivo dice de sí
-  mismo (autor, programa, fechas, GPS, identificadores, las versiones anteriores de un PDF) con
-  muestras enmascaradas, y entrega una copia sin eso y un certificado con las dos huellas. Limpia
-  metadatos, no el texto de las páginas ni lo que se ve en una foto, y lo dice antes que nada.
+- **Limpieza de metadatos de PDF, JPEG, PNG, WebP y HEIC** (las fotos de iPhone, desde el
+  Sprint 007): Velo enseña lo que el archivo dice de sí mismo (autor, programa, fechas, GPS,
+  identificadores, las versiones anteriores de un PDF) con muestras enmascaradas, y entrega una
+  copia sin eso y un certificado con las dos huellas. Un HEIC sigue siendo HEIC —Velo no lo
+  convierte— y sus píxeles salen idénticos; las Live Photos y otras piezas que no sabe reescribir
+  se rechazan diciéndolo, en vez de entregar un archivo roto. Limpia metadatos, no el texto de las
+  páginas ni lo que se ve en una foto, y lo dice antes que nada.
 
 Rendimiento medido: **500.000 filas × 24 columnas (130 MB) en unos 5 segundos** para el diagnóstico
 y **~1,4 s** para el reparto de Mondrian sobre 8 cuasi-identificadores, con **cero tareas largas** en
-el hilo principal.
+el hilo principal. La búsqueda de la generalización óptima, en segundo plano sobre 500.000 filas, va
+de ~2 s con 4 campos a entre 12 y 32 s con 6.
 
 ---
 
@@ -121,8 +146,11 @@ Necesitas Node 22+ y pnpm (la versión la fija `packageManager` en el `package.j
 pnpm kit:generar -- --filas 3000 --seed 42 --perfil clinico --salida tmp/clinico.csv
 ```
 
-Perfiles: `clinico` (24 columnas, con columnas-trampa), `limpio`, `trampas`, `sin-personales`.
-Misma semilla ⇒ mismo archivo, byte por byte.
+Perfiles: `clinico` (24 columnas, con columnas-trampa), `limpio`, `trampas`, `sin-personales`,
+`mediana-repetida`, `colisiones-de-formato`, `jerarquias` (una columna por escalera de fábrica, para
+la generalización óptima) y los de JSON (`anidado`, `con-listas`, `heterogeneo`). También genera
+JSON (`--formato json|jsonl`), Excel y archivos con metadatos falsos para la limpieza
+(`--formato pdf|jpeg|png|webp|heic`). Misma semilla ⇒ mismo archivo, byte por byte.
 
 ### Verificación
 
@@ -139,7 +167,7 @@ pnpm typecheck && pnpm lint && pnpm build
 
 ```
 src/
-├─ app/            Next.js App Router — la aduana (/) y el diagnóstico (/diagnostico)
+├─ app/            Next.js App Router — las cinco rutas: / · /diagnostico · /transformar · /regreso · /bitacora
 ├─ components/     interfaz, sin lógica de negocio
 ├─ engine/         motores puros y deterministas: validadores, clasificador, riesgo, reporte
 ├─ workers/        el worker: LA FRONTERA — los datos crudos viven aquí y solo aquí
