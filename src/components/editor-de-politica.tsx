@@ -22,6 +22,7 @@
 import { useId, useRef, useState } from "react";
 
 import { Boton } from "@/components/boton";
+import { ComoLlegarAlK } from "@/components/como-llegar-al-k";
 import { IconoExportar, IconoImportar } from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import { Rico, useT } from "@/components/texto";
@@ -444,6 +445,13 @@ export function EditorDePolitica({
             </p>
           )}
         </div>
+      ) : null}
+      {conMondrian ? (
+        <ComoLlegarAlK
+          columnas={columnas}
+          politica={politica}
+          onCambio={onCambio}
+        />
       ) : null}
     </Panel>
   );

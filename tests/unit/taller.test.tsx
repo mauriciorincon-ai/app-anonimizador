@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   analizar,
+  compararGeneralizacion,
   derivarLlaveDelProyecto,
   descartar,
   invalidarTransformacion,
@@ -173,6 +174,8 @@ const CLAVES_DEL_RESULTADO: Record<keyof ResultadoDeTransformacion, true> = {
   suprimidas: true,
   muestras: true,
   ms: true,
+  // S7: lo lee el certificado (`seccionDeLaGeneralizacion`), que cuenta la óptima y sus fuentes.
+  generalizacion: true,
 };
 
 function archivoListo(
@@ -192,7 +195,7 @@ function archivoListo(
 // ── Los tests ─────────────────────────────────────────────────────────────────────────────────
 
 describe("el contrato del tratamiento (§5 — deuda B2)", () => {
-  it("cruzan siete campos, y cada uno tiene su lector", () => {
+  it("cruzan ocho campos, y cada uno tiene su lector", () => {
     // Los nombres se escriben aquí para que un humano los lea, no porque el runtime los necesite:
     // la garantía fuerte la da el tipo de `CLAVES_DEL_RESULTADO`, que no compila si sobra o falta
     // uno. Esta lista obliga además a que el campo nuevo se vea en el diff del PR. `idioma` (el del
@@ -200,6 +203,7 @@ describe("el contrato del tratamiento (§5 — deuda B2)", () => {
     // archivo aunque el documento se descargue en otro.
     expect(Object.keys(CLAVES_DEL_RESULTADO).sort()).toEqual([
       "balance",
+      "generalizacion",
       "hashDePolitica",
       "idioma",
       "ms",
@@ -437,6 +441,7 @@ describe("sin worker no hay taller", () => {
       sellarLaBoveda("frase de la boveda");
       pedirEstimacion(1000);
       limpiar();
+      compararGeneralizacion(POLITICA, {});
     });
     expect(WorkerDeMentira.ultimo).toBeNull();
     // La forma COMPLETA, a propósito: un campo nuevo en el taller tiene que pasar por aquí y ser
@@ -456,6 +461,8 @@ describe("sin worker no hay taller", () => {
       poblacionDeclarada: null,
       // Y la limpieza de metadatos (S6): sin worker, `limpiar` tampoco publica «limpiando».
       limpieza: { fase: "sin-hacer" },
+      // Y la comparación de Mondrian con la óptima (S7): sin worker, no queda «comparando».
+      comparacion: { fase: "sin-hacer" },
     });
   });
 });

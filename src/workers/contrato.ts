@@ -10,7 +10,8 @@
 import type { BalanceDelTratamiento } from "@/engine/balance";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
 import type { Diagnostico } from "@/engine/clasificador";
-import type { Politica } from "@/engine/politica";
+import type { GeneralizacionAplicada } from "@/engine/optima";
+import type { JerarquiaDeLaPolitica, Politica } from "@/engine/politica";
 import type {
   CeldasDeColumna,
   ColumnaRestaurada,
@@ -56,6 +57,17 @@ export type MensajeAlWorker =
    * archivo— y `construir-archivo` no lleva ninguno: la tabla guardada ya nació en ese idioma.
    */
   | { tipo: "transformar"; politica: Politica; idioma: Idioma }
+  /**
+   * S7: Mondrian y la generalización óptima, lado a lado, sobre las columnas del reparto de esta
+   * política (con las jerarquías que trae, o las que la pantalla propone). No necesita llave: las
+   * columnas del reparto no llevan técnica por columna. Lo que vuelve son cifras y niveles.
+   */
+  | {
+      tipo: "comparar-generalizacion";
+      politica: Politica;
+      jerarquias: Readonly<Record<string, JerarquiaDeLaPolitica>>;
+      idioma: Idioma;
+    }
   | { tipo: "construir-archivo" }
   /**
    * Sella la bóveda del tratamiento que se acaba de hacer. La frase de paso entra y **no vuelve a
@@ -122,6 +134,7 @@ export type EtapaDelWorker =
   | "midiendo-riesgo"
   | "derivando-llave"
   | "transformando"
+  | "comparando"
   | "midiendo-el-despues"
   | "escribiendo"
   | "sellando-boveda"
@@ -375,6 +388,8 @@ export interface MuestraDeTransformacion {
  * **un campo del contrato nace con su lector o no nace.** Si un consumidor futuro —el certificado
  * del S4, por ejemplo— necesita una de las cuatro, vuelve con quien la lea, no «por si acaso».
  */
+export type { GeneralizacionAplicada };
+
 export interface ResultadoDeTransformacion {
   /** Identidad del tratamiento: mismo hash ⇒ mismo trato. */
   readonly hashDePolitica: string;
@@ -390,6 +405,56 @@ export interface ResultadoDeTransformacion {
   readonly suprimidas: readonly string[];
   readonly muestras: readonly MuestraDeTransformacion[];
   readonly ms: number;
+  /**
+   * S7: cómo se llegó al k cuando la política pidió la generalización óptima y la retícula se
+   * recorrió; `null` con Mondrian (o sin reparto). El certificado lo cuenta, con la fuente de cada
+   * escalera de fábrica. Cruzan nombres de columna, escaleras, claves de nivel y cifras.
+   */
+  readonly generalizacion: GeneralizacionAplicada | null;
+}
+
+
+/**
+ * S7: un lado de la comparación entre Mondrian y la generalización óptima, medido sobre las columnas
+ * del reparto (no sobre el archivo entero: el balance completo llega al transformar). Cruzan cifras,
+ * nombres de columna y claves de nivel; ningún valor.
+ */
+export interface LadoDeLaComparacion {
+  /** `false` cuando no se pudo calcular (la retícula pasa del tope). Las cifras van en 0. */
+  readonly disponible: boolean;
+  readonly motivo: "excede-tope" | "no-alcanzable" | "sin-dimensiones" | null;
+  readonly alcanzado: boolean;
+  readonly kAlcanzado: number;
+  /** ℓ distinta sobre las columnas sensibles pedidas (la peor), o null si no se pidió. */
+  readonly lAlcanzado: number | null;
+  readonly clases: number;
+  readonly unicos: number;
+  readonly riesgoMaximo: number;
+  readonly riesgoPromedio: number;
+  /** Bits de las columnas del reparto antes y después (la «non-uniform entropy» en bits). */
+  readonly bitsAntes: number;
+  readonly bitsDespues: number;
+  /**
+   * Cómo quedó cada columna. En la óptima, `nivel` es la clave del nivel elegido (`quinquenio`,
+   * `departamento`, `rango-10`, `suprimido`…); en Mondrian es null (sus cortes son locales).
+   */
+  readonly columnas: readonly {
+    readonly nombre: string;
+    readonly nivel: string | null;
+    readonly distintos: number;
+  }[];
+  /** Solo la óptima: cuántos nodos revisó de cuántos tiene la retícula. */
+  readonly nodosRevisados: number | null;
+  readonly nodosEnLaReticula: number | null;
+  readonly ms: number;
+}
+
+export interface ComparacionDeGeneralizacion {
+  readonly kObjetivo: number;
+  readonly lObjetivo: number | null;
+  readonly dimensiones: readonly string[];
+  readonly mondrian: LadoDeLaComparacion;
+  readonly optima: LadoDeLaComparacion;
 }
 
 export type MensajeDelWorker =
@@ -415,6 +480,8 @@ export type MensajeDelWorker =
     }
   | { tipo: "llave-lista"; huella: string }
   | { tipo: "transformado"; resultado: ResultadoDeTransformacion }
+  /** `null`: no se pudo comparar (sin reparto o sin k). No es un error de la sesión. */
+  | { tipo: "comparacion"; comparacion: ComparacionDeGeneralizacion | null }
   /**
    * El archivo, como **asa opaca**. Un `Blob` no es el contenido: es una referencia que el
    * navegador resuelve al guardarlo. La página hace `createObjectURL` y jamás lo lee — ver

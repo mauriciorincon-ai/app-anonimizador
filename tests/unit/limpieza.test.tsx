@@ -78,6 +78,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   estimacion: null,
   poblacionDeclarada: null,
   limpieza: { fase: "sin-hacer" },
+  comparacion: { fase: "sin-hacer" },
 };
 
 const ASA_PDF: AsaDeArchivo = {
