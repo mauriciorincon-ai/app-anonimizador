@@ -1,19 +1,19 @@
 # Manual de uso — Velo
 
 > _Velo para entregar. Desvelo para recuperar._
-> Actualizado en el Sprint 005 · 1 de noviembre de 2026
+> Actualizado en el Sprint 006 · 2 de noviembre de 2026
 >
 > English version: [MANUAL-DE-USO.en.md](MANUAL-DE-USO.en.md)
 
-Velo es la **aduana de tus datos**: lo que revisa tu tabla antes de que salga hacia una IA, una
-herramienta en la nube o el computador de un tercero. Este manual cubre todo lo que Velo sabe
-hacer hoy.
+Velo es la **aduana de tus datos**: lo que revisa tu tabla, tu JSON, tu PDF o tu imagen antes de
+que salgan hacia una IA, una herramienta en la nube o el computador de un tercero. Este manual
+cubre todo lo que Velo sabe hacer hoy.
 
 ---
 
 ## Lo primero, porque cambia cómo lo vas a usar
 
-**Tu archivo no se sube a ningún lado.** Velo no tiene servidor. Cuando sueltas una tabla, se abre
+**Tu archivo no se sube a ningún lado.** Velo no tiene servidor. Cuando sueltas un archivo, se abre
 dentro de la pestaña del navegador —en un hilo aparte, para que nada se congele— y ahí se queda.
 No hay carga, no hay base de datos, no hay copia.
 
@@ -28,6 +28,16 @@ camino de vuelta es la [bóveda](#5-la-bóveda-para-poder-deshacerlo) y
 [el regreso](#6-el-regreso-recuperar-lo-que-entregaste). Y lo que hiciste queda anotado en
 [la bitácora](#7-la-bitácora-acordarte-dentro-de-seis-meses), para dentro de seis meses. Cada uno
 tiene su sección más abajo.
+
+Y Velo trabaja con **tres clases de archivo**, no una. Las **tablas** (CSV y Excel) y los **JSON**
+(un arreglo de objetos o JSON Lines) pasan por el diagnóstico y el taller de las secciones 2 a 7;
+del JSON, [cómo se lee y qué no se trata](#si-tu-archivo-es-un-json), está explicado en la
+sección 1. Los **PDF y las imágenes** (JPEG, PNG, WebP) no son datos tabulares: Velo les limpia
+los **metadatos**, lo que el archivo dice de sí mismo y nadie ve en pantalla (autor, cámara,
+ubicación, fechas, versiones anteriores), y lo explica
+[la sección 8](#8-pdf-e-imágenes-limpiar-lo-que-el-archivo-dice-de-sí-mismo). Con la misma cautela
+en las tres: **Velo limpia lo que el archivo dice de sí mismo; no toca el texto de las páginas ni
+lo que se ve en la imagen.**
 
 **Velo habla español e inglés.** En el encabezado de todas las pantallas hay dos botones, **ES** y
 **EN**: el que está subrayado es el idioma en uso. Al abrir, Velo usa el idioma de tu navegador; si
@@ -47,8 +57,9 @@ transformación: las dos palabras que usa al generalizar (el « a » entre los e
 « (o vacío)» de un grupo con celdas vacías) salen como « to » y « (or empty)» si estabas en inglés, y
 el certificado lo anota como «Idioma del trabajo». Mismo archivo, misma política, misma llave y mismo
 idioma dan los mismos bytes; con otro idioma cambian esas dos palabras y nada más. Los nombres con
-que se guardan los archivos (`velo-anonimizado-…`, `velo-boveda-…`, `velo-politica.json`) no
-cambian. El certificado y el informe del regreso salen en el idioma que usabas al descargarlos.
+que se guardan los archivos (`velo-anonimizado-…`, `velo-limpio-…`, `velo-boveda-…`,
+`velo-politica.json`) no cambian. El certificado, el certificado de la limpieza de un PDF o una
+imagen y el informe del regreso salen en el idioma que usabas al descargarlos.
 
 Dicho con precisión, porque la diferencia importa: **un seudónimo sigue siendo irreversible por sí
 solo**. Quien reciba el archivo tratado no puede deshacerlo —eso es lo que lo hace seguro de
@@ -63,26 +74,111 @@ bóveda y no hay vuelta: eso se decide antes, no después.
 ### 1. Trae tu tabla
 
 En la pantalla principal puedes **arrastrar** el archivo hasta el recuadro o **elegirlo** con el
-botón (que funciona con teclado: llega con la tecla Tab y se abre con Enter).
+botón (que funciona con teclado: llega con la tecla Tab y se abre con Enter). El recuadro se llama
+«Trae tu tabla», pero no recibe solo tablas: también un JSON, un PDF o una imagen.
 
 Velo lee:
 
-| Formato                     | Tope       | Por qué                                                                                                                                                  |
-| --------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CSV** (`.csv`)            | sin tope   | Se lee por partes; nunca existe entero en memoria.                                                                                                       |
-| **Excel** (`.xlsx`, `.xls`) | **150 MB** | Un Excel hay que abrirlo completo para leerlo. Por encima de ese tamaño el navegador se queda sin memoria, así que Velo lo rechaza **antes** de abrirlo. |
+| Formato                                                           | Tope                                 | Por qué                                                                                                                                                            |
+| ----------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **CSV** (`.csv`)                                                  | sin tope                             | Se lee por partes; nunca existe entero en memoria.                                                                                                                 |
+| **Excel** (`.xlsx`, `.xls`)                                       | **150 MB**                           | Un Excel hay que abrirlo completo para leerlo. Por encima de ese tamaño el navegador se queda sin memoria, así que Velo lo rechaza **antes** de abrirlo.           |
+| **JSON** (`.json`) y **JSON Lines** (`.jsonl`, `.ndjson`)         | **20.000.000 de celdas**, no un peso | El archivo se lee por partes, pero la tabla que Velo arma con él vive en memoria: lo que ocupa es el número de celdas (registros × rutas distintas), no los bytes. |
+| **PDF** (`.pdf`)                                                  | **50 MB**                            | Un PDF no se puede reescribir por partes: se abre entero en memoria, y lo que pesa es la cantidad de piezas que trae dentro. Velo lo rechaza **antes** de abrirlo. |
+| **Imagen**: JPEG (`.jpg`, `.jpeg`), PNG (`.png`) y WebP (`.webp`) | **100 MB**                           | Igual que el PDF: se reescribe de una vez.                                                                                                                         |
+
+Los topes completos de un JSON son: **20.000.000 de celdas** (registros × rutas distintas),
+**256 rutas distintas**, **32 niveles** de anidamiento dentro de un registro, claves de hasta 256
+caracteres y textos de hasta 1.048.576 caracteres. Pasarse de cualquiera se rechaza con un mensaje
+que dice cuál y qué hacer.
 
 Si tu Excel pesa más de 150 MB: ábrelo y guárdalo como CSV. Desde 40 MB Velo te avisa de que va a
-tardar y te ofrece la misma salida.
+tardar y te ofrece la misma salida. Si tu PDF pasa de 50 MB o tu imagen de 100 MB: divide el PDF en
+partes con el programa que lo creó, o exporta la imagen otra vez con menos peso (menos resolución,
+más compresión), y suelta esa copia.
+
+Dos cosas más sobre lo que Velo lee:
+
+- **Decide qué es un PDF o una imagen por su contenido, no por su extensión.** Si un `.jpg` es en
+  realidad un PNG, lo trata como PNG, lo dice en un aviso y la copia limpia sale con la extensión
+  que le corresponde. Si el contenido no es nada de lo que Velo lee (un `.json` que por dentro es
+  un PDF, por ejemplo), se rechaza con un mensaje que dice qué hacer.
+- **No lee HEIC**, el formato en que muchos iPhone guardan las fotos. Si tu foto es HEIC,
+  expórtala como JPEG y suelta esa copia. Si Velo llegará a leer HEIC está por decidir.
 
 Mientras trabaja verás en qué va: **tomando la huella** del archivo, **leyendo**, **reconociendo
 las columnas** y **midiendo el riesgo**. La barra solo aparece cuando hay algo real que medir; en
 las etapas que no tienen una fracción que mostrar, Velo te dice la etapa y no te dibuja una barra
-falsa.
+falsa. Con un PDF o una imagen no hay filas ni columnas: Velo dice «Leyendo lo que el archivo dice
+de sí mismo» y no dibuja barra, porque abre el archivo entero de una vez.
+
+#### Si tu archivo es un JSON
+
+Un JSON no es una tabla: sus registros pueden estar anidados, faltarles claves, cambiar de tipo de
+uno a otro y llevar listas. Velo lo pasa por la misma aduana de las tablas, pero declara lo que no
+puede tratar en vez de callarlo.
+
+**Qué lee.** Dos formas: un arreglo de objetos (`[{…}, {…}]`) y JSON Lines (un objeto por línea).
+Cuál de las dos es lo decide el contenido. Para archivos grandes conviene JSON Lines: una línea es
+un registro, así que el número de línea con el que Velo avisa si algo está mal señala el registro.
+Velo no usa el lector de JSON del navegador —reordenaría ciertas
+claves y cambiaría los números muy grandes— sino uno propio y estricto. Por eso rechaza un
+registro que repite una clave: según quién lo lea gana la primera o la última, y Velo no elige por
+ti qué dato conservar.
+
+**Cada ruta es una columna.** Un valor dentro de objetos anidados se vuelve una columna cuyo nombre
+es el camino hasta él: `paciente.contacto.correo`. Con eso, la política, el diagnóstico, el riesgo
+y el certificado funcionan como con una tabla. Para reconocer qué es cada ruta, Velo mira su
+**último tramo** (`correo`, no `paciente`): que el padre se llame `salud` no vuelve sensible lo que
+tiene dentro. El diagnóstico dice «registros · rutas tratadas» donde una tabla dice «filas ·
+columnas».
+
+**El panel «Estructura del JSON».** Aparece en el diagnóstico solo con un JSON. Dice cuántos
+registros hay, cuántas rutas se tratan, la profundidad máxima y la forma del archivo, y declara
+dos cosas:
+
+- **Las listas no se tratan.** Una lista dentro de un registro (`contactos[]`, `etiquetas[]`) no
+  cabe en una columna: Velo no la aplana ni la trata, y sale al archivo **tal cual**. Lo dice
+  arriba de la tabla, con un aviso fuerte: nombra la ruta, en cuántos registros aparece y los
+  **nombres** de los campos que vio dentro (nunca los valores). Una lista puede llevar correos,
+  teléfonos o documentos, y **la política que elijas no la alcanza**. Antes de entregar el archivo,
+  trata esas listas tú o quítalas del origen. Hoy Velo no las trata.
+- **Las rutas irregulares.** Las que faltan en algunos registros o cambian de tipo de uno a otro
+  (a veces número, a veces texto o `null`). Donde un registro no trae la ruta, Velo no la crea. Una
+  celda que la política cambie sale como texto, aunque el original fuera un número.
+
+**Qué sale.** Un JSON entra y un JSON sale, de la misma clase: un arreglo sale como
+`velo-anonimizado-<8 caracteres>.json` y JSON Lines como `.jsonl`. Es una reescritura fiel, no una
+copia byte por byte:
+
+- Las claves conservan **su orden original** y la estructura es la misma.
+- Se escribe **compacto, un registro por línea**: los espacios y saltos de línea entre elementos
+  del original no se conservan.
+- Los números que no cambiaron se copian con sus dígitos exactos (`12345678901234567890`, `1E3`),
+  sin pasar por un número del navegador que los redondearía.
+- Una celda que la política cambió sale siempre como texto (un `30-39` generalizado ya es texto).
+  Una que quedó vacía se escribe como la tenía el original: sin la clave, `null` o `""`.
+- Una columna que la política **suprime** desaparece de todos los registros; si el objeto que la
+  contenía se queda sin nada, queda `{}`.
+- Lo que hay dentro de una lista declarada no se toca.
+
+El certificado lleva las dos huellas SHA-256, y Velo recalcula la del original mientras escribe: si
+el archivo cambió desde el diagnóstico, no lo entrega.
+
+**Sin vuelta.** Con un JSON, la casilla «Poder deshacerlo con una bóveda» sale **apagada** y dice
+por qué: el [regreso](#6-el-regreso-recuperar-lo-que-entregaste) lee solo CSV, así que una bóveda
+de un JSON sería un archivo cifrado que nada sabe abrir. Los seudónimos de un JSON son de ida. Si
+importas una política que pedía deshacer alguna columna, Velo te dice cuántas quedaron sin vuelta.
+
+**Si no es un JSON válido,** Velo te dice en qué línea se detuvo («ahí, o justo antes, aparece el
+problema») y no repite nada de lo que hay dentro: ni un trozo, ni el nombre de una clave. Los
+demás motivos —no es una lista de registros, demasiados niveles, demasiadas rutas distintas, una
+clave repetida, demasiado grande— también dicen qué hacer.
 
 ### 2. Lee el diagnóstico
 
-La pantalla de diagnóstico tiene tres partes.
+La pantalla de diagnóstico tiene tres partes. (Es la de una tabla o un JSON. Si soltaste un PDF o
+una imagen, el diagnóstico es otro y lo explica [la sección 8](#8-pdf-e-imágenes-limpiar-lo-que-el-archivo-dice-de-sí-mismo).)
 
 #### El riesgo de reidentificación
 
@@ -192,7 +288,9 @@ El texto que salga tiene que ser idéntico al del reporte.
 ### 4. Transforma: el taller
 
 Desde el diagnóstico, **Transformar este archivo** te lleva al taller. Es la parte que cambia los
-datos de verdad, y ocurre igual que el diagnóstico: dentro de esta pestaña, sin subir nada.
+datos de verdad, y ocurre igual que el diagnóstico: dentro de esta pestaña, sin subir nada. (Con un
+PDF o una imagen el botón se llama **Limpiar este archivo** y lleva a una pantalla sin opciones:
+[sección 8](#8-pdf-e-imágenes-limpiar-lo-que-el-archivo-dice-de-sí-mismo).)
 
 #### La política: qué se le hace a cada columna
 
@@ -271,7 +369,8 @@ Lo que puede aparecer ahí:
 #### El archivo
 
 **Preparar el archivo** lo escribe, y **Guardar** lo baja. Sale como
-`velo-anonimizado-<8 caracteres>.csv` y no repite el nombre del original a propósito: un nombre como
+`velo-anonimizado-<8 caracteres>.csv` (`.json` o `.jsonl` si lo que entró fue un JSON, ver
+[«Si tu archivo es un JSON»](#si-tu-archivo-es-un-json)) y no repite el nombre del original a propósito: un nombre como
 `pacientes-2026.csv` cuenta de qué va el contenido antes de que nadie lo abra, y ese nombre viaja en
 el asunto de un correo.
 
@@ -279,8 +378,8 @@ Esos ocho caracteres **no son un número de serie**: son el principio del SHA-25
 aplicaste. Dos archivos que lo compartan recibieron exactamente el mismo tratamiento — y el
 certificado lleva el hash completo, para que puedas comprobarlo.
 
-Es un CSV separado por comas, con salto de línea `\n` y **sin BOM**. Si Excel en Windows te pregunta
-por la codificación, es **UTF-8**. (Velo no genera `.xlsx`: un `.xlsx` es un zip y sus entradas
+Un CSV o un Excel salen como un CSV separado por comas, con salto de línea `\n` y **sin BOM**. Si
+Excel en Windows te pregunta por la codificación, es **UTF-8**. (Velo no genera `.xlsx`: un `.xlsx` es un zip y sus entradas
 llevan fecha, así que dos archivos iguales no saldrían idénticos byte por byte — y esa igualdad es
 justo lo que Velo promete.)
 
@@ -352,6 +451,8 @@ la casilla **«Poder deshacerlo con una bóveda»**. Márcala en las columnas qu
 recuperar. Solo los seudónimos la admiten, y no es una limitación de esta versión: enmascarar
 (`103***89`) y generalizar (`30-39`) **destruyen** información, así que no hay tabla que lo deshaga
 — los dígitos que faltan ya no existen en ninguna parte. La pantalla te dice cuáles no van a volver.
+**Con un JSON la casilla sale apagada,** y dice por qué: el regreso (la sección 6) lee solo CSV, así
+que una bóveda de un JSON no tendría por dónde volver.
 
 **Cómo se guarda.** Al transformar aparece el paso 9, «la bóveda». Escribes una frase de paso —**puede y debería
 ser distinta de la del proyecto**— y Velo prepara un archivo `.velo` cifrado que te descargas.
@@ -422,6 +523,13 @@ al final**, sin tocar las anteriores.
 qué columnas**—, el hash de la política, las dos huellas, y la proporción de registros únicos antes
 y después.
 
+**La limpieza de un PDF o una imagen también se anota.** Después de limpiar aparece el mismo botón,
+**«Anotar en mi bitácora»**, y la entrada queda en el mismo archivo `.velolog`, con las demás. Lleva
+el nombre del archivo, la fecha, el formato, cuántos campos con nombre tenía, cuántos bloques se
+quitaron, cuántas versiones anteriores (en un PDF) y las dos huellas. **No lleva cifras de riesgo
+—no hay filas que medir— ni ningún valor de los metadatos**, y la entrada recuerda que el contenido
+no se tocó.
+
 > **Las dos proporciones, y no la resta entre ellas.** Es deliberado. «Bajó del 30 % al 2 %» es
 > cierta y puede engañar, y una bitácora se lee meses después sin ninguna pantalla al lado que la
 > matice. Si aquella medición llevaba salvedades que la descalificaban, la entrada también lo dice.
@@ -451,6 +559,136 @@ Medido: **2.000 anotaciones se abren y se pintan sin una sola tarea larga** en e
 
 ---
 
+### 8. PDF e imágenes: limpiar lo que el archivo dice de sí mismo
+
+Una foto o un PDF dicen cosas de sí mismos que nadie ve en pantalla: la cámara y su número de serie,
+la posición GPS, el autor, el programa con que se hizo, las fechas, un identificador que ata la copia
+a su original, la miniatura de cómo se veía la foto antes de recortarla, las versiones anteriores de
+un documento. Eso son los **metadatos**. Velo los lee, te enseña qué encontró y te entrega una copia
+sin ellos. Todo ocurre dentro de la pestaña, como con una tabla.
+
+> **El límite, dicho primero.** Velo limpia lo que el archivo dice de sí mismo; **no toca el texto
+> de las páginas ni lo que se ve en la imagen.** Un nombre escrito en un párrafo, una cara, un
+> letrero o una placa de fondo siguen ahí exactamente como estaban. Si el contenido en sí es
+> sensible, edítalo antes —tapa el nombre, recorta la imagen— y limpia después esa copia. Velo dice
+> esto arriba del diagnóstico, otra vez en el resultado y en el certificado, con el mismo peso que
+> lo que sí hace.
+
+**Cómo se usa**
+
+1. **Suelta el archivo** en la pantalla principal, como cualquier otro. Velo lo reconoce por su
+   contenido: PDF, JPEG, PNG o WebP. Si la extensión miente (un `.jpg` que es un PNG), lo trata por
+   lo que es y lo avisa.
+2. **Lee el diagnóstico de metadatos.** Tiene cuatro partes:
+   - **«Qué limpia Velo y qué no toca»**: el límite de arriba, con lo que cambia y lo que no según
+     sea PDF o imagen.
+   - **«Qué dice el archivo de sí mismo»**: los campos con nombre, uno por fila. Cada uno dice
+     **dónde vive** (EXIF —datos de la cámara—, GPS, XMP, IPTC, texto de PNG, un comentario, la
+     información del PDF o una versión anterior del PDF), **qué revela** (autoría, ubicación,
+     dispositivo, programa, fecha, identificador, descripción) y una **muestra enmascarada**: Velo
+     no muestra más de la mitad de un valor, y uno corto sale como `***`. El valor completo no sale
+     de la pestaña. La última columna dice **qué reconoce Velo** con los mismos validadores de la
+     sección 2: si un campo es una cédula, un correo o unas coordenadas, y con la misma cautela
+     (una cédula es «por su forma», no «confirmada»). Cuando lo reconocido está **dentro** del
+     valor y no es el valor entero —el autor `Ana Pérez · CC 1032456789`—, la fila dice
+     «Contiene: cédula»: aquí dentro hay una, no esto es una.
+   - **«Qué se quita y qué se conserva»**: los bloques del archivo, con su tamaño. Más abajo, cómo
+     se decide.
+   - **«Lo que hay que saber antes de limpiar»**: los avisos (más abajo). En un PDF, además,
+     **«La historia del PDF»**: cuántas versiones guarda dentro, cuántos objetos reemplazó una
+     edición y si trae un identificador de documento.
+3. **Pulsa «Limpiar este archivo»** y, en la pantalla siguiente, **«Limpiar»**. No hay opciones que
+   elegir: se quita todo lo que no hace falta para ver el archivo, y el diagnóstico ya dijo qué era.
+   Velo reescribe el archivo y **lo vuelve a leer** para comprobarlo.
+4. **Lee el resultado**, «Esto es lo que Velo quitó»: cuántos campos con nombre tenía, cuántos
+   bloques se quitaron, cuántas versiones anteriores (en un PDF), el tamaño antes y después, la
+   lista de lo que se quitó y de lo que se conservó, y —otra vez— lo que no cambió. En un PDF
+   limpio, el identificador nuevo del documento.
+5. **Llévate la copia limpia** con **Guardar**. Se llama `velo-limpio-<8 caracteres>.pdf` (o
+   `.jpg`, `.png`, `.webp`, según su contenido). Los ocho caracteres son el principio del SHA-256
+   del archivo **que entró**; no repite el nombre del original, que ya cuenta de qué trata el
+   archivo. **El original no se toca.**
+6. **Llévate el certificado de la limpieza** (`velo-limpieza-<8 caracteres>.html`, `velo-cleaning-….html` en
+   inglés). Como todo documento de Velo, puedes verlo antes de descargarlo. Empieza por el límite
+   (qué se limpió y qué no) y lleva las **dos huellas SHA-256** —la del original y la de la copia
+   limpia—, lo que se quitó y se conservó, los campos que tenía el archivo con sus valores
+   **enmascarados**, la comprobación posterior y los avisos. No lleva ningún valor completo de los
+   metadatos ni nada del contenido. Quien lo reciba verifica la copia como en la sección 3:
+
+   ```bash
+   # macOS
+   shasum -a 256 velo-limpio-3f9a1c2e.jpg
+   ```
+
+   Si la cadena que sale es la huella de la copia limpia, el archivo es exactamente el que
+   produjo esa limpieza. Si no coincide, **el certificado no habla de esa copia**: puede ser
+   inocente —un programa la abrió y la volvió a guardar, y al guardar pudo escribir metadatos
+   nuevos— o no serlo.
+
+7. **Anótala en la bitácora** si quieres que quede constancia ([sección 7](#7-la-bitácora-acordarte-dentro-de-seis-meses)).
+
+**Cómo decide Velo qué quitar.** La limpieza es por **lista blanca**, no por lista negra: se
+conserva lo mínimo para ver la imagen o abrir el documento, y **todo lo demás se quita, aunque
+Velo no lo reconozca**. La lista de campos que ves en el diagnóstico es lo que Velo sabe _nombrar_;
+la limpieza no depende de ella. Por eso «Velo no encontró campos con nombre» no es lo mismo que
+«este archivo no tiene metadatos»: lo que no sabe nombrar se quita igual, y el diagnóstico lo dice.
+
+- **En una imagen** no se toca ningún píxel ni se vuelve a codificar: no se pierde calidad. Se
+  quitan el EXIF, el GPS, el XMP, el IPTC, los comentarios, el texto de un PNG y su fecha de
+  modificación, las miniaturas, las notas privadas del fabricante de la cámara, los datos de
+  procedencia del contenido (C2PA), los bloques que Velo no reconoce y los **bytes que sobran tras
+  el final de la imagen** —algunos programas dejan ahí restos de lo que recortaste—. Se conserva
+  lo que hace falta para verla, el **perfil de color** y la **orientación**: si la foto no está en
+  posición normal, Velo escribe un bloque EXIF mínimo con solo ese dato, para que la copia limpia
+  no se abra girada. Si el archivo
+  traía imágenes adicionales dentro (por ejemplo, el mapa de ganancia de una foto HDR), se
+  quitan, y el aviso lo dice.
+- **En un PDF** el archivo se **reescribe entero**, y las páginas y su contenido se copian tal cual.
+  Se quitan el diccionario de información (autor, programa, fechas), el XMP, los datos de la
+  aplicación que lo creó, las miniaturas de página y los objetos huérfanos. Y se quitan las
+  **versiones anteriores**: cada vez que un programa «guarda» sumando cambios al final, la versión
+  anterior se queda dentro del archivo aunque no se vea —un texto reemplazado, un autor anterior,
+  una página borrada—. La copia limpia guarda **una sola versión**. El identificador del documento
+  (`/ID`), que ata una copia a su original y sobrevive a cada edición, se cambia por uno **nuevo**,
+  calculado solo a partir del contenido limpio: el mismo archivo da siempre el mismo.
+
+**Los avisos: lo que Velo no limpia, o limpia con un costo.** Salen en el diagnóstico antes de que
+pulses nada, y se repiten en el certificado:
+
+| Aviso                                 | Qué significa                                                                                           |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Anotaciones con autor (PDF)           | Velo las enseña pero **no las limpia**: el nombre de quien comentó sigue dentro de la copia limpia.     |
+| Archivos adjuntos (PDF)               | **No los limpia**: cada uno puede llevar sus propios metadatos.                                         |
+| Campos de formulario (PDF)            | Sus nombres y valores **quedan como están**: lo que alguien escribió en ellos sigue en la copia limpia. |
+| JavaScript incrustado (PDF)           | **No lo toca**: puede contener datos o direcciones, y sigue en la copia limpia.                         |
+| PDF firmado                           | Reescribirlo **invalida la firma**: la copia limpia ya no la conserva.                                  |
+| Versiones en flujos comprimidos (PDF) | Se quitan, pero Velo no puede listar qué decían.                                                        |
+| Extensión distinta del contenido      | El archivo se trató por lo que es, no por lo que dice su nombre.                                        |
+| Orientación conservada (imagen)       | Un bloque EXIF mínimo con solo ese dato, para que la foto no se gire.                                   |
+| Imágenes adicionales (imagen)         | Había más imágenes dentro del archivo; se quitan con lo demás.                                          |
+| Texto comprimido (imagen)             | Se quita sin leerlo, así que no aparece en la tabla de campos.                                          |
+
+**Lo que Velo se niega a hacer.**
+
+- **Un PDF protegido con contraseña no se abre.** Velo no pide contraseñas, y un PDF cifrado no se
+  puede leer ni reescribir sin ella. El mensaje dice qué hacer: quita la protección con el programa
+  que lo creó —abriéndolo y guardando una copia sin contraseña— y suelta esa copia.
+- **Si la comprobación encuentra algo, no entrega el archivo.** Después de limpiar, el mismo lector
+  que hizo el diagnóstico corre sobre la copia. Si encuentra **un solo** campo con nombre, o (en un
+  PDF) más de una versión, Velo dice «No se entregó ningún archivo»: una limpieza que no se
+  comprueba es una promesa, y Velo no entrega promesas. No uses un archivo que Velo no pudo dejar
+  limpio: genera una copia nueva desde su origen —imprime el documento a PDF o exporta la imagen
+  otra vez— y límpiala. Lo que sí se entrega lleva la cifra de la comprobación («**0 campos con
+  nombre**») en el resultado y en el certificado.
+- Un PDF o una imagen dañados, cortados o con una estructura que Velo no sabe leer se rechazan sin
+  repetir nada de lo que hay dentro, y el mensaje dice qué hacer.
+
+**Una limitación de la comprobación, dicha:** la hace el **mismo lector** que hizo el diagnóstico.
+Es una prueba de que lo que Velo sabe leer ya no está, no un segundo par de ojos. Si quieres una
+segunda opinión, pásale a la copia limpia otra herramienta de metadatos.
+
+---
+
 ## Lo que Velo NO afirma
 
 Esta sección es tan parte del producto como las otras.
@@ -467,6 +705,24 @@ Esta sección es tan parte del producto como las otras.
   archivo completo.
 - El consejero de cruces evalúa un **subconjunto acotado** de combinaciones y lo declara en
   pantalla. No es el universo entero de cruces posibles.
+- **Limpiar los metadatos de un PDF o una imagen no los vuelve anónimos.** Velo limpia lo que el
+  archivo dice de sí mismo; el texto de las páginas y lo que se ve en la imagen (un nombre, una
+  cara, una placa, un letrero) quedan como estaban, y pueden identificar a alguien por sí solos.
+- **Un archivo limpio puede volver a ensuciarse.** Un programa que abra la copia limpia y la guarde
+  otra vez puede escribirle metadatos nuevos. El certificado habla de los bytes exactos que Velo
+  entregó —por eso lleva la huella—, no de lo que ocurra con el archivo después.
+- **La lista de campos es lo que Velo sabe nombrar,** y la comprobación la hace el mismo lector que
+  la escribió. La limpieza quita además todo lo que no está en su lista blanca, pero «sin campos con
+  nombre» no es lo mismo que «sin metadatos», y Velo no afirma que ninguna otra herramienta, en
+  ningún formato que exista, encuentre nada.
+- **En un PDF, Velo avisa de las anotaciones con autor, los archivos adjuntos, los campos de
+  formulario y el JavaScript incrustado, pero no los limpia:** el nombre de quien comentó o lo que
+  alguien escribió en un formulario sigue en la copia limpia. Un PDF firmado pierde su firma al
+  limpiarse, y uno protegido con contraseña no se abre.
+- **En un JSON, las listas no se tratan:** salen del archivo tal cual, aunque lleven correos,
+  teléfonos o documentos, y la política no las alcanza. Velo lo declara en pantalla, con la ruta y
+  los nombres de los campos que vio dentro; tratarlas, o quitarlas, queda de tu lado. Y lo que
+  sale es una reescritura fiel, no una copia byte por byte: compacta, un registro por línea.
 
 ---
 
@@ -508,6 +764,15 @@ seguridad social de otro país, no. Los universales —correo, tarjeta de pago, 
 coordenadas, fechas— funcionan igual en los dos idiomas. El idioma cambia lo que lees, no lo que
 Velo sabe detectar.
 
+**Tengo una foto en HEIC, la de mi iPhone. ¿Puedo limpiarla?**
+Hoy Velo no lee HEIC. Expórtala como JPEG desde el programa de fotos de tu teléfono o de tu
+computador y suelta esa copia. Si Velo leerá HEIC más adelante todavía no está decidido.
+
+**Limpié los metadatos de una foto. ¿Ya puedo publicarla?**
+Se fueron la ubicación, la cámara, el autor y las fechas, y Velo lo comprobó releyendo la copia. Lo
+que se ve en la foto no cambió: si hay una cara, una placa o un letrero, siguen ahí. Léelo en
+[la sección 8](#8-pdf-e-imágenes-limpiar-lo-que-el-archivo-dice-de-sí-mismo) antes de decidir.
+
 **¿Funciona sin internet?**
 La primera vez necesitas cargar la página. Después, el análisis ocurre entero en tu computador.
 El reporte descargado se abre sin conexión, siempre.
@@ -523,6 +788,7 @@ segundos sin que la pestaña se congele, porque el trabajo pesado ocurre en un h
 **Nada de lo que este manual describía como futuro sigue pendiente.** El certificado, la bitácora y
 el riesgo estimado —las tres cosas que aquí se prometieron— están arriba, cada una con su sección.
 
-Lo que Velo **no** hace, y no está previsto para el corto plazo, vive en «Lo que Velo NO afirma» y
-en los topes declarados: no lee bases de datos ni JSON ni PDF, no genera `.xlsx` de salida, y no
-usa —ni usará— inteligencia artificial generativa en ninguna parte del producto.
+Lo que Velo **no** hace hoy vive en «Lo que Velo NO afirma» y en los topes declarados: no lee bases
+de datos, no lee fotos HEIC, no genera `.xlsx` de salida, no trata las listas que van dentro de un
+JSON, no limpia las anotaciones, los adjuntos ni los formularios de un PDF, y no usa —ni usará—
+inteligencia artificial generativa en ninguna parte del producto.
