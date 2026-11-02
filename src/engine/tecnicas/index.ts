@@ -24,9 +24,11 @@ import {
 import { enmascarar } from "../mascara";
 import { anonimizarConMondrian, type ResultadoDeMondrian } from "../mondrian";
 import { generalizarOptimo, type ResultadoOptimo } from "../optima";
+import { aplicarRuido, type InformeDeRuido } from "../ruido";
 import type { EntradaDeBoveda } from "../boveda";
 import {
   columnasDeMondrian,
+  esDeRuido,
   esReversible,
   requiereLlave,
   tecnicaDe,
@@ -65,6 +67,8 @@ export interface TablaTransformada {
    * sumo uno de los dos no es `null`.
    */
   readonly optima: ResultadoOptimo | null;
+  /** S7: lo que cada columna con ruido recibió (mecanismo, ε, recortes…), en el orden de la tabla. */
+  readonly ruido: readonly InformeDeRuido[];
   /**
    * El material de la bóveda: una entrada por columna **reversible**, con su diccionario original y
    * los seudónimos que salieron de él, en paralelo.
@@ -116,23 +120,28 @@ function transformarSincrono(
  * escribe dentro de las etiquetas de intervalo (`"18 a 39"` / `"18 to 39"`). No entra a la
  * política, a su hash, a la bóveda ni al nombre del archivo; con las demás técnicas, la salida es
  * byte-idéntica en los dos idiomas. Un valor por defecto aquí emitiría español en silencio.
+ *
+ * `huella` es el SHA-256 del archivo de entrada. Solo la usa el ruido (S7): entra a la semilla de
+ * cada celda para que dos archivos distintos reciban ruido independiente (`ruido/azar.ts`).
  */
 export async function aplicarPolitica(
   tabla: TablaColumnar,
   politica: Politica,
   llave: CryptoKey | null,
   idioma: Idioma,
+  huella = "",
 ): Promise<TablaTransformada> {
   if (requiereLlave(politica) && llave === null) {
     // Invariante del pipeline, no error de usuario: la UI no deja llegar aquí sin llave. Si llega,
     // es un defecto nuestro y tiene que sonar fuerte en vez de producir un archivo a medias.
-    throw new Error("la política pide seudonimizar y no se dio una llave");
+    throw new Error("la política pide una técnica con llave y no se dio una llave");
   }
 
   const columnas: ColumnaColumnar[] = [];
   const suprimidas: string[] = [];
   const colisiones: ColisionEnColumna[] = [];
   const correspondencias: EntradaDeBoveda[] = [];
+  const ruido: InformeDeRuido[] = [];
 
   for (const columna of tabla.columnas) {
     const tecnica = tecnicaDe(politica, columna.nombre);
@@ -146,6 +155,15 @@ export async function aplicarPolitica(
       tecnica.tipo === "generalizar-automatico"
     ) {
       columnas.push(columna);
+      continue;
+    }
+
+    // S7: el ruido va celda por celda, no por diccionario (dos celdas con el mismo valor reciben
+    // ruido distinto). `llave` no es null aquí: lo garantiza la guarda del principio.
+    if (esDeRuido(tecnica)) {
+      const conRuido = await aplicarRuido(columna, tecnica, llave!, huella);
+      columnas.push(conRuido.columna);
+      ruido.push(conRuido.informe);
       continue;
     }
 
@@ -233,6 +251,7 @@ export async function aplicarPolitica(
     pendientesDeMondrian: conReparto ? [] : paraMondrian,
     mondrian,
     optima,
+    ruido,
     correspondencias,
   };
 }

@@ -63,6 +63,38 @@ export const VERSION_DE_POLITICA = 1;
  */
 const reversibleSchema = z.boolean().optional();
 
+/**
+ * S7: los ε que el ruido con garantía admite, de una lista fija para que sean racionales y la
+ * escala del muestreo sea un cociente de enteros (`src/engine/ruido/muestreo.ts`).
+ */
+const epsilonSchema = z.union([
+  z.literal(0.1),
+  z.literal(0.5),
+  z.literal(1),
+  z.literal(2),
+  z.literal(4),
+  z.literal(8),
+]);
+
+/** El denominador de cada ε como racional: 0,1 = 1/10 y 0,5 = 1/2; los demás son enteros. */
+const DENOMINADOR_DE_EPSILON: Record<z.infer<typeof epsilonSchema>, number> = {
+  0.1: 10,
+  0.5: 2,
+  1: 1,
+  2: 1,
+  4: 1,
+  8: 1,
+};
+
+/** El rango declarado de un Laplace no pasa de ±10¹²: lo que un número cuenta exacto con decimales. */
+const LIMITE_DEL_RANGO = 1e12;
+
+/** ¿El número cabe en la rejilla de esos decimales? (`0,25` con 1 decimal, no.) */
+function enLaRejilla(valor: number, decimales: number): boolean {
+  const escalado = valor * 10 ** decimales;
+  return Math.abs(escalado - Math.round(escalado)) < 1e-6;
+}
+
 const tecnicaSchema = z.discriminatedUnion("tipo", [
   /** Se deja tal cual. Es una decisión explícita, no la ausencia de una. */
   z.object({ tipo: z.literal("conservar") }),
@@ -107,6 +139,46 @@ const tecnicaSchema = z.discriminatedUnion("tipo", [
    * marca participación, y el corte lo decide el algoritmo mirando todas juntas.
    */
   z.object({ tipo: z.literal("generalizar-automatico") }),
+  /**
+   * S7 · Laplace discreto exacto: privacidad diferencial LOCAL con ε por valor de este campo. El
+   * rango es el que el usuario DECLARA posible, no el del archivo (`src/engine/ruido/`, ADR-014).
+   */
+  z
+    .object({
+      tipo: z.literal("laplace"),
+      epsilon: epsilonSchema,
+      minimo: z.number().min(-LIMITE_DEL_RANGO).max(LIMITE_DEL_RANGO),
+      maximo: z.number().min(-LIMITE_DEL_RANGO).max(LIMITE_DEL_RANGO),
+      decimales: z.number().int().min(0).max(6),
+    })
+    .refine((t) => t.maximo > t.minimo, "maximo must be greater than minimo")
+    .refine(
+      (t) =>
+        enLaRejilla(t.minimo, t.decimales) &&
+        enLaRejilla(t.maximo, t.decimales),
+      "minimo and maximo must have at most `decimales` decimals",
+    )
+    .refine(
+      (t) =>
+        (Math.round(t.maximo * 10 ** t.decimales) -
+          Math.round(t.minimo * 10 ** t.decimales)) *
+          DENOMINADOR_DE_EPSILON[t.epsilon] <=
+        2 ** 40,
+      "the range is too wide for exact sampling at these decimals and epsilon",
+    ),
+  /**
+   * S7 · Respuesta aleatorizada: privacidad diferencial LOCAL con ε efectivo ≤ ε. El dominio son
+   * los valores distintos de la columna (hasta 64), y eso se dice.
+   */
+  z.object({
+    tipo: z.literal("respuesta-aleatorizada"),
+    epsilon: epsilonSchema,
+  }),
+  /** S7 · ±x % de ruido uniforme. **Sin garantía formal**: se rotula así en todas partes. */
+  z.object({
+    tipo: z.literal("perturbar"),
+    porcentaje: z.number().int().min(1).max(50),
+  }),
 ]);
 
 export type Tecnica = z.infer<typeof tecnicaSchema>;
@@ -391,6 +463,14 @@ export function importarPolitica(texto: string): ResultadoDeImportacion {
 // ── Consultas que la UI y el pipeline necesitan ───────────────────────────────────────────────
 
 /** La técnica de una columna. Sin regla, se conserva: no hacer nada es dejar el dato como está. */
+/**
+ * ¿La técnica cumple su esquema? Lo usa el editor (S7) para no escribir en la política un Laplace
+ * a medio teclear —un máximo menor que el mínimo—, que el motor rechazaría al transformar.
+ */
+export function tecnicaValida(tecnica: unknown): tecnica is Tecnica {
+  return tecnicaSchema.safeParse(tecnica).success;
+}
+
 export function tecnicaDe(politica: Politica, columna: string): Tecnica {
   return (
     politica.reglas.find((regla) => regla.columna === columna)?.tecnica ?? {
@@ -415,7 +495,23 @@ export function requiereLlave(politica: Politica): boolean {
   return politica.reglas.some(
     (regla) =>
       regla.tecnica.tipo === "seudonimizar" ||
-      regla.tecnica.tipo === "seudonimizar-con-formato",
+      regla.tecnica.tipo === "seudonimizar-con-formato" ||
+      // S7: el ruido sale de la HMAC de la llave (regla dura 3): sin llave no hay ruido.
+      esDeRuido(regla.tecnica),
+  );
+}
+
+/** ¿Es una de las tres técnicas de ruido del S7? */
+export function esDeRuido(
+  tecnica: Tecnica,
+): tecnica is Extract<
+  Tecnica,
+  { tipo: "laplace" | "respuesta-aleatorizada" | "perturbar" }
+> {
+  return (
+    tecnica.tipo === "laplace" ||
+    tecnica.tipo === "respuesta-aleatorizada" ||
+    tecnica.tipo === "perturbar"
   );
 }
 

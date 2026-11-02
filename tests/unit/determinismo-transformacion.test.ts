@@ -270,6 +270,80 @@ describe("con la generalización óptima (S7), el archivo sigue siendo byte-idé
   });
 });
 
+describe("con ruido con garantía (S7), el archivo sigue siendo byte-idéntico", () => {
+  // El ruido es el sitio donde el determinismo es más fácil de perder: cualquier azar sin semilla
+  // pasaría todos los tests de comportamiento (el ruido «parece» ruido). Aquí se exige que salga de
+  // la llave y de la huella del archivo, y de nada más: ni del idioma, ni del tamaño de los trozos.
+  const CON_RUIDO: Politica = {
+    ...POLITICA,
+    reglas: [
+      ...POLITICA.reglas,
+      {
+        columna: "monto",
+        tecnica: {
+          tipo: "laplace",
+          epsilon: 1,
+          minimo: 0,
+          maximo: 10_000_000,
+          decimales: 0,
+        },
+      },
+      {
+        columna: "diagnostico",
+        tecnica: { tipo: "respuesta-aleatorizada", epsilon: 2 },
+      },
+      { columna: "latitud", tecnica: { tipo: "perturbar", porcentaje: 5 } },
+    ],
+  };
+  const HUELLA = "a".repeat(64);
+
+  async function huellaConRuido(
+    tabla: TablaColumnar,
+    { llave = llaveA, idioma = "es" as "es" | "en", huella = HUELLA } = {},
+  ): Promise<string> {
+    const r = await aplicarPolitica(tabla, CON_RUIDO, llave, idioma, huella);
+    expect(r.ruido.map((i) => i.columna)).toEqual([
+      "latitud",
+      "diagnostico",
+      "monto",
+    ]);
+    return sha256(new TextEncoder().encode(serializarCsv(r.tabla)));
+  }
+
+  it("dos corridas dan el mismo SHA-256", async () => {
+    const primera = await huellaConRuido(tablaPorBloques(500));
+    expect(await huellaConRuido(tablaPorBloques(500))).toBe(primera);
+  });
+
+  it("ni el tamaño de los trozos del parser ni el idioma lo mueven", async () => {
+    const base = await huellaConRuido(tablaPorBloques(13));
+    expect(await huellaConRuido(tablaPorBloques(100_000))).toBe(base);
+    expect(await huellaConRuido(tablaPorBloques(500), { idioma: "en" })).toBe(
+      base,
+    );
+  });
+
+  it("otra llave da otro ruido, y otro archivo (otra huella) también", async () => {
+    const tabla = tablaPorBloques(500);
+    const base = await huellaConRuido(tabla);
+    expect(await huellaConRuido(tabla, { llave: llaveB })).not.toBe(base);
+    expect(await huellaConRuido(tabla, { huella: "b".repeat(64) })).not.toBe(
+      base,
+    );
+  });
+
+  it("y el ruido no toca a los seudónimos: las columnas con llave salen igual que sin ruido", async () => {
+    const tabla = tablaPorBloques(500);
+    const sin = await aplicarPolitica(tabla, POLITICA, llaveA, "es");
+    const con = await aplicarPolitica(tabla, CON_RUIDO, llaveA, "es", HUELLA);
+    for (const nombre of ["cedula_titular", "nit_empresa", "correo"]) {
+      const a = sin.tabla.columnas.find((c) => c.nombre === nombre)!;
+      const b = con.tabla.columnas.find((c) => c.nombre === nombre)!;
+      expect(b.valores, nombre).toEqual(a.valores);
+    }
+  });
+});
+
 describe("el gate no está comparando constantes", () => {
   it("otra política sobre la misma tabla da otro archivo", async () => {
     const tabla = tablaPorBloques(500);
