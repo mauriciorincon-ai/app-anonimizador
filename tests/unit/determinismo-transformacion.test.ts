@@ -12,9 +12,15 @@
 
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { generarFilas } from "../../docs/kit-de-prueba/generador.mjs";
+import {
+  generarFilas,
+  generarRegistros,
+  serializarRegistro,
+} from "../../docs/kit-de-prueba/generador.mjs";
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { nombreDelArchivoAnonimizado, serializarCsv } from "@/engine/csv";
+import { escribirJson } from "@/engine/json/escritor";
+import { leerJson } from "@/engine/json/lector";
 import {
   exportarPolitica,
   hashDePolitica,
@@ -23,6 +29,8 @@ import {
 import { serializarCanonico } from "@/engine/serializacion";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { sha256 } from "@/lib/sha256";
+
+import { fuenteDe, recoger } from "./json-ayuda";
 
 const OPCIONES = {
   filas: 1_500,
@@ -335,5 +343,47 @@ describe("el idioma del trabajo", () => {
     // Ni lo que no es Mondrian: columnas suprimidas y colisiones salen idénticas.
     expect(en.r.suprimidas).toEqual(es.r.suprimidas);
     expect(en.r.colisiones).toEqual(es.r.colisiones);
+  });
+
+  // Un JSON (S6), de punta a punta y con la política de verdad: leer, aplicar (Mondrian incluido) y
+  // escribir. Las pruebas del escritor usan una transformación hecha a mano; esta no (hallazgo M2 de
+  // la auditoría del S6). Es el mismo dato que el CSV de arriba, escrito como arreglo por el kit.
+  describe("un JSON, de punta a punta", () => {
+    const texto = `[\n${[...generarRegistros(OPCIONES)].map(serializarRegistro).join(",\n")}\n]\n`;
+
+    async function jsonDe(idioma: "es" | "en", trozo = Infinity) {
+      const lectura = await leerJson(fuenteDe(texto, trozo));
+      const r = await aplicarPolitica(
+        lectura.tabla,
+        CON_REPARTO,
+        llaveA,
+        idioma,
+      );
+      const json = await recoger(
+        escribirJson(fuenteDe(texto, trozo), lectura, r.tabla),
+      );
+      return { json, r };
+    }
+
+    it("cada idioma es byte-idéntico a sí mismo, se lea entero o en trozos", async () => {
+      for (const idioma of ["es", "en"] as const) {
+        const primera = await jsonDe(idioma);
+        const segunda = await jsonDe(idioma, 4_093);
+        expect(primera.r.mondrian?.alcanzado, idioma).toBe(true);
+        expect(huella(segunda.json), idioma).toBe(huella(primera.json));
+        expect(JSON.parse(primera.json)).toHaveLength(OPCIONES.filas);
+      }
+    });
+
+    it("y los dos idiomas difieren en los rótulos del intervalo, y en nada más", async () => {
+      const es = await jsonDe("es");
+      const en = await jsonDe("en");
+      expect(huella(en.json)).not.toBe(huella(es.json));
+      expect(
+        es.json
+          .replaceAll(" a ", " to ")
+          .replaceAll(" (o vacío)", " (or empty)"),
+      ).toBe(en.json);
+    });
   });
 });
