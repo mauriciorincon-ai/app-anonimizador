@@ -42,7 +42,7 @@ export type EstadoDeSesion =
       bytesTotales: number;
     }
   | { fase: "listo"; informe: Informe }
-  | { fase: "error"; motivo: MotivoDeError; nombre: string };
+  | { fase: "error"; motivo: MotivoDeError; nombre: string; linea?: number };
 
 /**
  * El taller — el estado de la transformación, al lado de la sesión y no dentro.
@@ -339,7 +339,12 @@ export function siguienteEstado(
   if (mensaje.tipo === "listo")
     return { fase: "listo", informe: mensaje.informe };
   if (mensaje.tipo === "error")
-    return { fase: "error", motivo: mensaje.motivo, nombre };
+    return {
+      fase: "error",
+      motivo: mensaje.motivo,
+      nombre,
+      linea: mensaje.linea,
+    };
   // Los mensajes del taller —llave, transformación, archivo— no tocan la sesión: el informe del
   // análisis sigue siendo el mismo mientras se transforma. Se atienden en `recibir`.
   return actual;

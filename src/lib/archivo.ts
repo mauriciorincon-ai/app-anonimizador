@@ -24,6 +24,8 @@ export const AVISO_EXCEL_BYTES = 40 * 1024 * 1024;
 export function formatoDeArchivo(nombre: string): FormatoDeArchivo | null {
   if (/\.csv$/i.test(nombre)) return "csv";
   if (/\.xlsx?$/i.test(nombre)) return "excel";
+  // JSON y JSON Lines son el mismo formato para la interfaz: cuál de los dos es lo decide el worker.
+  if (/\.(json|jsonl|ndjson)$/i.test(nombre)) return "json";
   return null;
 }
 

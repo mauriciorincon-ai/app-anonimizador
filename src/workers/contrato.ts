@@ -363,4 +363,13 @@ export type MensajeDelWorker =
       /** Un `Mensaje`, nunca una frase: a la página solo cruzan claves y datos. */
       detalle: MensajeDeMotor;
     }
-  | { tipo: "error"; motivo: MotivoDeError };
+  | {
+      tipo: "error";
+      motivo: MotivoDeError;
+      /**
+       * Línea (1-based) donde un JSON dejó de ser válido. Es un NÚMERO, nunca un trozo del archivo:
+       * solo la ponen los motivos `json-*`, y es lo que vuelve útil a JSON Lines (una línea mala se
+       * localiza) sin que el error cite contenido.
+       */
+      linea?: number;
+    };

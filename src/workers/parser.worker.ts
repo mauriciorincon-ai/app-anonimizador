@@ -35,6 +35,10 @@ import { clasificar, type Diagnostico } from "@/engine/clasificador";
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { filasDeCsv, nombreDelArchivoAnonimizado } from "@/engine/csv";
 import { medirDiversidad } from "@/engine/diversidad";
+import { escribirJson } from "@/engine/json/escritor";
+import { leerJson, type LecturaJson } from "@/engine/json/lector";
+import { ErrorDeJson } from "@/engine/json/tipos";
+import type { EstructuraJson } from "@/engine/json/tipos";
 import { muestraDeColumna } from "@/engine/muestra";
 import { hashDePolitica, type Politica } from "@/engine/politica";
 import {
@@ -67,15 +71,28 @@ import { Sha256 } from "@/lib/sha256";
 
 import type {
   EtapaDelWorker,
+  FormatoDeArchivo,
   Informe,
   MensajeAlWorker,
   MensajeDelWorker,
 } from "./contrato";
+import { ArchivoCambio, fuenteDeArchivo } from "./json";
 
 const alcance = self as unknown as DedicatedWorkerGlobalScope;
 
 /** La tabla vive en el worker entre mensajes: la UI la consulta, nunca la recibe. */
 let tabla: TablaColumnar | null = null;
+
+/** Qué formato tenía el archivo que entró: decide cómo se escribe el de salida. */
+let formatoOriginal: FormatoDeArchivo = "csv";
+
+/**
+ * Solo en un JSON: la lectura (con las clases de cada celda) y el archivo, que se vuelve a leer
+ * UNA vez más para escribir la salida con la estructura y el orden de claves del original. El
+ * archivo no se guarda en memoria: se guarda la referencia, y se lee por trozos.
+ */
+let lecturaJson: LecturaJson | null = null;
+let archivoDeEntrada: File | null = null;
 
 /** El diagnóstico se guarda porque la transformación lo necesita: qué es cada columna. */
 let diagnosticoActual: Diagnostico | null = null;
@@ -121,11 +138,56 @@ async function analizar(archivo: File): Promise<void> {
     return;
   }
 
-  if (formatoDeArchivo(archivo.name) === "excel") {
+  const formato = formatoDeArchivo(archivo.name);
+  if (formato === "excel") {
     void leerExcel(archivo);
     return;
   }
+  if (formato === "json") {
+    void leerJsonDelArchivo(archivo);
+    return;
+  }
   leerCsv(archivo);
+}
+
+/**
+ * JSON y JSON Lines. El lector es PROPIO (ver `src/engine/json/`): `JSON.parse` reordena las claves
+ * enteras, pierde los números que no caben en un double y, cuando falla, cita el contenido. Aquí
+ * solo se le da el archivo como texto y se traduce su único error a un mensaje que NO cita nada:
+ * la clave del motivo y, si la hay, la línea.
+ */
+async function leerJsonDelArchivo(archivo: File): Promise<void> {
+  const inicio = performance.now();
+  if (archivo.size === 0) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+  try {
+    const lectura = await leerJson(
+      fuenteDeArchivo(archivo, {
+        alAvanzar: (leidos) => avisar("leyendo", 0, leidos, archivo.size),
+      }),
+    );
+    tabla = lectura.tabla;
+    lecturaJson = lectura;
+    archivoDeEntrada = archivo;
+    formatoOriginal = "json";
+    diagnosticar(
+      archivo,
+      "json",
+      performance.now() - inicio,
+      lectura.estructura,
+    );
+  } catch (error) {
+    // El mensaje de la excepción NUNCA se reenvía: solo la clave del motivo y el número de línea.
+    if (error instanceof ErrorDeJson)
+      enviar({
+        tipo: "error",
+        motivo: error.motivo,
+        ...(error.linea === null ? {} : { linea: error.linea }),
+      });
+    else enviar({ tipo: "error", motivo: "lectura-fallida" });
+  }
 }
 
 /**
@@ -161,6 +223,7 @@ async function leerExcel(archivo: File): Promise<void> {
     const constructor = new ConstructorColumnar(matriz[0], matriz.length);
     for (let i = 1; i < matriz.length; i++) constructor.agregarFila(matriz[i]);
     tabla = constructor.finalizar();
+    formatoOriginal = "excel";
     diagnosticar(archivo, "excel", performance.now() - inicio);
   } catch {
     // El mensaje de la excepción NUNCA se reenvía: puede citar contenido de la hoja.
@@ -203,6 +266,7 @@ function leerCsv(archivo: File): void {
         return;
       }
       tabla = constructor.finalizar();
+      formatoOriginal = "csv";
       diagnosticar(archivo, "csv", performance.now() - inicio);
     },
     error() {
@@ -219,8 +283,9 @@ function leerCsv(archivo: File): void {
  */
 function diagnosticar(
   archivo: File,
-  formato: "csv" | "excel",
+  formato: FormatoDeArchivo,
   msLectura: number,
+  estructura?: EstructuraJson,
 ): void {
   if (!tabla) return;
   if (tabla.filas === 0) {
@@ -246,6 +311,7 @@ function diagnosticar(
     diagnostico,
     riesgo,
     advisor,
+    ...(estructura ? { estructura } : {}),
     medicion: {
       msLectura: Math.round(msLectura),
       msDiagnostico: Math.round(performance.now() - inicio),
@@ -414,12 +480,16 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
 /** Cuántas filas se juntan antes de cerrar un trozo del Blob. */
 const FILAS_POR_TROZO = 20_000;
 
-function construirArchivo(): void {
+async function construirArchivo(): Promise<void> {
   if (!transformada) {
     enviar({ tipo: "error", motivo: "sin-tabla" });
     return;
   }
   avisar("escribiendo", transformada.filas, 0, 0);
+  if (formatoOriginal === "json") {
+    await construirArchivoJson(transformada);
+    return;
+  }
 
   // El CSV se acumula en trozos y no en una sola cadena: 500.000 filas × 24 columnas son ~130 MB
   // de texto, y concatenarlos en un solo string obligaría a tener dos copias vivas al duplicar el
@@ -460,6 +530,67 @@ function construirArchivo(): void {
     tipo: "archivo",
     blob,
     nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica),
+    bytes: blob.size,
+    proposito: "anonimizado",
+    sha256: huellaDeSalida.terminar(),
+  });
+}
+
+/**
+ * La salida de un JSON: se vuelve a leer el archivo original y se reescribe registro a registro,
+ * poniendo en cada hoja lo que dice la tabla TRANSFORMADA. La huella de salida se calcula sobre los
+ * mismos trozos que forman el `Blob`, como en el CSV, y la de ENTRADA se vuelve a comprobar al
+ * terminar de leer: si el archivo cambió en el disco entre el diagnóstico y ahora, no se escribe
+ * nada, porque el certificado habría atado la huella de otro archivo.
+ */
+async function construirArchivoJson(
+  tablaTransformada: TablaColumnar,
+): Promise<void> {
+  if (!lecturaJson || !archivoDeEntrada) {
+    enviar({ tipo: "error", motivo: "sin-tabla" });
+    return;
+  }
+  const huellaDeSalida = new Sha256();
+  const codificador = new TextEncoder();
+  const trozos: string[] = [];
+  try {
+    const fuente = fuenteDeArchivo(archivoDeEntrada, {
+      huellaEsperada: huella,
+    });
+    for await (const trozo of escribirJson(
+      fuente,
+      lecturaJson,
+      tablaTransformada,
+    )) {
+      trozos.push(trozo);
+      huellaDeSalida.actualizar(codificador.encode(trozo));
+    }
+  } catch (error) {
+    // Nada del mensaje se reenvía: ni el de un parser ni el de un archivo que cambió.
+    enviar({
+      tipo: "error",
+      motivo:
+        error instanceof ArchivoCambio || !(error instanceof ErrorDeJson)
+          ? "lectura-fallida"
+          : error.motivo,
+    });
+    return;
+  }
+
+  const forma = lecturaJson.estructura.forma;
+  const blob = new Blob(trozos, {
+    type:
+      forma === "arreglo"
+        ? "application/json;charset=utf-8"
+        : "application/x-ndjson;charset=utf-8",
+  });
+  enviar({
+    tipo: "archivo",
+    blob,
+    nombre: nombreDelArchivoAnonimizado(
+      hashDeLaPolitica,
+      forma === "arreglo" ? "json" : "jsonl",
+    ),
     bytes: blob.size,
     proposito: "anonimizado",
     sha256: huellaDeSalida.terminar(),
@@ -806,7 +937,7 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
     void derivar(mensaje.frase, mensaje.sal);
   if (mensaje?.tipo === "transformar")
     void transformar(mensaje.politica, mensaje.idioma);
-  if (mensaje?.tipo === "construir-archivo") construirArchivo();
+  if (mensaje?.tipo === "construir-archivo") void construirArchivo();
   if (mensaje?.tipo === "sellar-boveda") void sellar(mensaje.frase);
   if (mensaje?.tipo === "abrir-boveda")
     void abrir(mensaje.archivo, mensaje.frase);
