@@ -116,6 +116,72 @@ const reglaSchema = z.object({
   tecnica: tecnicaSchema,
 });
 
+// ── La generalización óptima (S7) ──────────────────────────────────────────────────────────────
+
+/** Cada amplitud divide a la siguiente: así el rango de 10 contiene entero al de 5 (niveles anidados). */
+function anidadas(amplitudes: readonly number[]): boolean {
+  return amplitudes.every(
+    (a, i) => i === 0 || (a > amplitudes[i - 1] && a % amplitudes[i - 1] === 0),
+  );
+}
+
+/** Cada largo es menor que el anterior: un prefijo más corto contiene al más largo. */
+function decrecientes(largos: readonly number[]): boolean {
+  return largos.every((n, i) => i === 0 || n < largos[i - 1]);
+}
+
+/**
+ * La escalera de un campo para la generalización óptima (`src/engine/jerarquias/`). Las tres de
+ * fábrica citan su fuente oficial en `src/engine/jerarquias/fabrica/*.meta.json`.
+ */
+const jerarquiaSchema = z.discriminatedUnion("tipo", [
+  z.object({
+    tipo: z.literal("rango"),
+    amplitudes: z
+      .array(z.number().int().positive())
+      .min(1)
+      .max(6)
+      // En inglés, como los mensajes de la librería: el informe de importación los cita tal cual.
+      .refine(anidadas, "each width must divide the next one"),
+  }),
+  z.object({ tipo: z.literal("fecha") }),
+  z.object({
+    tipo: z.literal("prefijo"),
+    largos: z
+      .array(z.number().int().positive())
+      .min(1)
+      .max(6)
+      .refine(decrecientes, "each length must be shorter than the one before"),
+  }),
+  z.object({ tipo: z.literal("supresion") }),
+  z.object({ tipo: z.literal("divipola") }),
+  z.object({ tipo: z.literal("edad-dane") }),
+  z.object({ tipo: z.literal("ciiu") }),
+]);
+
+export type JerarquiaDeLaPolitica = z.infer<typeof jerarquiaSchema>;
+
+/**
+ * Cómo se alcanza el k sobre las columnas marcadas `generalizar-automatico`.
+ *
+ * **Ausente = Mondrian**, el de siempre, y por eso es opcional y no un campo con default: si
+ * apareciera en toda política, cambiaría el hash de todas las que ya existen (la misma razón que
+ * `reversible`). Presente, pide la búsqueda óptima con una jerarquía por columna (sin jerarquía, la
+ * columna solo puede quedar igual o en `*`) y, si se quiere, una ℓ distinta sobre columnas sensibles.
+ */
+const generalizacionSchema = z.object({
+  algoritmo: z.literal("optima"),
+  jerarquias: z.record(z.string().min(1), jerarquiaSchema),
+  diversidad: z
+    .object({
+      l: z.number().int().min(2),
+      columnas: z.array(z.string().min(1)).min(1),
+    })
+    .optional(),
+});
+
+export type GeneralizacionOptima = z.infer<typeof generalizacionSchema>;
+
 export type Regla = z.infer<typeof reglaSchema>;
 
 export const politicaSchema = z.object({
@@ -131,6 +197,8 @@ export const politicaSchema = z.object({
   reglas: z.array(reglaSchema),
   /** k que Mondrian debe alcanzar sobre las columnas marcadas `generalizar-automatico`. */
   kObjetivo: z.number().int().min(2).nullable(),
+  /** S7: la generalización óptima en vez de Mondrian. Ausente = Mondrian. */
+  generalizacion: generalizacionSchema.optional(),
 });
 
 export type Politica = z.infer<typeof politicaSchema>;
@@ -169,7 +237,42 @@ export function normalizarPolitica(politica: Politica): Politica {
     // Punto de código, no locale: la misma política tiene que dar el mismo hash en toda máquina.
     a.columna === b.columna ? 0 : a.columna < b.columna ? -1 : 1,
   );
-  return { ...politica, reglas };
+  return {
+    ...politica,
+    reglas,
+    generalizacion: generalizacionNormalizada(politica.generalizacion, reglas),
+  };
+}
+
+/**
+ * Lo que de la generalización óptima trata el archivo de verdad: las jerarquías de las columnas del
+ * reparto, y la ℓ sobre columnas FUERA de él (sin repetir y en orden de punto de código; una columna
+ * sensible no necesita regla en la política). Una jerarquía de una columna que ya no está en el
+ * reparto no cambia el tratamiento, así que no puede cambiar el hash.
+ */
+function generalizacionNormalizada(
+  generalizacion: GeneralizacionOptima | undefined,
+  reglas: readonly Regla[],
+): GeneralizacionOptima | undefined {
+  if (generalizacion === undefined) return undefined;
+  const reparto = new Set(
+    reglas
+      .filter((r) => r.tecnica.tipo === "generalizar-automatico")
+      .map((r) => r.columna),
+  );
+  const jerarquias: Record<string, JerarquiaDeLaPolitica> = {};
+  for (const [columna, jerarquia] of Object.entries(generalizacion.jerarquias))
+    if (reparto.has(columna)) jerarquias[columna] = jerarquia;
+  const columnas = [...new Set(generalizacion.diversidad?.columnas ?? [])]
+    .filter((c) => !reparto.has(c))
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return {
+    algoritmo: "optima",
+    jerarquias,
+    ...(generalizacion.diversidad && columnas.length > 0
+      ? { diversidad: { l: generalizacion.diversidad.l, columnas } }
+      : {}),
+  };
 }
 
 /**

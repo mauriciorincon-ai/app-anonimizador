@@ -233,3 +233,120 @@ describe("consultas del pipeline", () => {
     expect(identificadoresSinTratar(completa, columnas)).toEqual([]);
   });
 });
+
+describe("la generalización óptima en la política (S7)", () => {
+  // Vectores dorados: el hash de dos políticas del S6, calculado con el código de `main` antes del
+  // S7 (25f638d). El campo nuevo es opcional y ausente no se serializa: ninguna política vieja
+  // cambia de identidad, y una bitácora o un certificado del S6 sigue apuntando a la misma.
+  const DEL_S6: readonly [Politica, string][] = [
+    [
+      {
+        version: 1,
+        origen: "manual",
+        kObjetivo: 5,
+        reglas: [
+          {
+            columna: "cedula_titular",
+            tecnica: { tipo: "seudonimizar-con-formato", formato: "cedula" },
+          },
+          { columna: "edad", tecnica: { tipo: "generalizar-automatico" } },
+          { columna: "municipio", tecnica: { tipo: "generalizar-automatico" } },
+          { columna: "monto", tecnica: { tipo: "conservar" } },
+        ],
+      },
+      "a665000331f846700f6cd054612eb870f02d618851d6073c0151f9da5927fd48",
+    ],
+    [
+      {
+        version: 1,
+        origen: "habeas-data-editada",
+        kObjetivo: 3,
+        reglas: [
+          {
+            columna: "correo",
+            tecnica: { tipo: "seudonimizar", longitud: 16, reversible: true },
+          },
+          {
+            columna: "fecha_nacimiento",
+            tecnica: { tipo: "generalizar-automatico" },
+          },
+          { columna: "diagnostico", tecnica: { tipo: "conservar" } },
+          { columna: "telefono", tecnica: { tipo: "suprimir" } },
+        ],
+      },
+      "57ceb316d18afea2dd3d6720203a1433151934644ccb8697489119ea75eda79f",
+    ],
+  ];
+
+  it("el hash de una política del S6 no se movió", () => {
+    for (const [politica, hash] of DEL_S6)
+      expect(hashDePolitica(politica)).toBe(hash);
+  });
+
+  const CON_OPTIMA: Politica = {
+    ...DEL_S6[0][0],
+    generalizacion: {
+      algoritmo: "optima",
+      jerarquias: {
+        edad: { tipo: "edad-dane" },
+        municipio: { tipo: "divipola" },
+        monto: { tipo: "rango", amplitudes: [10, 100] },
+      },
+      diversidad: { l: 2, columnas: ["diagnostico", "edad", "diagnostico"] },
+    },
+  };
+
+  it("pedir la óptima SÍ cambia el hash: es otro tratamiento", () => {
+    expect(hashDePolitica(CON_OPTIMA)).not.toBe(DEL_S6[0][1]);
+  });
+
+  it("normalizar descarta las escaleras fuera del reparto y ordena la ℓ sin repetir", () => {
+    const normal = normalizarPolitica(CON_OPTIMA);
+    expect(normal.generalizacion).toEqual({
+      algoritmo: "optima",
+      jerarquias: {
+        edad: { tipo: "edad-dane" },
+        municipio: { tipo: "divipola" },
+      },
+      // `edad` está en el reparto: no puede ser a la vez la columna sensible.
+      diversidad: { l: 2, columnas: ["diagnostico"] },
+    });
+    // Por eso la escalera de `monto` (que se conserva) no mueve el hash.
+    const sinMonto: Politica = {
+      ...CON_OPTIMA,
+      generalizacion: {
+        ...CON_OPTIMA.generalizacion!,
+        jerarquias: {
+          edad: { tipo: "edad-dane" },
+          municipio: { tipo: "divipola" },
+        },
+      },
+    };
+    expect(hashDePolitica(sinMonto)).toBe(hashDePolitica(CON_OPTIMA));
+  });
+
+  it("exportar → importar conserva la óptima y su hash", () => {
+    const vuelta = importarPolitica(exportarPolitica(CON_OPTIMA));
+    expect(vuelta.ok).toBe(true);
+    if (!vuelta.ok) return;
+    expect(vuelta.politica.generalizacion?.algoritmo).toBe("optima");
+    expect(hashDePolitica(vuelta.politica)).toBe(hashDePolitica(CON_OPTIMA));
+  });
+
+  it("una escalera mal formada no entra: rangos que no se dividen, largos que no bajan", () => {
+    for (const jerarquia of [
+      { tipo: "rango", amplitudes: [5, 7] },
+      { tipo: "prefijo", largos: [2, 3] },
+      { tipo: "inventada" },
+    ]) {
+      const archivo = JSON.parse(exportarPolitica(CON_OPTIMA));
+      // El control: sin tocar la escalera, el mismo camino importa bien.
+      expect(importarPolitica(JSON.stringify(archivo)).ok).toBe(true);
+      archivo.generalizacion.jerarquias.edad = jerarquia;
+      expect(
+        importarPolitica(JSON.stringify(archivo)).ok,
+        JSON.stringify(jerarquia),
+      ).toBe(false);
+    }
+  });
+});
