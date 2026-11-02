@@ -79,7 +79,7 @@ import {
   type ClasesDeEquivalencia,
 } from "@/engine/riesgo";
 import { estimarRiesgo } from "@/engine/riesgo-estimado";
-import { entropiaEnBits } from "@/engine/utilidad";
+import { entropiaEnBits, informacionMutua } from "@/engine/utilidad";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
 import { esDeMetadatos, formatoDeArchivo, motivoDelTope } from "@/lib/archivo";
@@ -741,8 +741,11 @@ function medirLado(
       (s, n) => s + entropiaEnBits(originales.get(n)!, generalizada.filas),
       0,
     ),
+    // Lo que la salida todavía dice del original, no su entropía: con Mondrian no es lo mismo
+    // (ver `informacionMutua`).
     bitsDespues: columnas.reduce(
-      (s, c) => s + entropiaEnBits(c, generalizada.filas),
+      (s, c) =>
+        s + informacionMutua(originales.get(c.nombre)!, c, generalizada.filas),
       0,
     ),
     columnas: columnas.map((c, i) => ({
