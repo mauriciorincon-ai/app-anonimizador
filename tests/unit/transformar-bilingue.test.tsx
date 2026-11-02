@@ -58,7 +58,8 @@ const TALLER_VACIO: EstadoDelTaller = {
 
 beforeEach(() => {
   tallerActual = TALLER_VACIO;
-  construirReporte.mockClear();
+  construirReporte.mockReset();
+  construirReporte.mockImplementation(() => "<html></html>");
   anotarTratamiento.mockClear();
   push.mockClear();
 });
@@ -430,6 +431,39 @@ describe("el certificado", () => {
     };
     expect(datos.idioma).toBe("es");
     expect(datos.fecha).toMatch(/marzo/);
+  });
+
+  it("la vista previa abierta se regenera al cambiar de idioma: no enseña un idioma y descarga otro", () => {
+    construirReporte.mockImplementation(
+      (datos) => `<html lang="${(datos as { idioma: string }).idioma}"></html>`,
+    );
+    render(
+      <DescargaDelCertificado
+        informe={INFORME}
+        tratamiento={TRATAMIENTO}
+        archivo={{
+          nombre: "velo-anonimizado-abc.csv",
+          bytes: 5,
+          url: "blob:x",
+        }}
+        huellaDeSalida="beef"
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Ver antes de descargar" }),
+    );
+    const marco = () => document.querySelector("iframe");
+    expect(marco()?.getAttribute("srcdoc")).toBe('<html lang="es"></html>');
+
+    act(() => fijarIdioma("en"));
+    expect(marco()?.getAttribute("srcdoc")).toBe('<html lang="en"></html>');
+    // Sigue abierta: cambiar de idioma no la cierra, la repinta.
+    expect(
+      screen.getByRole("button", { name: "Close the preview" }),
+    ).toHaveAttribute("aria-expanded", "true");
+
+    act(() => fijarIdioma("es"));
+    expect(marco()?.getAttribute("srcdoc")).toBe('<html lang="es"></html>');
   });
 
   it("antes del archivo no hay certificado, y lo dice en inglés", () => {

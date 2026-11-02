@@ -19,7 +19,7 @@
 // que lo verifica leyendo el código fuente): si lo hiciera, el documento dejaría de ser reproducible
 // y con él se iría la promesa de determinismo.
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { IconoCertificado, IconoEquis, IconoOjo } from "@/components/iconos";
 import { Boton } from "@/components/boton";
@@ -57,7 +57,10 @@ export function DescargaDelCertificado({
   huellaDeSalida?: string | null;
 }) {
   const { t, idioma } = useT();
-  const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
+  // Se guarda SI la vista previa está abierta, no el documento: el documento se deriva del idioma
+  // (abajo). Guardar el HTML ya generado dejaba la vista previa en el idioma viejo tras cambiar de
+  // idioma mientras «Descargar» —que genera al pulsar— sí salía en el nuevo.
+  const [abierta, setAbierta] = useState(false);
 
   // El certificado existe cuando existen sus dos huellas, y la de salida no existe hasta que el
   // archivo se generó. Se comprueban las dos juntas para que el tipo de `generar()` no dependa de
@@ -70,7 +73,7 @@ export function DescargaDelCertificado({
 
   const esCertificado = puedeCertificar;
 
-  function generar(): string {
+  const generar = useCallback((): string => {
     return construirReporte({
       archivo: informe.archivo,
       diagnostico: informe.diagnostico,
@@ -93,7 +96,14 @@ export function DescargaDelCertificado({
             }
           : undefined,
     });
-  }
+  }, [informe, tratamiento, archivo, huellaDeSalida, idioma, puedeCertificar]);
+
+  // La vista previa enseña lo que se va a mandar, así que se regenera cuando cambia lo que la
+  // determina —el idioma incluido—: la fecha se vuelve a calcular con la convención del idioma nuevo.
+  const vistaPrevia = useMemo(
+    () => (abierta ? generar() : null),
+    [abierta, generar],
+  );
 
   function descargar() {
     // Un Blob y un enlace: el archivo se arma en memoria y se guarda con el diálogo del sistema.
@@ -178,15 +188,11 @@ export function DescargaDelCertificado({
         <Boton
           type="button"
           variante="discreto"
-          aria-expanded={vistaPrevia !== null}
-          onClick={() =>
-            setVistaPrevia((actual) => (actual === null ? generar() : null))
-          }
+          aria-expanded={abierta}
+          onClick={() => setAbierta((actual) => !actual)}
         >
-          {vistaPrevia === null ? <IconoOjo /> : <IconoEquis />}
-          {vistaPrevia === null
-            ? t(C.vistaPrevia.ver)
-            : t(C.vistaPrevia.cerrar)}
+          {abierta ? <IconoEquis /> : <IconoOjo />}
+          {abierta ? t(C.vistaPrevia.cerrar) : t(C.vistaPrevia.ver)}
         </Boton>
       </div>
 
