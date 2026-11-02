@@ -269,6 +269,10 @@ export const METADATOS = {
         es: "Bytes que sobran tras el final del archivo",
         en: "Bytes left over after the end of the file",
       },
+      "datos-sin-uso": {
+        es: "Datos dentro de la imagen que ningún elemento usa",
+        en: "Data inside the image that no item uses",
+      },
       // lo que se conserva en una imagen
       "perfil-de-color": { es: "Perfil de color", en: "Color profile" },
       orientacion: {
@@ -344,6 +348,16 @@ export const METADATOS = {
         en:
           "There were additional images inside the file (for instance an HDR gain map or " +
           "alternative views): they are removed along with the rest.",
+      },
+      "heic-auxiliares": {
+        es:
+          "La foto trae imágenes auxiliares (un mapa de profundidad o de realce HDR). Son píxeles " +
+          "y se conservan; los datos que las describen se quitan, así que en una pantalla HDR la " +
+          "foto puede verse con menos rango.",
+        en:
+          "The photo carries auxiliary images (a depth map or an HDR boost map). They are pixels " +
+          "and are kept; the data describing them is removed, so on an HDR screen the photo may " +
+          "show less range.",
       },
       "texto-comprimido": {
         es:

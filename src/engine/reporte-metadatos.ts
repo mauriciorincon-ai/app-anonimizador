@@ -94,6 +94,7 @@ const CLASE: Record<ClaseDeElemento, Texto> = {
   aplicacion: L.clases.aplicacion,
   auxiliar: L.clases.auxiliar,
   "bytes-sobrantes": L.clases.bytesSobrantes,
+  "datos-sin-uso": L.clases.datosSinUso,
   "perfil-de-color": L.clases.perfilDeColor,
   orientacion: L.clases.orientacion,
   jfif: L.clases.jfif,
@@ -120,6 +121,8 @@ function textoDelAviso(aviso: Aviso): { texto: Texto; n: number } {
       return { texto: A.orientacionConservada, n };
     case "imagenes-adicionales":
       return { texto: A.imagenesAdicionales, n };
+    case "heic-auxiliares":
+      return { texto: A.heicAuxiliares, n };
     case "texto-comprimido":
       return { texto: A.textoComprimido, n };
     case "exif-ilegible":

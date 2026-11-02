@@ -222,7 +222,7 @@ export type MotivoDeError =
   /** Los de `MotivoJson`: un JSON que no se puede tratar. Son claves; el error no cita contenido. */
   | MotivoJson
   /**
-   * Un `.pdf` o una imagen cuyos bytes no son ninguno de los cuatro formatos que Velo limpia. Un
+   * Un `.pdf` o una imagen cuyos bytes no son ninguno de los cinco formatos que Velo limpia. Un
    * `.json` que no es JSON sale como `json-invalido`, no como este.
    */
   | "formato-no-coincide"

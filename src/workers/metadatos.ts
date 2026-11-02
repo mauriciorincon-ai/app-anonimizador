@@ -28,7 +28,7 @@ import {
 import type { DiagnosticoDeMetadatos } from "./contrato";
 import { analizarPdf, limpiarPdf } from "./limpiar-pdf";
 
-/** Los bytes no son ni PDF, ni JPEG, ni PNG, ni WebP, aunque el nombre diga que sí. */
+/** Los bytes no son ni PDF, ni JPEG, ni PNG, ni WebP, ni HEIC, aunque el nombre diga que sí. */
 export class FormatoNoCoincide extends Error {
   constructor() {
     super("formato-no-coincide");

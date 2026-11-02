@@ -1,4 +1,4 @@
-// Imágenes (S6) — la puerta única al análisis y a la limpieza de JPEG, PNG y WebP.
+// Imágenes (S6, HEIC en el S7) — la puerta única al análisis y a la limpieza de JPEG, PNG, WebP y HEIC.
 //
 // El worker llama aquí con los bytes y el formato que dijo `formatoPorContenido` (los bytes
 // mágicos, no la extensión). Cada formato tiene su lector (`jpeg.ts`, `png.ts`, `webp.ts`); los tres
@@ -12,6 +12,7 @@
 // segunda lectura es la misma que ve el usuario en el certificado: lo que queda es solo lo que se
 // conserva y se declara.
 
+import { analizarHeic, limpiarHeic } from "./heic";
 import { analizarJpeg, limpiarJpeg } from "./jpeg";
 import { analizarPng, limpiarPng } from "./png";
 import {
@@ -37,6 +38,8 @@ export function analizarImagen(
       return analizarPng(bytes);
     case "webp":
       return analizarWebp(bytes);
+    case "heic":
+      return analizarHeic(bytes);
   }
 }
 
@@ -48,6 +51,8 @@ function limpiar(bytes: Uint8Array, formato: FormatoDeImagen): Limpieza {
       return limpiarPng(bytes);
     case "webp":
       return limpiarWebp(bytes);
+    case "heic":
+      return limpiarHeic(bytes);
   }
 }
 

@@ -149,7 +149,7 @@ const entradaSchema = z.object({
   huellaDeSalida: z.string(),
   metadatos: z
     .object({
-      formato: z.enum(["pdf", "jpeg", "png", "webp"]),
+      formato: z.enum(["pdf", "jpeg", "png", "webp", "heic"]),
       campos: z.number().int().nonnegative(),
       elementos: z.number().int().nonnegative(),
       revisionesQuitadas: z.number().int().nonnegative(),

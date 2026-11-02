@@ -706,6 +706,7 @@ export const DOCUMENTOS = {
       jpeg: { es: "Imagen JPEG", en: "JPEG image" },
       png: { es: "Imagen PNG", en: "PNG image" },
       webp: { es: "Imagen WebP", en: "WebP image" },
+      heic: { es: "Imagen HEIC", en: "HEIC image" },
     },
     revela: {
       autoria: { es: "Autoría", en: "Authorship" },
@@ -748,8 +749,8 @@ export const DOCUMENTOS = {
         en: "Camera maker note",
       },
       imagenesAdicionales: {
-        es: "Imágenes adicionales (MPF)",
-        en: "Additional images (MPF)",
+        es: "Imágenes adicionales dentro del archivo",
+        en: "Additional images inside the file",
       },
       procedencia: {
         es: "Datos de procedencia (C2PA)",
@@ -767,13 +768,17 @@ export const DOCUMENTOS = {
         es: "Bytes después del final de la imagen",
         en: "Bytes after the end of the image",
       },
+      datosSinUso: {
+        es: "Datos dentro de la imagen que ningún elemento usaba",
+        en: "Data inside the image that no item used",
+      },
       perfilDeColor: {
         es: "Perfil de color (ICC)",
         en: "Colour profile (ICC)",
       },
       orientacion: {
-        es: "Orientación (un EXIF mínimo con solo esa etiqueta)",
-        en: "Orientation (a minimal EXIF with that tag only)",
+        es: "Orientación de la foto, para que no aparezca girada",
+        en: "Photo orientation, so it does not appear rotated",
       },
       jfif: { es: "Cabecera JFIF", en: "JFIF header" },
       adobe: {
@@ -824,6 +829,10 @@ export const DOCUMENTOS = {
       imagenesAdicionales: {
         es: "Había imágenes adicionales (por ejemplo, el mapa de ganancia HDR) y se quitaron con lo demás: en una pantalla HDR la foto puede verse con menos rango.",
         en: "There were additional images (for example, the HDR gain map) and they went with the rest: on an HDR screen the photo may show less range.",
+      },
+      heicAuxiliares: {
+        es: "La foto traía imágenes auxiliares (profundidad o realce HDR): se conservaron, porque son píxeles, pero los datos que las describían se quitaron con lo demás, así que en una pantalla HDR puede verse con menos rango.",
+        en: "The photo carried auxiliary images (depth or HDR boost): they were kept, because they are pixels, but the data describing them went with the rest, so on an HDR screen it may show less range.",
       },
       textoComprimido: {
         es: "Había texto comprimido que Velo no leyó. Se quitó igual.",

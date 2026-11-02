@@ -64,6 +64,7 @@ const ERRORES: Partial<
   "pdf-cifrado": INICIO.carga.errores.pdfCifrado,
   "pdf-ilegible": INICIO.carga.errores.pdfIlegible,
   "imagen-ilegible": INICIO.carga.errores.imagenIlegible,
+  "imagen-no-soportada": INICIO.carga.errores.imagenNoSoportada,
   "pdf-excede-tope": INICIO.carga.errores.pdfExcedeTope,
   "imagen-excede-tope": INICIO.carga.errores.imagenExcedeTope,
 };
@@ -145,7 +146,7 @@ export function ZonaDeCarga({
         <input
           id="archivo"
           type="file"
-          accept=".csv,.xlsx,.xls,text/csv,.json,.jsonl,.ndjson,application/json,.pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+          accept=".csv,.xlsx,.xls,text/csv,.json,.jsonl,.ndjson,application/json,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
           className="peer sr-only"
           onChange={(e) => {
             const archivo = e.target.files?.[0];
