@@ -109,6 +109,7 @@ export const FIXTURE_HETEROGENEO_JSON = nombreDeFixture(
 export const FIXTURE_JPEG = join(DIRECTORIO_DE_FIXTURES, "foto-s42.jpg");
 export const FIXTURE_PNG = join(DIRECTORIO_DE_FIXTURES, "foto-s42.png");
 export const FIXTURE_WEBP = join(DIRECTORIO_DE_FIXTURES, "foto-s42.webp");
+export const FIXTURE_HEIC = join(DIRECTORIO_DE_FIXTURES, "foto-s42.heic");
 /** Dos revisiones: el Author de la primera sigue en los bytes aunque la segunda lo reemplace. */
 export const FIXTURE_PDF = join(DIRECTORIO_DE_FIXTURES, "documento-s42.pdf");
 /** El trailer trae `/Encrypt`: Velo lo reconoce y se niega a limpiarlo. */
@@ -123,7 +124,7 @@ export const FIXTURE_PDF_FIRMADO = join(
 );
 
 interface FixtureBinario {
-  formato: "jpeg" | "png" | "webp" | "pdf";
+  formato: "jpeg" | "png" | "webp" | "heic" | "pdf";
   /** Solo el PDF tiene perfiles (`simple` · `con-revisiones` · `cifrado` · `firmado`). */
   perfil?: string;
   seed: number;
@@ -134,6 +135,7 @@ const FIXTURES_BINARIOS: readonly FixtureBinario[] = [
   { formato: "jpeg", seed: 42, destino: FIXTURE_JPEG },
   { formato: "png", seed: 42, destino: FIXTURE_PNG },
   { formato: "webp", seed: 42, destino: FIXTURE_WEBP },
+  { formato: "heic", seed: 42, destino: FIXTURE_HEIC },
   { formato: "pdf", perfil: "con-revisiones", seed: 42, destino: FIXTURE_PDF },
   { formato: "pdf", perfil: "cifrado", seed: 42, destino: FIXTURE_PDF_CIFRADO },
   { formato: "pdf", perfil: "firmado", seed: 42, destino: FIXTURE_PDF_FIRMADO },

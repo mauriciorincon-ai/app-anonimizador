@@ -14,6 +14,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import {
   centinelasDe,
+  FIXTURE_HEIC,
   FIXTURE_JPEG,
   FIXTURE_PDF,
   FIXTURE_PDF_CIFRADO,
@@ -92,6 +93,13 @@ const IMAGENES = [
     fixture: FIXTURE_WEBP,
     extension: "webp",
     firma: [0x52, 0x49, 0x46, 0x46],
+  },
+  {
+    // La firma de un HEIC está en los bytes 4 a 7 (`ftyp`); los 4 primeros son su tamaño.
+    formato: "HEIC",
+    fixture: FIXTURE_HEIC,
+    extension: "heic",
+    firma: [0x00, 0x00, 0x00, 0x1c, 0x66, 0x74, 0x79, 0x70],
   },
 ];
 
@@ -225,7 +233,7 @@ const RUTAS_PERMITIDAS = [
 ];
 const PARAMETROS_PERMITIDOS = new Set(["_rsc", "dpl"]);
 
-for (const fixture of [FIXTURE_JPEG, FIXTURE_PDF]) {
+for (const fixture of [FIXTURE_JPEG, FIXTURE_HEIC, FIXTURE_PDF]) {
   test(`cero peticiones con datos al limpiar ${fixture.split("/").pop()}`, async ({
     page,
     baseURL,
