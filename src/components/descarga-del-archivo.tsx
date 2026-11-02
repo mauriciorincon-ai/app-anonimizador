@@ -17,8 +17,12 @@
 import { Boton } from "@/components/boton";
 import { Panel } from "@/components/panel";
 import { IconoDescargar, IconoDocumento } from "@/components/iconos";
-import { bytes as enBytes, numero } from "@/lib/formato";
+import { Rico, useT } from "@/components/texto";
+import { bytes as enBytes } from "@/lib/formato";
+import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import type { AsaDeArchivo } from "@/lib/sesion";
+
+const E = TRANSFORMAR.entrega;
 
 export function DescargaDelArchivo({
   archivo,
@@ -35,56 +39,46 @@ export function DescargaDelArchivo({
   hashDePolitica: string;
   onPreparar: () => void;
 }) {
+  const { t, idioma } = useT();
   return (
     <Panel
-      etiqueta="Paso 6 · la entrega"
-      titulo="Llévate el archivo"
-      nota={
-        <>
-          El nombre no repite el del original: sale como{" "}
-          <span className="font-mono">velo-anonimizado-…csv</span>. Un nombre
-          como <span className="font-mono">pacientes-2026.csv</span> cuenta de
-          qué va el contenido antes de que nadie lo abra, y ese nombre viaja en
-          el asunto de un correo.
-        </>
-      }
+      etiqueta={t(E.panel.etiqueta)}
+      titulo={t(E.panel.titulo)}
+      nota={<Rico texto={E.panel.nota} />}
     >
       <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-        Un CSV con {numero(filas)} filas
+        <Rico texto={E.csv.filas} datos={{ filas }} />
         {suprimidas.length > 0 ? (
           <>
             {" "}
-            y sin{" "}
-            {suprimidas.length === 1
-              ? "la columna"
-              : `las ${numero(suprimidas.length)} columnas`}{" "}
+            <Rico
+              texto={suprimidas.length === 1 ? E.csv.sinUna : E.csv.sinVarias}
+              datos={{ n: suprimidas.length }}
+            />{" "}
             <span className="font-mono text-[0.875rem]">
               {suprimidas.join(" · ")}
             </span>
           </>
         ) : null}
-        . Separado por comas, terminado en salto de línea y sin BOM — si Excel
-        en Windows te pregunta por la codificación, es UTF-8.
+        <Rico texto={E.csv.formato} />
       </p>
 
       {/* Los 8 caracteres del nombre no son un número de serie: son el principio del SHA-256 de la
           política. Dos entregas con el mismo trozo recibieron el mismo trato, y el reporte lleva el
           hash completo. Estaba en el código y en ningún texto (hallazgo B1 de la auditoría). */}
       <p className="text-tinta-tenue mt-3 text-[0.875rem] leading-relaxed">
-        Los ocho caracteres del nombre —
+        <Rico texto={E.huella.antes} />
         <span className="text-tinta font-mono">
           {hashDePolitica.slice(0, 8)}
         </span>
-        — son el principio del SHA-256 de la política. Dos archivos que lo
-        compartan recibieron exactamente el mismo tratamiento; el reporte lleva
-        el hash completo.
+        <Rico texto={E.huella.despues} />
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         {archivo === null ? (
           <Boton type="button" disabled={preparando} onClick={onPreparar}>
             <IconoDocumento />
-            {preparando ? "Escribiendo el archivo…" : "Preparar el archivo"}
+            {preparando ? t(E.preparando) : t(E.preparar)}
           </Boton>
         ) : (
           <>
@@ -94,10 +88,13 @@ export function DescargaDelArchivo({
               className="rounded-1 bg-acento text-papel shadow-1 inline-flex items-center gap-2 px-5 py-2.5 text-[0.9375rem] font-medium"
             >
               <IconoDescargar />
-              Guardar {archivo.nombre}
+              {t(E.guardar)} {archivo.nombre}
             </a>
             <p className="text-tinta-tenue text-[0.875rem]">
-              {enBytes(archivo.bytes)} · lo escribe tu navegador, no un servidor
+              <Rico
+                texto={E.escribeTuNavegador}
+                datos={{ tamano: enBytes(archivo.bytes, idioma) }}
+              />
             </p>
           </>
         )}

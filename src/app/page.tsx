@@ -14,31 +14,10 @@ import { useRouter } from "next/navigation";
 import { clasesDeBoton } from "@/components/boton";
 import { IconoCuaderno, IconoVolver } from "@/components/iconos";
 import { Sello } from "@/components/sello";
+import { Rico } from "@/components/texto";
 import { ZonaDeCarga } from "@/components/zona-de-carga";
+import { INICIO } from "@/lib/idioma/textos/inicio";
 import { analizar, descartar, useSesion } from "@/lib/sesion";
-
-const PASOS = [
-  {
-    titulo: "Sueltas la tabla",
-    texto:
-      "Se abre en esta pestaña, en un hilo aparte para que el navegador no se congele. No hay carga a ningún servidor: es que no hay servidor.",
-  },
-  {
-    titulo: "Velo la lee columna por columna",
-    texto:
-      "Recalcula los dígitos de verificación oficiales —el mod 11 de la DIAN para el NIT, Luhn para las tarjetas, el 97-10 del IBAN— y reconoce las formas colombianas: cédulas, celulares, placas.",
-  },
-  {
-    titulo: "Te dice a quién delata",
-    texto:
-      "Cuenta cuántas personas quedan solas al cruzar unas columnas con otras. La cuenta es exacta: sale de tus filas, no de un modelo estadístico.",
-  },
-  {
-    titulo: "Y lo transformas",
-    texto:
-      "Eliges qué se le hace a cada columna —o aplicas Habeas Data de un clic—, ves el antes y el después, y te llevas el archivo tratado con el documento que dice qué se le hizo.",
-  },
-];
 
 export default function Aduana() {
   const estado = useSesion();
@@ -58,13 +37,10 @@ export default function Aduana() {
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12 sm:py-16">
       <h1 className="font-display text-tinta text-[clamp(1.875rem,5vw,2.75rem)] leading-[1.1] font-semibold text-balance">
-        Mira tu tabla como la vería un extraño
+        <Rico texto={INICIO.titulo} />
       </h1>
       <p className="text-tinta-suave mt-4 text-lg leading-relaxed text-pretty">
-        Antes de mandar un archivo a una IA, a una herramienta en la nube o al
-        computador de un tercero, Velo te dice qué datos personales lleva
-        dentro, a cuántas personas alcanza a señalar con el dedo, y te lo
-        devuelve anonimizado.
+        <Rico texto={INICIO.bajada} />
       </p>
 
       <div className="mt-10">
@@ -83,17 +59,19 @@ export default function Aduana() {
 
       <section aria-labelledby="como-funciona" className="mt-16">
         <h2 id="como-funciona" className="etiqueta">
-          Cómo funciona
+          <Rico texto={INICIO.como} />
         </h2>
         <ol className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {PASOS.map((paso, i) => (
-            <li key={paso.titulo}>
+          {INICIO.pasos.map((paso, i) => (
+            <li key={i}>
               <p className="cifra font-display text-tinta-tenue text-2xl leading-none">
                 {i + 1}
               </p>
-              <h3 className="text-tinta mt-2 font-semibold">{paso.titulo}</h3>
+              <h3 className="text-tinta mt-2 font-semibold">
+                <Rico texto={paso.titulo} />
+              </h3>
               <p className="text-tinta-suave mt-1.5 text-[0.9375rem] leading-relaxed">
-                {paso.texto}
+                <Rico texto={paso.texto} />
               </p>
             </li>
           ))}
@@ -112,21 +90,16 @@ export default function Aduana() {
         className="border-borde mt-10 border-t pt-6"
       >
         <h2 id="el-regreso" className="etiqueta">
-          Y semanas después
+          <Rico texto={INICIO.regreso.titulo} />
         </h2>
-        <p className="text-tinta-suave mt-2 text-[0.9375rem] leading-relaxed text-pretty">
-          Cuando el tercero te devuelva el archivo trabajado, Velo{" "}
-          <strong className="text-tinta font-medium">
-            pone los valores originales de vuelta
-          </strong>{" "}
-          y respeta lo que hicieron encima. Para eso guardas la bóveda cifrada
-          al anonimizar: sin ella el seudónimo sigue siendo irreversible —que es
-          justo lo que lo hace seguro de entregar—; con ella, y solo con ella,
-          vuelve.
+        {/* El énfasis de este párrafo va en `text-tinta` (más oscuro que el párrafo): la variante
+            lo aplica a la negrita que pinta `Rico`, sin partir la frase en tres claves. */}
+        <p className="text-tinta-suave [&_strong]:text-tinta mt-2 text-[0.9375rem] leading-relaxed text-pretty">
+          <Rico texto={INICIO.regreso.texto} />
         </p>
         <Link href="/regreso" className={`${clasesDeBoton("discreto")} mt-4`}>
           <IconoVolver />
-          Ya tengo mi bóveda y el archivo devuelto
+          <Rico texto={INICIO.regreso.enlace} />
         </Link>
       </section>
 
@@ -140,27 +113,19 @@ export default function Aduana() {
         className="border-borde mt-8 border-t pt-6"
       >
         <h2 id="la-bitacora" className="etiqueta">
-          Y meses después
+          <Rico texto={INICIO.bitacora.titulo} />
         </h2>
-        <p className="text-tinta-suave mt-2 text-[0.9375rem] leading-relaxed text-pretty">
-          Cuando alguien te pregunte{" "}
-          <strong className="text-tinta font-medium">
-            qué entregaste y con qué criterio
-          </strong>
-          , la respuesta está en tu bitácora: un archivo cifrado, tuyo, que
-          recuerda cada tratamiento con su fecha, su política y sus dos huellas.
-          Va cifrada porque el nombre de un archivo ya cuenta de qué va su
-          contenido.
+        <p className="text-tinta-suave [&_strong]:text-tinta mt-2 text-[0.9375rem] leading-relaxed text-pretty">
+          <Rico texto={INICIO.bitacora.texto} />
         </p>
         <Link href="/bitacora" className={`${clasesDeBoton("discreto")} mt-4`}>
           <IconoCuaderno />
-          Abrir mi bitácora
+          <Rico texto={INICIO.bitacora.enlace} />
         </Link>
       </section>
 
       <p className="text-tinta-tenue mt-10 text-[0.8125rem] leading-relaxed">
-        Velo reduce el riesgo de reidentificación y lo mide; no declara ningún
-        archivo anónimo.
+        <Rico texto={INICIO.cierre} />
       </p>
     </main>
   );

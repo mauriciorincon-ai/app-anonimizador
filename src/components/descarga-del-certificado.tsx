@@ -19,24 +19,24 @@
 // que lo verifica leyendo el código fuente): si lo hiciera, el documento dejaría de ser reproducible
 // y con él se iría la promesa de determinismo.
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { IconoCertificado, IconoEquis, IconoOjo } from "@/components/iconos";
 import { Boton } from "@/components/boton";
 import { Panel } from "@/components/panel";
+import { Rico, useT } from "@/components/texto";
 import {
   construirReporte,
   nombreDelCertificado,
   nombreDelReporte,
   type DatosDelTratamiento,
 } from "@/engine/reporte";
+import { LOCALE } from "@/lib/idioma";
+import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import type { AsaDeArchivo } from "@/lib/sesion";
 import type { Informe } from "@/workers/contrato";
 
-const FORMATO_DE_FECHA = new Intl.DateTimeFormat("es-CO", {
-  dateStyle: "long",
-  timeStyle: "short",
-});
+const C = TRANSFORMAR.certificado;
 
 /** Lo del tratamiento, menos las dos cosas que solo existen cuando el archivo ya se generó. */
 type TratamientoSinSalida = Omit<
@@ -56,7 +56,11 @@ export function DescargaDelCertificado({
   archivo?: AsaDeArchivo | null;
   huellaDeSalida?: string | null;
 }) {
-  const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
+  const { t, idioma } = useT();
+  // Se guarda SI la vista previa está abierta, no el documento: el documento se deriva del idioma
+  // (abajo). Guardar el HTML ya generado dejaba la vista previa en el idioma viejo tras cambiar de
+  // idioma mientras «Descargar» —que genera al pulsar— sí salía en el nuevo.
+  const [abierta, setAbierta] = useState(false);
 
   // El certificado existe cuando existen sus dos huellas, y la de salida no existe hasta que el
   // archivo se generó. Se comprueban las dos juntas para que el tipo de `generar()` no dependa de
@@ -69,13 +73,20 @@ export function DescargaDelCertificado({
 
   const esCertificado = puedeCertificar;
 
-  function generar(): string {
+  const generar = useCallback((): string => {
     return construirReporte({
       archivo: informe.archivo,
       diagnostico: informe.diagnostico,
       riesgo: informe.riesgo,
       advisor: informe.advisor,
-      fecha: FORMATO_DE_FECHA.format(new Date()),
+      // El idioma se lee AL GENERAR: el documento queda escrito en el que tenía la pantalla cuando
+      // se pulsó, y la fecha con la convención de ese idioma. Los dos se inyectan; el motor no
+      // mira ni el reloj ni la configuración regional.
+      fecha: new Intl.DateTimeFormat(LOCALE[idioma], {
+        dateStyle: "long",
+        timeStyle: "short",
+      }).format(new Date()),
+      idioma,
       tratamiento:
         puedeCertificar && tratamiento
           ? {
@@ -85,7 +96,14 @@ export function DescargaDelCertificado({
             }
           : undefined,
     });
-  }
+  }, [informe, tratamiento, archivo, huellaDeSalida, idioma, puedeCertificar]);
+
+  // La vista previa enseña lo que se va a mandar, así que se regenera cuando cambia lo que la
+  // determina —el idioma incluido—: la fecha se vuelve a calcular con la convención del idioma nuevo.
+  const vistaPrevia = useMemo(
+    () => (abierta ? generar() : null),
+    [abierta, generar],
+  );
 
   function descargar() {
     // Un Blob y un enlace: el archivo se arma en memoria y se guarda con el diálogo del sistema.
@@ -96,8 +114,8 @@ export function DescargaDelCertificado({
     );
     enlace.href = url;
     enlace.download = esCertificado
-      ? nombreDelCertificado(informe.archivo.nombre)
-      : nombreDelReporte(informe.archivo.nombre);
+      ? nombreDelCertificado(informe.archivo.nombre, idioma)
+      : nombreDelReporte(informe.archivo.nombre, idioma);
     enlace.click();
     URL.revokeObjectURL(url);
   }
@@ -107,20 +125,20 @@ export function DescargaDelCertificado({
   // y evita la pregunta «¿por qué no puedo descargarlo?».
   if (tratamiento !== undefined && !puedeCertificar) {
     return (
-      <Panel
-        etiqueta="Paso 7 · el certificado"
-        titulo="Primero el archivo, después su certificado"
-      >
+      <Panel etiqueta={t(C.pendiente.etiqueta)} titulo={t(C.pendiente.titulo)}>
         <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-          El certificado lleva la huella{" "}
-          <strong className="text-tinta font-medium">SHA-256</strong> del
-          archivo tratado, y esa huella no existe hasta que el archivo existe.
-          Genera el archivo en el paso de arriba y el certificado aparece aquí.
+          <Rico texto={C.pendiente.antes} />{" "}
+          <strong className="text-tinta font-medium">SHA-256</strong>{" "}
+          <Rico texto={C.pendiente.despues} />
         </p>
         <p className="text-tinta-tenue mt-3 text-[0.875rem] leading-relaxed">
-          Es la diferencia entre un papel que <em>describe</em> un tratamiento y
-          uno que se puede <strong className="font-medium">comprobar</strong>
-          contra el archivo que tienes en la mano.
+          <Rico texto={C.pendiente.diferencia.antes} />{" "}
+          <em>{t(C.pendiente.diferencia.describe)}</em>{" "}
+          <Rico texto={C.pendiente.diferencia.medio} />{" "}
+          <strong className="font-medium">
+            {t(C.pendiente.diferencia.comprobar)}
+          </strong>{" "}
+          <Rico texto={C.pendiente.diferencia.despues} />
         </p>
       </Panel>
     );
@@ -128,74 +146,53 @@ export function DescargaDelCertificado({
 
   return (
     <Panel
-      etiqueta={esCertificado ? "Paso 6 · el certificado" : "Reporte"}
-      titulo={
-        esCertificado
-          ? "Llévate el certificado del tratamiento"
-          : "Llévate el diagnóstico"
+      etiqueta={
+        esCertificado ? t(C.etiqueta.certificado) : t(C.etiqueta.reporte)
       }
+      titulo={esCertificado ? t(C.titulo.certificado) : t(C.titulo.reporte)}
       nota={
-        esCertificado ? (
-          <>
-            Lleva las <strong className="font-medium">dos huellas</strong>: la
-            del archivo que entró y la del que te llevas. Quien lo reciba puede
-            recalcular la segunda y comprobar que este documento habla de{" "}
-            <strong className="font-medium">esa copia exacta</strong> — el
-            documento le explica cómo, con el comando de su sistema.
-          </>
-        ) : (
-          <>
-            El reporte lleva la huella{" "}
-            <strong className="font-medium">SHA-256</strong> de tu archivo, así
-            que quien lo reciba puede comprobar que habla de esa copia exacta y
-            no de otra.
-          </>
-        )
+        <Rico texto={esCertificado ? C.nota.certificado : C.nota.reporte} />
       }
     >
       <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-        Un archivo HTML que se abre con doble clic en cualquier computador, sin
-        internet y sin instalar nada.
+        <Rico texto={C.formato} />
       </p>
 
       <ul className="text-tinta-suave mt-4 space-y-1.5 text-[0.875rem]">
         <li>
-          <strong className="text-tinta font-medium">Lleva:</strong> nombres de
-          columna, qué se detectó y por qué, categorías de la Ley 1581, las
-          cifras de riesgo, la huella del archivo y la fecha
+          <strong className="text-tinta font-medium">
+            {t(C.lleva.etiqueta)}
+          </strong>{" "}
+          <Rico texto={C.lleva.base} />
           {esCertificado ? (
             <>
               {" "}
-              — y, porque transformaste, <strong>qué se le hizo</strong>: el
-              balance con sus salvedades, la utilidad que se perdió, el hash de
-              la política aplicada y{" "}
-              <strong>la huella del archivo que sale</strong>
+              <Rico texto={C.lleva.tratamiento} />
             </>
           ) : null}
           .
         </li>
         <li>
-          <strong className="text-tinta font-medium">No lleva:</strong> ninguna
-          fila de tu tabla. Las muestras van enmascaradas y las columnas
-          sensibles no llevan ni muestra.
+          <strong className="text-tinta font-medium">
+            {t(C.noLleva.etiqueta)}
+          </strong>{" "}
+          <Rico texto={C.noLleva.cuerpo} />
         </li>
       </ul>
 
       <div className="mt-5 flex flex-wrap gap-3">
         <Boton type="button" onClick={descargar}>
           <IconoCertificado />
-          {esCertificado ? "Descargar el certificado" : "Descargar el reporte"}
+          {esCertificado ? t(C.descargar.certificado) : t(C.descargar.reporte)}
         </Boton>
         <Boton
           type="button"
           variante="discreto"
-          aria-expanded={vistaPrevia !== null}
-          onClick={() =>
-            setVistaPrevia((actual) => (actual === null ? generar() : null))
-          }
+          aria-expanded={abierta}
+          onClick={() => setAbierta((actual) => !actual)}
         >
-          {vistaPrevia === null ? <IconoOjo /> : <IconoEquis />}
-          {vistaPrevia === null ? "Ver antes de descargar" : "Cerrar la vista"}
+          {abierta ? <IconoEquis /> : <IconoOjo />}
+          {abierta ? t(C.vistaPrevia.cerrar) : t(C.vistaPrevia.ver)}
         </Boton>
       </div>
 
@@ -203,8 +200,8 @@ export function DescargaDelCertificado({
         <iframe
           title={
             esCertificado
-              ? "Vista previa del certificado"
-              : "Vista previa del reporte"
+              ? t(C.vistaPrevia.tituloCertificado)
+              : t(C.vistaPrevia.tituloReporte)
           }
           sandbox=""
           srcDoc={vistaPrevia}

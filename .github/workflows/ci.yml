@@ -27,11 +27,25 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Regla 18 — ningún paquete por debajo de main (kit v1.32.0)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin main --depth=1
+          node scripts/verificar-dependencias.mjs origin/main
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test            # vitest run --coverage (umbral 70% en vitest.config)
       - run: pnpm build
       - run: pnpm audit --audit-level high
+      # Regla 17 (cero enlaces, kit v2.0.0): la producción se MUESTRA, jamás se ENTREGA. Dos superficies:
+      # los archivos versionados (git grep) y el campo `homepage` del repo (la GitHub App de Vercel lo
+      # reescribe tras cada deploy de producción). Los dominios salen de cero-enlaces.json.
+      - name: Cero enlaces — árbol y homepage del repo (regla 17, kit v2.0.0)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          HOMEPAGE="$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.homepage // ""')"
+          node scripts/cero-enlaces.mjs --homepage "$HOMEPAGE"
 
   e2e:
     runs-on: ubuntu-latest

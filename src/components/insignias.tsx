@@ -1,3 +1,5 @@
+"use client";
+
 // Insignias de categoría y de certeza.
 //
 // Dos reglas que no son de estilo:
@@ -9,40 +11,42 @@
 //      mañana el aviso ámbar significara otra cosa en otra pantalla, la tabla dejaría de ser
 //      legible de un vistazo, que es su única razón de existir.
 
+import { useT } from "@/components/texto";
 import type { CategoriaLey1581, Certeza } from "@/engine/validadores/tipos";
+import type { Texto } from "@/lib/idioma";
+import { DIAGNOSTICO } from "@/lib/idioma/textos/diagnostico";
 
 const BASE =
   "inline-flex items-center gap-1.5 rounded-2 px-2 py-0.5 text-[0.75rem] font-medium whitespace-nowrap";
 
-const CATEGORIAS: Record<
-  CategoriaLey1581,
-  { etiqueta: string; clase: string }
-> = {
-  "identificador-directo": {
-    etiqueta: "Identificador directo",
-    clase: "bg-alerta-tenue text-alerta",
-  },
-  "cuasi-identificador": {
-    etiqueta: "Cuasi-identificador",
-    clase: "bg-aviso-tenue text-aviso",
-  },
-  "dato-sensible": {
-    etiqueta: "Dato sensible · art. 5",
-    clase: "bg-sensible-tenue text-sensible",
-  },
-  "no-personal": {
-    etiqueta: "No personal",
-    clase: "bg-papel-hundido text-tinta-tenue",
-  },
-};
+const CATEGORIAS: Record<CategoriaLey1581, { etiqueta: Texto; clase: string }> =
+  {
+    "identificador-directo": {
+      etiqueta: DIAGNOSTICO.insignias.categoria.identificadorDirecto,
+      clase: "bg-alerta-tenue text-alerta",
+    },
+    "cuasi-identificador": {
+      etiqueta: DIAGNOSTICO.insignias.categoria.cuasiIdentificador,
+      clase: "bg-aviso-tenue text-aviso",
+    },
+    "dato-sensible": {
+      etiqueta: DIAGNOSTICO.insignias.categoria.datoSensible,
+      clase: "bg-sensible-tenue text-sensible",
+    },
+    "no-personal": {
+      etiqueta: DIAGNOSTICO.insignias.categoria.noPersonal,
+      clase: "bg-papel-hundido text-tinta-tenue",
+    },
+  };
 
 export function InsigniaDeCategoria({
   categoria,
 }: {
   categoria: CategoriaLey1581;
 }) {
+  const { t } = useT();
   const { etiqueta, clase } = CATEGORIAS[categoria];
-  return <span className={`${BASE} ${clase}`}>{etiqueta}</span>;
+  return <span className={`${BASE} ${clase}`}>{t(etiqueta)}</span>;
 }
 
 export type NivelDeCerteza = Certeza | "sin-confirmar";
@@ -53,30 +57,26 @@ export type NivelDeCerteza = Certeza | "sin-confirmar";
  */
 const CERTEZAS: Record<
   NivelDeCerteza,
-  { etiqueta: string; explicacion: string; clase: string }
+  { etiqueta: Texto; explicacion: Texto; clase: string }
 > = {
   "algoritmo-oficial": {
-    etiqueta: "Confirmado",
-    explicacion:
-      "El algoritmo oficial del dato (dígito de verificación) se recalculó y cuadra.",
+    ...DIAGNOSTICO.insignias.certeza.confirmado,
     clase: "text-acento",
   },
   estructural: {
-    etiqueta: "Por su forma",
-    explicacion:
-      "No existe un dígito de verificación público para este dato: solo se pudo comprobar la forma.",
+    ...DIAGNOSTICO.insignias.certeza.porSuForma,
     clase: "text-tinta-suave",
   },
   "sin-confirmar": {
-    etiqueta: "Sin confirmar",
-    explicacion:
-      "La conclusión se apoya en el nombre de la columna, no en los valores. Ningún cálculo puede confirmarla.",
+    ...DIAGNOSTICO.insignias.certeza.sinConfirmar,
     clase: "text-tinta-tenue",
   },
 };
 
 export function InsigniaDeCerteza({ certeza }: { certeza: NivelDeCerteza }) {
-  const { etiqueta, explicacion, clase } = CERTEZAS[certeza];
+  const { t } = useT();
+  const { etiqueta, clase } = CERTEZAS[certeza];
+  const explicacion = t(CERTEZAS[certeza].explicacion);
   return (
     <span
       className={`inline-flex items-center gap-1.5 text-[0.75rem] font-medium ${clase}`}
@@ -85,7 +85,7 @@ export function InsigniaDeCerteza({ certeza }: { certeza: NivelDeCerteza }) {
       <span aria-hidden="true" className="text-[0.9em] opacity-70">
         {certeza === "algoritmo-oficial" ? "✓" : "·"}
       </span>
-      {etiqueta}
+      {t(etiqueta)}
       <span className="sr-only"> — {explicacion}</span>
     </span>
   );

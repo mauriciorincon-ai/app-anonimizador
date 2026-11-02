@@ -2,6 +2,9 @@
 
 import dynamic from "next/dynamic";
 
+import { Rico } from "@/components/texto";
+import { REGRESO } from "@/lib/idioma/textos/regreso";
+
 // P7 — `/regreso`: la vuelta del archivo.
 //
 // **El encabezado se pinta aquí, en el servidor, y NO dentro del componente diferido.** No es una
@@ -30,7 +33,7 @@ const Regreso = dynamic(
     ssr: false,
     loading: () => (
       <p className="text-tinta-suave" role="status">
-        Abriendo…
+        <Rico texto={REGRESO.pagina.abriendo} />
       </p>
     ),
   },
@@ -39,14 +42,14 @@ const Regreso = dynamic(
 export default function PaginaDelRegreso() {
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <p className="etiqueta">El regreso</p>
+      <p className="etiqueta">
+        <Rico texto={REGRESO.pagina.etiqueta} />
+      </p>
       <h1 className="font-display text-tinta mt-2 text-[clamp(1.75rem,5vw,2.25rem)] leading-tight font-semibold text-balance">
-        Recupera lo que entregaste
+        <Rico texto={REGRESO.pagina.titulo} />
       </h1>
       <p className="text-tinta-suave mt-3 leading-relaxed text-pretty">
-        Carga la bóveda que guardaste y el archivo que te devolvieron. Velo pone
-        los valores originales de vuelta —por valor, no por posición— y respeta
-        el trabajo que hicieron encima. Todo dentro de esta pestaña.
+        <Rico texto={REGRESO.pagina.intro} />
       </p>
       {/* La altura mínima NO es maquetación defensiva: es el arreglo de un salto medido.
           El contenido diferido sustituye a «Abriendo…» y empuja todo lo que viene debajo — el pie

@@ -20,7 +20,10 @@ extiende por ADR, nunca se contradice en silencio). Contenido mínimo:
 - **Tokens**: paleta exacta (hex, con roles: fondo/superficie/tinta/acento/estados), escala
   tipográfica (familias con carácter + tamaños + pesos), spacing (múltiplos de 4/8), radios,
   sombras, duraciones de motion. Implementados como CSS variables / Tailwind config — **nunca
-  valores mágicos sueltos en los componentes**.
+  valores mágicos sueltos en los componentes**. **Y los tokens VETADOS para texto se declaran
+  aquí y fallan en lint/test (kit v1.26.0):** toda tinta que no alcance AA sobre sus superficies
+  (p. ej. un `ink-3` decorativo) queda listada como «solo ornamento, jamás texto», y un barrido
+  de clases prohibidas sobre `src/` lo hace fallar al escribir — no en axe al final del sprint.
 - **Componentes canon**: los shadcn/ui **personalizados** de esta app (variantes propias, no el
   default), con su uso permitido.
 - Modo claro/oscuro si aplica; orientación (las apps de canvas son landscape-primary).
@@ -75,6 +78,13 @@ sync incremental — nunca reemplazo total; los mockups exportados de exploracio
 
 ## 4. Gate de revisión de diseño (parte del DoD — cada sprint con UI)
 
+> **Gate de MIRADA por artefacto (kit v1.20.0):** este checklist cierra el sprint, pero cada
+> artefacto visual intermedio (dirección, design system, kit, cada pantalla) tuvo su propio
+> gate de mirada AL NACER: pregunta simple + lugar en la PRIMERA línea del mensaje
+> («¿Apruebas el design system? Ábrelo aquí: …»), y solo pasa con feedback que delate el
+> archivo abierto o el «lo abrí y apruebo» textual — **«continúa» jamás aprueba diseño**.
+> Mecánica completa: command `plan-sprint` §9-bis y regla 10 del CLAUDE.md.
+
 Antes del merge, correr este checklist sobre la **preview real** (no screenshots del código):
 
 - [ ] Fiel a `design-system.md`: cero valores mágicos, componentes canon, tokens respetados.
@@ -89,6 +99,22 @@ Antes del merge, correr este checklist sobre la **preview real** (no screenshots
 - [ ] Responsive real: móvil 360–420 y desktop ≥1024 revisados a mano (+ orientación si aplica).
 - [ ] **El usuario aprobó la preview visualmente** — es quien firma "nivel mundial"; su feedback
       se anota en la bitácora del sprint.
+- [ ] **Registro de miradas completo** (kit v1.20.0): por cada artefacto visual del sprint hay
+      línea de feedback del usuario (o su «lo abrí y apruebo» con fecha) ANTERIOR a la
+      construcción encima. Un «continúa» en la bitácora no cuenta como mirada.
 
 Ítem rojo ⇒ se corrige antes del merge o se registra como deuda de diseño explícita en el summary
 (con sprint de pago), igual que cualquier estándar.
+
+## 5. Reglas de producto para apps con perfiles de lectura (kit v1.37.0 — del usuario, planlang 2026-09-27)
+
+Cuando una pantalla se lee con más de un perfil (líder · experto, o equivalentes), rigen cuatro reglas que el
+usuario selló mirando la maqueta y que el gate de revisión de diseño verifica:
+
+1. **Ficha general primero.** Toda pantalla abre con su ficha (objetivo · qué recibe · qué hace · qué entrega ·
+   capacidad) antes del detalle por perfil. Quien llega sin contexto entiende qué es antes de ver cómo.
+2. **Cambiar de perfil cambia el contenido a la vista**, no solo un rótulo: textos, cifras y ejemplos distintos,
+   y el cambio se nota sin desplazarse (test: el DOM visible difiere entre perfiles).
+3. **Texto de lectura a 15 px o más.** Los tamaños de apoyo (etiquetas, chips) pueden bajar; la prosa no.
+4. **Cada falla se nombra**, no solo se señala: «S3 refutado: el multiagente acierta más pero tarda más» en vez
+   de un ícono rojo. Forma antes que color (regla 13) y el nombre antes que la forma.

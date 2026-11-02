@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Bitacora } from "@/components/bitacora";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
 import { anotarTratamiento, descartarAnotacion } from "@/lib/bitacora";
+import { fijarIdioma } from "@/lib/idioma/estado";
 
 const ENTRADA: EntradaDeBitacora = {
   fecha: "13 de agosto de 2026, 21:04",
@@ -40,9 +41,7 @@ describe("la anotación pendiente", () => {
     render(<Bitacora />);
 
     // Las dos puntas, cada una por su lado.
-    expect(
-      screen.getByText(/30 % antes · 2,0 % después/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/30 % antes · 2,0 % después/)).toBeInTheDocument();
 
     // Y la resta NO está en ninguna parte: ni el 28 de la diferencia, ni el 93 % de la reducción
     // relativa. Si algún día alguien «ayuda» al usuario calculándosela, esto se pone rojo.
@@ -100,5 +99,57 @@ describe("la anotación pendiente", () => {
     expect(
       screen.queryByRole("link", { name: /Guardar la bitácora/ }),
     ).toBeNull();
+  });
+});
+
+describe("la bitácora en inglés", () => {
+  // La llave es núcleo de UX (regla dura nº6): una frase perdida hace la bitácora irrecuperable, y
+  // eso se dice con la misma fuerza, y ANTES de cifrar, en los dos idiomas.
+  it("enseña las dos puntas a la inglesa y avisa de la llave antes del botón que cifra", () => {
+    fijarIdioma("en");
+    act(() => anotarTratamiento({ ...ENTRADA, filas: 2_000_000 }));
+    render(<Bitacora />);
+
+    expect(
+      screen.getByRole("heading", { name: "Your first entry" }),
+    ).toBeInTheDocument();
+    // Los números con la convención del idioma: coma de miles y punto decimal, y las DOS puntas.
+    expect(screen.getByText("2,000,000 rows")).toBeInTheDocument();
+    expect(screen.getByText("30% before · 2.0% after")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/\b28(\.0)?%/);
+
+    // El aviso de la llave: dice lo mismo que el español, y está antes del botón que cifra.
+    const aviso = screen.getByText(/three secrets with three different scopes/);
+    expect(aviso).toHaveTextContent(/not Velo, not anyone/);
+    const cifrar = screen.getByRole("button", {
+      name: "Encrypt and start the log",
+    });
+    expect(
+      aviso.compareDocumentPosition(cifrar) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("una medición con salvedades lo dice también en inglés", () => {
+    fijarIdioma("en");
+    act(() => anotarTratamiento({ ...ENTRADA, esTitular: false }));
+    render(<Bitacora />);
+
+    expect(
+      screen.getByText(/caveats that disqualified its reduction figure/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/subtracting them and presenting the result/),
+    ).toBeInTheDocument();
+  });
+
+  it("sin anotación pendiente, ofrece abrir y no finge tener nada", () => {
+    fijarIdioma("en");
+    render(<Bitacora />);
+
+    expect(
+      screen.getByRole("heading", { name: "Open the log you saved" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Log file")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Save the log/ })).toBeNull();
   });
 });

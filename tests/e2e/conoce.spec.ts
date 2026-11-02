@@ -536,13 +536,13 @@ test("se abre con el teclado", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(tercera).toHaveAttribute("aria-expanded", "true");
   await expect(
-    page.getByRole("heading", { name: "Cuatro familias de técnicas" }),
+    page.getByRole("heading", { name: "Cuatro maneras de disfrazar un dato" }),
   ).toBeVisible();
 });
 
 test("lo cerrado NO está en el árbol de accesibilidad", async ({ page }) => {
   await page.goto("/conoce");
-  const dentroDeUnaTarjeta = "Cuatro familias de técnicas";
+  const dentroDeUnaTarjeta = "Cuatro maneras de disfrazar un dato";
 
   expect(await textoDelArbol(page)).not.toContain(dentroDeUnaTarjeta);
 
@@ -576,11 +576,11 @@ test.describe("con prefers-reduced-motion", () => {
     // Las cinco tarjetas y sus títulos, sin un solo frame de movimiento.
     await expect(page.locator(".tarjeta")).toHaveCount(5);
     for (const titulo of [
-      "Mira lo que te delata",
-      "Decide qué se le hace",
-      "Vela con exactitud",
-      "Mide el riesgo de verdad",
-      "Entrega, recupera, deja constancia",
+      "Descubre quién queda expuesto",
+      "Tú decides el tratamiento",
+      "Disfraza sin romper los datos",
+      "Mide el riesgo con cifras exactas",
+      "Entrega, recupera y deja constancia",
     ]) {
       await expect(
         page.getByText(titulo, { exact: false }).first(),
@@ -644,11 +644,15 @@ test("el pie declara el conteo y el estado del brochure", async ({ page }) => {
 
 test("no hace una sola petición fuera de su propio origen", async ({
   page,
+  baseURL,
 }) => {
+  // El origen sale de `baseURL` y no de un puerto escrito a mano: la garantía de red de /conoce no
+  // depende de en qué puerto se levantó el servidor (devolución 026, punto 4).
+  const origen = new URL(baseURL!).origin;
   const forasteras: string[] = [];
   await page.route("**/*", (ruta) => {
     const url = new URL(ruta.request().url());
-    if (url.origin !== "http://localhost:3000" && url.protocol !== "data:") {
+    if (url.origin !== origen && url.protocol !== "data:") {
       forasteras.push(url.href);
     }
     return ruta.continue();
@@ -664,6 +668,354 @@ for (const tema of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: tema });
     await page.goto("/conoce");
     // Con TODO abierto: es la composición con más texto y más contraste en juego.
+    await page.locator(".tarjeta-boton").evaluateAll((botones) => {
+      for (const b of botones) (b as HTMLButtonElement).click();
+    });
+    await page.locator("details.fino").evaluateAll((ds) => {
+      for (const d of ds) (d as HTMLDetailsElement).open = true;
+    });
+    const { violations } = await new AxeBuilder({ page }).analyze();
+    expect(violations.map((v) => `${v.id} (${v.nodes.length})`)).toEqual([]);
+  });
+}
+
+// ═══ Bilingüe ES/EN (S5) ════════════════════════════════════════════════════════════════════════
+//
+// El brochure no usa la capa de idioma de la app: el español vive en el marcado y el inglés en un
+// diccionario dentro de la propia página (`<script id="velo-en">`), aplicado por un script que
+// elige el idioma con `?lang=` o con el navegador. Estas pruebas miran lo que ve y oye quien lo
+// abre en inglés: el titular, el `lang`, el título de la pestaña, el conmutador con el teclado, la
+// experiencia con movimiento reducido, axe en los dos temas, y las dos garantías del producto
+// —nada sale, nada se guarda— que el cambio de idioma no puede romper.
+//
+// Todo el suite corre con `locale: "es-CO"` (playwright.config.ts): el español es el idioma de
+// prueba. Los casos del navegador en inglés lo piden a propósito con `test.use`.
+
+const TITULAR_EN = "Hand over your data without handing over your people";
+const TITULAR_ES = "Entrega tus datos sin entregar a tu gente";
+const TITULO_EN = "Velo — Get to know it";
+const TITULO_ES = "Velo — Conócelo";
+
+test("?lang=en abre en inglés: titular, html[lang], título de la pestaña y conmutador", async ({
+  page,
+}) => {
+  await page.goto("/conoce?lang=en");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveAccessibleName(
+    TITULAR_EN,
+  );
+  await expect(page.locator("html")).toHaveAttribute("lang", "en-US");
+  await expect(page).toHaveTitle(TITULO_EN);
+
+  // Lo que se lee de las tarjetas cerradas y lo que se oye: nada se quedó en español.
+  await expect(page.locator(".tarjeta-boton .titulo").first()).toHaveText(
+    "Find out who is exposed",
+  );
+  await expect(page.locator(".lema")).toHaveText(
+    "Veil it to hand it over. Unveil it to get it back.",
+  );
+  await expect(
+    page.locator(".tarjeta").first().locator(".detalle"),
+  ).toHaveAttribute("aria-label", "Find out who is exposed — details");
+  await expect(page.locator("footer .sr-only")).toHaveText("14 features");
+  await expect(page.locator("#conteo")).toHaveText("14");
+
+  // El conmutador dice dónde se está con tres señales a la vez: aria-pressed, subrayado y peso.
+  const grupo = page.getByRole("group", { name: "Idioma · Language" });
+  const en = grupo.getByRole("button", { name: "English" });
+  const es = grupo.getByRole("button", { name: "Español" });
+  await expect(en).toHaveAttribute("aria-pressed", "true");
+  await expect(es).toHaveAttribute("aria-pressed", "false");
+  await expect(en).toHaveAttribute("lang", "en");
+  await expect(es).toHaveAttribute("lang", "es");
+  const marca = (b: typeof en) =>
+    b.evaluate((n) => {
+      const c = getComputedStyle(n);
+      return { peso: Number(c.fontWeight), subrayado: c.textDecorationLine };
+    });
+  expect((await marca(en)).subrayado).toContain("underline");
+  expect((await marca(es)).subrayado).not.toContain("underline");
+  expect((await marca(en)).peso).toBeGreaterThan((await marca(es)).peso);
+});
+
+test("sin parámetro y con el navegador en español abre en español, con ES marcado", async ({
+  page,
+}) => {
+  await page.goto("/conoce");
+  await expect(page.locator("html")).toHaveAttribute("lang", "es-CO");
+  await expect(page).toHaveTitle(TITULO_ES);
+  await expect(page.getByRole("button", { name: "Español" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "English" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+});
+
+test("el conmutador se maneja con el teclado y cambia en los dos sentidos", async ({
+  page,
+}) => {
+  await page.goto("/conoce");
+  const titular = page.getByRole("heading", { level: 1 });
+  const es = page.getByRole("button", { name: "Español" });
+  const en = page.getByRole("button", { name: "English" });
+
+  // Es lo primero a lo que llega la tecla Tab: el conmutador va en el encabezado.
+  await page.keyboard.press("Tab");
+  await expect(es).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(en).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  await expect(titular).toHaveAccessibleName(TITULAR_EN);
+  await expect(page).toHaveTitle(TITULO_EN);
+  await expect(page.locator("html")).toHaveAttribute("lang", "en-US");
+  await expect(en).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(/[?&]lang=en/);
+  // El foco no se pierde al cambiar el texto de la página.
+  await expect(en).toBeFocused();
+
+  await page.keyboard.press("Shift+Tab");
+  await expect(es).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(titular).toHaveAccessibleName(TITULAR_ES);
+  await expect(page).toHaveTitle(TITULO_ES);
+  await expect(page.locator("html")).toHaveAttribute("lang", "es-CO");
+  await expect(es).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(/[?&]lang=es/);
+});
+
+test("cambiar de idioma no mueve la composición ni el funcionamiento de las tarjetas", async ({
+  page,
+}) => {
+  await page.goto("/conoce");
+  const conmutador = page.locator(".idioma");
+
+  // El conmutador vive FUERA del flujo: quitarlo no mueve ni un píxel de lo que hay debajo.
+  expect(await conmutador.evaluate((n) => getComputedStyle(n).position)).toBe(
+    "absolute",
+  );
+  const etiqueta = () =>
+    page
+      .locator(".portada .etiqueta")
+      .evaluate((n) => n.getBoundingClientRect().top + window.scrollY);
+  const con = await etiqueta();
+  await conmutador.evaluate((n) => ((n as HTMLElement).hidden = true));
+  const sin = await etiqueta();
+  await conmutador.evaluate((n) => ((n as HTMLElement).hidden = false));
+  expect(Math.abs(con - sin)).toBeLessThan(1);
+
+  // Un objetivo táctil de tamaño decente en cada botón (móvil y escritorio).
+  for (const nombre of ["Español", "English"]) {
+    const caja = await page.getByRole("button", { name: nombre }).boundingBox();
+    expect(caja?.width ?? 0, `${nombre}: ancho`).toBeGreaterThanOrEqual(32);
+    expect(caja?.height ?? 0, `${nombre}: alto`).toBeGreaterThanOrEqual(32);
+  }
+
+  // Y las tarjetas siguen respondiendo igual en inglés: cerradas al llegar, y el toque abre.
+  await page.getByRole("button", { name: "English" }).click();
+  const botones = page.locator(".tarjeta-boton");
+  await expect(botones).toHaveCount(5);
+  for (let i = 0; i < 5; i++) {
+    await expect(botones.nth(i)).toHaveAttribute("aria-expanded", "false");
+  }
+  await botones.nth(2).click();
+  await expect(botones.nth(2)).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    page.getByRole("heading", { name: "Four ways to disguise a value" }),
+  ).toBeVisible();
+});
+
+test.describe("con el navegador en inglés", () => {
+  test.use({ locale: "en-US" });
+
+  test("abre en inglés sin pedirlo, y ?lang=es lo devuelve al español", async ({
+    page,
+  }) => {
+    await page.goto("/conoce");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveAccessibleName(
+      TITULAR_EN,
+    );
+    await expect(page.locator("html")).toHaveAttribute("lang", "en-US");
+    await expect(page).toHaveTitle(TITULO_EN);
+
+    // El parámetro de la URL manda sobre el navegador.
+    await page.goto("/conoce?lang=es");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveAccessibleName(
+      TITULAR_ES,
+    );
+    await expect(page.locator("html")).toHaveAttribute("lang", "es-CO");
+  });
+});
+
+test.describe("en inglés, con prefers-reduced-motion", () => {
+  test.use({ contextOptions: { reducedMotion: "reduce" } });
+
+  test("la experiencia alterna está COMPLETA y es visible de verdad", async ({
+    page,
+  }) => {
+    await page.goto("/conoce?lang=en");
+
+    // El titular, el candidato LCP: opaco y con tamaño, también después de cambiar de idioma.
+    const titular = page.getByRole("heading", { level: 1 });
+    await expect(titular).toBeVisible();
+    await expect(titular).toHaveAccessibleName(TITULAR_EN);
+    const caja = await titular.boundingBox();
+    expect(caja?.height ?? 0).toBeGreaterThan(20);
+    expect(await titular.evaluate((el) => getComputedStyle(el).opacity)).toBe(
+      "1",
+    );
+    // El titular nuevo no se quedó sin sus palabras ni sin su enfoque: una por <span>.
+    expect(await titular.locator("span").count()).toBeGreaterThan(3);
+    expect(
+      await titular
+        .locator("span")
+        .evaluateAll((spans) =>
+          spans.every((s) => getComputedStyle(s).animationName === "none"),
+        ),
+    ).toBe(true);
+
+    await expect(page.locator(".tarjeta")).toHaveCount(5);
+    for (const titulo of [
+      "Find out who is exposed",
+      "You decide the treatment",
+      "Disguise the data without breaking it",
+      "Measure risk with exact figures",
+      "Deliver, recover and keep a record",
+    ]) {
+      await expect(
+        page.getByText(titulo, { exact: false }).first(),
+      ).toBeVisible();
+    }
+
+    // La tabla de la portada llega YA velada y con las celdas generalizadas en inglés.
+    await expect(page.locator(".tabla-mini .velado").first()).toHaveText(
+      "CC-4f7a91b2",
+    );
+    await expect(page.locator(".tabla-mini .velado").nth(2)).toHaveText(
+      "Respiratory",
+    );
+    await expect(page.locator(".solo-quieto")).toContainText(
+      "1.035.873.389 → CC-4f7a91b2",
+    );
+    await expect(page.locator(".solo-quieto")).toContainText(
+      "Before and after the first cell",
+    );
+
+    // El respiro y el clímax: las tres estaciones quietas, con el mensaje entero.
+    await expect(page.getByText("900.123.456-8").first()).toBeVisible();
+    await expect(page.getByText("900.884.201-1").first()).toBeVisible();
+    const quieto = page.locator(".viaje-quieto");
+    for (const estacion of [
+      /At your desk, veiled/,
+      /The third party works/,
+      /Back again, unveiled/,
+    ]) {
+      await expect(quieto.getByText(estacion)).toBeVisible();
+    }
+    await expect(quieto.locator(".mono").first()).toHaveText("900.123.456-8");
+    await expect(page.locator(".viaje-animado")).toBeHidden();
+
+    // El conteo del pie, quieto desde el primer byte, y su texto accesible en inglés.
+    await expect(page.locator("#conteo")).toHaveText("14");
+    await expect(page.locator("footer .sr-only")).toHaveText("14 features");
+    await expect(page.getByText(/Initial brochure/)).toBeVisible();
+  });
+});
+
+test("en inglés, lo cerrado tampoco está en el árbol de accesibilidad", async ({
+  page,
+}) => {
+  await page.goto("/conoce?lang=en");
+  const dentroDeUnaTarjeta = "Four ways to disguise a value";
+
+  expect(await textoDelArbol(page)).not.toContain(dentroDeUnaTarjeta);
+  await page.locator(".tarjeta-boton").nth(2).click();
+  await expect(
+    page.getByRole("heading", { name: dentroDeUnaTarjeta }),
+  ).toBeVisible();
+  expect(await textoDelArbol(page)).toContain(dentroDeUnaTarjeta);
+  // Y ni una palabra del detalle de la tarjeta de en medio quedó en español.
+  expect(await textoDelArbol(page)).not.toContain("Cuatro maneras");
+});
+
+test("en inglés tampoco hay scroll horizontal, con todo abierto", async ({
+  page,
+}) => {
+  // Las frases inglesas son más largas que las españolas en las cabeceras: un texto que no cabe
+  // en 360 px sería una página que se mueve de lado.
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/conoce?lang=en");
+  await page.locator(".tarjeta-boton").evaluateAll((botones) => {
+    for (const b of botones) (b as HTMLButtonElement).click();
+  });
+  await page.locator("details.fino").evaluateAll((ds) => {
+    for (const d of ds) (d as HTMLDetailsElement).open = true;
+  });
+  await page.waitForTimeout(900);
+  const desborde = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(desborde).toBeLessThanOrEqual(0);
+});
+
+test("en inglés no hace una sola petición fuera de su propio origen, ni al cambiar de idioma", async ({
+  page,
+  baseURL,
+}) => {
+  const origen = new URL(baseURL!).origin;
+  const forasteras: string[] = [];
+  await page.route("**/*", (ruta) => {
+    const url = new URL(ruta.request().url());
+    if (url.origin !== origen && url.protocol !== "data:") {
+      forasteras.push(url.href);
+    }
+    return ruta.continue();
+  });
+  await page.goto("/conoce?lang=en");
+  await page.getByRole("button", { name: "Español" }).click();
+  await page.getByRole("button", { name: "English" }).click();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(500);
+  expect(forasteras).toEqual([]);
+});
+
+test("elegir idioma no guarda nada: ni localStorage, ni sessionStorage, ni cookies", async ({
+  page,
+}) => {
+  await page.goto("/conoce");
+  await page.getByRole("button", { name: "English" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveAccessibleName(
+    TITULAR_EN,
+  );
+  await page.getByRole("button", { name: "Español" }).click();
+  await page.getByRole("button", { name: "English" }).click();
+
+  const guardado = await page.evaluate(async () => ({
+    local: window.localStorage.length,
+    sesion: window.sessionStorage.length,
+    cookie: document.cookie,
+    bases: "databases" in indexedDB ? (await indexedDB.databases()).length : 0,
+  }));
+  expect(guardado).toEqual({ local: 0, sesion: 0, cookie: "", bases: 0 });
+  expect(await page.context().cookies()).toEqual([]);
+
+  // Y recargar sin el parámetro vuelve a preguntarle al navegador: el idioma NO se recordó.
+  await page.goto("/conoce");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveAccessibleName(
+    TITULAR_ES,
+  );
+});
+
+for (const tema of ["light", "dark"] as const) {
+  test(`en inglés pasa axe en tema ${tema}, con el detalle abierto`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: tema });
+    await page.goto("/conoce?lang=en");
     await page.locator(".tarjeta-boton").evaluateAll((botones) => {
       for (const b of botones) (b as HTMLButtonElement).click();
     });

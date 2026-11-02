@@ -18,6 +18,8 @@
 // `.velo` byte-idéntico solo se podría satisfacer cometiendo ese error. Está razonado en
 // `decisions/006-la-boveda-archivo-no-base-de-datos.md`.
 
+import { mensaje } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { sha256 } from "@/lib/sha256";
 import { serializarCanonico } from "./serializacion";
 
@@ -166,7 +168,11 @@ export type ResultadoDeApertura =
   | {
       ok: false;
       motivo: "json-invalido" | "version-distinta" | "forma-invalida";
-      detalle: string;
+      /**
+       * Qué pasó, como un `Mensaje` y no como una frase: el motor no conoce el idioma. La interfaz
+       * lo dice en el que toque (`src/lib/idioma/textos/motor-regreso.ts`).
+       */
+      detalle: MensajeDeMotor;
     };
 
 /**
@@ -188,7 +194,7 @@ export function deserializarBoveda(texto: string): ResultadoDeApertura {
     return {
       ok: false,
       motivo: "json-invalido",
-      detalle: "El contenido de la bóveda no es un JSON que se pueda leer.",
+      detalle: mensaje("boveda.jsonIlegible"),
     };
   }
 
@@ -196,7 +202,7 @@ export function deserializarBoveda(texto: string): ResultadoDeApertura {
     return {
       ok: false,
       motivo: "forma-invalida",
-      detalle: "El archivo no contiene una bóveda.",
+      detalle: mensaje("boveda.noContieneBoveda"),
     };
   }
   const objeto = crudo as Record<string, unknown>;
@@ -210,7 +216,10 @@ export function deserializarBoveda(texto: string): ResultadoDeApertura {
     return {
       ok: false,
       motivo: "version-distinta",
-      detalle: `La bóveda es de la versión ${objeto.version} y esta Velo entiende la ${VERSION_DE_BOVEDA}.`,
+      detalle: mensaje("boveda.versionDistinta", {
+        version: objeto.version,
+        entiende: VERSION_DE_BOVEDA,
+      }),
     };
   }
 
@@ -219,7 +228,7 @@ export function deserializarBoveda(texto: string): ResultadoDeApertura {
       return {
         ok: false,
         motivo: "forma-invalida",
-        detalle: `A la bóveda le falta "${campo}".`,
+        detalle: mensaje("boveda.faltaCampo", { campo }),
       };
     }
   }
@@ -228,7 +237,7 @@ export function deserializarBoveda(texto: string): ResultadoDeApertura {
     return {
       ok: false,
       motivo: "forma-invalida",
-      detalle: "La bóveda no trae la lista de columnas.",
+      detalle: mensaje("boveda.sinColumnas"),
     };
   }
 
@@ -243,7 +252,7 @@ export function deserializarBoveda(texto: string): ResultadoDeApertura {
       return {
         ok: false,
         motivo: "forma-invalida",
-        detalle: "Una de las columnas de la bóveda está incompleta.",
+        detalle: mensaje("boveda.columnaIncompleta"),
       };
     }
     if (columna.seudonimos.length !== columna.originales.length) {
@@ -252,7 +261,11 @@ export function deserializarBoveda(texto: string): ResultadoDeApertura {
       return {
         ok: false,
         motivo: "forma-invalida",
-        detalle: `La columna "${columna.columna}" trae ${columna.seudonimos.length} seudónimos y ${columna.originales.length} listas de originales.`,
+        detalle: mensaje("boveda.columnaDesalineada", {
+          columna: columna.columna,
+          seudonimos: columna.seudonimos.length,
+          originales: columna.originales.length,
+        }),
       };
     }
     columnas.push({

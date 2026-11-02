@@ -15,6 +15,9 @@
 //
 // Confundir las dos sería exactamente la exageración que la regla de honestidad medida prohíbe.
 
+import { mensaje } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
+
 import {
   CODIGO_VACIO,
   type ColumnaColumnar,
@@ -43,23 +46,24 @@ export type Evidencia =
   | {
       origen: "validador";
       validador: TipoDetectado;
-      etiqueta: string;
-      fuente: string;
+      etiqueta: MensajeDeMotor;
+      fuente: MensajeDeMotor;
       certeza: Certeza;
       aciertos: number;
       muestreados: number;
     }
   | {
       origen: "nombre-de-columna";
-      patron: string;
-      nota: string;
+      patron: MensajeDeMotor;
+      nota: MensajeDeMotor;
     };
 
 export interface HallazgoDeColumna {
   nombre: string;
   posicion: number;
   tipo: TipoDetectado;
-  etiqueta: string;
+  /** Qué es la columna, dicho como mensaje: la interfaz lo convierte en frase en su idioma. */
+  etiqueta: MensajeDeMotor;
   /** "sin-confirmar" cuando la conclusión se apoya en el encabezado y no en los valores. */
   certeza: Certeza | "sin-confirmar";
   categoria: CategoriaLey1581;
@@ -83,58 +87,58 @@ export interface Diagnostico {
 
 interface ReglaDeNombre {
   patron: RegExp;
-  descripcion: string;
+  descripcion: MensajeDeMotor;
   categoria: CategoriaLey1581;
-  nota: string;
+  nota: MensajeDeMotor;
 }
 
 const REGLAS_DE_NOMBRE: readonly ReglaDeNombre[] = [
   {
     patron:
       /(salud|diagnostic|enfermedad|cie.?10|discapacidad|embarazo|vih|eps|asegurador|medicament|tratamiento)/i,
-    descripcion: "nombre relacionado con salud",
+    descripcion: mensaje("clasificador.nombre.salud.patron"),
     categoria: "dato-sensible",
-    nota: "Ley 1581 art. 5 — los datos relativos a la salud son sensibles.",
+    nota: mensaje("clasificador.nombre.salud.nota"),
   },
   {
     patron:
       /(etnia|etnic|raza|racial|raizal|indigen|afrodescend|palenquer|rrom)/i,
-    descripcion: "nombre relacionado con origen étnico",
+    descripcion: mensaje("clasificador.nombre.etnico.patron"),
     categoria: "dato-sensible",
-    nota: "Ley 1581 art. 5 — el origen racial o étnico es dato sensible.",
+    nota: mensaje("clasificador.nombre.etnico.nota"),
   },
   {
     patron:
       /(religi|creencia|confesion|politic|partido|sindicat|orientacion.?sexual|vida.?sexual|biometric|huella|iris)/i,
-    descripcion: "nombre relacionado con convicciones, vida sexual o biometría",
+    descripcion: mensaje("clasificador.nombre.convicciones.patron"),
     categoria: "dato-sensible",
-    nota: "Ley 1581 art. 5 — convicciones, vida sexual y datos biométricos son sensibles.",
+    nota: mensaje("clasificador.nombre.convicciones.nota"),
   },
   {
     patron: /(direccion|domicilio|residencia)/i,
-    descripcion: "nombre de dirección",
+    descripcion: mensaje("clasificador.nombre.direccion.patron"),
     categoria: "identificador-directo",
-    nota: "Una dirección ubica a la persona; se trata como identificador directo.",
+    nota: mensaje("clasificador.nombre.direccion.nota"),
   },
   {
     patron:
       /(nombre|apellido|razon.?social|titular|beneficiario|paciente|cliente)/i,
-    descripcion: "nombre de persona",
+    descripcion: mensaje("clasificador.nombre.persona.patron"),
     categoria: "identificador-directo",
-    nota: "El encabezado indica que la columna nombra a la persona.",
+    nota: mensaje("clasificador.nombre.persona.nota"),
   },
   {
     patron: /(fecha.?(de.?)?nac|nacimiento|f_nac|fnac|edad)/i,
-    descripcion: "fecha de nacimiento o edad",
+    descripcion: mensaje("clasificador.nombre.nacimiento.patron"),
     categoria: "cuasi-identificador",
-    nota: "Fecha de nacimiento + sexo + municipio identifica a buena parte de una población (Sweeney 2000; Golle 2006).",
+    nota: mensaje("clasificador.nombre.nacimiento.nota"),
   },
   {
     patron:
       /(sexo|genero|municipio|ciudad|departamento|barrio|localidad|comuna|estrato|ocupacion|profesion|cargo|nacionalidad|nivel.?educ)/i,
-    descripcion: "atributo demográfico",
+    descripcion: mensaje("clasificador.nombre.demografico.patron"),
     categoria: "cuasi-identificador",
-    nota: "Por sí solo no identifica; combinado con otros, sí.",
+    nota: mensaje("clasificador.nombre.demografico.nota"),
   },
 ];
 
@@ -217,7 +221,7 @@ function clasificarColumna(
   const cardinalidad = columna.valores.length - 1;
   const evidencia: Evidencia[] = [];
   let tipo: TipoDetectado;
-  let etiqueta: string;
+  let etiqueta: MensajeDeMotor;
   let certeza: Certeza | "sin-confirmar";
   let categoria: CategoriaLey1581;
 
@@ -242,7 +246,9 @@ function clasificarColumna(
       cardinalidad <= MAXIMA_CARDINALIDAD_CATEGORICA &&
       muestreados >= cardinalidad * REPETICION_MINIMA_CATEGORICA;
     tipo = esCategorica ? "categoria" : "texto";
-    etiqueta = esCategorica ? "Categoría (pocos valores repetidos)" : "Texto";
+    etiqueta = mensaje(
+      esCategorica ? "clasificador.tipo.categoria" : "clasificador.tipo.texto",
+    );
     certeza = "sin-confirmar";
     categoria = "no-personal";
   }

@@ -1,201 +1,143 @@
-# Velo (app-anonimizador) — constitución de la app (Claude Code)
+# Velo (app-anonimizador) — constitución de la app (núcleo, kit v2.3.0)
 
-> Auto-cargado en cada sesión de este repo. Esta app pertenece al pipeline **AI-APPs**; su plan
-> vive en la casa planeadora. Estampada desde kit-app v1.10.0 el 2026-08-09 (Sprint 001).
-> **Primera app del portafolio con CERO IA por diseño de producto: el determinismo ES la
-> propuesta de valor.**
+> Auto-cargado en cada sesión de este repo. Esta app pertenece al pipeline **AI-APPs**; su plan vive en la casa planeadora.
+> Núcleo regenerado por la planeadora el 2026-11-01 (`/nueva-app anonimizador` modo regenerar, método v2.3.0, kit v2.3.0) para el S5, que abre
+> el H-2; sustituye a la constitución v1 de 201 líneas (estampada desde kit v1.10.0 el 2026-08-09), cuyo texto íntegro queda en
+> `docs/REGLAS-ANEXO.md` § «Velo», junto a las reglas del kit en detalle; el anexo se lee solo cuando una regla se cita, nunca al abrir la sesión.
+> Las reglas duras de producto de Velo están aquí, completas; lo que no es regla dura (estado, tesis, stack y workflow v1, reglas de desarrollo
+> v1) vive en ese anexo. Frase centinela de esta adopción: «nada sale de aquí, tampoco una regla».
 
-## Las dos casas (regla dura)
+## Identidad y las dos casas (regla dura)
 
-| Casa           | Path                           | Escritor único   | Qué vive ahí                                                                     |
-| -------------- | ------------------------------ | ---------------- | -------------------------------------------------------------------------------- |
-| **Planeadora** | `~/Code/hr01-develop-ai-apps/` | su propia sesión | brief, VISION, sprints (plan+retro), órdenes de construcción, método, estándares |
-| **Esta app**   | este repo                      | **tú**           | código, tests, ADRs de implementación, bitácora y summary del sprint             |
+- **Planeadora** (`~/Code/hr01-develop-ai-apps/`, privada): brief, `VISION.md` v1.0.0 (22 funcionalidades: 14 del MVP + 8 del roadmap), el archivo del sprint (`portafolio/anonimizador/sprints/SPRINT_NNN.md`: inicio ejecutivo + plan + prompt), método y estándares. La **lees** (`additionalDirectories` o path absoluto); **nunca escribes ahí**.
+- **Esta app** (`~/Code/app-anonimizador`, pública): código, tests, ADRs, `sprints/SPRINT_NNN-cierre.md`. Escritor único: **tú**. El avance vive solo aquí; la planeadora te lee, tú no le reportas a mano. Si el plan necesita cambio, lo declaras en el cierre ejecutivo («desviaciones») y avisas al usuario.
+- **Qué es:** **Velo** — *«Velo para entregar. Desvelo para recuperar.»* La aduana de datos del usuario: anonimiza y **des-anonimiza** datos tabulares (CSV/Excel, hasta ~500 000 filas) antes de entregarlos a IAs no confiables, herramientas en la nube y terceros, con transformaciones **100 % deterministas** y el viaje de ida y vuelta completo (el tercero procesa; Velo restaura los valores originales con la bóveda local). **Primera app del portafolio con CERO IA por diseño de producto: el determinismo ES la propuesta de valor.** H-1 construido (S1–S4, PR #9 del 2026-08-15; después gate corto, `design-sync`, brochure y gate visual, #10–#14): las 14 del MVP en cinco rutas (`/` · `/diagnostico` · `/transformar` · `/regreso` · `/bitacora`) más `/conoce` (el brochure).
+- **Stack:** Next.js 16.3.0 (App Router; `next build` + `next start`; cabeceras y CSP en `next.config.ts`) + React 19.2.8 + TypeScript strict + Tailwind v4 + **primitivos propios** en `src/components/` (`boton`, `panel`, `sello`, `insignias`, `iconos`, `zona-de-carga`; **shadcn/ui no está instalado**) · procesamiento 100 % en el cliente («cloud para el acceso, local para los datos») · PapaParse (CSV en streaming dentro del Web Worker) · SheetJS `xlsx` 0.20.3 del tarball oficial de su CDN, con tope por tamaño de archivo (ADR-003) · Web Crypto nativo (HMAC-SHA256 con llave no extraíble, ADR-004; AES-GCM-256 + PBKDF2 600 000 para bóveda y bitácora) y SHA-256 propio en streaming (`src/lib/sha256.ts`) · Zod 4 (esquemas de la política y de la bitácora) · **sin backend, sin base de datos, sin API routes, sin IA** · Vercel (preview por PR, producción desde `main`, sin dominio propio; protección de deployment **apagada** en producción y previews, consecuencia aceptada en `docs/BLUEPRINT.html`: si algún día hubiera backend, esa casilla cambia primero) · Sentry client-only, metadata-only e inerte sin DSN (`instrumentation-client.ts` + `src/lib/observability.ts`, endurecido por la regla dura 2; `pino` figura en `package.json` sin uso en `src/`) · Vitest 4 + Playwright (`mobile-chromium` y `desktop-chromium`, contra `pnpm build && pnpm start`) + Testing Library + @axe-core/playwright · pnpm 11.10.0, Node 22 en la CI.
+- **Perfil:** web (no escritorio ni export estático): la línea siguiente es la declaración del perfil escritorio y aquí no aplica.
+  captura_terceros: false
+- **Estructura:** `src/app` (las cinco rutas) · `src/components` (UI sin lógica; ninguno recibe el dataset) · `src/engine` (motores puros y deterministas: `validadores/`, `clasificador`, `riesgo`, `riesgo-estimado`, `mondrian`, `diversidad`, `utilidad`, `balance`, `politica`, `politicas-de-fabrica`, `tecnicas/`, `boveda`, `restaurar`, `bitacora`, `reporte`, `serializacion`, `muestra`, `mascara`) · `src/workers` (`parser.worker.ts`: el archivo se procesa AQUÍ; `contrato.ts`: lo único que cruza a la página) · `src/lib` (dominio y cripto: `llave`, `archivo-cifrado`, `boveda-archivo`, `bitacora-archivo`, `sesion`, `sha256`, `observability`) · `tests/{unit,e2e,medicion}` · `docs/kit-de-prueba/generador.mjs` · `design-system.md` · `.design-sync/` · `docs/{MANUAL-DE-USO.md, GUIA-DE-PRUEBA.html, BLUEPRINT.html, BROCHURE.html, brochure-export.json}` · `decisions/001`–`008` · `sprints/` (summaries e implementation-logs de la v1; desde el S5, `SPRINT_NNN-cierre.md`). No hay `docs/diseno/` (Velo nació antes de la Etapa de Diseño), ni `src/types/`, ni `tests/integration/`.
 
-- ✅ Puedes **leer** la planeadora (conexión fija vía `.claude/settings.local.json`, o por path absoluto).
-- ❌ **Nunca escribes** en la planeadora. Si el plan necesita cambio, lo anotas en tu
-  `sprints/SPRINT_NNN-implementation-log.md` bajo `## Desviación del plan` y avisas al usuario.
-- El avance de implementación vive **solo aquí** — la planeadora te lee, tú no le reportas a mano.
+## Reglas duras de Velo (producto, no estilo — 7, completas)
 
-## Qué es esta app
+Numeración de la v1 conservada (el código y los ADR citan «regla dura nº1…nº5»); la 7 sube del patrón «el worker es la frontera».
 
-**Velo** — _"Velo para entregar. Desvelo para recuperar."_ La **aduana de datos** del usuario:
-anonimiza y **des-anonimiza** datos tabulares (CSV/Excel, ≤500k filas) antes de entregarlos a
-IAs no confiables, herramientas cloud y terceros — con transformaciones **100% deterministas**
-y el ciclo completo de ida y vuelta (el tercero procesa; Velo restaura la consistencia
-original con la bóveda local). Contrato de alcance: `portafolio/anonimizador/VISION.md`
-(planeadora, aprobada 2026-08-09 — 22 funcionalidades).
+1. **CERO IA generativa en el runtime, para siempre.** Ni SDKs de LLM, ni clientes de APIs de IA, ni runtimes de inferencia local, ni «solo para esta feature»: es LA propuesta de valor (reproducible = auditable), no una limitación (`decisions/001-cero-ia.md`). Lo blinda el **gate anti-IA**: job `anti-ia` de la CI (`node scripts/gate-anti-ia.mjs`, `pnpm gate:anti-ia`) sobre `package.json` y el `pnpm-lock.yaml` entero (una dependencia transitiva cuenta igual), probado contra sí mismo en `tests/unit/gate-anti-ia.test.ts`. La IA como herramienta de DESARROLLO (tú, Claude Code) está bien; en el producto, jamás: aquí la regla 14 del kit se lleva al extremo y ninguna feature LLM entra, ni con ADR «código primero».
+2. **Los datos del usuario JAMÁS salen del navegador.** Ni red, ni logs, ni Sentry (los eventos no llevan valores de celdas NI nombres de columnas: el sanitizador de `src/lib/observability.ts` deja pasar solo etiquetas cortas en kebab-case y manda los números ≥ 10 000 como orden de magnitud), ni almacenamiento del navegador: `localStorage`, `sessionStorage`, `indexedDB`, `fetch(`, `XMLHttpRequest`, `WebSocket` y `sendBeacon` están vetados en `src/` (`tests/unit/privacidad.test.ts`); la sesión vive en memoria (`src/lib/sesion.ts`) y al recargar no queda nada. Lo durable sale solo como **archivo que el usuario descarga por acción explícita** (anonimizado, bóveda `.velo`, bitácora `.velolog`, certificado, informe del regreso; ADR-005, 006 y 007). Lo blindan el e2e `tests/e2e/garantia-de-red.spec.ts` (escucha toda la red con un archivo cargado y falla ante un cuerpo, un nombre de columna en una URL o una ruta ajena a la app) y la CSP `connect-src 'self'` de `next.config.ts`.
+3. **Determinismo byte-idéntico.** Mismo input + misma política + misma llave = misma salida, byte por byte, verificado en cada PR (`tests/unit/determinismo.test.ts`, `determinismo-transformacion.test.ts`): en `src/engine/` están vetados `Math.random`, `Date.now` y `new Date()`; desempates fijados (orden de columnas, medianas estables) y orden de iteración determinista. Bóveda y bitácora llevan IV único: su determinismo se mide **en claro**, sobre la serialización canónica (ADR-006). **FPE prohibido** (FF3 roto, NIST en flux): la preservación de formato es HMAC → dígitos → dígito de verificación oficial recalculado (NIT: mod 11 de la DIAN).
+4. **Honestidad medida.** El riesgo EXACTO (clases de equivalencia sobre el archivo) se presenta como exacto; los estimadores poblacionales van SIEMPRE etiquetados «estimado», nunca se componen con el exacto y, si el supuesto no se sostiene, Velo se niega a dar el número (ADR-008). **Prohibido en todo copy:** «anonimato garantizado», «100 % seguro», «imposible de reidentificar» y sus variantes (`tests/unit/copy.test.ts` barre `src/`, `docs/MANUAL-DE-USO.md` y `docs/BROCHURE.html`; con el inglés suma sus equivalentes). Velo reduce el riesgo y lo MIDE; no promete magia (k-anonimato es atacable y lo sabemos con fuentes).
+5. **Repo público: JAMÁS un dato real.** Ni en fixtures, ni en tests, ni en issues, ni en capturas de docs. Todo dato de prueba sale del **generador sintético sembrado** (`docs/kit-de-prueba/generador.mjs`, `pnpm kit:generar`; sus salidas van a `tmp/`, ignorado). Si un archivo real del usuario toca el árbol de trabajo, NO se commitea (gitignore + revisión en cada auditoría); lo que el dueño pruebe con datos propios ocurre en su navegador y no entra al repo.
+6. **Las llaves son núcleo de UX, no un extra.** Frase de paso perdida = bóveda y bitácora irrecuperables (consecuencia aceptada y COMUNICADA en la UI antes de cifrar: es una garantía, no un defecto, y es el punto único de falla declarado en el BLUEPRINT); llave HMAC filtrada = seudónimos enlazables. El onboarding de llaves se diseña con el mismo cuidado que el motor.
+7. **Dentro del navegador, el worker es la frontera.** Los datos crudos no salen de `src/workers/`: a la página viajan solo conteos, nombres de columna, proporciones, muestras YA enmascaradas y metadatos (`src/workers/contrato.ts` es la lista de lo permitido); ningún componente recibe el dataset. La descarga cruza como `Blob` opaco que la página nunca lee (ADR-005; `.arrayBuffer()` vetado fuera del worker); **la frase de paso entra al worker y no vuelve a salir**: la llave se deriva allá, no extraíble, y la página solo ve su huella de 12 hex. Lo único que cruza entero es la bitácora abierta (apuntes del propio usuario).
 
-**Estado: ciclo H1 entregado (S001–S004, cerrado el 2026-08-15).** Velo **ve** (S1: diagnóstico
-y riesgo exacto), **transforma** (S2: técnicas, política, k-anonimato), **devuelve** (S3: bóveda
-cifrada y restauración por valor) y **deja constancia** (S4: certificado con las dos huellas,
-bitácora cifrada, riesgo poblacional estimado). Cinco rutas: `/` · `/diagnostico` ·
-`/transformar` · `/regreso` · `/bitacora`. Las 14 funcionalidades del MVP personal están en
-`main`. El as-built de la infraestructura vive en `docs/BLUEPRINT.html`.
+## Hito vigente: H-2 «Producto completo» (F0 2026-11-01)
 
-**La tesis del producto:** el mercado hace la mitad del viaje (micro-tools unidireccionales o
-enterprise inaccesible); Velo es la única herramienta 100%-navegador con round-trip,
-localizada para Colombia, con certificado. En un mundo de herramientas que alucinan, **la
-precisión determinista es el lujo**.
+- **Desde el S5.** El H-1 está construido (las 14 del MVP en `main`) y su gate humano nunca se corrió: **se funde en el ensayo general del H-2**, el ÚNICO gate humano de Velo hasta cerrar el hito (no se ofrece un gate al cerrar sprints). El S5 empieza adoptando este núcleo y su anexo (≈ 1 h).
+- **Sale cuando:** el inventario de la VISION v1.0.0 está al 100 % —las 14 del MVP y las 8 del roadmap (JSON · metadatos de PDF e imágenes · jerarquías FLASH/OLA · perturbación y privacidad diferencial · puente local a bases de datos · API REST · política GDPR · motor de alto volumen), cada una **construida o descartada por el dueño con su nombre** (descartar jamás es default ni lo propone el builder)— · bilingüe ES/EN completo (hoy la UI es solo español: `<html lang="es-CO">`, sin capa de idioma) · el despliegue de Vercel como entorno igual al de producción (Velo no tiene servicios que simular) · arquitectura al día · **ensayo general del dueño**: todos los flujos como cliente, con la guía abierta; lo no visto no cuenta.
+- **Ninguna feature del H-2 afloja una regla dura.** Las del roadmap que la rozan (puente local a bases de datos y API REST, frente a la regla 2 y a `connect-src 'self'`; la perturbación, que solo cabe con PRNG sembrado por la regla 3) se le plantean al dueño como mirada de DECISIÓN, con su ADR, antes de construir; jamás se resuelven en silencio.
 
-## ⚠️ Reglas duras de esta app (producto, no estilo)
+## Workflow del sprint (5 pasos)
 
-1. **CERO IA generativa — para siempre en el runtime.** Ni SDKs de LLM, ni llamadas a APIs de
-   IA, ni "solo para esta feature". Es LA propuesta de valor (reproducible = auditable), no
-   una limitación. Se blinda con **gate anti-IA en CI** (check que falla si un SDK de LLM
-   aparece en `package.json`). ADR-001 lo documenta. _(La IA como herramienta de DESARROLLO
-   —tú, Claude Code— está bien; en el producto, jamás.)_
-2. **Los datos del usuario JAMÁS salen del navegador.** Ni red, ni logs, ni Sentry (los
-   eventos no pueden contener valores de celdas NI nombres de columnas), ni almacenamiento
-   persistente por defecto (el vault cifrado del S3 será la ÚNICA excepción, con acción
-   explícita del usuario). Se blinda con **e2e que intercepta toda la red** durante el flujo
-   con archivo cargado y falla si hay un request con payload de datos.
-3. **Determinismo byte-idéntico.** Mismo input + misma política + misma llave = misma salida,
-   byte por byte — test de CI que corre el motor dos veces y compara. Nada de `Math.random()`
-   sin seed en el motor, nada de orden de iteración no determinista (fija desempates).
-4. **Honestidad medida.** El riesgo EXACTO (clases de equivalencia) se presenta como exacto;
-   los estimadores poblacionales SIEMPRE etiquetados "estimado". **Prohibido en todo copy:**
-   "anonimato garantizado", "100% seguro", "imposible de reidentificar" — Velo reduce riesgo
-   y lo MIDE; no promete magia (k-anonimato es atacable y lo sabemos con fuentes).
-5. **Repo público — JAMÁS un dato real.** Ni en fixtures, ni en tests, ni en issues, ni en
-   capturas de docs. Todo dato de prueba sale del **generador sintético seeded**
-   (`docs/kit-de-prueba/`). Si un archivo real del usuario toca el working tree, NO se
-   commitea (gitignore + revisión en cada self-review).
-6. **Las llaves son núcleo de UX, no un extra.** Llave del vault perdida = irreversibilidad
-   total (consecuencia aceptada y COMUNICADA en la UI); llave HMAC filtrada = seudónimos
-   enlazables. El onboarding de llaves se diseña con el mismo cuidado que el motor.
+1. **Plan.** El usuario trae el archivo del sprint de la planeadora (`portafolio/anonimizador/sprints/SPRINT_NNN.md`: inicio ejecutivo + plan técnico breve + prompt de arranque). En **plan mode** corres `/plan-sprint`: estado real del código, riesgos, plan en ≤ 3 fases con criterio observable y horas estimadas por fase, recomendación de modelo. **La aprobación del plan NO arranca nada:** esperas el **«construye»** explícito. Branch `sprint-NNN/<tema>`.
+2. **Construcción.** ≤ 3 fases; commits convencionales con la etiqueta `[F1]` / `[F2]` / `[F3]` en el subject (de ahí salen las horas por fase). **Un solo STOP al final de la construcción** con el resumen de las fases, **más como máximo 1 mirada de DECISIÓN** si el sprint cambia una decisión del usuario, la promesa o su máquina (las paradas de contenido donde el usuario aprueba datos son producto y no cuentan). Sin STOP por fase; FORMA y TEXTO se maquetan «no vistas» (registro de una línea) y van al gate humano del hito.
+3. **Auditoría de una pasada + checklist manual.** `/audita-sprint` (un auditor independiente en solo lectura, 4 casillas; **críticos y altos se pagan en el sprint, medios y bajos van al lote del hito**). Luego `/deploy-check`: ≤ 10 casillas manuales — **la CI es el gate; si no está en la CI, no es casilla.**
+4. **Cierre ejecutivo.** `sprints/SPRINT_NNN-cierre.md` ≤ 40 líneas con la salida de `node scripts/horas-sprint.mjs` pegada (campos abajo). Reemplaza al summary, la bitácora y la auditoría como archivos aparte (la auditoría es una sección del cierre).
+5. **PR normal** (no en borrador) con el cierre dentro; checks requeridos de la ruleset `main-protegida` (`anti-ia` · `quality` · `e2e` · `lighthouse`, más `un-pr-vivo` desde que entra) con conclusión propia `success` leídos **al final**, no tras cada push. **Antes de abrirlo, `gh pr list --state open` (regla 18): un PR vivo por app.** Al pedir el merge entregas la lista de PRs abiertos, que debe ser ese uno. **El merge squash lo hace el usuario** y borra la rama; después corre `/cierre-sprint anonimizador` en la planeadora.
 
-## Stack
+- **Por hito, no por sprint:** gate humano único (≈ 20 min con la página abierta; ⭐/⭐⭐ de la guía, FORMA y TEXTO pendientes, juicio de diseño; en este hito, el ensayo general) · lote de hallazgos medios y bajos · brochure (hito Vitrina) · `design-sync` y `/design-sync` · `docs/BLUEPRINT.html` · pruebas y capturas en el segundo idioma · adopción del kit y de esta constitución (una vez al abrir el hito; el kit versiona ≤ 1 vez al mes).
+- **Matriz de hitos (método v2.3.0; 4 hitos, ninguno más).** Un hito = los sprints que su objetivo necesite; el gate humano es uno por hito (≈ 20 min con la página abierta).
 
-- **Frontend = la app entera:** Next.js (estampado del kit) + TypeScript strict + Tailwind +
-  shadcn/ui. **Procesamiento 100% client-side** — "cloud para el acceso, local para los
-  datos": Vercel sirve la app; los datos viven y mueren en la pestaña.
-- **Datos:** PapaParse (CSV streaming en Web Worker) · SheetJS `dense:true` (Excel, con tope
-  declarado — revienta ~200k filas, evidencia F1) · representación columnar (typed arrays +
-  diccionario de strings).
-- **Cripto (Web Crypto nativo, cero dependencias):** HMAC-SHA256 (`crypto.subtle`) ·
-  AES-GCM + PBKDF2-600k para el vault (S3; upgrade path Argon2id-WASM) · **FPE PROHIBIDO**
-  (FF3 roto, NIST en flux — F1): preservación de formato = HMAC → dígitos → DV oficial
-  recomputado (NIT: pesos primos mod 11 de la DIAN).
-- **Backend/BD:** **NINGUNO en H1.** Sin Supabase, sin API routes con datos.
-- **IA embebida:** **NINGUNA** (regla dura 1).
-- **Tests:** Vitest + Playwright + Testing Library + @axe-core/playwright.
-- **Deploy:** Vercel (preview por PR, prod desde `main`; **Deployment Protection desde el día
-  0: producción pública, previews protegidas** — y documentado en el BLUEPRINT).
-  **Observabilidad:** Pino + Sentry client-only metadata-only del kit, con la regla reforzada
-  de la regla dura 2.
+  | Hito | Objetivo | Entra cuando | Sale cuando (gate humano) | Lo que suma el kit en este hito |
+  |---|---|---|---|---|
+  | **H-1 Vitrina funcional** (= MVP) | diseño, experiencia, propuesta de valor y funciones esenciales, demostrables | visión + maqueta aprobadas (G-Diseño) | flujo principal navegable de punta a punta con datos sintéticos · manual · gate humano aprobado · deuda registrada · **ficha publicada en CV Viva** (export + complemento, build verde; apps de vitrina) · **documentos de arquitectura al día** (`docs/BLUEPRINT.html` as-built, ADRs, `design-system.md`) | automático en cada PR: tests + e2e contra el build · CI con checks propios · gitleaks · Lighthouse 1 corrida · a11y · bilingüe con paridad · cero enlaces · brochure + export |
+  | **H-2 Producto completo** (ensayo general; **no robusto**) | todo lo que el cliente verá y usará, construido y funcionando de punta a punta como en producción | H-1 cerrado | inventario de la VISION 100 % construido o descartado con nombre · servicios reales sin mocks, en un entorno igual al de producción · bilingüe completo · **ensayo general del usuario** (todos los flujos como cliente; lo no visto no cuenta) · arquitectura al día | lo mismo que H-1 |
+  | **H-3 Robustez** | calidad, mantenibilidad, datos y conectividad proporcionales | **H-2 cerrado** (apps para terceros); vitrina: terceros a la vista o riesgo material | pruebas esenciales de lo que cambia · persistencia e integraciones definitivas · lote de medios y bajos pagado · arquitectura al día | cobertura > 70 % en módulos no-UI · request-id y timing · rate limiting · `design-sync/` + checklist de diseño · techo de costo de IA declarado |
+  | **H-4 Producción** (= G-Release) | seguridad, privacidad, despliegue, operación y legal proporcionales | **H-2 y H-3 cerrados** · usuarios reales o salida comercial | checklist de release corto · observabilidad mínima · legal · smoke en producción · arquitectura al día | suite completa verde en `main` · alerta activa · OWASP + red teaming si hay IA · WCAG AA manual · Privacy Policy + ToS · `/release-check` |
 
-## Estructura
+  La vitrina exige H-1 (y H-2 como ensayo general corto). **H-2 es el producto completo, no robusto: se cierra antes de H-3 y H-4 en toda app para terceros** (decisión del usuario, 2026-10-17); que el usuario use la app en su vida real no es un hito. Evolución y escalabilidad no son hitos: cada versión repite H-2 → H-4. El sprint de cierre del hito trae lote de medios y bajos, guía al día, manual, BLUEPRINT, `design-sync` y auditoría de la constitución.
+- **Solo por cambio:** aprovisionamiento (tabla y humo solo si hay uno nuevo) · demo en rojo (solo gates propios nuevos) · `CONTRATO.lock` de reusables (solo si el contrato cambia) · roadmap de CV Viva (solo si el sprint toca una feature votada) · ADR (solo decisiones irreversibles).
+- **Tamaño:** ≈ 4 h activas de builder por defecto; hasta ≈ 12 h con una línea de justificación. Si el real supera el estimado en más del 50 %, el cierre explica la causa y propone una medida.
+- **Modelo por DECISIÓN, nunca por descuido (regla dura del usuario, 2026-10-11; kit v2.2.0).** Cada fase del plan declara el modelo requerido y un esfuerzo **sugerido**; el modelo tope ordinario es **Opus 5.5**; **Fable 5.1 solo en emergencia declarada por el usuario** (validación o planeación extraordinaria), jamás por iniciativa del builder, de una skill ni de un subagente.
 
-```
-src/
-├─ app/              (App Router: aduana, diagnóstico)
-├─ components/       (UI sin lógica de negocio)
-├─ engine/           (motores puros DETERMINISTAS, sin side-effects, cobertura >80%:
-│    validadores/ · clasificador.ts · riesgo.ts — cada validador cita su fuente oficial)
-├─ workers/          (parser.worker.ts — el archivo se procesa AQUÍ, jamás en main thread)
-├─ lib/              (utils, dominio; lib/crypto con Web Crypto)
-└─ types/
-tests/{unit,integration,e2e}/
-docs/kit-de-prueba/  (generador sintético seeded — la ÚNICA fuente de datos de prueba)
-design-system.md     (S1, "bóveda serena" — gate visual del usuario)
-docs/MANUAL-DE-USO.md · docs/GUIA-DE-PRUEBA.html (acumulativa, plantilla v1.10.0)
-sprints/ · decisions/
-```
+  | Actividad | Modelo requerido | Esfuerzo (sugerido, no se verifica) |
+  |---|---|---|
+  | Planear sprint, cerrar sprint, preguntas de la planeadora | Opus 5.5 | medium |
+  | Checkpoint de hito, decisión irreversible, auditoría del proceso | Opus 5.5 | high |
+  | **Emergencia declarada por el usuario** (validación o planeación extraordinaria) | Fable 5.1 | — (solo si él lo pide en el mensaje) |
+  | Construcción con alcance claro (interfaz, lógica, pruebas) | Sonnet 5.5 | medium |
+  | Construcción simple: ajustes de interfaz, textos, cambios pequeños | Haiku 5.5 (en prueba) | medium |
+  | Depuración difícil, Rust, concurrencia, seguridad, nativo | Opus 5.5 | high |
+  | Auditoría de una pasada | Sonnet 5.5 | high |
+  | Cierre ejecutivo, script de horas, documentación corta | Haiku 5.5 | low |
+  | Subagentes de búsqueda o lectura de archivos | Haiku 5.5 | — |
 
-## Reglas de desarrollo
+  - **Gate de modelo al abrir cada fase:** tu primera línea es «Fase N · modelo requerido: X · modelo activo: Y» (Y lo lees de tu propio encabezado de sesión). Si coinciden, arrancas. **Si no coinciden, NO construyes nada** hasta que el usuario escriba «vamos con Y» (queda registrado en el archivo del sprint como decisión) o cambie con `/model X`. Es un renglón, no una parada del techo. Trabajo de rutina en Opus o Fable también se detiene y se recomienda bajar.
+  - **El esfuerzo es sugerido:** no se verifica, no se reporta como desvío y nunca detiene nada; `/effort` es opcional.
+  - **Relevo, nunca loop (regla 29):** al **segundo intento fallido** sobre el mismo problema, o a los **20 min sin avance verificable** (un test que pasa, un error que cambia), **paras**: escribes en el cierre o la bitácora qué intentaste, qué falló y qué sabes, y pides relevo en UNA línea: «Relevo: modelo actual X · recomiendo Y · por qué · `/model Y`». Prohibido el tercer intento por el mismo camino con el mismo modelo. Escalón: Haiku → Sonnet → Opus; si Opus pide relevo, decide el usuario (Fable solo si él lo declara emergencia).
+  - **Haiku 5.5 en construcción simple está en prueba:** su relevo es Sonnet 5.5 (regla 29); el cierre registra si Haiku bastó o no; tras 3 sprints se decide si se queda. Nombre completo `claude-haiku-5-5` en `/model` hasta confirmar que el alias `haiku` apunta a esa versión.
+  - Al cambiar de fase, si el contexto anterior no se necesita, recomienda `/clear` o `/compact`: el archivo del sprint conserva el estado.
+  - Los subagentes declaran su modelo en su definición (búsqueda y lectura: Haiku 5.5; auditor: Sonnet 5.5); ninguno hereda Opus o Fable por omisión.
 
-1. **TypeScript strict.** Sin `any` ni `@ts-ignore` sin justificación.
-2. **Tests con cada feature.** Motores puros >80%, UI >50%, ≥1 e2e por feature core que llega
-   POR LA UI. Al escribir los primeros tests: `--coverage` al script `test`. Fixtures
-   sintéticos incluyen casos FUERA de rango (NITs con DV inválido, cédulas imposibles,
-   columnas-trampa que parecen sensibles y no lo son).
-3. **Motor separado de UI.** Todo el trabajo pesado en `engine/` + `workers/`; los componentes
-   no tocan datos crudos.
-4. **A11y desde el inicio:** carga por teclado además de drag, aria-labels, contraste AA,
-   `prefers-reduced-motion` con **e2e activo** (estándares v2.3.0).
-5. **Commits convencionales**; branch `sprint-NNN/<tema>`; jamás push directo a `main`; PR con
-   CI verde + preview probado. Ruleset `main-protegida` con checks requeridos desde el
-   estampado; job nuevo de CI → a la ruleset en el mismo sprint.
-6. **Secrets solo en `.env.local`/Vercel.** Doble cinturón gitleaks (hook pre-commit +
-   PreToolUse). **Carnada canónica verificada (viaja PARTIDA aquí):** ármala concatenando
-   `AWS_ACCESS_KEY_ID=` + `AKIAQ7RTZ4PX` + `KM2WNB3S` SOLO en el archivo de prueba del hook.
-   _(Nota: en esta app casi no hay secrets — no hay APIs; el cinturón protege igual contra
-   accidentes, p. ej. un archivo real del usuario.)_
-7. **Presupuesto de esfuerzo:** ~12 pasos por pantalla; si lo excedes, simplifica o consulta.
-8. **Manual de uso vivo** (`docs/MANUAL-DE-USO.md`): toda feature en `main` queda documentada
-   en el mismo sprint, en español llano.
-9. **Diseño con gate** (`design-system.md` + skill `diseno-ui`): el S1 lo crea (personalidad
-   "bóveda serena": precisión y confianza sin frialdad clínica; el sello "nada sale de aquí"
-   como identidad visible); cada sprint con UI cierra con **pasada de capturas del builder**
-   (método v1.11.0: bloques leídos como imagen, animaciones cuadro a cuadro) + checklist +
-   gate visual del usuario sobre la preview.
-10. **Guía de prueba viva y ACUMULATIVA** (`docs/GUIA-DE-PRUEBA.html`, plantilla kit v1.10.0):
-    bola de nieve, origen por línea, filtros, gate mínimo ⭐ (solo lo no-automatizable),
-    "Empieza en:" por bloque, acumulados con punto de partida, localStorage versionado por
-    sprint, kit de prueba enlazado.
-11. **PROHIBIDO entregar por artifacts** — todo entregable es archivo del repo (HTML
-    autocontenido o MD).
-12. **Brochure vivo** (`docs/BROCHURE.html` + ruta `/conoce`, molde v2): se PRODUCE (storyboard
-    con clímax **aprobado por el usuario** antes de la primera línea de HTML + banco de
-    técnicas del kit), anclado al design-system de esta app. Tiene **dos estados**: **INICIAL**
-    (declarado en la propia pieza) mientras las pruebas del usuario no han cerrado, y
-    **SELLADO** cuando el gate ⭐ las cierra. Junto al HTML viaja **`docs/brochure-export.json`**
-    (contrato `brochure-export` v1.0.0), y **todo PR que toque features lo actualiza en el
-    mismo PR** — la cifra del pie del brochure, la del export y el `MANUAL-DE-USO.md` no pueden
-    desincronizarse (hay test de contrato que lo verifica).
-13. **Última milla** (método v1.11.0): todo link de producción se prueba DESDE AFUERA, SIN
-    sesión (curl/incógnito) — y **sin publicarlo** (regla 14); dominio + protección de
-    deployment documentados en el BLUEPRINT **sin escribir la dirección**.
-14. **Cero enlaces — la producción se MUESTRA, jamás se ENTREGA** (kit v1.19.0): ningún archivo
-    de este repo público ni ningún campo de GitHub (incluido **homepage**) publica URLs de
-    producción o de preview. Las direcciones son **dato privado**: viven en la orden de la casa
-    planeadora, que es el registro privado. En su lugar: el brochure como contenido, la ruta
-    `/conoce` nombrada sin URL absoluta, y el CTA público de **lista de espera**. El campo
-    `homepage` del repo lo **REESCRIBE la GitHub App de Vercel tras cada deploy de producción**:
-    se re-limpia después de cada merge a `main` y se declara como limpieza recurrente.
+## Reglas (29, una línea cada una)
+
+Frecuencia: `[sprint]` cuesta algo en cada sprint · `[hito]` se ejecuta al cerrar o abrir un hito · `[cambio]` solo cuando el sprint toca lo que la regla cubre · `[siempre]` pasiva, costo cero. 🔒 = privacidad o seguridad, sin cambio de fondo. El detalle, origen y precedentes de cada una: `docs/REGLAS-ANEXO.md § N`; lo propio de Velo, § «Velo».
+
+1. `[siempre]` **TypeScript strict.** Sin `any` ni `@ts-ignore` sin justificación en comentario. — § 1
+2. `[sprint]` **Tests de lo que cambia.** Motores puros > 80 % (`src/engine/**` y `src/lib/**`, umbrales en `vitest.config.ts`; global 70 %), UI > 50 %, ≥ 1 e2e por feature core que llega POR LA UI; `--coverage` ya está en el script `test`; fixtures sintéticos con casos FUERA de rango; directorios generados a `globalIgnores`. — § 2
+3. `[siempre]` **Motor separado de UI.** El trabajo pesado vive en `src/engine/` + `src/workers/`; los componentes no tocan datos crudos (regla dura 7). — § 3
+4. `[siempre]` **Toda salida de LLM que se persista pasa por esquema Zod:** no aplica, no hay LLM (regla dura 1); Zod valida lo que entra por archivo (política importada, bitácora). — § 4
+5. `[siempre]` **A11y desde el inicio:** tabindex, aria-labels, contraste AA; carga del archivo por teclado además de arrastrar; `prefers-reduced-motion` cambia propiedades, jamás la forma del árbol (los e2e de motion existentes se conservan; nuevos solo si el sprint toca motion); tokens de tinta vetados fallan en lint; el color nunca solo (símbolo + texto + color). — § 5
+6. `[siempre]` **Commits convencionales**; branch `sprint-NNN/<tema>`; jamás push directo a `main` (hook); ruleset `main-protegida` con checks requeridos (`anti-ia` · `quality` · `e2e` · `lighthouse`); un job de CI nuevo entra a la ruleset en el mismo sprint. — § 6
+7. `[siempre]` 🔒 **Secrets solo en `.env.local` y Vercel env** (aquí casi no hay: sin APIs, `.env.example` solo trae la DSN opcional de Sentry); gitleaks a doble cinturón (hook PreToolUse + `githooks/pre-commit`, `core.hooksPath` por `prepare`); se prueba con la carnada canónica (anexo § 7), nunca improvisada. — § 7
+8. `[sprint]` **Presupuesto medido:** ≈ 4 h activas por defecto, ≤ 12 h con justificación; horas con `scripts/horas-sprint.mjs`; ~12 pasos por pantalla como orientación — si lo excedes, simplifica o consulta. — § 8
+9. `[sprint]` **Manual de uso vivo** (`docs/MANUAL-DE-USO.md`): toda feature que llega a `main` tiene su sección en el mismo sprint, en lenguaje de usuario final (qué hace, cómo se usa, limitaciones). — § 9
+10. `[hito]` **El diseño va antes del código.** Velo nació antes de la Etapa de Diseño: sin `docs/diseno/`, la fuente de verdad visual es `design-system.md` («bóveda serena»: precisión y confianza sin frialdad clínica; el sello «nada sale de aquí» en el encabezado de todas las pantallas), que se extiende por ADR y nunca se contradice en silencio; de las tres clases de mirada solo **DECISIÓN** abre parada (máx. 1 por sprint; pregunta llana en la primera línea + dónde abrirla; registro de una línea); FORMA y TEXTO al gate humano del hito. — § 10
+11. `[cambio]` **Guía de prueba viva y acumulativa** (`docs/GUIA-DE-PRUEBA.html`, autocontenida, origen por línea, prefijo `localStorage` versionado): se toca solo si el sprint cambia un flujo visible; ⭐/⭐⭐ se corren en el gate humano del hito, sin acumulados ni contrapesos; kit de prueba (`docs/kit-de-prueba/`) solo por cambio. — § 11
+12. `[siempre]` **Prohibido entregar por artifacts o plataformas externas:** todo entregable es un archivo del repo (HTML autocontenido o Markdown) y se entrega su ruta. — § 12
+13. `[hito]` **Brochure** (`docs/BROCHURE.html`, servido en `/conoce` como `public/conoce.html` por `scripts/copiar-brochure.mjs`, + `docs/brochure-export.json`, contrato `brochure-export` v1.0.0): producido en estado INICIAL (#12); se ajusta al cierre de cada hito, ya no en cada PR que toque features; `tests/unit/brochure-export.test.ts` mantiene export, pie del brochure y manual sincronizados. — § 13
+14. `[siempre]` **Código primero, IA generativa después:** aquí el código es TODO (regla dura 1); `decisions/PLANTILLA-ADR-codigo-primero.md` no aplica. — § 14
+15. `[cambio]` **Un gate se demuestra fallando:** la demo en rojo (`scripts/demo-rojo.sh`) solo para gates PROPIOS nuevos de esta app (los del kit la traen en sus tests); un gate que nunca ejecutó (`skipped`) no es verde: cada check requerido con conclusión propia `success`; todo modo de arranque y perfil de compilación que se distribuye corrió en vivo al menos una vez. — § 15
+16. `[hito]` **El bundle de `design-sync` es un artefacto del repo,** espejo del DS publicado (aquí `.design-sync/`: `config.json`, `preparar.mjs`, las seis primitivas, #11), y se actualiza al cierre del hito; `/design-sync` lo invoca el usuario y tú lo ejecutas. — § 16
+17-bis. `[siempre]` **Lo que la app escribe también es superficie:** un derivado jamás nace menos privado que su fuente (bóveda y bitácora salen cifradas: guardan originales y nombres de archivo, ADR-006 y 007); todo arnés que pueda tocar fuentes declara su árbol al arrancar y aborta ante datos reales. — § 17-bis
+17. `[siempre]` 🔒 **Cero enlaces: la producción se muestra, jamás se entrega** (la v1 la numeraba 14; así la cita `tests/unit/brochure-export.test.ts`). Ningún archivo versionado ni campo de GitHub publica la URL de producción o de previews (CTA = «lista de espera»; `/conoce` se nombra sin URL absoluta; homepage del repo = el propio repo o vacío, como hoy; los documentos escriben el patrón con clase de carácter); la GitHub App de Vercel reescribe el homepage tras cada deploy de producción: se re-limpia tras cada merge a `main`. El barrido de árbol + homepage es un paso del job `quality` (`scripts/cero-enlaces.mjs`, hosts en `cero-enlaces.json`). — § 17
+18. `[siempre]` **UN SOLO PR VIVO POR APP (regla dura del usuario, 2026-10-11; kit v2.1.0).** Dependabot cuenta. Antes de abrir cualquier PR: `gh pr list --state open`; si hay uno, se procesa (mergea o cierra) o se sigue en su rama. Un segundo PR solo si es complementario del primero y su cuerpo EMPIEZA con «complementa #N: <por qué no cabe en #N>». El job `un-pr-vivo` de la CI falla al segundo PR sin esa línea. Dependencias: agrupadas, de a uno, al arrancar el sprint y antes de abrir el PR del sprint; ningún paquete por debajo de `main` (`scripts/verificar-dependencias.mjs`); overrides y excepciones en `pnpm-workspace.yaml`, excepción solo por advisory sin parche y con ADR. — § 18
+19. `[cambio]` **Todo puente entre dos lenguajes exige su gate de contrato** en el sprint que lo cruza (fixture del serializador real, tipo validado del lado que lee, un test de punta a punta); Velo no cruza lenguajes hoy: la frontera Worker ↔ UI la rige la regla dura 7. — § 19
+20. `[siempre]` **Bilingüe ES/EN en todo:** el dato nace como mapa `{ es, en }`, redactado (no traducido), con test automático de paridad de claves; e2e y capturas en UN idioma por sprint, el otro al cierre del hito (Velo es solo español: el H-2 lo paga). Conversación y cierres en español; código, commits y ADRs nuevos en inglés; los nombres de dominio del motor siguen en español (`clasificador`, `boveda`) y los ADR 001–008 se quedan como nacieron. — § 20
+21. `[cambio]` **IA de construcción por suscripción (7-S):** solo el binario oficial de Claude Code, token jamás en env, trazas ni repo; no aplica hoy. — § 21
+22. `[cambio]` **Todo control dibujado tiene su script cargado** (gate `tests/unit/controladores-maqueta`); si el sprint toca una maqueta o pantalla, la pasada de capturas activa cada control y comprueba que algo cambió. — § 22
+23. `[cambio]` **Matriz de envejecimiento:** todo dato con fecha de cambio de estado trae un gate que construye la página en cada fecha en que algo cambia; la fecha de consulta es perilla de build, nunca el reloj. — § 23
+24. `[cambio]` 🔒 **Las protecciones del sistema del usuario se enseñan antes de tocarlas:** matriz de una fila por acción (qué · para qué · qué aviso verá · cómo se deshace) y un «sí» por acción; vale para scripts, tests y tus propios comandos. — § 24
+25. `[siempre]` **El comando de pruebas por defecto no toca hardware ni permisos** (marca `hardware` y prefijo `en_vivo_`); no aplica hoy (web, sin hardware). — § 25
+26. `[siempre]` **Worktrees prohibidos:** todo ocurre en el checkout `~/Code/app-anonimizador`; nada de `git worktree` ni `git stash` a secas sobre trabajo ajeno; se agrega por ruta, jamás `git add -A`. — § 26
+27. `[siempre]` **La evidencia se escribe después del hecho** («leído como imagen», «N de N», «en verde») con la cuenta tomada del resultado; extremos de magnitud en capturas y spike de costos solo por cambio. — § 27
+28. `[cambio]` **Parejas de versiones entre dos ecosistemas** se vigilan con un test entre lockfiles; no aplica hoy (sin Tauri ni Python). — § 28
+29. `[siempre]` **Relevo, nunca loop (regla dura del usuario, 2026-10-11; kit v2.2.0).** Segundo intento fallido sobre el mismo problema, o 20 min sin avance verificable ⇒ paras, escribes qué intentaste y pides relevo en una línea con el `/model` del escalón siguiente (Haiku → Sonnet → Opus; de Opus decide el usuario). Jamás un tercer intento por el mismo camino con el mismo modelo. — § 29
+
+## Cierre ejecutivo (`sprints/SPRINT_NNN-cierre.md`, ≤ 40 líneas)
+
+Frontmatter `sprint · app · hito · opened · closed · branch · pr`, y los campos, cada uno en una línea o una tabla corta:
+nombre · objetivo planeado · resultado · estado · tiempo estimado · tiempo real (salida de `scripts/horas-sprint.mjs`) · diferencia ·
+fases planeadas y resultado real · tiempo estimado y real por fase · entregables · no completado · desviaciones · causas · decisiones ·
+deuda generada o aplazada (medios y bajos con `archivo:línea`, al lote del hito) · aprendizajes reutilizables · recomendación para el siguiente ·
+evaluación esfuerzo-beneficio · **auditoría** (4 casillas; C/A con `pagado · <commit>`) · si una fase se pasó más del 50 %: causa y medida ·
+**modelo usado por fase y si hubo desvío** (una línea; si una fase corrió con Haiku 5.5, si bastó o no) · **relevos** (cuántos · de qué modelo a cuál · por qué; o «ninguno») ·
+«Para mergear: squash y borrar la rama; después `/cierre-sprint anonimizador`».
+
+## Comandos
+
+`/plan-sprint` (paso 1) · `/audita-sprint` (paso 3) · `/deploy-check` (paso 3) · `/design-sync` (hito; lo invoca el usuario) · `/self-review`, `/run-tests`, `/security-audit` (opcionales: la CI ya corre lo que verifican).
+Hoy `.claude/commands/` trae las versiones del kit v1.10.0 (sin `design-sync.md`); la adopción del kit v2.3.0 al abrir el H-2 las reemplaza y trae lo que este repo aún no tiene: `scripts/horas-sprint.mjs` · `scripts/cero-enlaces.mjs` + `cero-enlaces.json` · `.github/workflows/un-pr-vivo.yml` · `scripts/demo-rojo.sh` · `scripts/verificar-dependencias.mjs`.
+Propios: `pnpm gate:anti-ia` · `pnpm kit:generar -- --filas N --seed 42` · `pnpm build:brochure` (`scripts/copiar-brochure.mjs` → `public/conoce.html`, ignorado) · `scripts/capturas-brochure.mjs` · `tests/medicion/` (`capturas.mjs`, `cripto-en-el-navegador.mjs`) · `node .design-sync/preparar.mjs` (antes del bundle; ver `.design-sync/NOTES.md`).
 
 ## Estándares (los 6+1, gates en CI)
 
-Testing · CI/CD · Observabilidad · Seguridad · Performance (contra `perf-budget.json` +
-presupuesto propio: 500k filas sin bloquear main thread) · UX+A11y · **IA embebida: se cumple
-por AUSENCIA VERIFICADA (gate anti-IA)**. Detalle: `estandares/estandares.md` de la planeadora
-(RO, v2.3.0). Ítem rojo ⇒ deuda técnica explícita en el summary o el sprint no cierra.
-
-## Workflow de un sprint
-
-**Apertura** — el usuario trae la orden de la planeadora
-(`portafolio/anonimizador/ordenes/SPRINT_NNN-orden.md`). Léela ENTERA + sus inputs. **Plan
-mode primero, siempre.** La aprobación del plan NO arranca la construcción: emite el bloque
-de arranque (modelo/esfuerzo recomendados + `/model`) y espera el **«construye»** explícito.
-Branch `sprint-NNN/<tema>`.
-
-**Durante** — construye por fases (spikes → motor → UI → integración → e2e). Bitácora viva
-en `sprints/SPRINT_NNN-implementation-log.md`; ADRs en `decisions/`. `/self-review` tras cada
-bloque; `/run-tests` frecuente. **Gate de FASE: al terminar CADA fase DETENTE** — resumen
-completo, recuerda `/model`, espera el **«continúa»**.
-
-**Cierre** — `/audita-sprint` OBLIGATORIA (dos fases; el modelo poderoso audita y PLANEA para
-que cualquier modelo ejecute) → DoD → `/deploy-check` → `sprints/SPRINT_NNN-summary.md`
-OBLIGATORIO (plantilla del kit; registra la auditoría) → PR → gate ⭐ del usuario → merge con
-CI verde. Sin summary el sprint NO está cerrado.
-
-**Cierre de CICLO (S3 — la orden lo declarará):** BLUEPRINT.html (as-built con SVG embebido,
-incluyendo dominio + protección de deployment) + design system a Claude Design
-(`/design-sync`) + Brochure vivo producido con storyboard.
+Testing · CI/CD · Observabilidad · Seguridad (cabeceras y CSP en `next.config.ts`; el `'unsafe-inline'` de `script-src` es deuda declarada allí) · Performance (`perf-budget.json` con margen Lantern documentado, `lhci` sobre las cinco rutas de `lighthouse-urls.json`, categorías ≥ 0.9 en `lighthouse-categorias.json`; LCP observado en `tests/e2e/rendimiento.spec.ts`; presupuesto propio: 500 000 filas sin bloquear el hilo principal) · UX+A11y · **IA embebida responsable: se cumple por AUSENCIA VERIFICADA (gate anti-IA)**.
+Detalle canónico: `estandares/estandares.md` de la planeadora (solo lectura). Ítem rojo ⇒ deuda explícita en el cierre ejecutivo o el sprint no cierra.
 
 ## Patrones de dominio de esta app
 
-- **Validador con fuente:** cada validador de `engine/validadores/` lleva en comentario la
-  fuente oficial de su algoritmo (DIAN mod-11, CRC +57, Luhn ISO 7812-1, IBAN ISO 13616…) —
-  el código es citable como el resto del pipeline.
-- **El worker es la frontera:** los datos crudos viven en el worker; hacia la UI solo viajan
-  agregados, muestras enmascaradas y metadatos. Ningún componente recibe el dataset entero.
-- **Determinismo verificable:** desempates fijados (orden de columnas, medianas estables),
-  cero aleatoriedad sin seed, y el test byte-idéntico como regresión permanente.
-- **Muestras siempre enmascaradas:** cuando la UI muestra un valor de ejemplo, va parcialmente
-  enmascarado (`123***89`) — ni el diagnóstico expone datos completos innecesariamente.
+- **Validador con fuente:** cada validador de `src/engine/validadores/` (`colombianos.ts`, `universales.ts`) cita en comentario la fuente oficial de su algoritmo (DIAN mod 11, CRC +57, Luhn ISO/IEC 7812-1, IBAN ISO 13616…): si lo marca, es porque el algoritmo oficial lo confirma; los fixtures sintéticos traen casos FUERA de rango (NIT con DV inválido, cédulas imposibles, columnas trampa que parecen sensibles y no lo son).
+- **El worker es la frontera** (regla dura 7): los datos crudos viven en el worker; hacia la UI solo viajan agregados, muestras enmascaradas y metadatos.
+- **Determinismo verificable:** desempates fijados (orden de columnas, medianas estables), cero aleatoriedad sin semilla y el test byte-idéntico como regresión permanente.
+- **Muestras siempre enmascaradas:** cuando la UI muestra un valor de ejemplo va parcialmente enmascarado (`1032456789` → `103***89`, `src/engine/mascara.ts`): ni el diagnóstico expone datos completos innecesariamente.
 
-## Idioma
-
-Español en conversación, UI y bitácoras. Inglés en código, commits, nombres y ADRs.
+Constitución núcleo kit v2.3.0 — Velo, regenerada 2026-11-01 para el S5 (H-2). Las reglas del kit en detalle y el texto íntegro de la constitución v1 viven en docs/REGLAS-ANEXO.md y se leen solo cuando una regla se cita.

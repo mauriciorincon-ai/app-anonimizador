@@ -13,7 +13,12 @@ if command -v gitleaks >/dev/null 2>&1; then
     echo "Mueve la clave a .env.local (gitignored) o a las env vars de Vercel y reintenta."
     exit 1
   fi
+elif [ "${KIT_SIN_GITLEAKS:-0}" = "1" ]; then
+  echo "aviso: gitleaks no esta instalado — commit SIN scan de secretos (KIT_SIN_GITLEAKS=1, a sabiendas)."
 else
-  echo "aviso: gitleaks no esta instalado (winget install Gitleaks.Gitleaks) — commit SIN scan de secretos."
+  # Falla CERRADO (kit v1.32.1, B-8 planlang): un hook que avisa y deja pasar no es un gate.
+  echo "gitleaks no esta instalado: commit BLOQUEADO. Instalalo (brew install gitleaks / winget install Gitleaks.Gitleaks)"
+  echo "o, a sabiendas y por esta vez: KIT_SIN_GITLEAKS=1 git commit ..."
+  exit 1
 fi
 exit 0

@@ -1,3 +1,5 @@
+"use client";
+
 // El consejero de cuasi-identificadores: qué columnas, juntas, delatan.
 //
 // Es la lección de Sweeney (2000) y de su réplica de Golle (2006) vuelta herramienta. Ninguna de
@@ -10,8 +12,10 @@
 // llegó y qué dejó fuera con su motivo. Un tope que no se declara se lee como "lo revisé todo".
 
 import { Panel } from "@/components/panel";
+import { Rico, RicoMensaje, useT } from "@/components/texto";
 import type { AdvisorDeQis } from "@/engine/riesgo";
 import { deCada, numero, porcentaje } from "@/lib/formato";
+import { DIAGNOSTICO } from "@/lib/idioma/textos/diagnostico";
 
 /** Cuántas combinaciones se enseñan. El número total evaluado se declara en la nota. */
 const COMBINACIONES_VISIBLES = 6;
@@ -23,23 +27,23 @@ export function PanelDelAdvisor({
   advisor: AdvisorDeQis;
   filas: number;
 }) {
+  const { t, idioma } = useT();
+  const textos = DIAGNOSTICO.advisor;
   const visibles = advisor.combinaciones.slice(0, COMBINACIONES_VISIBLES);
 
   return (
     <Panel
-      etiqueta="Consejero de cruces"
-      titulo="Qué columnas delatan al juntarse"
+      etiqueta={t(textos.etiqueta)}
+      titulo={t(textos.titulo)}
       nota={<Alcance advisor={advisor} mostradas={visibles.length} />}
     >
       {advisor.identificanSolas.length > 0 ? (
         <section className="mb-6">
           <h3 className="text-tinta text-[0.9375rem] font-semibold">
-            Estas no necesitan compañía
+            {t(textos.solasTitulo)}
           </h3>
           <p className="text-tinta-suave mt-1 text-[0.8125rem] leading-relaxed">
-            Cada una, por sí sola, ya deja solo a casi todo el mundo. No entran
-            a las combinaciones de abajo porque cualquier cruce que las incluya
-            heredaría su unicidad sin decir nada nuevo.
+            <Rico texto={textos.solasExplicacion} />
           </p>
           <ul className="mt-3 space-y-2">
             {advisor.identificanSolas.map((columna) => (
@@ -51,9 +55,11 @@ export function PanelDelAdvisor({
                   {columna.nombre}
                 </span>
                 <span className="cifra text-alerta text-[0.8125rem] font-medium">
-                  {porcentaje(columna.proporcionUnicos)} solos
+                  {t(textos.solos, {
+                    pct: porcentaje(columna.proporcionUnicos, idioma),
+                  })}
                   <span className="text-tinta-tenue ml-2 font-normal">
-                    {deCada(columna.unicos, filas)}
+                    {deCada(columna.unicos, filas, idioma)}
                   </span>
                 </span>
               </li>
@@ -64,9 +70,7 @@ export function PanelDelAdvisor({
 
       {visibles.length === 0 ? (
         <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-          No quedaron columnas suficientes para proponer un cruce. Eso pasa
-          cuando casi todas son identificadores directos, datos sensibles o
-          columnas con un solo valor — el detalle está abajo.
+          <Rico texto={textos.sinCombinaciones} />
         </p>
       ) : (
         <ol className="space-y-2">
@@ -94,9 +98,9 @@ export function PanelDelAdvisor({
               </span>
               <span className="cifra text-tinta-suave text-[0.8125rem]">
                 <strong className="text-tinta font-semibold">
-                  {porcentaje(combinacion.proporcionUnicos)}
+                  {porcentaje(combinacion.proporcionUnicos, idioma)}
                 </strong>{" "}
-                solos · grupo más pequeño: {numero(combinacion.k)}
+                {t(textos.solosYGrupo, { k: numero(combinacion.k, idioma) })}
               </span>
             </li>
           ))}
@@ -117,6 +121,8 @@ function Alcance({
   advisor: AdvisorDeQis;
   mostradas: number;
 }) {
+  const { t, idioma } = useT();
+  const textos = DIAGNOSTICO.advisor;
   return (
     <>
       {/* El alcance se cuenta con los números REALES de esta corrida, no con el tope teórico:
@@ -124,33 +130,43 @@ function Alcance({
           3 candidatas es exagerar el trabajo hecho, que es la clase de imprecisión que este
           producto no se puede permitir justo en la frase donde declara sus límites. */}
       <p>
-        Velo evaluó{" "}
+        {t(textos.alcanceInicio)}{" "}
         <strong className="cifra font-medium">
-          {numero(advisor.combinacionesEvaluadas)}
+          {numero(advisor.combinacionesEvaluadas, idioma)}
         </strong>{" "}
-        combinaciones de las {numero(advisor.candidatos.length)}{" "}
-        {advisor.candidatos.length === 1
-          ? "columna candidata"
-          : "columnas candidatas"}
+        <Rico
+          texto={
+            advisor.candidatos.length === 1
+              ? textos.alcanceCombinacionesUna
+              : textos.alcanceCombinacionesVarias
+          }
+          datos={{ n: advisor.candidatos.length }}
+        />
         {mostradas > 0 && mostradas < advisor.combinaciones.length ? (
           <>
             {" "}
-            — arriba están las {numero(mostradas)} que dejan sola a más gente
+            <Rico texto={textos.alcanceArriba} datos={{ n: mostradas }} />
           </>
         ) : null}
-        . El tope es {numero(advisor.tope.candidatosMaximos)} columnas (las de
-        más valores distintos) y grupos de hasta{" "}
-        {numero(advisor.tope.tamanoMaximo)}: no es el universo entero de cruces
-        posibles, y por eso lo dice aquí.
+        <Rico
+          texto={textos.alcanceTope}
+          datos={{
+            candidatos: advisor.tope.candidatosMaximos,
+            tamano: advisor.tope.tamanoMaximo,
+          }}
+        />
       </p>
       {advisor.excluidas.length > 0 ? (
         <details className="mt-2">
           <summary className="text-tinta-suave cursor-pointer">
-            {numero(advisor.excluidas.length)}{" "}
-            {advisor.excluidas.length === 1
-              ? "columna quedó fuera"
-              : "columnas quedaron fuera"}
-            , y por qué
+            <Rico
+              texto={
+                advisor.excluidas.length === 1
+                  ? textos.fueraUna
+                  : textos.fueraVarias
+              }
+              datos={{ n: advisor.excluidas.length }}
+            />
           </summary>
           <ul className="mt-2 space-y-1">
             {advisor.excluidas.map((excluida) => (
@@ -158,7 +174,7 @@ function Alcance({
                 <span className="text-tinta-suave font-mono">
                   {excluida.nombre}
                 </span>{" "}
-                — {excluida.motivo}
+                — <RicoMensaje mensaje={excluida.motivo} />
               </li>
             ))}
           </ul>

@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import Link from "next/link";
 
+import { ConmutadorDeIdioma } from "@/components/conmutador-de-idioma";
+import {
+  EnlaceDeSalto,
+  IdiomaDelDocumento,
+  Pie,
+} from "@/components/marco-de-pagina";
 import { Sello } from "@/components/sello";
+import { COMUN } from "@/lib/idioma/textos/comun";
 
 import "./globals.css";
 
@@ -42,10 +49,8 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Velo — la aduana de tus datos",
-  description:
-    "Anonimiza y des-anonimiza tus tablas antes de entregarlas. Todo ocurre dentro de tu " +
-    "navegador: tus datos no suben a ningún servidor, ni al nuestro.",
+  title: COMUN.documento.titulo.es,
+  description: COMUN.documento.descripcion.es,
 };
 
 function Encabezado() {
@@ -58,27 +63,12 @@ function Encabezado() {
         >
           Velo
         </Link>
-        <Sello compacto />
+        <div className="flex items-center gap-4">
+          <ConmutadorDeIdioma />
+          <Sello compacto />
+        </div>
       </div>
     </header>
-  );
-}
-
-function Pie() {
-  return (
-    <footer className="border-borde text-tinta-tenue mt-16 border-t">
-      <div className="mx-auto w-full max-w-4xl px-6 py-6 text-[0.8125rem] leading-relaxed">
-        <p className="text-tinta-suave font-medium">
-          Velo para entregar. Desvelo para recuperar.
-        </p>
-        <p className="mt-1">
-          Velo mide el riesgo de reidentificación y lo muestra tal como es.
-          Reducir ese riesgo no es lo mismo que eliminarlo: ninguna técnica de
-          anonimización lo lleva a cero, y esta herramienta no dice lo
-          contrario.
-        </p>
-      </div>
-    </footer>
   );
 }
 
@@ -89,12 +79,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="bg-papel text-tinta flex min-h-full flex-col">
-        <a
-          href="#contenido"
-          className="bg-acento text-papel focus:rounded-1 sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-20 focus:px-4 focus:py-2"
-        >
-          Saltar al contenido
-        </a>
+        <EnlaceDeSalto />
+        <IdiomaDelDocumento />
         <Encabezado />
         <div id="contenido" className="flex flex-1 flex-col">
           {children}

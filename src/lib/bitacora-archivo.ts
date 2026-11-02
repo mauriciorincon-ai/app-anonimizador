@@ -21,13 +21,12 @@ import {
   serializarBitacora,
   type Bitacora,
 } from "@/engine/bitacora";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { abrirCifrado, magiaDe, sellarCifrado } from "./archivo-cifrado";
 
 /** `VLOG` en ASCII — distinta de la `VELO` de la bóveda, a propósito. */
 const MAGIA = magiaDe("VLOG");
 const VERSION_DEL_ARCHIVO = 1;
-
-const QUE_ES = "una bitácora de Velo";
 
 /** La extensión del archivo que el usuario guarda. */
 export const EXTENSION_DE_BITACORA = ".velolog";
@@ -57,7 +56,8 @@ export type ResultadoDelArchivo =
         | "frase-incorrecta"
         | "costo-inaceptable"
         | "contenido-invalido";
-      detalle: string;
+      /** Qué pasó, como un `Mensaje`: este módulo no conoce el idioma (`motor-regreso.ts`). */
+      detalle: MensajeDeMotor;
     };
 
 /**
@@ -76,7 +76,8 @@ export async function abrirBitacora(
     VERSION_DEL_ARCHIVO,
     bytes,
     frase,
-    QUE_ES,
+    // Qué se esperaba: el sobre lo usa para nombrarlo en el mensaje de rechazo.
+    "bitacora",
   );
   if (!sobre.ok) {
     return {

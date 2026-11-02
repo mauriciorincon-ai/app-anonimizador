@@ -3,7 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Velo — Conócelo</title>
+    <title data-t="doc.titulo">Velo — Conócelo</title>
+    <meta
+      name="description"
+      content="Recorrido por Velo, la aduana de tus datos: anonimiza y recupera tablas CSV y Excel dentro de tu navegador, sin subir nada a ningún servidor."
+      data-t-content="doc.descripcion"
+    />
     <!--
   BROCHURE VIVO DE VELO — el anti-manual. Se recorre como una página y quien lo termina conoce
   las 14 funcionalidades de la app. Producido sobre el molde v2 del kit a partir del storyboard
@@ -33,6 +38,14 @@
 
   ENLACES: ninguna URL absoluta de producción o de preview (regla 14 del CLAUDE.md). El mapa de
   la app usa rutas relativas a la raíz, que es como se sirven en /conoce.
+
+  BILINGÜE ES/EN (S5): el español vive en el marcado y se lee igual sin JavaScript; el inglés vive
+  en un diccionario (<script type="application/json" id="velo-en">) que mapea cada `data-t` →
+  innerHTML con las mismas etiquetas en línea. Un conmutador ES · EN en la portada, `?lang=` en la
+  URL y, si no, el idioma del navegador. Nada se guarda y nada sale: ni localStorage, ni cookies,
+  ni red. Al agregar texto visible hay que darle `data-t` y su entrada en el diccionario:
+  tests/unit/brochure-idioma.test.ts lo exige (y vigila que el inglés no prometa más que el
+  español). Las capturas de pantalla siguen mostrando la interfaz en español.
 -->
     <style>
       /* ═══ Tokens — copiados de design-system.md § 2 ═══ */
@@ -226,6 +239,60 @@
         display: block;
         font-size: 1.2rem;
         margin-top: 4px;
+      }
+
+      /* ═══ Idioma — el conmutador ES · EN ═══
+     Vive en la portada pero FUERA del flujo (position: absolute): no mueve un píxel de la
+     composición ni de las tarjetas. El idioma activo se marca con TRES señales a la vez —
+     subrayado, peso de letra y aria-pressed—: el color nunca va solo. Nace `hidden` porque sin
+     JavaScript no hay inglés que ofrecer, y un botón que no hace nada es peor que ninguno. */
+      .portada {
+        position: relative;
+      }
+      .idioma {
+        position: absolute;
+        top: 10px;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+      }
+      .idioma[hidden] {
+        display: none;
+      }
+      .idioma-sep {
+        color: var(--tinta-tenue);
+      }
+      .idioma button {
+        min-width: 36px;
+        min-height: 36px;
+        padding: 0 8px;
+        font: inherit;
+        letter-spacing: inherit;
+        color: var(--tinta-suave);
+        background: none;
+        border: 0;
+        border-radius: var(--radio-1);
+        cursor: pointer;
+        text-decoration: none;
+        text-decoration-thickness: 2px;
+        text-underline-offset: 6px;
+      }
+      .idioma button:hover {
+        color: var(--tinta);
+      }
+      .idioma button[aria-pressed="true"] {
+        color: var(--tinta);
+        font-weight: 700;
+        text-decoration: underline;
+      }
+      /* Primer pintado en inglés: el script lo quita en cuanto cambió el texto, para que quien
+     abre `?lang=en` no vea un destello en español. Solo existe si hay JavaScript. */
+      html.idioma-pendiente body {
+        visibility: hidden;
       }
 
       /* La mini-tabla de la portada: la promesa demostrada antes de leerse. */
@@ -1342,6 +1409,348 @@
         }
       }
     </style>
+    <script type="application/json" id="velo-en">
+      {
+        "doc.titulo": "Velo — Get to know it",
+        "doc.descripcion": "A tour of Velo, the customs checkpoint for your data: it anonymizes and restores CSV and Excel tables inside your browser, without uploading anything to any server.",
+        "sello.texto": "Nothing leaves this browser",
+        "portada.etiqueta": "Velo · the customs checkpoint for your data",
+        "portada.titulo": "<span aria-hidden=\"true\" style=\"--r: 0s\">Hand</span>\n<span aria-hidden=\"true\" style=\"--r: 0.07s\">over</span>\n<span aria-hidden=\"true\" style=\"--r: 0.14s\">your</span>\n<span aria-hidden=\"true\" style=\"--r: 0.21s\">data</span>\n<span aria-hidden=\"true\" style=\"--r: 0.31s\">without</span>\n<span aria-hidden=\"true\" style=\"--r: 0.38s\">handing</span>\n<span aria-hidden=\"true\" style=\"--r: 0.45s\">over</span>\n<span aria-hidden=\"true\" style=\"--r: 0.52s\">your</span>\n<span aria-hidden=\"true\" style=\"--r: 0.59s\">people</span>",
+        "portada.titulo.aria": "Hand over your data without handing over your people",
+        "portada.apoyo": "Before you send a table to an AI, a cloud tool or a third party’s computer, Velo shows you who the table singles out and gives it back treated. All of it inside this tab.",
+        "portada.estado": "Initial brochure — sealed once testing closes",
+        "portada.tabla.resumen": "Example with invented data: this is how the table arrives on the other side.",
+        "portada.tabla.col1": "id number",
+        "portada.tabla.col2": "name",
+        "portada.tabla.col3": "diagnosis",
+        "portada.tabla.dx1": "Respiratory",
+        "portada.tabla.dx2": "Metabolic",
+        "portada.tabla.dx3": "Circulatory",
+        "portada.tabla.pie": "Three different techniques in one table: the id number is <strong>pseudonymized</strong>, the name is <strong>suppressed</strong> and the diagnosis is <strong>generalized</strong>. <span class=\"solo-quieto\">Before and after the first cell: <span class=\"mono\">1.035.873.389 → CC-4f7a91b2</span>.</span> The values are invented for this example.",
+        "portada.lema": "Veil it to hand it over. Unveil it to get it back.",
+        "portada.baja": "Scroll at your own pace: each card opens when you reach it, and you stay in control of every one <span class=\"flecha\" aria-hidden=\"true\">↓</span>",
+        "quehace.titulo": "What it does, in the order you will use it",
+        "quehace.bajada": "Five steps, fourteen features. They open as you scroll and fold away once they are behind you; if you tap one, your tap wins.",
+        "tarjeta1.titulo": "Find out who is exposed",
+        "tarjeta1.linea": "Drop in your table and Velo tells you which columns identify a person, and how certain it is",
+        "tarjeta1.detalle.aria": "Find out who is exposed — details",
+        "tarjeta1.captura.alt": "Screenshot of Velo’s diagnosis screen, with the interface in Spanish: the file name, its SHA-256 fingerprint, how many columns fall into each category of the law, and the risk panel with the exact percentage of records that are left alone.",
+        "tarjeta1.captura.pie": "The diagnosis of a sample from the test kit: 600 synthetic rows, not a single real data point. The risk was counted record by record over those rows — no model and no sampling involved. (Screenshot in Spanish.)",
+        "tarjeta1.f1.titulo": "Bring your table",
+        "tarjeta1.f1.como": "Drag it onto the box or pick it with the button — you reach it with the Tab key and open it with Enter. CSV has no size limit, because it is read in pieces and never sits whole in memory; Excel goes up to 150 MB, because an Excel file has to be opened in full. While it works, Velo tells you where it is: taking the fingerprint, reading, recognizing the columns, measuring the risk.",
+        "tarjeta1.f1.tip": "<strong>Tip:</strong> if your Excel file is over 150 MB, open it and save it as CSV. From 40 MB up, Velo warns you it will take a while and offers you the same way out.",
+        "tarjeta1.f2.titulo": "What is inside, column by column",
+        "tarjeta1.f2.como": "Every column comes back classified into one of the four categories of Colombia’s Law 1581 of 2012 — direct identifier, sensitive data under article 5, quasi-identifier, not personal — and, above all, with the <strong>why</strong>: confirmed by an official check digit (the NIT, Colombia’s tax ID, with the DIAN’s mod 11; cards with Luhn; IBAN), recognized only by its shape, or unconfirmed when the only clue is the column’s name. Samples are masked, and sensitive columns show none.",
+        "tarjeta1.f2.tip": "<strong>Tip:</strong> a national ID number (cédula) is not “sensitive data” in the sense of the law: it is a direct identifier, which is something else. Velo does not mix them up, even though painting everything red would be more eye-catching.",
+        "tarjeta1.f3.titulo": "Take the report with you",
+        "tarjeta1.f3.como": "An HTML file that opens with a double click on any computer, with no internet and nothing to install. It carries the column names, what was detected, the categories, the risk figures and the file’s SHA-256 fingerprint. It carries not a single row of your table. You can preview all of it before downloading.",
+        "tarjeta1.f3.tip": "<strong>Tip:</strong> whoever receives the report can check that it describes that exact copy by recomputing the fingerprint: <span class=\"mono\">shasum -a 256 my-file.csv</span> on macOS.",
+        "tarjeta2.titulo": "You decide the treatment",
+        "tarjeta2.linea": "One rule per column, or a ready-made policy for Colombia or the United States, saved as a file",
+        "tarjeta2.detalle.aria": "You decide the treatment — details",
+        "tarjeta2.ruta": "/transformar · step 1",
+        "tarjeta2.captura.alt": "Screenshot of Velo’s workshop, with the interface in Spanish and the Habeas Data policy applied: the built-in policy buttons, the note citing Colombia’s Law 1581 of 2012, and below it every column with the technique it was given and the checkbox that makes it undoable with a vault.",
+        "tarjeta2.captura.pie": "The Habeas Data policy applied in one click, and every column still yours: techniques can be changed one by one, and the vault checkbox decides what can be undone later. (Screenshot in Spanish.)",
+        "tarjeta2.f1.titulo": "One row per column, and the decision is yours",
+        "tarjeta2.f1.como": "In the workshop you choose, column by column, what is done to each one. That policy is not stored anywhere — it carries your column names, which are your data — so if you want it next month, you <strong>export</strong> it: it is a file you can import again, with its own SHA-256 hash as its identity.",
+        "tarjeta2.f1.tip": "<strong>Tip:</strong> the name of the treated file ends in eight characters that are not a serial number: they are the start of the policy’s hash. Two files that share them received exactly the same treatment.",
+        "tarjeta2.f2.titulo": "Or start from a built-in policy",
+        "tarjeta2.f2.como": "<strong>Habeas Data (Colombia)</strong> — Colombia’s Law 1581 of 2012 and Decree 1377 of 2013, with the techniques from the guidance of the AGN and the SIC, and a minimum group target of 5 — or <strong>HIPAA · Safe Harbor</strong> — the 18 identifiers of 45 CFR §164.514(b)(2), which calls for deleting them, not pseudonymizing them. Each one tells you right there how many of its points Velo recognizes from the content, how many only from the column name, and how many are left for you to mark.",
+        "tarjeta2.f2.tip": "<strong>Tip:</strong> the moment you touch a rule, Velo says so: “this is no longer Habeas Data”. The official guidance does not back a decision it did not make, and neither policy is a certification.",
+        "tarjeta3.titulo": "Disguise the data without breaking it",
+        "tarjeta3.linea": "The data loses its identity and keeps its shape, and cross-file matching keeps working",
+        "tarjeta3.detalle.aria": "Disguise the data without breaking it — details",
+        "tarjeta3.ruta": "/transformar · step 3",
+        "tarjeta3.captura.alt": "Screenshot of Velo’s preview, with the interface in Spanish, in three columns: the column name, the masked value from before and the value after. ID numbers still have ten digits and NITs keep their hyphen and their check digit.",
+        "tarjeta3.captura.pie": "Even here the “before” is masked. And look at the “after”: the ID number still has ten digits and the NIT keeps its hyphen with a recalculated check digit. (Screenshot in Spanish.)",
+        "tarjeta3.f1.titulo": "Four ways to disguise a value",
+        "tarjeta3.f1.como": "<strong>Mask</strong> (cover part of the value), <strong>pseudonymize</strong> (swap it for a code derived from your passphrase), <strong>generalize</strong> (go up one step: the exact date becomes a range) and <strong>suppress</strong> (remove it altogether). You choose them column by column, and the preview shows you what the other person will receive before anything is written.",
+        "tarjeta3.f1.tip": "<strong>Tip:</strong> masking and generalizing <em>destroy</em> information — the missing digits no longer exist anywhere. Only pseudonyms can be reversed, and that decision is made beforehand, not afterwards.",
+        "tarjeta3.f2.titulo": "The format is kept and the check digit is recalculated",
+        "tarjeta3.f2.como": "A NIT is still a NIT: if you choose to keep the format, the pseudonym has the same shape and its check digit is <strong>actually recalculated</strong>, using the DIAN’s mod 11. The spreadsheet on the other side does not break, and neither does their system’s validation.",
+        "tarjeta3.f2.tip": "<strong>Tip:</strong> keeping the format shrinks the available space, so two different values can collide. Velo counts those collisions and tells you about them: it does not hide them.",
+        "tarjeta3.f3.titulo": "Next month, the same pseudonym",
+        "tarjeta3.f3.como": "The pseudonym is computed from a passphrase that only you hold, derived with 600,000 iterations of PBKDF2 — the minimum OWASP recommends, and that cost <em>is</em> the protection. The same passphrase and the same salt give the same pseudonyms, which is why you can match the March file against the April one without having the real data in front of you.",
+        "tarjeta3.f3.tip": "<strong>Tip:</strong> keep the passphrase <em>and</em> the salt that Velo shows you. If you lose the passphrase there is no going back: that is the flip side of nobody else having it.",
+        "tarjeta4.titulo": "Measure risk with exact figures",
+        "tarjeta4.linea": "How many people remain exposed before and after, counted row by row and kept apart from what is estimated",
+        "tarjeta4.detalle.aria": "Measure risk with exact figures — details",
+        "tarjeta4.ruta": "/transformar · the balance",
+        "tarjeta4.captura.alt": "Screenshot of Velo’s balance after transforming, with the interface in Spanish: how much the re-identification risk went down, how many records are still left alone and which columns were kept intact.",
+        "tarjeta4.captura.pie": "The balance, with both measures from the same calculation: how many were alone before and how many after. Below it begins the risk across the whole population, which is always marked as estimated. (Screenshot in Spanish.)",
+        "tarjeta4.f1.titulo": "Groups of at least k, and the crossing advisor",
+        "tarjeta4.f1.como": "Here is the finding almost nobody expects: columns that identify no one on their own can, together, point at half the table. The advisor shows you the columns that give people away alone and the most revealing combinations, with their <strong>actual k</strong> — not estimated — and it states how many combinations it evaluated and which columns were left out, with the reason. Then “generalize until k is reached” looks at all the marked columns together and decides where to cut until nobody is left in a group that is too small.",
+        "tarjeta4.f1.tip": "<strong>Tip:</strong> the higher the k, the more protected and the less precise the data. And Velo <em>does not delete rows</em> to reach it: if it falls short, it says so.",
+        "tarjeta4.f2.titulo": "Exact and estimated, never in the same sentence",
+        "tarjeta4.f2.como": "The figures for your file — how many people are left alone, the smallest group, the risk of the most exposed record — are counted record by record over the whole file and are marked “exact figure”. The risk for the <strong>population</strong> is a different thing: it comes from a model with an assumption, it is marked “estimated” with its source beside it — Benedetti–Franconi (1998) and Zayatz (1991) — and it only appears if you declare the population, because Velo does not make one up.",
+        "tarjeta4.f2.tip": "<strong>Tip:</strong> if your file is less than 10% of the population you declared, Velo refuses to give the second figure and explains why. We would rather not give it than give a weak one.",
+        "tarjeta4.f3.titulo": "The before-and-after balance, with the warning on top",
+        "tarjeta4.f3.como": "When it finishes you see what changed and how much the risk went down — and also how much usefulness was lost. With one product rule: <strong>if anything is left untreated, that is read before any percentage</strong>. An untouched ID number next to “risk reduced 87%” is two true sentences whose sum says something false.",
+        "tarjeta4.f3.tip": "<strong>Tip:</strong> the warnings are specific: untreated identifiers, records that are still alone, the k that was not reached, groups where everyone shares the same sensitive data.",
+        "tarjeta5.titulo": "Deliver, recover and keep a record <span class=\"estrella\" aria-hidden=\"true\">★</span>",
+        "tarjeta5.linea": "You get the real values back when the work returns, and every delivery gets a certificate and a log entry",
+        "tarjeta5.detalle.aria": "Deliver, recover and keep a record — details",
+        "tarjeta5.captura.alt": "Screenshot of the finished return, with the interface in Spanish: Velo reports how many original values came back from the vault, and keeps the column the other person added while working with the file.",
+        "tarjeta5.captura.pie": "The circle closed: 587 of 587 values went back where they belong from the vault, without a single ambiguous cell, and the column the other person added is still there. Without the vault there is no return, and Velo says so before you create it. (Screenshot in Spanish.)",
+        "tarjeta5.f1.titulo": "The vault and the return",
+        "tarjeta5.f1.como": "A pseudonym does not come back on its own — it is an HMAC, not encryption — and that is exactly what makes it safe to hand over. What undoes it is the <strong>vault</strong>: a file encrypted with AES-GCM that only you hold and that only opens with its passphrase. When the third party sends the work back, you load the vault and the returned file and the original values come back. Restoration is <strong>by value, never by position</strong>: it survives them reordering rows, adding columns, deleting others and fixing values by hand — and their work is respected.",
+        "tarjeta5.f1.tip": "<strong>Tip:</strong> the vault holds your original data. Never send it in the same email as the anonymized file: whoever received that email would have both halves.",
+        "tarjeta5.f2.titulo": "The certificate, with both fingerprints",
+        "tarjeta5.f2.como": "Send it along with the file. It says what was done to it — the balance with its warnings, the usefulness lost, the policy’s full hash — and it carries <strong>two fingerprints</strong>: the one for the file that went in and the one for the file that comes out. With the second, whoever receives it can <em>verify</em> that the document is about their copy, instead of taking your word for it. The certificate itself includes the exact command for macOS, Linux and Windows.",
+        "tarjeta5.f2.tip": "<strong>Tip:</strong> a certificate is not a digital signature. It shows that the document and the file match each other, not who produced them.",
+        "tarjeta5.f3.titulo": "The log, so you remember six months from now",
+        "tarjeta5.f3.como": "The certificate proves a treatment to whoever receives it; the log answers a different question and is yours alone: what you have done with your files. It records the name, the date, the techniques (without saying which columns), the policy’s hash, the two fingerprints and the proportion of unique records before and after. It is encrypted, in a separate file from the vault and with its own passphrase.",
+        "tarjeta5.f3.tip": "<strong>Tip:</strong> keep both proportions, not the difference. “It dropped from 30% to 2%” is true and can still mislead, and a log is read months later with no screen beside it to add nuance.",
+        "velar.titulo": "Veiling, in two seconds",
+        "velar.bajada": "It keeps the shape. It loses the identity. And next month, the same pseudonym.",
+        "velar.etiqueta": "A supplier’s NIT",
+        "velar.nota": "Still a NIT — with its check digit <strong>recalculated</strong> by the DIAN’s mod 11, not made up. The system on the other side validates it just the same; what it no longer has is anyone to point at.",
+        "velar.marzo": "March delivery",
+        "velar.abril": "April delivery",
+        "velar.pie": "The same pseudonym in both deliveries: your analysis can still match records across them, and the real data never has to leave. Values invented for this example.",
+        "aduana.titulo": "And while all of this happens, nothing has left",
+        "aduana.bajada": "This is not a brochure promise: there is simply nowhere for it to go.",
+        "aduana.lamina.aria": "A browser with the table inside. Three arrows try to leave toward a server, an AI and a third party’s computer, and they stop at the edge of the tab.",
+        "aduana.lamina.servidor": "a server",
+        "aduana.lamina.ia": "an AI",
+        "aduana.lamina.tercero": "a third party",
+        "aduana.prueba": "Velo has no server: there is nothing on the other end that could receive your file. And it is not a blind promise — an automated test <strong>intercepts every request</strong> the browser makes during the full flow with a file loaded, and fails if even one carries data. On top of that, the page itself forbids the browser from connecting to any site other than its own.",
+        "aduana.contrapartida": "There is an honest trade-off: if you reload the page, the diagnosis disappears. That is not a bug — it is the same reason your data does not leak.",
+        "climax.etiqueta": "What nobody else does",
+        "climax.titulo": "The full journey, there and back",
+        "climax.bajada": "Other tools make half the crossing: they anonymize and say goodbye there. With Velo you hand over without giving away — and when the work comes back, you recover it.",
+        "climax.mesa": "Your desk",
+        "climax.tercero": "The third party",
+        "climax.archivo": "my-table.csv",
+        "climax.col1": "0.82",
+        "climax.col2": "0.41",
+        "climax.boveda": "your vault",
+        "climax.paso1": "<b>You veil</b> the file at your desk: identifiers turn into pseudonyms.",
+        "climax.paso2": "<b>It crosses the border</b> — the only thing that does, and it no longer points at anyone.",
+        "climax.paso3": "<b>The third party works</b>: adds a column, reorders the rows, fixes things by hand.",
+        "climax.paso4": "The worked-on file <b>comes back</b>.",
+        "climax.paso5": "<b>You unveil it</b> with your vault: the originals return <strong>and the third party’s column stays</strong>.",
+        "climax.est1": "<strong>At your desk, veiled.</strong> <span class=\"mono\">900.123.456-8</span> goes out as <span class=\"mono dato\">900.884.201-1</span>. That is what you hand over.",
+        "climax.est2": "<strong>The third party works.</strong> They add a column <span class=\"mono\">0.82</span>, reorder the rows and correct values. None of it gets in the way.",
+        "climax.est3": "<strong>Back again, unveiled.</strong> With your vault, <span class=\"mono dato\">900.884.201-1</span> becomes <span class=\"mono\">900.123.456-8</span> again — and the third party’s column stays.",
+        "climax.pie": "The same file, the same policy and the same passphrase always produce the same result, byte for byte. There is no artificial intelligence anywhere in the product: that is why it repeats identically, and why it can be audited. Values invented for this example.",
+        "fino.titulo": "The fine details",
+        "fino.bajada": "What almost nobody tells you, told here.",
+        "fino1.titulo": "What Velo does NOT claim",
+        "fino1.intro": "This section is as much a part of the product as the others. Velo <strong>measures</strong> re-identification risk; it does not remove it, and it does not declare any file anonymous.",
+        "fino1.li1": "The <strong>k-anonymity model can be attacked</strong> even without auxiliary information, and it degrades as columns are added. We know it, and we say so.",
+        "fino1.li2": "“We did not recognize personal data” is not the same as “this file is anonymous”. An internal code from your organization, or a combination specific to your field, can still point to a person without any public algorithm noticing.",
+        "fino1.li3": "Type detection runs on a <strong>sample of up to 5,000 values per column</strong>, spread across the file. The risk figures, by contrast, are calculated over the whole file.",
+        "fino1.li4": "The crossing advisor evaluates a <strong>bounded subset</strong> of combinations, and says so on screen. It is not the whole universe of possible crossings.",
+        "fino2.titulo": "Requirements, limits and what hurts",
+        "fino2.li1": "An up-to-date desktop browser. The first time you need to load the page; after that, the analysis happens entirely on your computer, and downloaded documents always open offline.",
+        "fino2.li2": "<strong>CSV with no limit</strong> (it is read in pieces) and <strong>Excel up to 150 MB</strong> (it has to be opened in full to be read). Measured: 500,000 rows by 24 columns — about 130 MB — in a few seconds, without the tab freezing.",
+        "fino2.li3": "It does not read databases, JSON or PDF, and it does not produce Excel output files: the same input written twice to <span class=\"mono\">.xlsx</span> would not come out byte-for-byte identical, and that sameness is exactly what Velo promises.",
+        "fino2.li4": "<strong>Three passphrases, three different scopes</strong> — the project’s, the vault’s and the log’s — and they should not be the same. Losing one means losing what it opened: there is no recovery, neither by Velo nor by anyone. Saying so up front is part of the deal, and it is exactly the same reason nobody else can open them.",
+        "fino3.titulo": "The map: where each screen leads",
+        "fino3.li1": "<a href=\"/\"><code>/</code></a> — the customs checkpoint: where you bring your table.",
+        "fino3.li2": "<a href=\"/diagnostico\"><code>/diagnostico</code></a> — the risk, column by column, and the crossing advisor.",
+        "fino3.li3": "<a href=\"/transformar\"><code>/transformar</code></a> — the workshop: the policy, the treated file, the certificate and the vault.",
+        "fino3.li4": "<a href=\"/regreso\"><code>/regreso</code></a> — the return: recovering what you handed over. It works on its own, with nothing loaded.",
+        "fino3.li5": "<a href=\"/bitacora\"><code>/bitacora</code></a> — the encrypted log: what you treated, when and by what criteria.",
+        "fino3.li6": "<a href=\"/conoce\"><code>/conoce</code></a> — this tour.",
+        "pie.sello": "Nothing leaves this browser",
+        "pie.cuenta": "14 features",
+        "pie.cubre.antes": "This tour covers the",
+        "pie.cubre.palabra": "features",
+        "pie.cubre.despues": "of Velo — all of them, grouped so you can discover them at your own pace. The count matches the repository’s user manual; the mapping table, feature by feature, lives in this delivery’s summary.",
+        "pie.espera": "Velo is deployed and running, but its address is not published yet: access is through a <strong>waiting list</strong> while the testing round is completed.",
+        "pie.historial.titulo": "Brochure history",
+        "pie.historial.li1": "<strong>Delivery of August 21, 2026 — initial brochure.</strong> Created once the H1 cycle was delivered: the five cards of the journey and their 14 features, the round-trip climax and the statement of what Velo does not claim. It gets <strong>sealed</strong> when the testing round closes."
+      }
+    </script>
+    <script>
+      (function () {
+        "use strict";
+
+        // ── Idioma: español en el marcado, inglés en un diccionario ───────────────────────────
+        //
+        // El español VIVE EN EL MARCADO: la página se lee igual sin JavaScript. Cada elemento
+        // traducible lleva `data-t="clave"` y el diccionario del <script id="velo-en"> mapea
+        // clave → innerHTML en inglés, con las mismas etiquetas en línea. Para atributos:
+        // `data-t-aria` (aria-label), `data-t-alt` (en el <picture>: el script de capturas
+        // reescribe el <img> y se llevaría el atributo), `data-t-title`, `data-t-content` (la
+        // <meta description>) y `data-t-sr` (el texto oculto `.sr-only` del conteo del pie, que
+        // no puede llevar atributos porque el contrato del export lo busca tal cual).
+        //
+        // NADA SE GUARDA: ni localStorage, ni sessionStorage, ni cookies, ni red. El idioma sale
+        // de `?lang=es|en` o, si no, del navegador; al elegir con el botón se escribe `?lang=`
+        // en la URL con replaceState, y eso es todo. Recargar sin parámetro vuelve a preguntarle
+        // al navegador.
+        var CODIGO = { es: "es-CO", en: "en-US" };
+        var ATRIBUTOS = [
+          ["data-t-aria", "aria-label"],
+          ["data-t-alt", "alt"],
+          ["data-t-title", "title"],
+          ["data-t-content", "content"],
+        ];
+        var html = document.documentElement;
+        var originales = new Map(); // nodo → el español que tenía, la primera vez que se tocó
+        var diccionario = null;
+
+        function detectar() {
+          var pedido = "";
+          try {
+            pedido = (
+              new URLSearchParams(window.location.search).get("lang") || ""
+            )
+              .trim()
+              .toLowerCase()
+              .slice(0, 2);
+          } catch (e) {
+            pedido = "";
+          }
+          if (pedido === "es" || pedido === "en") return pedido;
+          var preferencias =
+            navigator.languages && navigator.languages.length
+              ? navigator.languages
+              : [navigator.language];
+          for (var i = 0; i < preferencias.length; i++) {
+            var base = String(preferencias[i] || "")
+              .trim()
+              .toLowerCase()
+              .slice(0, 2);
+            if (base === "es" || base === "en") return base;
+          }
+          return "es";
+        }
+
+        function memoria(nodo) {
+          var m = originales.get(nodo);
+          if (!m) {
+            m = { atributos: {} };
+            originales.set(nodo, m);
+          }
+          return m;
+        }
+
+        // `data-t-alt` apunta al <picture>; el que lleva el `alt` es su <img>.
+        function destino(el, atributo) {
+          return atributo === "alt" ? el.querySelector("img") : el;
+        }
+
+        function textoOculto(el) {
+          for (var i = 0; i < el.children.length; i++) {
+            if (el.children[i].classList.contains("sr-only"))
+              return el.children[i];
+          }
+          return null;
+        }
+
+        function aplicarIdioma(idioma) {
+          var en = idioma === "en";
+          if (en && !diccionario) {
+            diccionario = JSON.parse(
+              document.getElementById("velo-en").textContent,
+            );
+          }
+          html.lang = CODIGO[idioma];
+
+          document.querySelectorAll("[data-t]").forEach(function (el) {
+            var m = memoria(el);
+            if (en) {
+              var ingles = diccionario[el.getAttribute("data-t")];
+              if (typeof ingles !== "string") return;
+              if (m.html === undefined) m.html = el.innerHTML;
+              el.innerHTML = ingles;
+            } else if (m.html !== undefined) {
+              el.innerHTML = m.html;
+            }
+          });
+
+          ATRIBUTOS.forEach(function (par) {
+            document
+              .querySelectorAll("[" + par[0] + "]")
+              .forEach(function (el) {
+                var objetivo = destino(el, par[1]);
+                if (!objetivo) return;
+                var m = memoria(objetivo);
+                if (en) {
+                  var ingles = diccionario[el.getAttribute(par[0])];
+                  if (typeof ingles !== "string") return;
+                  if (m.atributos[par[1]] === undefined) {
+                    m.atributos[par[1]] = objetivo.getAttribute(par[1]);
+                  }
+                  objetivo.setAttribute(par[1], ingles);
+                } else if (m.atributos[par[1]] !== undefined) {
+                  objetivo.setAttribute(par[1], m.atributos[par[1]]);
+                }
+              });
+          });
+
+          document.querySelectorAll("[data-t-sr]").forEach(function (el) {
+            var oculto = textoOculto(el);
+            if (!oculto) return;
+            var m = memoria(oculto);
+            if (en) {
+              var ingles = diccionario[el.getAttribute("data-t-sr")];
+              if (typeof ingles !== "string") return;
+              if (m.texto === undefined) m.texto = oculto.textContent;
+              oculto.textContent = ingles;
+            } else if (m.texto !== undefined) {
+              oculto.textContent = m.texto;
+            }
+          });
+
+          document.querySelectorAll(".idioma button").forEach(function (b) {
+            b.setAttribute(
+              "aria-pressed",
+              String(b.getAttribute("lang") === idioma),
+            );
+          });
+        }
+
+        function escribirEnLaUrl(idioma) {
+          try {
+            var url = new URL(window.location.href);
+            url.searchParams.set("lang", idioma);
+            window.history.replaceState(window.history.state, "", url.href);
+          } catch (e) {
+            // Abierto con doble clic (file://) el navegador puede negarse. El idioma ya cambió.
+          }
+        }
+
+        var inicial = detectar();
+        if (inicial === "en") {
+          // Ya, antes de pintar: para el lector de pantalla, el traductor del navegador y para
+          // que `idioma-pendiente` oculte el cuerpo hasta que el texto esté en inglés.
+          html.lang = CODIGO.en;
+          html.classList.add("idioma-pendiente");
+        }
+
+        function arrancar() {
+          try {
+            var grupo = document.querySelector(".idioma");
+            if (grupo) {
+              grupo.hidden = false;
+              grupo.addEventListener("click", function (e) {
+                var boton = e.target.closest
+                  ? e.target.closest("button")
+                  : null;
+                var idioma = boton ? boton.getAttribute("lang") : null;
+                if (idioma !== "es" && idioma !== "en") return;
+                aplicarIdioma(idioma);
+                escribirEnLaUrl(idioma);
+              });
+            }
+            aplicarIdioma(inicial);
+          } finally {
+            html.classList.remove("idioma-pendiente");
+          }
+        }
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", arrancar);
+        } else {
+          arrancar();
+        }
+      })();
+    </script>
   </head>
   <body>
     <!-- E02 · El sello del margen. Decorativo por completo: la promesa la dice el texto del
@@ -1396,15 +1805,45 @@
           stroke-linecap="round"
         />
       </svg>
-      <p>Nada sale de este navegador</p>
+      <p data-t="sello.texto">Nada sale de este navegador</p>
     </div>
 
     <div class="lienzo">
       <main>
         <!-- ═══ E01 · Portada — la tabla que se vela ═══ -->
         <header class="portada">
-          <p class="etiqueta">Velo · la aduana de tus datos</p>
-          <h1 aria-label="Entrega tus datos sin entregar a tu gente">
+          <div
+            class="idioma"
+            role="group"
+            aria-label="Idioma · Language"
+            hidden
+          >
+            <button
+              type="button"
+              lang="es"
+              aria-label="Español"
+              aria-pressed="true"
+            >
+              ES
+            </button>
+            <span class="idioma-sep" aria-hidden="true">·</span>
+            <button
+              type="button"
+              lang="en"
+              aria-label="English"
+              aria-pressed="false"
+            >
+              EN
+            </button>
+          </div>
+          <p class="etiqueta" data-t="portada.etiqueta">
+            Velo · la aduana de tus datos
+          </p>
+          <h1
+            aria-label="Entrega tus datos sin entregar a tu gente"
+            data-t-aria="portada.titulo.aria"
+            data-t="portada.titulo"
+          >
             <span aria-hidden="true" style="--r: 0s">Entrega</span>
             <span aria-hidden="true" style="--r: 0.07s">tus</span>
             <span aria-hidden="true" style="--r: 0.14s">datos</span>
@@ -1414,27 +1853,27 @@
             <span aria-hidden="true" style="--r: 0.45s">tu</span>
             <span aria-hidden="true" style="--r: 0.52s">gente</span>
           </h1>
-          <p class="apoyo">
+          <p class="apoyo" data-t="portada.apoyo">
             Antes de mandar una tabla a una IA, a una herramienta en la nube o
             al computador de un tercero, Velo te enseña a quién señala con el
             dedo y te la devuelve tratada. Todo dentro de esta pestaña.
           </p>
           <p>
-            <span class="chip-estado"
+            <span class="chip-estado" data-t="portada.estado"
               >Brochure inicial — se sella con el cierre de pruebas</span
             >
           </p>
 
           <figure class="muestra">
             <table class="tabla-mini">
-              <caption class="sr-only">
+              <caption class="sr-only" data-t="portada.tabla.resumen">
                 Ejemplo con datos inventados: así llega la tabla al otro lado.
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">documento</th>
-                  <th scope="col">nombre</th>
-                  <th scope="col">diagnóstico</th>
+                  <th scope="col" data-t="portada.tabla.col1">documento</th>
+                  <th scope="col" data-t="portada.tabla.col2">nombre</th>
+                  <th scope="col" data-t="portada.tabla.col3">diagnóstico</th>
                 </tr>
               </thead>
               <tbody>
@@ -1458,7 +1897,9 @@
                   <td>
                     <span class="velo" style="--r: 1.11s">
                       <span class="crudo" aria-hidden="true">J45.9</span>
-                      <span class="velado">Respiratorio</span>
+                      <span class="velado" data-t="portada.tabla.dx1"
+                        >Respiratorio</span
+                      >
                     </span>
                   </td>
                 </tr>
@@ -1480,7 +1921,9 @@
                   <td>
                     <span class="velo" style="--r: 1.41s">
                       <span class="crudo" aria-hidden="true">E11.9</span>
-                      <span class="velado">Metabólico</span>
+                      <span class="velado" data-t="portada.tabla.dx2"
+                        >Metabólico</span
+                      >
                     </span>
                   </td>
                 </tr>
@@ -1504,13 +1947,15 @@
                   <td>
                     <span class="velo" style="--r: 1.71s">
                       <span class="crudo" aria-hidden="true">I10</span>
-                      <span class="velado">Circulatorio</span>
+                      <span class="velado" data-t="portada.tabla.dx3"
+                        >Circulatorio</span
+                      >
                     </span>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <figcaption>
+            <figcaption data-t="portada.tabla.pie">
               Tres técnicas distintas en una sola tabla: el documento se
               <strong>seudonimiza</strong>, el nombre se
               <strong>suprime</strong> y el diagnóstico se
@@ -1523,8 +1968,10 @@
             </figcaption>
           </figure>
 
-          <p class="lema">Velo para entregar. Desvelo para recuperar.</p>
-          <p class="baja">
+          <p class="lema" data-t="portada.lema">
+            Velo para entregar. Desvelo para recuperar.
+          </p>
+          <p class="baja" data-t="portada.baja">
             Baja sin prisa: cada tarjeta se abre al llegar a ella, y tú mandas
             sobre cualquiera
             <span class="flecha" aria-hidden="true">↓</span>
@@ -1533,10 +1980,10 @@
 
         <!-- ═══ E03 · Las cinco puertas + E04 · La tarjeta abierta ═══ -->
         <section class="seccion" aria-labelledby="t-quehace">
-          <h2 id="t-quehace" class="revela">
+          <h2 id="t-quehace" class="revela" data-t="quehace.titulo">
             Qué hace, en el orden en que lo vas a usar
           </h2>
-          <p class="suave revela">
+          <p class="suave revela" data-t="quehace.bajada">
             Cinco pasos, catorce cosas. Se van abriendo a medida que bajas y se
             recogen en cuanto quedan atrás; si tocas una, manda tu toque.
           </p>
@@ -1566,10 +2013,12 @@
                     </svg>
                   </span>
                   <span class="tarjeta-titulos">
-                    <span class="titulo">Mira lo que te delata</span>
-                    <span class="linea"
-                      >Trae la tabla y Velo te dice a quién señala, y por
-                      qué</span
+                    <span class="titulo" data-t="tarjeta1.titulo"
+                      >Descubre quién queda expuesto</span
+                    >
+                    <span class="linea" data-t="tarjeta1.linea"
+                      >Sueltas la tabla y Velo te dice qué columnas identifican
+                      a una persona, y con qué certeza</span
                     >
                   </span>
                   <svg
@@ -1594,13 +2043,14 @@
                 class="detalle"
                 id="d1"
                 role="region"
-                aria-label="Mira lo que te delata — detalle"
+                aria-label="Descubre quién queda expuesto — detalle"
+                data-t-aria="tarjeta1.detalle.aria"
               >
                 <div class="detalle-interior">
                   <div class="detalle-cuerpo">
                     <figure class="captura">
                       <span class="ruta" aria-hidden="true">/diagnostico</span>
-                      <picture>
+                      <picture data-t-alt="tarjeta1.captura.alt">
                         <!-- captura:diagnostico -->
                         <source
                           media="(prefers-color-scheme: dark)"
@@ -1616,7 +2066,7 @@
                           decoding="async"
                         /><!-- /captura:diagnostico -->
                       </picture>
-                      <figcaption>
+                      <figcaption data-t="tarjeta1.captura.pie">
                         El diagnóstico de una muestra del kit de prueba: 600
                         filas sintéticas, ni un dato real. El riesgo se contó
                         registro por registro sobre esas filas — sin modelo y
@@ -1625,8 +2075,8 @@
                     </figure>
 
                     <div class="feature">
-                      <h4>Trae tu tabla</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta1.f1.titulo">Trae tu tabla</h4>
+                      <p class="como" data-t="tarjeta1.f1.como">
                         Arrástrala al recuadro o elígela con el botón —que llega
                         con la tecla Tab y se abre con Enter—. CSV sin tope,
                         porque se lee por partes y nunca existe entero en
@@ -1635,15 +2085,17 @@
                         tomando la huella, leyendo, reconociendo las columnas,
                         midiendo el riesgo.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta1.f1.tip">
                         <strong>Tip:</strong> si tu Excel pesa más de 150 MB,
                         ábrelo y guárdalo como CSV. Desde 40 MB Velo te avisa de
                         que va a tardar y te ofrece la misma salida.
                       </p>
                     </div>
                     <div class="feature">
-                      <h4>Qué hay dentro, columna por columna</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta1.f2.titulo">
+                        Qué hay dentro, columna por columna
+                      </h4>
+                      <p class="como" data-t="tarjeta1.f2.como">
                         Cada columna llega clasificada en una de las cuatro
                         categorías de la Ley 1581 de 2012 —identificador
                         directo, dato sensible del artículo 5,
@@ -1655,7 +2107,7 @@
                         columna. Las muestras van enmascaradas y las columnas
                         sensibles no llevan ninguna.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta1.f2.tip">
                         <strong>Tip:</strong> una cédula no es un «dato
                         sensible» en el sentido de la ley: es un identificador
                         directo, que es otra cosa. Velo no las mezcla aunque
@@ -1663,8 +2115,8 @@
                       </p>
                     </div>
                     <div class="feature">
-                      <h4>Llévate el reporte</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta1.f3.titulo">Llévate el reporte</h4>
+                      <p class="como" data-t="tarjeta1.f3.como">
                         Un archivo HTML que se abre con doble clic en cualquier
                         computador, sin internet y sin instalar nada. Lleva los
                         nombres de columna, lo detectado, las categorías, las
@@ -1672,7 +2124,7 @@
                         lleva ni una fila de tu tabla. Puedes verlo completo
                         antes de descargarlo.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta1.f3.tip">
                         <strong>Tip:</strong> quien reciba el reporte puede
                         comprobar que habla de esa copia exacta recalculando la
                         huella:
@@ -1711,10 +2163,12 @@
                     </svg>
                   </span>
                   <span class="tarjeta-titulos">
-                    <span class="titulo">Decide qué se le hace</span>
-                    <span class="linea"
-                      >La política es tuya, y es un archivo que puedes volver a
-                      usar</span
+                    <span class="titulo" data-t="tarjeta2.titulo"
+                      >Tú decides el tratamiento</span
+                    >
+                    <span class="linea" data-t="tarjeta2.linea"
+                      >Una regla por columna, o una política lista para Colombia
+                      o Estados Unidos, guardada como archivo</span
                     >
                   </span>
                   <svg
@@ -1739,15 +2193,19 @@
                 class="detalle"
                 id="d2"
                 role="region"
-                aria-label="Decide qué se le hace — detalle"
+                aria-label="Tú decides el tratamiento — detalle"
+                data-t-aria="tarjeta2.detalle.aria"
               >
                 <div class="detalle-interior">
                   <div class="detalle-cuerpo">
                     <figure class="captura">
-                      <span class="ruta" aria-hidden="true"
+                      <span
+                        class="ruta"
+                        aria-hidden="true"
+                        data-t="tarjeta2.ruta"
                         >/transformar · paso 1</span
                       >
-                      <picture>
+                      <picture data-t-alt="tarjeta2.captura.alt">
                         <!-- captura:politica -->
                         <source
                           media="(prefers-color-scheme: dark)"
@@ -1763,7 +2221,7 @@
                           decoding="async"
                         /><!-- /captura:politica -->
                       </picture>
-                      <figcaption>
+                      <figcaption data-t="tarjeta2.captura.pie">
                         La política de Habeas Data aplicada de un clic, y cada
                         columna todavía tuya: la técnica se cambia una por una,
                         y la casilla de bóveda decide qué se podrá deshacer.
@@ -1771,8 +2229,10 @@
                     </figure>
 
                     <div class="feature">
-                      <h4>Una fila por columna, y la decisión es tuya</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta2.f1.titulo">
+                        Una fila por columna, y la decisión es tuya
+                      </h4>
+                      <p class="como" data-t="tarjeta2.f1.como">
                         En el taller eliges, columna por columna, qué se le hace
                         a cada una. Esa política no se guarda en ningún sitio
                         —lleva los nombres de tus columnas, que son datos tuyos—
@@ -1781,7 +2241,7 @@
                         volver a importar, con su propio hash SHA-256 como
                         identidad.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta2.f1.tip">
                         <strong>Tip:</strong> el nombre del archivo tratado
                         termina en ocho caracteres que no son un número de
                         serie: son el principio del hash de la política. Dos
@@ -1790,8 +2250,10 @@
                       </p>
                     </div>
                     <div class="feature">
-                      <h4>O parte de una política de fábrica</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta2.f2.titulo">
+                        O parte de una política de fábrica
+                      </h4>
+                      <p class="como" data-t="tarjeta2.f2.como">
                         <strong>Habeas Data (Colombia)</strong> —Ley 1581 de
                         2012 y Decreto 1377 de 2013, con las técnicas de la guía
                         AGN + SIC, y un objetivo de grupo mínimo de 5— o
@@ -1802,7 +2264,7 @@
                         cuántos solo por el nombre de la columna y cuántos te
                         toca marcar a ti.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta2.f2.tip">
                         <strong>Tip:</strong> en cuanto tocas una regla, Velo lo
                         dice: «ya no es Habeas Data». La guía oficial no
                         respalda una decisión que no tomó, y ninguna de las dos
@@ -1837,10 +2299,12 @@
                     </svg>
                   </span>
                   <span class="tarjeta-titulos">
-                    <span class="titulo">Vela con exactitud</span>
-                    <span class="linea"
-                      >Conserva la forma, pierde la identidad — y los cruces
-                      sobreviven</span
+                    <span class="titulo" data-t="tarjeta3.titulo"
+                      >Disfraza sin romper los datos</span
+                    >
+                    <span class="linea" data-t="tarjeta3.linea"
+                      >Los datos pierden la identidad y conservan la forma, y
+                      los cruces entre archivos siguen funcionando</span
                     >
                   </span>
                   <svg
@@ -1865,15 +2329,19 @@
                 class="detalle"
                 id="d3"
                 role="region"
-                aria-label="Vela con exactitud — detalle"
+                aria-label="Disfraza sin romper los datos — detalle"
+                data-t-aria="tarjeta3.detalle.aria"
               >
                 <div class="detalle-interior">
                   <div class="detalle-cuerpo">
                     <figure class="captura">
-                      <span class="ruta" aria-hidden="true"
+                      <span
+                        class="ruta"
+                        aria-hidden="true"
+                        data-t="tarjeta3.ruta"
                         >/transformar · paso 3</span
                       >
-                      <picture>
+                      <picture data-t-alt="tarjeta3.captura.alt">
                         <!-- captura:velado -->
                         <source
                           media="(prefers-color-scheme: dark)"
@@ -1889,7 +2357,7 @@
                           decoding="async"
                         /><!-- /captura:velado -->
                       </picture>
-                      <figcaption>
+                      <figcaption data-t="tarjeta3.captura.pie">
                         El antes va enmascarado incluso aquí. Y mira el después:
                         la cédula sigue teniendo diez dígitos y el NIT su guion
                         con el dígito de verificación recalculado.
@@ -1897,8 +2365,10 @@
                     </figure>
 
                     <div class="feature">
-                      <h4>Cuatro familias de técnicas</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta3.f1.titulo">
+                        Cuatro maneras de disfrazar un dato
+                      </h4>
+                      <p class="como" data-t="tarjeta3.f1.como">
                         <strong>Enmascarar</strong> (tapar parte del valor),
                         <strong>seudonimizar</strong> (cambiarlo por un código
                         derivado de tu frase de paso),
@@ -1908,7 +2378,7 @@
                         columna por columna, y la vista previa te enseña lo que
                         va a recibir la otra persona antes de escribir nada.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta3.f1.tip">
                         <strong>Tip:</strong> enmascarar y generalizar
                         <em>destruyen</em> información — los dígitos que faltan
                         ya no existen en ninguna parte. Solo los seudónimos
@@ -1917,11 +2387,11 @@
                       </p>
                     </div>
                     <div class="feature">
-                      <h4>
+                      <h4 data-t="tarjeta3.f2.titulo">
                         El formato se conserva y el dígito de verificación se
                         recalcula
                       </h4>
-                      <p class="como">
+                      <p class="como" data-t="tarjeta3.f2.como">
                         Un NIT sigue siendo un NIT: si eliges conservar el
                         formato, el seudónimo tiene la misma forma y su dígito
                         de verificación se
@@ -1929,7 +2399,7 @@
                         la DIAN. La hoja de cálculo del otro lado no se rompe y
                         la validación de su sistema tampoco.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta3.f2.tip">
                         <strong>Tip:</strong> conservar el formato reduce el
                         espacio disponible, así que dos valores distintos pueden
                         chocar. Velo cuenta esas colisiones y te las declara: no
@@ -1937,8 +2407,10 @@
                       </p>
                     </div>
                     <div class="feature">
-                      <h4>El mes que viene, el mismo seudónimo</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta3.f3.titulo">
+                        El mes que viene, el mismo seudónimo
+                      </h4>
+                      <p class="como" data-t="tarjeta3.f3.como">
                         El seudónimo se calcula con una frase de paso que solo
                         tienes tú, derivada con 600.000 vueltas de PBKDF2 —el
                         mínimo que recomienda OWASP, y ese costo
@@ -1947,7 +2419,7 @@
                         el archivo de marzo con el de abril sin tener los datos
                         reales delante.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta3.f3.tip">
                         <strong>Tip:</strong> guarda la frase <em>y</em> la sal
                         que Velo te enseña. Si pierdes la frase no hay vuelta
                         atrás: es la contrapartida de que nadie más la tenga.
@@ -1981,10 +2453,12 @@
                     </svg>
                   </span>
                   <span class="tarjeta-titulos">
-                    <span class="titulo">Mide el riesgo de verdad</span>
-                    <span class="linea"
-                      >Lo exacto y lo estimado, en dos planos que nunca se
-                      suman</span
+                    <span class="titulo" data-t="tarjeta4.titulo"
+                      >Mide el riesgo con cifras exactas</span
+                    >
+                    <span class="linea" data-t="tarjeta4.linea"
+                      >Cuánta gente sigue expuesta antes y después, contada fila
+                      por fila y separada de lo estimado</span
                     >
                   </span>
                   <svg
@@ -2009,15 +2483,19 @@
                 class="detalle"
                 id="d4"
                 role="region"
-                aria-label="Mide el riesgo de verdad — detalle"
+                aria-label="Mide el riesgo con cifras exactas — detalle"
+                data-t-aria="tarjeta4.detalle.aria"
               >
                 <div class="detalle-interior">
                   <div class="detalle-cuerpo">
                     <figure class="captura">
-                      <span class="ruta" aria-hidden="true"
+                      <span
+                        class="ruta"
+                        aria-hidden="true"
+                        data-t="tarjeta4.ruta"
                         >/transformar · el balance</span
                       >
-                      <picture>
+                      <picture data-t-alt="tarjeta4.captura.alt">
                         <!-- captura:riesgo -->
                         <source
                           media="(prefers-color-scheme: dark)"
@@ -2033,7 +2511,7 @@
                           decoding="async"
                         /><!-- /captura:riesgo -->
                       </picture>
-                      <figcaption>
+                      <figcaption data-t="tarjeta4.captura.pie">
                         El balance, con las dos medidas del mismo cálculo:
                         cuántos quedaban solos antes y cuántos después. Debajo
                         empieza el riesgo en la población entera, que va siempre
@@ -2042,8 +2520,10 @@
                     </figure>
 
                     <div class="feature">
-                      <h4>Grupos de al menos k, y el consejero de cruces</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta4.f1.titulo">
+                        Grupos de al menos k, y el consejero de cruces
+                      </h4>
+                      <p class="como" data-t="tarjeta4.f1.como">
                         Aquí está el hallazgo que casi nadie espera: columnas
                         que por separado no identifican a nadie, juntas señalan
                         a media tabla. El consejero te enseña las que delatan
@@ -2055,7 +2535,7 @@
                         cortar hasta que nadie quede en un grupo demasiado
                         pequeño.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta4.f1.tip">
                         <strong>Tip:</strong> cuanto más alto el k, más
                         protegido y menos preciso el dato. Y Velo
                         <em>no borra filas</em> para alcanzarlo: si no llega, lo
@@ -2063,8 +2543,10 @@
                       </p>
                     </div>
                     <div class="feature">
-                      <h4>Exacto y estimado, nunca en la misma frase</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta4.f2.titulo">
+                        Exacto y estimado, nunca en la misma frase
+                      </h4>
+                      <p class="como" data-t="tarjeta4.f2.como">
                         Las cifras de tu archivo —cuánta gente queda sola, el
                         grupo más pequeño, el riesgo del más expuesto— se
                         cuentan registro por registro sobre el archivo completo
@@ -2075,7 +2557,7 @@
                         (1991)— y solo aparece si tú declaras la población,
                         porque Velo no se la inventa.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta4.f2.tip">
                         <strong>Tip:</strong> si tu archivo es menos del 10 % de
                         la población que declaraste, Velo se niega a dar la
                         segunda cifra y te explica por qué. Preferimos no darla
@@ -2083,10 +2565,10 @@
                       </p>
                     </div>
                     <div class="feature">
-                      <h4>
+                      <h4 data-t="tarjeta4.f3.titulo">
                         El balance de antes y después, con la advertencia arriba
                       </h4>
-                      <p class="como">
+                      <p class="como" data-t="tarjeta4.f3.como">
                         Al terminar ves qué cambió y cuánto riesgo se redujo — y
                         también cuánta utilidad se perdió. Con una regla del
                         producto:
@@ -2096,7 +2578,7 @@
                         >. Una cédula intacta al lado de un «riesgo reducido 87
                         %» son dos frases ciertas cuya suma dice algo falso.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta4.f3.tip">
                         <strong>Tip:</strong> las advertencias tienen nombre y
                         apellido: identificadores sin tratar, registros que
                         siguen solos, el k que no se alcanzó, grupos donde todos
@@ -2132,13 +2614,13 @@
                     </svg>
                   </span>
                   <span class="tarjeta-titulos">
-                    <span class="titulo">
-                      Entrega, recupera, deja constancia
+                    <span class="titulo" data-t="tarjeta5.titulo">
+                      Entrega, recupera y deja constancia
                       <span class="estrella" aria-hidden="true">★</span>
                     </span>
-                    <span class="linea"
-                      >El viaje completo — y todo lo que hiciste queda
-                      anotado</span
+                    <span class="linea" data-t="tarjeta5.linea"
+                      >Recuperas los valores reales cuando el trabajo vuelve, y
+                      cada entrega queda certificada y anotada</span
                     >
                   </span>
                   <svg
@@ -2163,13 +2645,14 @@
                 class="detalle"
                 id="d5"
                 role="region"
-                aria-label="Entrega, recupera, deja constancia — detalle"
+                aria-label="Entrega, recupera y deja constancia — detalle"
+                data-t-aria="tarjeta5.detalle.aria"
               >
                 <div class="detalle-interior">
                   <div class="detalle-cuerpo">
                     <figure class="captura">
                       <span class="ruta" aria-hidden="true">/regreso</span>
-                      <picture>
+                      <picture data-t-alt="tarjeta5.captura.alt">
                         <!-- captura:regreso -->
                         <source
                           media="(prefers-color-scheme: dark)"
@@ -2185,7 +2668,7 @@
                           decoding="async"
                         /><!-- /captura:regreso -->
                       </picture>
-                      <figcaption>
+                      <figcaption data-t="tarjeta5.captura.pie">
                         El círculo cerrado: 587 de 587 valores volvieron a su
                         sitio desde la bóveda, sin una sola celda ambigua, y la
                         columna que añadió la otra persona sigue ahí. Sin la
@@ -2195,8 +2678,10 @@
                     </figure>
 
                     <div class="feature">
-                      <h4>La bóveda y el regreso</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta5.f1.titulo">
+                        La bóveda y el regreso
+                      </h4>
+                      <p class="como" data-t="tarjeta5.f1.como">
                         Un seudónimo no vuelve por sí solo —es un HMAC, no un
                         cifrado— y eso es justamente lo que lo hace seguro de
                         entregar. Lo que lo deshace es la
@@ -2210,7 +2695,7 @@
                         borre otras y corrija valores a mano — y su trabajo se
                         respeta.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta5.f1.tip">
                         <strong>Tip:</strong> la bóveda lleva tus datos
                         originales. Nunca viaje en el mismo correo que el
                         archivo anonimizado: quien reciba el correo tendría las
@@ -2218,8 +2703,10 @@
                       </p>
                     </div>
                     <div class="feature">
-                      <h4>El certificado, con las dos huellas</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta5.f2.titulo">
+                        El certificado, con las dos huellas
+                      </h4>
+                      <p class="como" data-t="tarjeta5.f2.como">
                         Mándalo con el archivo. Dice qué se le hizo —el balance
                         con sus advertencias, la utilidad perdida, el hash
                         completo de la política— y lleva
@@ -2229,15 +2716,17 @@
                         en vez de creerte. El propio certificado trae el comando
                         exacto para macOS, Linux y Windows.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta5.f2.tip">
                         <strong>Tip:</strong> un certificado no es una firma
                         digital. Prueba que el documento y el archivo se
                         corresponden, no quién los produjo.
                       </p>
                     </div>
                     <div class="feature">
-                      <h4>La bitácora, para acordarte dentro de seis meses</h4>
-                      <p class="como">
+                      <h4 data-t="tarjeta5.f3.titulo">
+                        La bitácora, para acordarte dentro de seis meses
+                      </h4>
+                      <p class="como" data-t="tarjeta5.f3.como">
                         El certificado prueba un tratamiento ante quien lo
                         recibe; la bitácora contesta otra pregunta y es tuya
                         para ti: qué has hecho con tus archivos. Queda anotado
@@ -2247,7 +2736,7 @@
                         cifrada, en un archivo aparte de la bóveda y con su
                         propia frase.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-t="tarjeta5.f3.tip">
                         <strong>Tip:</strong> guarda las dos proporciones y no
                         la resta. «Bajó del 30 % al 2 %» es cierta y puede
                         engañar, y una bitácora se lee meses después sin ninguna
@@ -2263,19 +2752,21 @@
 
         <!-- ═══ E05 · El respiro — velar en dos segundos ═══ -->
         <section class="seccion" aria-labelledby="t-velar">
-          <h2 id="t-velar" class="revela">Velar, en dos segundos</h2>
-          <p class="suave revela">
+          <h2 id="t-velar" class="revela" data-t="velar.titulo">
+            Velar, en dos segundos
+          </h2>
+          <p class="suave revela" data-t="velar.bajada">
             Conserva la forma. Pierde la identidad. Y el mes que viene, el mismo
             seudónimo.
           </p>
           <div class="respiro revela">
-            <p class="etiqueta">NIT de un proveedor</p>
+            <p class="etiqueta" data-t="velar.etiqueta">NIT de un proveedor</p>
             <span class="escena-velar" id="escena-velar">
               <span class="cortina" aria-hidden="true"></span>
               <span class="crudo" aria-hidden="true">900.123.456-8</span>
               <span class="velado">900.884.201-1</span>
             </span>
-            <p class="chica suave" style="margin-top: 2px">
+            <p class="chica suave" style="margin-top: 2px" data-t="velar.nota">
               Sigue siendo un NIT — con su dígito de verificación
               <strong>recalculado</strong> por el mod 11 de la DIAN, no
               inventado. El sistema del otro lado lo valida igual; lo que ya no
@@ -2283,15 +2774,19 @@
             </p>
             <div class="meses">
               <p class="mes">
-                <span class="etiqueta">Entrega de marzo</span>
+                <span class="etiqueta" data-t="velar.marzo"
+                  >Entrega de marzo</span
+                >
                 <span class="dato">900.884.201-1</span>
               </p>
               <p class="mes">
-                <span class="etiqueta">Entrega de abril</span>
+                <span class="etiqueta" data-t="velar.abril"
+                  >Entrega de abril</span
+                >
                 <span class="dato">900.884.201-1</span>
               </p>
             </div>
-            <p class="chica tenue" style="margin-top: 12px">
+            <p class="chica tenue" style="margin-top: 12px" data-t="velar.pie">
               El mismo seudónimo en las dos entregas: los cruces del análisis
               sobreviven sin que los datos reales salgan nunca. Valores
               inventados para este ejemplo.
@@ -2301,10 +2796,10 @@
 
         <!-- ═══ E06 · La aduana en tu navegador ═══ -->
         <section class="seccion" aria-labelledby="t-aduana">
-          <h2 id="t-aduana" class="revela">
+          <h2 id="t-aduana" class="revela" data-t="aduana.titulo">
             Y mientras todo esto pasa, nada ha salido
           </h2>
-          <p class="suave revela">
+          <p class="suave revela" data-t="aduana.bajada">
             No es una promesa de folleto: es que no hay a dónde ir.
           </p>
           <div class="aduana revela">
@@ -2314,6 +2809,7 @@
               viewBox="0 0 420 210"
               role="img"
               aria-label="Un navegador con la tabla dentro. Tres flechas intentan salir hacia un servidor, una IA y el computador de un tercero, y se cortan en el borde de la pestaña."
+              data-t-aria="aduana.lamina.aria"
             >
               <!-- La pestaña: el territorio entero del producto. -->
               <rect
@@ -2440,11 +2936,31 @@
                 stroke-width="2.5"
                 stroke-linecap="round"
               />
-              <text class="rotulo" x="314" y="80">un servidor</text>
-              <text class="rotulo" x="314" y="109">una IA</text>
-              <text class="rotulo" x="314" y="138">un tercero</text>
+              <text
+                class="rotulo"
+                x="314"
+                y="80"
+                data-t="aduana.lamina.servidor"
+              >
+                un servidor
+              </text>
+              <text class="rotulo" x="314" y="109" data-t="aduana.lamina.ia">
+                una IA
+              </text>
+              <text
+                class="rotulo"
+                x="314"
+                y="138"
+                data-t="aduana.lamina.tercero"
+              >
+                un tercero
+              </text>
             </svg>
-            <p class="chica suave" style="margin-top: 14px">
+            <p
+              class="chica suave"
+              style="margin-top: 14px"
+              data-t="aduana.prueba"
+            >
               Velo no tiene servidor: no hay nada al otro lado que pueda recibir
               tu archivo. Y no es una promesa a ciegas — hay una prueba
               automática que
@@ -2454,7 +2970,7 @@
               prohíbe al navegador conectarse a cualquier sitio que no sea el
               suyo.
             </p>
-            <p class="chica tenue">
+            <p class="chica tenue" data-t="aduana.contrapartida">
               Tiene una contrapartida honesta: si recargas la página, el
               diagnóstico desaparece. No es un error — es la misma razón por la
               que tus datos no se filtran.
@@ -2464,9 +2980,11 @@
 
         <!-- ═══ E07 · EL CLÍMAX — el círculo completo ═══ -->
         <section class="climax" aria-labelledby="t-climax">
-          <p class="etiqueta">Lo que nadie más hace</p>
-          <h2 id="t-climax">El viaje completo, de ida y de vuelta</h2>
-          <p class="suave">
+          <p class="etiqueta" data-t="climax.etiqueta">Lo que nadie más hace</p>
+          <h2 id="t-climax" data-t="climax.titulo">
+            El viaje completo, de ida y de vuelta
+          </h2>
+          <p class="suave" data-t="climax.bajada">
             Las demás herramientas hacen media travesía: anonimizan y ahí se
             despiden. Con Velo entregas sin entregar — y cuando el trabajo
             vuelve, lo recuperas.
@@ -2476,27 +2994,29 @@
           <div class="viaje-animado" id="viaje" data-quieta>
             <div class="viaje-lienzo">
               <div class="viaje-mitad viaje-mitad--tuya">
-                <span class="etiqueta">Tu mesa</span>
+                <span class="etiqueta" data-t="climax.mesa">Tu mesa</span>
               </div>
               <div class="viaje-mitad viaje-mitad--suya">
-                <span class="etiqueta">El tercero</span>
+                <span class="etiqueta" data-t="climax.tercero">El tercero</span>
               </div>
               <div class="viaje-linea" aria-hidden="true"></div>
               <div class="paquete" aria-hidden="true">
-                <p class="paquete-nombre">mi-tabla.csv</p>
+                <p class="paquete-nombre" data-t="climax.archivo">
+                  mi-tabla.csv
+                </p>
                 <div class="paquete-fila">
                   <span class="velo">
                     <span class="crudo">900.123.456-8</span>
                     <span class="velado">900.884.201-1</span>
                   </span>
-                  <span class="tercero-col">0,82</span>
+                  <span class="tercero-col" data-t="climax.col1">0,82</span>
                 </div>
                 <div class="paquete-fila">
                   <span class="velo">
                     <span class="crudo">830.045.210-5</span>
                     <span class="velado">901.447.038-7</span>
                   </span>
-                  <span class="tercero-col">0,41</span>
+                  <span class="tercero-col" data-t="climax.col2">0,41</span>
                 </div>
               </div>
               <p class="chip-boveda" aria-hidden="true">
@@ -2514,24 +3034,24 @@
                   <rect x="3" y="13" width="18" height="7" rx="1.5" />
                   <path d="M10 7.5h4M10 16.5h4" />
                 </svg>
-                tu bóveda
+                <span data-t="climax.boveda">tu bóveda</span>
               </p>
             </div>
             <ol class="viaje-pasos">
-              <li>
+              <li data-t="climax.paso1">
                 <b>Velas</b> el archivo en tu mesa: los identificadores se
                 vuelven seudónimos.
               </li>
-              <li>
+              <li data-t="climax.paso2">
                 <b>Cruza la frontera</b> — es lo único que la cruza, y ya no
                 señala a nadie.
               </li>
-              <li>
+              <li data-t="climax.paso3">
                 <b>El tercero trabaja</b>: añade su columna, reordena las filas,
                 corrige a mano.
               </li>
-              <li><b>Vuelve</b> el archivo trabajado.</li>
-              <li>
+              <li data-t="climax.paso4"><b>Vuelve</b> el archivo trabajado.</li>
+              <li data-t="climax.paso5">
                 <b>Lo desvelas</b> con tu bóveda: los originales regresan
                 <strong>y la columna del tercero se queda</strong>.
               </li>
@@ -2543,7 +3063,7 @@
             <div class="estaciones">
               <div class="estacion">
                 <span class="num" aria-hidden="true">1</span>
-                <p style="margin: 0">
+                <p style="margin: 0" data-t="climax.est1">
                   <strong>En tu mesa, velado.</strong>
                   <span class="mono">900.123.456-8</span> sale como
                   <span class="mono dato">900.884.201-1</span>. Eso es lo que
@@ -2552,7 +3072,7 @@
               </div>
               <div class="estacion">
                 <span class="num" aria-hidden="true">2</span>
-                <p style="margin: 0">
+                <p style="margin: 0" data-t="climax.est2">
                   <strong>El tercero trabaja.</strong> Añade su columna
                   <span class="mono">0,82</span>, reordena las filas y corrige
                   valores. Nada de eso estorba.
@@ -2560,7 +3080,7 @@
               </div>
               <div class="estacion">
                 <span class="num" aria-hidden="true">3</span>
-                <p style="margin: 0">
+                <p style="margin: 0" data-t="climax.est3">
                   <strong>De vuelta, desvelado.</strong> Con tu bóveda,
                   <span class="mono dato">900.884.201-1</span> vuelve a ser
                   <span class="mono">900.123.456-8</span> — y la columna del
@@ -2570,7 +3090,7 @@
             </div>
           </div>
 
-          <p class="chica tenue" style="margin-top: 16px">
+          <p class="chica tenue" style="margin-top: 16px" data-t="climax.pie">
             El mismo archivo, la misma política y la misma frase producen
             siempre el mismo resultado, byte por byte. No hay inteligencia
             artificial en ninguna parte del producto: por eso se repite
@@ -2581,36 +3101,40 @@
 
         <!-- ═══ E08 · Lo fino ═══ -->
         <section class="seccion" aria-labelledby="t-fino">
-          <h2 id="t-fino" class="revela">Los detalles finos</h2>
-          <p class="suave revela">Lo que casi nadie cuenta, contado aquí.</p>
+          <h2 id="t-fino" class="revela" data-t="fino.titulo">
+            Los detalles finos
+          </h2>
+          <p class="suave revela" data-t="fino.bajada">
+            Lo que casi nadie cuenta, contado aquí.
+          </p>
 
           <details class="fino revela">
-            <summary>Lo que Velo NO afirma</summary>
+            <summary data-t="fino1.titulo">Lo que Velo NO afirma</summary>
             <div class="cuerpo chica">
-              <p style="margin-top: 0">
+              <p style="margin-top: 0" data-t="fino1.intro">
                 Esta sección es tan parte del producto como las otras. Velo
                 <strong>mide</strong> el riesgo de reidentificación; no lo
                 elimina y no declara anónimo ningún archivo.
               </p>
               <ul>
-                <li>
+                <li data-t="fino1.li1">
                   El modelo <strong>k-anonimato es atacable</strong> incluso sin
                   información auxiliar, y se degrada a medida que se añaden
                   columnas. Lo sabemos y lo decimos.
                 </li>
-                <li>
+                <li data-t="fino1.li2">
                   «No reconocimos datos personales» no es lo mismo que «este
                   archivo es anónimo». Un código interno de tu organización o
                   una combinación propia de tu dominio pueden seguir señalando a
                   una persona sin que ningún algoritmo público lo note.
                 </li>
-                <li>
+                <li data-t="fino1.li3">
                   La detección de tipos se hace sobre una
                   <strong>muestra de hasta 5.000 valores por columna</strong>,
                   repartidos a lo largo del archivo. Las cifras de riesgo, en
                   cambio, se calculan sobre el archivo completo.
                 </li>
-                <li>
+                <li data-t="fino1.li4">
                   El consejero de cruces evalúa un
                   <strong>subconjunto acotado</strong> de combinaciones, y lo
                   declara en pantalla. No es el universo entero de cruces
@@ -2621,29 +3145,31 @@
           </details>
 
           <details class="fino revela">
-            <summary>Requisitos, topes y lo que duele</summary>
+            <summary data-t="fino2.titulo">
+              Requisitos, topes y lo que duele
+            </summary>
             <div class="cuerpo chica">
               <ul style="margin-top: 0">
-                <li>
+                <li data-t="fino2.li1">
                   Un navegador de escritorio al día. La primera vez necesitas
                   cargar la página; después el análisis ocurre entero en tu
                   computador, y los documentos descargados se abren sin
                   conexión, siempre.
                 </li>
-                <li>
+                <li data-t="fino2.li2">
                   <strong>CSV sin tope</strong> (se lee por partes) y
                   <strong>Excel hasta 150 MB</strong>
                   (hay que abrirlo completo para leerlo). Medido: 500.000 filas
                   por 24 columnas —unos 130 MB— en unos pocos segundos, sin que
                   la pestaña se congele.
                 </li>
-                <li>
+                <li data-t="fino2.li3">
                   No lee bases de datos, ni JSON, ni PDF, y no genera archivos
                   de Excel de salida: dos
                   <span class="mono">.xlsx</span> iguales no saldrían idénticos
                   byte por byte, y esa igualdad es justo lo que Velo promete.
                 </li>
-                <li>
+                <li data-t="fino2.li4">
                   <strong>Tres frases de paso, tres alcances distintos</strong>
                   —la del proyecto, la de la bóveda y la de la bitácora— y
                   conviene que no sean la misma. Perder una es perder lo que
@@ -2656,32 +3182,34 @@
           </details>
 
           <details class="fino revela">
-            <summary>El mapa: a dónde lleva cada pantalla</summary>
+            <summary data-t="fino3.titulo">
+              El mapa: a dónde lleva cada pantalla
+            </summary>
             <div class="cuerpo chica">
               <ul class="mapa">
-                <li>
+                <li data-t="fino3.li1">
                   <a href="/"><code>/</code></a> — la aduana: donde traes tu
                   tabla.
                 </li>
-                <li>
+                <li data-t="fino3.li2">
                   <a href="/diagnostico"><code>/diagnostico</code></a> — el
                   riesgo, columna por columna, y el consejero de cruces.
                 </li>
-                <li>
+                <li data-t="fino3.li3">
                   <a href="/transformar"><code>/transformar</code></a> — el
                   taller: la política, el archivo tratado, el certificado y la
                   bóveda.
                 </li>
-                <li>
+                <li data-t="fino3.li4">
                   <a href="/regreso"><code>/regreso</code></a> — el regreso:
                   recuperar lo que entregaste. Funciona sola, sin tener nada
                   cargado.
                 </li>
-                <li>
+                <li data-t="fino3.li5">
                   <a href="/bitacora"><code>/bitacora</code></a> — la bitácora
                   cifrada: qué trataste, cuándo y con qué criterio.
                 </li>
-                <li>
+                <li data-t="fino3.li6">
                   <a href="/conoce"><code>/conoce</code></a> — este recorrido.
                 </li>
               </ul>
@@ -2743,33 +3271,39 @@
               stroke-linecap="round"
             />
           </svg>
-          <span>Nada sale de este navegador</span>
+          <span data-t="pie.sello">Nada sale de este navegador</span>
         </p>
         <p class="chica suave">
-          Este recorrido cubre las
+          <span data-t="pie.cubre.antes">Este recorrido cubre las</span>
           <!-- La frase entera va DOS veces: una para el lector de pantalla, con el número
                completo desde el primer byte, y otra a la vista, con la cifra que se cuenta
                sola. Partirlo —el número por un lado y la palabra por otro— hacía que el
                documento se leyera «1414 funcionalidades». -->
-          <strong
+          <strong data-t-sr="pie.cuenta"
             ><span class="sr-only">14 funcionalidades</span
             ><span aria-hidden="true"
-              ><span class="conteo" id="conteo">14</span> funcionalidades</span
+              ><span class="conteo" id="conteo">14</span>
+              <span data-t="pie.cubre.palabra">funcionalidades</span></span
             ></strong
           >
-          de Velo — todas, agrupadas para que las descubras a tu ritmo. El
-          conteo cuadra con el manual de uso del repositorio; la tabla de mapeo,
-          funcionalidad por funcionalidad, vive en el resumen de esta entrega.
+          <span data-t="pie.cubre.despues"
+            >de Velo — todas, agrupadas para que las descubras a tu ritmo. El
+            conteo cuadra con el manual de uso del repositorio; la tabla de
+            mapeo, funcionalidad por funcionalidad, vive en el resumen de esta
+            entrega.</span
+          >
         </p>
-        <p class="chica tenue">
+        <p class="chica tenue" data-t="pie.espera">
           Velo está desplegado y funcionando, pero su dirección todavía no se
           publica: el acceso va por <strong>lista de espera</strong> mientras se
           completa la ronda de pruebas.
         </p>
         <details class="chica">
-          <summary>Historial del brochure</summary>
+          <summary data-t="pie.historial.titulo">
+            Historial del brochure
+          </summary>
           <ul>
-            <li>
+            <li data-t="pie.historial.li1">
               <strong
                 >Entrega del 21 de agosto de 2026 — brochure inicial.</strong
               >

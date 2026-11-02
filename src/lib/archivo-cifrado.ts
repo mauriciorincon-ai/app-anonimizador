@@ -22,6 +22,9 @@
 // hay que guardar un testigo ni comparar un hash de la frase — el modo ya lo hace, y hacerlo a mano
 // sería añadir superficie para equivocarse.
 
+import { mensaje } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
+
 import { bytesAleatorios, ITERACIONES_PBKDF2 } from "./llave";
 
 const BYTES_DE_MAGIA = 4;
@@ -59,9 +62,36 @@ export type MotivoDeRechazo =
   | "frase-incorrecta"
   | "costo-inaceptable";
 
+/**
+ * Qué tipo de archivo se espera abrir. Decide qué sustantivo lleva el mensaje de rechazo — y como el
+ * sustantivo cambia con el idioma («una bóveda» / «a vault»), no viaja como texto sino como una
+ * de las dos claves que `motor-regreso.ts` define para cada frase que lo nombra.
+ */
+export type QueArchivo = "boveda" | "bitacora";
+
 export type ResultadoDeApertura =
   | { ok: true; claro: string }
-  | { ok: false; motivo: MotivoDeRechazo; detalle: string };
+  | {
+      ok: false;
+      motivo: MotivoDeRechazo;
+      /** Qué pasó, como un `Mensaje` y no como una frase: este módulo no conoce el idioma. */
+      detalle: MensajeDeMotor;
+    };
+
+const DEMASIADO_CORTO: Record<QueArchivo, MensajeDeMotor> = {
+  boveda: mensaje("cifrado.demasiadoCorto.boveda"),
+  bitacora: mensaje("cifrado.demasiadoCorto.bitacora"),
+};
+
+const NO_ES: Record<QueArchivo, MensajeDeMotor> = {
+  boveda: mensaje("cifrado.noEs.boveda"),
+  bitacora: mensaje("cifrado.noEs.bitacora"),
+};
+
+const FRASE_NO_ABRE: Record<QueArchivo, MensajeDeMotor> = {
+  boveda: mensaje("cifrado.fraseNoAbre.boveda"),
+  bitacora: mensaje("cifrado.fraseNoAbre.bitacora"),
+};
 
 /**
  * Cifra un texto en claro y devuelve los bytes del archivo.
@@ -134,13 +164,13 @@ export async function abrirCifrado(
   version: number,
   bytes: Uint8Array,
   frase: string,
-  queEs: string,
+  queEs: QueArchivo,
 ): Promise<ResultadoDeApertura> {
   if (bytes.length < BYTES_DE_CABECERA) {
     return {
       ok: false,
       motivo: "no-es-de-velo",
-      detalle: `El archivo es demasiado corto para ser ${queEs}.`,
+      detalle: DEMASIADO_CORTO[queEs],
     };
   }
   for (let i = 0; i < magia.length; i++) {
@@ -148,7 +178,7 @@ export async function abrirCifrado(
       return {
         ok: false,
         motivo: "no-es-de-velo",
-        detalle: `El archivo no es ${queEs}.`,
+        detalle: NO_ES[queEs],
       };
     }
   }
@@ -157,7 +187,10 @@ export async function abrirCifrado(
     return {
       ok: false,
       motivo: "version-distinta",
-      detalle: `El archivo es de la versión ${versionDelArchivo} y esta Velo entiende la ${version}.`,
+      detalle: mensaje("cifrado.versionDistinta", {
+        version: versionDelArchivo,
+        entiende: version,
+      }),
     };
   }
 
@@ -177,7 +210,10 @@ export async function abrirCifrado(
     return {
       ok: false,
       motivo: "costo-inaceptable",
-      detalle: `El archivo declara ${iteraciones} iteraciones, fuera de lo que Velo acepta (1 a ${TOPE_DE_ITERACIONES}). Está dañado o alterado.`,
+      detalle: mensaje("cifrado.costoInaceptable", {
+        iteraciones,
+        tope: TOPE_DE_ITERACIONES,
+      }),
     };
   }
 
@@ -195,7 +231,7 @@ export async function abrirCifrado(
     return {
       ok: false,
       motivo: "frase-incorrecta",
-      detalle: `La frase no abre ${queEs}. También sale este mensaje si el archivo se dañó o lo modificaron.`,
+      detalle: FRASE_NO_ABRE[queEs],
     };
   }
 }

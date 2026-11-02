@@ -1,0 +1,5 @@
+{
+  "$comment": "kit v2.0.0 — regla 17 (cero enlaces). Dominios de hosting cuya aparición en un archivo versionado o en el campo homepage del repo delata una URL de producción o de preview. Cada app AMPLÍA `dominios` con el host real de su stack al adoptar el kit (p. ej. su dominio propio); jamás se quita uno. `excluir` son rutas (pathspec de git) que no se barren.",
+  "dominios": ["vercel.app", "workers.dev", "pages.dev", "netlify.app", "github.io", "onrender.com", "fly.dev", "herokuapp.com"],
+  "excluir": ["pnpm-lock.yaml", "cero-enlaces.json"]
+}

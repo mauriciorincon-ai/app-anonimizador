@@ -59,6 +59,7 @@ function informeDe(boveda: typeof LIMPIA, tabla: TablaColumnar): string {
     huellaDeBoveda: huellaDeBoveda(boveda),
     hashDePolitica: boveda.hashDePolitica,
     fecha: FECHA,
+    idioma: "es",
   });
 }
 
@@ -91,7 +92,8 @@ describe("la ambigüedad va ANTES que el porcentaje, en el orden del documento",
     // Sobre la ETIQUETA, no sobre la palabra: `cifrota` es también una clase del CSS embebido, y
     // buscarla suelta daría siempre verdadero.
     expect(html).not.toContain('<p class="cifrota">');
-    expect(html).toContain("no\ndescribe un archivo recuperado del todo");
+    // Insensible al espacio en blanco: la frase vive en el catálogo en una sola línea.
+    expect(html).toMatch(/no\s+describe un archivo recuperado del todo/);
   });
 
   it("la salvedad dice que Velo NO eligió, que es lo que el usuario necesita saber", () => {
@@ -298,12 +300,69 @@ describe("determinismo", () => {
 
 describe("nombre del archivo descargado", () => {
   it("sale del original y se distingue del reporte del diagnóstico", () => {
-    expect(nombreDelInforme("pacientes 2026.csv")).toBe(
+    expect(nombreDelInforme("pacientes 2026.csv", "es")).toBe(
       "velo-regreso-pacientes-2026.html",
     );
-    expect(nombreDelInforme("informe/raro*.xlsx")).toBe(
+    expect(nombreDelInforme("informe/raro*.xlsx", "es")).toBe(
       "velo-regreso-informe-raro.html",
     );
-    expect(nombreDelInforme("***.csv")).toBe("velo-regreso-archivo.html");
+    expect(nombreDelInforme("***.csv", "es")).toBe("velo-regreso-archivo.html");
+  });
+});
+
+// ── El idioma del informe (S5) ────────────────────────────────────────────────────────────────
+describe("el informe del regreso en cada idioma", () => {
+  const informeEn = (
+    boveda: typeof LIMPIA,
+    tabla: TablaColumnar,
+    idioma: "es" | "en",
+  ) =>
+    construirInformeDeRestauracion({
+      archivo: { nombre: "devuelto.csv", bytes: 4096, sha256: "f".repeat(64) },
+      restauracion: restaurar(tabla, boveda),
+      huellaDeBoveda: huellaDeBoveda(boveda),
+      hashDePolitica: boveda.hashDePolitica,
+      fecha: FECHA,
+      idioma,
+    });
+
+  it.each(["es", "en"] as const)(
+    "%s: mismo informe + misma fecha + mismo idioma ⇒ mismo archivo",
+    (idioma) => {
+      expect(informeEn(CON_COLISION, DEVUELTO, idioma)).toBe(
+        informeEn(CON_COLISION, DEVUELTO, idioma),
+      );
+    },
+  );
+
+  it("el idioma queda escrito dentro, y las huellas son las mismas en los dos", () => {
+    const es = informeEn(CON_COLISION, DEVUELTO, "es");
+    const en = informeEn(CON_COLISION, DEVUELTO, "en");
+    expect(es).toContain('<html lang="es-CO">');
+    expect(en).toContain('<html lang="en-US">');
+    expect(en).not.toBe(es);
+    for (const html of [es, en]) {
+      expect(html).toContain("f".repeat(64));
+      expect(html).toContain(huellaDeBoveda(CON_COLISION));
+    }
+  });
+
+  it("en inglés la cifra sigue DESPUÉS de las salvedades y la ambigüedad no se disimula", () => {
+    const en = informeEn(CON_COLISION, DEVUELTO, "en");
+    const salvedades = en.indexOf('class="salvedades');
+    const cifra = en.indexOf('class="reduccion"');
+    expect(salvedades).toBeGreaterThanOrEqual(0);
+    expect(salvedades).toBeLessThan(cifra);
+    expect(en).toContain("Velo");
+    expect(en).toContain("did not choose for you");
+    expect(en).toContain("Restoration report");
+    expect(en).not.toContain("Informe de restauración");
+  });
+
+  it("el nombre del archivo sigue al idioma", () => {
+    expect(nombreDelInforme("pacientes 2026.csv", "en")).toBe(
+      "velo-return-pacientes-2026.html",
+    );
+    expect(nombreDelInforme("***.csv", "en")).toBe("velo-return-file.html");
   });
 });

@@ -17,10 +17,14 @@ import {
 } from "@/engine/politicas-de-fabrica";
 import {
   columnasDeMondrian,
+  exportarPolitica,
   hashDePolitica,
   tecnicaDe,
 } from "@/engine/politica";
 import { VALIDADORES } from "@/engine/validadores";
+import { IDIOMAS } from "@/lib/idioma";
+import { fijarIdioma } from "@/lib/idioma/estado";
+import { decirMensaje } from "@/lib/idioma/mensajes";
 
 /** Las 18 letras del §164.514(b)(2)(i). Escritas a mano: son el contrato, no un dato derivado. */
 const LETRAS_DE_HIPAA = "ABCDEFGHIJKLMNOPQR".split("");
@@ -32,18 +36,30 @@ describe("HIPAA · Safe Harbor", () => {
   });
 
   it("cada identificador dice CÓMO lo ve Velo, o por qué no lo ve", () => {
-    for (const item of HIPAA.cobertura) {
-      expect(item.identificador.length, item.referencia).toBeGreaterThan(3);
-      if (item.deteccion.via === "validador") {
-        expect(item.deteccion.tipos.length, item.referencia).toBeGreaterThan(0);
-      } else if (item.deteccion.via === "ninguna") {
-        // No basta con decir que no lo ve: tiene que decir por qué, para que el usuario sepa
-        // si le toca a él.
-        expect(item.deteccion.porque.length, item.referencia).toBeGreaterThan(
-          20,
-        );
-      } else {
-        expect(item.deteccion.nota.length, item.referencia).toBeGreaterThan(20);
+    // En los dos idiomas: una tabla de cobertura que en inglés quedara a medias sería una tabla que
+    // afirma menos de lo que Velo sabe (o más de lo que dice) según quién la lea.
+    for (const idioma of IDIOMAS) {
+      for (const item of HIPAA.cobertura) {
+        const etiqueta = `${item.referencia} (${idioma})`;
+        expect(
+          decirMensaje(item.identificador, idioma).length,
+          etiqueta,
+        ).toBeGreaterThan(3);
+        if (item.deteccion.via === "validador") {
+          expect(item.deteccion.tipos.length, etiqueta).toBeGreaterThan(0);
+        } else if (item.deteccion.via === "ninguna") {
+          // No basta con decir que no lo ve: tiene que decir por qué, para que el usuario sepa
+          // si le toca a él.
+          expect(
+            decirMensaje(item.deteccion.porque, idioma).length,
+            etiqueta,
+          ).toBeGreaterThan(20);
+        } else {
+          expect(
+            decirMensaje(item.deteccion.nota, idioma).length,
+            etiqueta,
+          ).toBeGreaterThan(20);
+        }
       }
     }
   });
@@ -89,8 +105,10 @@ describe("HIPAA · Safe Harbor", () => {
   });
 
   it("su advertencia dice lo que un clic dejaría creer de más", () => {
-    expect(HIPAA.advertencia).toMatch(/ELIMINAR|eliminar/);
-    expect(HIPAA.advertencia).toMatch(/§164\.514\(c\)/);
+    expect(decirMensaje(HIPAA.advertencia, "es")).toMatch(/ELIMINAR|eliminar/);
+    expect(decirMensaje(HIPAA.advertencia, "es")).toMatch(/§164\.514\(c\)/);
+    expect(decirMensaje(HIPAA.advertencia, "en")).toMatch(/REMOVING|removing/);
+    expect(decirMensaje(HIPAA.advertencia, "en")).toMatch(/§164\.514\(c\)/);
   });
 
   it("la cuenta de cobertura sale de la TABLA, no de una cifra escrita a mano", () => {
@@ -106,8 +124,11 @@ describe("HIPAA · Safe Harbor", () => {
       total: 18,
     });
     for (const fabrica of POLITICAS_DE_FABRICA) {
-      expect(fabrica.advertencia, fabrica.id).not.toMatch(
+      expect(decirMensaje(fabrica.advertencia, "es"), fabrica.id).not.toMatch(
         /\d+\s+de\s+los\s+\d+/,
+      );
+      expect(decirMensaje(fabrica.advertencia, "en"), fabrica.id).not.toMatch(
+        /\d+\s+of\s+the\s+\d+/,
       );
     }
   });
@@ -115,9 +136,14 @@ describe("HIPAA · Safe Harbor", () => {
 
 describe("Habeas Data (Colombia)", () => {
   it("cita la ley y la guía", () => {
-    expect(HABEAS_DATA.fuente).toContain("Ley 1581 de 2012");
-    expect(HABEAS_DATA.fuente).toContain("art. 5");
-    expect(HABEAS_DATA.fuente).toMatch(/AGN|SIC/);
+    const fuente = decirMensaje(HABEAS_DATA.fuente, "es");
+    expect(fuente).toContain("Ley 1581 de 2012");
+    expect(fuente).toContain("art. 5");
+    expect(fuente).toMatch(/AGN|SIC/);
+    const source = decirMensaje(HABEAS_DATA.fuente, "en");
+    expect(source).toContain("Law 1581 of 2012");
+    expect(source).toContain("art. 5");
+    expect(source).toMatch(/AGN|SIC/);
   });
 
   it("CONSERVA el dato sensible: es lo que el análisis quiere medir, no la llave", () => {
@@ -150,19 +176,30 @@ describe("Habeas Data (Colombia)", () => {
 describe("las dos, como producto", () => {
   it("ninguna se presenta como certificación", () => {
     for (const fabrica of POLITICAS_DE_FABRICA) {
-      expect(fabrica.advertencia, fabrica.id).toMatch(
+      const es = decirMensaje(fabrica.advertencia, "es");
+      const en = decirMensaje(fabrica.advertencia, "en");
+      expect(es, fabrica.id).toMatch(
         /no es una certificación|No es una certificación/,
       );
-      expect(fabrica.advertencia.length, fabrica.id).toBeGreaterThan(80);
+      expect(en, fabrica.id).toMatch(/not a certification/);
+      expect(es.length, fabrica.id).toBeGreaterThan(80);
+      expect(en.length, fabrica.id).toBeGreaterThan(80);
     }
   });
 
   it("ninguna promete anonimato", () => {
     for (const fabrica of POLITICAS_DE_FABRICA) {
-      const texto = `${fabrica.nombre} ${fabrica.advertencia} ${fabrica.fuente}`;
-      expect(texto).not.toMatch(/anonimato garantizad/i);
-      expect(texto).not.toMatch(/100\s*%?\s*segur/i);
-      expect(texto).not.toMatch(/imposible de reidentificar/i);
+      for (const idioma of IDIOMAS) {
+        const texto = `${fabrica.nombre} ${decirMensaje(fabrica.advertencia, idioma)} ${decirMensaje(fabrica.fuente, idioma)}`;
+        expect(texto).not.toMatch(/anonimato garantizad/i);
+        expect(texto).not.toMatch(/100\s*%?\s*segur/i);
+        expect(texto).not.toMatch(/imposible de reidentificar/i);
+        expect(texto).not.toMatch(/guaranteed\s+anonymi/i);
+        expect(texto).not.toMatch(/100\s*%?\s*(safe|secure)/i);
+        expect(texto).not.toMatch(
+          /impossible\s+to\s+(re-?identify|de-?anonymi[sz]e)/i,
+        );
+      }
     }
   });
 });
@@ -233,8 +270,16 @@ describe("una política que declara un k tiene que poder cumplirlo", () => {
   // es una excepción al k, es su negación.
   const COLUMNAS = [
     { nombre: "cedula", tipo: "cedula", categoria: "identificador-directo" },
-    { nombre: "fecha_nacimiento", tipo: "fecha", categoria: "cuasi-identificador" },
-    { nombre: "municipio", tipo: "categoria", categoria: "cuasi-identificador" },
+    {
+      nombre: "fecha_nacimiento",
+      tipo: "fecha",
+      categoria: "cuasi-identificador",
+    },
+    {
+      nombre: "municipio",
+      tipo: "categoria",
+      categoria: "cuasi-identificador",
+    },
     { nombre: "fecha_atencion", tipo: "fecha", categoria: "no-personal" },
   ] as const;
 
@@ -259,17 +304,48 @@ describe("una política que declara un k tiene que poder cumplirlo", () => {
     expect(tecnicaDe(politica, "fecha_atencion").tipo).toBe(
       "generalizar-fecha",
     );
-    expect(tecnicaDe(politica, "cedula").tipo).toBe(
-      "seudonimizar-con-formato",
-    );
+    expect(tecnicaDe(politica, "cedula").tipo).toBe("seudonimizar-con-formato");
   });
 
   it("sin kObjetivo declarado, la regla por tipo manda también en los QIs", () => {
     // HIPAA no declara k (Safe Harbor es una lista de supresiones, no un modelo de riesgo), así
     // que ahí no hay k que proteger y la excepción no aplica.
     const sinK = { ...HABEAS_DATA, kObjetivo: null };
-    expect(tecnicaDe(construirPolitica(sinK, [...COLUMNAS]), "fecha_nacimiento").tipo).toBe(
-      "generalizar-fecha",
-    );
+    expect(
+      tecnicaDe(construirPolitica(sinK, [...COLUMNAS]), "fecha_nacimiento")
+        .tipo,
+    ).toBe("generalizar-fecha");
   });
+});
+
+describe("la identidad de una política de fábrica no depende del idioma de la pantalla", () => {
+  // Los nombres, fuentes y advertencias son prosa y viven en el catálogo del motor; la `Politica`
+  // que se exporta (y de la que sale su hash) solo lleva el `origen` estable y las reglas.
+  const COLUMNAS = [
+    { nombre: "cedula", tipo: "cedula", categoria: "identificador-directo" },
+    {
+      nombre: "municipio",
+      tipo: "categoria",
+      categoria: "cuasi-identificador",
+    },
+  ] as const;
+
+  it.each(POLITICAS_DE_FABRICA.map((f) => [f.id, f] as const))(
+    "%s: el JSON exportado y el hash son idénticos en español y en inglés",
+    (_id, fabrica) => {
+      fijarIdioma("es");
+      const enEspanol = construirPolitica(fabrica, [...COLUMNAS]);
+      const jsonEs = exportarPolitica(enEspanol);
+      fijarIdioma("en");
+      const enIngles = construirPolitica(fabrica, [...COLUMNAS]);
+      const jsonEn = exportarPolitica(enIngles);
+
+      expect(jsonEn).toBe(jsonEs);
+      expect(hashDePolitica(enIngles)).toBe(hashDePolitica(enEspanol));
+      // Ninguna frase de la fábrica se coló en el archivo: ni de la fuente ni de la advertencia.
+      expect(jsonEs).not.toContain(decirMensaje(fabrica.advertencia, "es"));
+      expect(jsonEs).not.toContain(decirMensaje(fabrica.advertencia, "en"));
+      expect(JSON.parse(jsonEs).origen).toBe(fabrica.id);
+    },
+  );
 });

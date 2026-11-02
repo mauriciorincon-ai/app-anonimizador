@@ -1,3 +1,5 @@
+"use client";
+
 // El riesgo exacto, presentado como lo que es.
 //
 // Tres reglas del sistema de diseño se juegan enteras en este componente (§ 5):
@@ -15,8 +17,10 @@
 // sola en SU archivo, que es mucho, y es verdad.
 
 import { Panel } from "@/components/panel";
+import { Rico, useT } from "@/components/texto";
 import { deCada, numero, porcentaje, unoEn } from "@/lib/formato";
 import type { RiesgoExacto } from "@/engine/riesgo";
+import { DIAGNOSTICO } from "@/lib/idioma/textos/diagnostico";
 
 /** Tono de la cifra. Nunca rojo de semáforo: el lacre de `--alerta` (design-system § 6). */
 function tono(riesgo: RiesgoExacto): string {
@@ -33,17 +37,18 @@ export function PanelDeRiesgo({
   /** Cuántas columnas identifican sin ayuda de nadie. La cifra de este panel NO las cuenta. */
   identificadoresDirectos: number;
 }) {
+  const { t, idioma } = useT();
+  const textos = DIAGNOSTICO.riesgo;
+
   if (riesgo.qis.length === 0) {
     return (
       <Panel
-        etiqueta="Riesgo de reidentificación"
-        titulo="No hay ningún cruce que medir"
-        nota="Que no haya cuasi-identificadores detectados no vuelve anónimo el archivo: quiere decir que Velo no reconoció columnas que se puedan cruzar entre sí. Un código propio de tu organización puede seguir señalando a una persona sin que ningún algoritmo público lo sepa."
+        etiqueta={t(textos.etiqueta)}
+        titulo={t(textos.sinCruce.titulo)}
+        nota={t(textos.sinCruce.nota)}
       >
         <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-          Velo no clasificó ninguna columna como cuasi-identificador, así que no
-          existe una combinación de columnas sobre la cual contar clases de
-          equivalencia.
+          <Rico texto={textos.sinCruce.detalle} />
         </p>
       </Panel>
     );
@@ -51,77 +56,73 @@ export function PanelDeRiesgo({
 
   return (
     <Panel
-      etiqueta="Riesgo de reidentificación"
-      titulo="Cuánta gente queda sola en tu tabla"
-      nota={
-        <>
-          Modelo <strong className="font-medium">prosecutor</strong>: se supone
-          que quien ataca ya sabe que la persona está en la tabla y solo busca
-          cuál de las filas es. Es el escenario más adverso, y el único que se
-          puede calcular exacto sobre tus datos.
-        </>
-      }
+      etiqueta={t(textos.etiqueta)}
+      titulo={t(textos.titulo)}
+      nota={<Rico texto={textos.nota} />}
     >
       <div className="flex flex-col gap-6">
         <div>
           <p
             className={`cifra font-display text-[clamp(2.75rem,9vw,4rem)] leading-none font-semibold ${tono(riesgo)}`}
           >
-            {porcentaje(riesgo.proporcionUnicos)}
+            {porcentaje(riesgo.proporcionUnicos, idioma)}
           </p>
           <p className="text-tinta mt-2 text-[0.9375rem] leading-relaxed">
-            de tus registros son <strong className="font-medium">únicos</strong>
-            : nadie más en el archivo comparte su combinación de{" "}
-            {riesgo.qis.length === 1
-              ? "esa columna"
-              : `esas ${numero(riesgo.qis.length)} columnas`}
-            .
+            <Rico
+              texto={
+                riesgo.qis.length === 1 ? textos.unicosUna : textos.unicosVarias
+              }
+              datos={{ n: riesgo.qis.length }}
+            />
           </p>
           <p className="cifra text-tinta-tenue mt-1 text-[0.8125rem]">
-            {deCada(riesgo.unicos, riesgo.filas)} registros.
+            {t(textos.registros, {
+              cifra: deCada(riesgo.unicos, riesgo.filas, idioma),
+            })}
           </p>
           {/* Sin esta línea, un archivo con una cédula y dos columnas demográficas enseña "0,0 %"
               como titular y se lee como tranquilidad. La cifra es correcta y está bien acotada —
               pero la composición decía otra cosa, y aquí el titular importa tanto como el dato. */}
           {identificadoresDirectos > 0 ? (
             <p className="text-aviso mt-3 text-[0.8125rem] leading-relaxed">
-              Esta cifra <strong className="font-medium">no cuenta</strong> las{" "}
-              {numero(identificadoresDirectos)}{" "}
-              {identificadoresDirectos === 1
-                ? "columna que identifica"
-                : "columnas que identifican"}{" "}
-              sin ayuda de ninguna otra: a esa gente no hay que cruzarla con
-              nada para saber quién es.
+              <Rico
+                texto={
+                  identificadoresDirectos === 1
+                    ? textos.noCuentaUna
+                    : textos.noCuentaVarias
+                }
+                datos={{ n: identificadoresDirectos }}
+              />
             </p>
           ) : null}
         </div>
 
         <dl className="border-borde grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4">
           <Dato
-            termino="Grupo más pequeño"
-            valor={numero(riesgo.kMinimo)}
-            unidad={riesgo.kMinimo === 1 ? "persona" : "personas"}
-            explicacion="El k real del archivo: el tamaño de la clase de equivalencia más chica."
+            termino={t(textos.grupoMasPequeno)}
+            valor={numero(riesgo.kMinimo, idioma)}
+            unidad={t(riesgo.kMinimo === 1 ? textos.persona : textos.personas)}
+            explicacion={t(textos.grupoMasPequenoExplicacion)}
           />
           <Dato
-            termino="Riesgo del más expuesto"
-            valor={unoEn(riesgo.riesgoMaximo)}
-            explicacion="Probabilidad de acertar quién es, para el registro peor protegido."
+            termino={t(textos.masExpuesto)}
+            valor={unoEn(riesgo.riesgoMaximo, idioma)}
+            explicacion={t(textos.masExpuestoExplicacion)}
           />
           <Dato
-            termino="Riesgo promedio"
-            valor={unoEn(riesgo.riesgoPromedio)}
-            explicacion="Promedio de 1/k sobre todos los registros."
+            termino={t(textos.promedio)}
+            valor={unoEn(riesgo.riesgoPromedio, idioma)}
+            explicacion={t(textos.promedioExplicacion)}
           />
           <Dato
-            termino="Grupos distintos"
-            valor={numero(riesgo.clases)}
-            explicacion="Cuántas combinaciones de valores diferentes hay entre esas columnas."
+            termino={t(textos.gruposDistintos)}
+            valor={numero(riesgo.clases, idioma)}
+            explicacion={t(textos.gruposDistintosExplicacion)}
           />
         </dl>
 
         <div className="border-borde border-t pt-5">
-          <p className="etiqueta">Columnas cruzadas</p>
+          <p className="etiqueta">{t(textos.columnasCruzadas)}</p>
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {riesgo.qis.map((qi) => (
               <li
@@ -133,9 +134,13 @@ export function PanelDeRiesgo({
             ))}
           </ul>
           <p className="text-tinta-tenue mt-3 text-[0.8125rem] leading-relaxed">
-            <strong className="text-acento font-medium">Cifra exacta.</strong>{" "}
-            Se contó registro por registro sobre tus {numero(riesgo.filas)}{" "}
-            filas. No hay modelo, ni muestreo, ni estimación de por medio.
+            <strong className="text-acento font-medium">
+              {t(textos.cifraExacta)}
+            </strong>{" "}
+            <Rico
+              texto={textos.cifraExactaDetalle}
+              datos={{ n: riesgo.filas }}
+            />
           </p>
         </div>
       </div>

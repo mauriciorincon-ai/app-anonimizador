@@ -11,6 +11,8 @@ import Link from "next/link";
 
 import { clasesDeBoton } from "@/components/boton";
 import { MarcaDeSello } from "@/components/sello";
+import { Rico } from "@/components/texto";
+import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import { useSesion } from "@/lib/sesion";
 
 const Taller = dynamic(
@@ -19,9 +21,11 @@ const Taller = dynamic(
     ssr: false,
     loading: () => (
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-        <p className="etiqueta">El taller</p>
+        <p className="etiqueta">
+          <Rico texto={TRANSFORMAR.taller.etiqueta} />
+        </p>
         <p className="text-tinta-suave mt-3" role="status">
-          Abriendo el taller…
+          <Rico texto={TRANSFORMAR.puerta.abriendo} />
         </p>
       </main>
     ),
@@ -39,15 +43,13 @@ function SinDatos() {
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-start px-6 py-20">
       <MarcaDeSello clase="text-tinta-tenue size-8" />
       <h1 className="font-display text-tinta mt-5 text-[clamp(1.75rem,5vw,2.25rem)] leading-tight font-semibold text-balance">
-        No hay nada que transformar
+        <Rico texto={TRANSFORMAR.puerta.vacio.titulo} />
       </h1>
       <p className="text-tinta-suave mt-4 leading-relaxed text-pretty">
-        El taller trabaja sobre el archivo que tengas cargado en esta pestaña, y
-        ahora mismo no hay ninguno. No se perdió: nunca se guardó en ningún
-        sitio, que es la misma razón por la que tus datos no se filtran.
+        <Rico texto={TRANSFORMAR.puerta.vacio.detalle} />
       </p>
       <Link href="/" className={`${clasesDeBoton("principal")} mt-8`}>
-        Volver a la aduana
+        <Rico texto={TRANSFORMAR.puerta.vacio.volver} />
       </Link>
     </main>
   );

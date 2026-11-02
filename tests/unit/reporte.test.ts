@@ -11,9 +11,11 @@ import { ConstructorColumnar } from "@/engine/columnar";
 import {
   construirReporte,
   escapar,
+  nombreDelCertificado,
   nombreDelReporte,
-  seccionDelTratamiento,
+  seccionDelTratamiento as seccionDelTratamientoEn,
   type DatosDelReporte,
+  type DatosDelTratamiento,
 } from "@/engine/reporte";
 import { evaluarRiesgo } from "@/engine/riesgo";
 import { balanceDelTratamiento } from "@/engine/balance";
@@ -22,6 +24,10 @@ import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
 
 const FECHA = "9 de agosto de 2026, 7:42 p. m.";
+
+/** Las pruebas de siempre leen el documento en español; las de inglés piden su idioma a propósito. */
+const seccionDelTratamiento = (datos: DatosDelTratamiento) =>
+  seccionDelTratamientoEn(datos, "es");
 
 /**
  * Lo que el S4 añadió al tratamiento: la identidad del archivo que SALE.
@@ -64,6 +70,7 @@ function datosDe(perfil: string, filas = 400): DatosDelReporte {
     riesgo,
     advisor,
     fecha: FECHA,
+    idioma: "es",
   };
 }
 
@@ -240,14 +247,18 @@ describe("el archivo del usuario no puede volverse código", () => {
 
 describe("nombre del archivo descargado", () => {
   it("sale del nombre original, sin caracteres que peleen con el sistema de archivos", () => {
-    expect(nombreDelReporte("pacientes 2026.csv")).toBe(
+    expect(nombreDelReporte("pacientes 2026.csv", "es")).toBe(
       "velo-diagnostico-pacientes-2026.html",
     );
-    expect(nombreDelReporte("informe/raro*.xlsx")).toBe(
+    expect(nombreDelReporte("informe/raro*.xlsx", "es")).toBe(
       "velo-diagnostico-informe-raro.html",
     );
-    expect(nombreDelReporte("ñandú.csv")).toBe("velo-diagnostico-ñandú.html");
-    expect(nombreDelReporte("***.csv")).toBe("velo-diagnostico-archivo.html");
+    expect(nombreDelReporte("ñandú.csv", "es")).toBe(
+      "velo-diagnostico-ñandú.html",
+    );
+    expect(nombreDelReporte("***.csv", "es")).toBe(
+      "velo-diagnostico-archivo.html",
+    );
   });
 });
 
@@ -682,5 +693,151 @@ describe("A1 en el reporte — las columnas que salieron intactas", () => {
     const { seccion } = await reporteConTratamiento(politica);
     expect(seccion).toContain("salió <b>intacta</b>");
     expect(seccion).toContain("<code>municipio</code>");
+  });
+});
+
+// ── El idioma del documento (S5) ──────────────────────────────────────────────────────────────
+//
+// El certificado le sirve a un auditor o a un cliente que puede no leer español, así que no basta
+// con que exista en inglés: tiene que ser el MISMO documento. Lo que se prueba aquí no es la
+// redacción (eso no lo prueba una máquina) sino lo que la hace confiable: que cada idioma sea
+// determinista por sí mismo, que los dos lleven las mismas dos huellas y las mismas salvedades en
+// el mismo orden, y que el idioma quede escrito dentro del archivo para que nadie lo confunda.
+
+describe("el certificado en cada idioma", () => {
+  const FECHA_EN = "August 9, 2026 at 7:42 PM";
+  const fechaDe = (idioma: "es" | "en") => (idioma === "es" ? FECHA : FECHA_EN);
+
+  it.each(["es", "en"] as const)(
+    "%s: mismo informe + misma fecha + mismo idioma ⇒ mismo archivo, byte por byte",
+    async (idioma) => {
+      // Dos corridas COMPLETAS del motor (no dos llamadas al mismo objeto): así el test también
+      // atrapa el azar o el orden de iteración que se colara antes del documento.
+      const a = await reporteConTratamiento(CON_CEDULA_INTACTA);
+      const b = await reporteConTratamiento(CON_CEDULA_INTACTA);
+      const fecha = fechaDe(idioma);
+      expect(construirReporte({ ...a.datos, idioma, fecha })).toBe(
+        construirReporte({ ...b.datos, idioma, fecha }),
+      );
+    },
+  );
+
+  it("el idioma queda escrito dentro del documento", async () => {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    expect(construirReporte({ ...datos, idioma: "es" })).toContain(
+      '<html lang="es-CO">',
+    );
+    expect(construirReporte({ ...datos, idioma: "en" })).toContain(
+      '<html lang="en-US">',
+    );
+  });
+
+  it("los dos idiomas son documentos distintos, y el inglés no arrastra español", async () => {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    const es = construirReporte({ ...datos, idioma: "es" });
+    const en = construirReporte({ ...datos, idioma: "en", fecha: FECHA_EN });
+    expect(es).not.toBe(en);
+    // Los títulos de sección del español no pueden asomar en el documento en inglés…
+    for (const titulo of [
+      "Cuánta gente queda sola",
+      "Cómo comprobar esto tú mismo",
+      "Qué NO afirma Velo",
+      "Qué cambió, y qué sigue igual",
+      "El otro lado de la balanza",
+    ])
+      expect(en, titulo).not.toContain(titulo);
+    // …ni los del inglés en el español.
+    for (const title of [
+      "How many people stand alone",
+      "How to check this yourself",
+      "What Velo does NOT claim",
+      "What changed, and what stayed the same",
+    ])
+      expect(es, title).not.toContain(title);
+    expect(en).toContain("How many people stand alone in the original file");
+    expect(en).toContain("Personal-data treatment certificate");
+  });
+
+  it("los dos idiomas llevan las MISMAS dos huellas, el mismo comando y la misma fecha inyectada", async () => {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    for (const idioma of ["es", "en"] as const) {
+      const html = construirReporte({
+        ...datos,
+        idioma,
+        fecha: fechaDe(idioma),
+      });
+      expect(html, idioma).toContain(datos.archivo.sha256);
+      expect(html, idioma).toContain(SALIDA.sha256DeSalida);
+      expect(html, idioma).toContain(`sha256sum ${SALIDA.nombreDeSalida}`);
+      expect(html, idioma).toContain(fechaDe(idioma));
+    }
+  });
+
+  it("en inglés también las salvedades van ANTES que la cifra de reducción", async () => {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    const en = construirReporte({ ...datos, idioma: "en" });
+    const salvedades = en.indexOf('class="salvedades');
+    const cifra = en.indexOf('class="reduccion"');
+    expect(salvedades).toBeGreaterThanOrEqual(0);
+    expect(salvedades).toBeLessThan(cifra);
+    // La cifra no se presenta como titular, y la salvedad nombra la columna intacta.
+    expect(en).not.toContain('cifrota">−');
+    expect(en).toContain("That figure does not describe a treated file");
+    expect(en.indexOf("cedula_titular")).toBeGreaterThan(salvedades);
+    expect(en.indexOf("cedula_titular")).toBeLessThan(cifra);
+  });
+
+  it("en inglés los números siguen la convención del idioma (coma para los miles)", async () => {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    const en = construirReporte({ ...datos, idioma: "en" });
+    // 5,000 es el tamaño de la muestra de detección: en español se escribe 5.000.
+    expect(en).toContain("up to 5,000 values per column");
+    expect(construirReporte({ ...datos, idioma: "es" })).toContain(
+      "hasta 5.000 valores por columna",
+    );
+  });
+
+  it("el diagnóstico (sin tratamiento) también existe en inglés", () => {
+    const en = construirReporte({ ...datosDe("clinico"), idioma: "en" });
+    expect(en).toContain("Diagnosis of clinico.csv");
+    expect(en).toContain("Personal-data diagnosis");
+    expect(en).not.toContain("Certificate");
+    expect(en).toContain("What Velo does NOT claim");
+    expect(en).toMatch(
+      /does not remove it and it does not declare the file anonymous/,
+    );
+  });
+
+  it("en inglés también una columna llamada <script> es un nombre, no marcado", () => {
+    const datos = datosDe("limpio", 200);
+    const html = construirReporte({
+      ...datos,
+      idioma: "en",
+      diagnostico: {
+        ...datos.diagnostico,
+        columnas: datos.diagnostico.columnas.map((columna, i) =>
+          i === 0
+            ? { ...columna, nombre: "<script>alert('xss')</script>" }
+            : columna,
+        ),
+      },
+    });
+    const documento = new DOMParser().parseFromString(html, "text/html");
+    expect(documento.querySelectorAll("script, img, iframe")).toHaveLength(0);
+  });
+
+  it("el nombre del archivo sigue al idioma", () => {
+    expect(nombreDelReporte("pacientes 2026.csv", "en")).toBe(
+      "velo-diagnosis-pacientes-2026.html",
+    );
+    expect(nombreDelCertificado("pacientes 2026.csv", "es")).toBe(
+      "velo-certificado-pacientes-2026.html",
+    );
+    expect(nombreDelCertificado("pacientes 2026.csv", "en")).toBe(
+      "velo-certificate-pacientes-2026.html",
+    );
+    expect(nombreDelCertificado("***.csv", "en")).toBe(
+      "velo-certificate-file.html",
+    );
   });
 });

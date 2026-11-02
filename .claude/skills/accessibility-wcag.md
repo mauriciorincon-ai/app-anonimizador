@@ -62,6 +62,11 @@ export default [
 
 ### Animaciones y movimiento
 - [ ] `prefers-reduced-motion` respetado.
+- [ ] **La forma del árbol NO depende de `useReducedMotion()`** (kit v1.26.0): el hook vale
+      `null` en el servidor; si decide qué elementos se pintan, la hidratación falla (React
+      #418) justo para quien pidió reducir movimiento. Reduced motion cambia propiedades o CSS,
+      jamás la estructura. Gate: test unitario de HTML idéntico con `null`/`true`/`false` + axe
+      bajo emulación de reduced-motion (patrón `wiki/patterns/reduced-motion-sin-ramificar-el-arbol.md`).
 
 ```css
 @media (prefers-reduced-motion: reduce) {

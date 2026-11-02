@@ -1,6 +1,8 @@
 // Validadores universales — los que no dependen de Colombia. Dos de ellos (Luhn e IBAN) sí tienen
 // checksum oficial, así que Velo puede AFIRMAR; el resto reconoce forma y así se declara.
 
+import { mensaje } from "@/lib/idioma";
+
 import type { Validador } from "./tipos";
 
 // ── Luhn (tarjetas de pago) ───────────────────────────────────────────────────────────────────
@@ -28,8 +30,9 @@ export function cumpleLuhn(digitos: string): boolean {
 
 export const validadorTarjeta: Validador = {
   id: "tarjeta",
-  etiqueta: "Tarjeta de pago (Luhn)",
-  fuente: "Algoritmo de Luhn, módulo 10 — ISO/IEC 7812-1",
+  etiqueta: mensaje("validador.tarjeta.etiqueta"),
+  // Fuente: algoritmo de Luhn, módulo 10 — ISO/IEC 7812-1.
+  fuente: mensaje("validador.tarjeta.fuente"),
   certeza: "algoritmo-oficial",
   categoria: "identificador-directo",
   prioridad: 90,
@@ -70,8 +73,9 @@ export function cumpleIban(valor: string): boolean {
 
 export const validadorIban: Validador = {
   id: "iban",
-  etiqueta: "Cuenta bancaria IBAN",
-  fuente: "ISO 13616 con checksum mod 97-10 de ISO 7064",
+  etiqueta: mensaje("validador.iban.etiqueta"),
+  // Fuente: ISO 13616 con checksum mod 97-10 de ISO 7064.
+  fuente: mensaje("validador.iban.fuente"),
   certeza: "algoritmo-oficial",
   categoria: "identificador-directo",
   prioridad: 95,
@@ -86,8 +90,9 @@ export const validadorIban: Validador = {
  */
 export const validadorEmail: Validador = {
   id: "email",
-  etiqueta: "Correo electrónico",
-  fuente: "Forma habitual del RFC 5322 (validación estructural, no checksum)",
+  etiqueta: mensaje("validador.email.etiqueta"),
+  // Fuente: forma habitual del RFC 5322 (validación estructural, no checksum).
+  fuente: mensaje("validador.email.fuente"),
   certeza: "estructural",
   categoria: "identificador-directo",
   prioridad: 85,
@@ -102,8 +107,9 @@ export const validadorEmail: Validador = {
 /** IPv4 en notación decimal punteada: cuatro octetos de 0 a 255, sin ceros a la izquierda. */
 export const validadorIp: Validador = {
   id: "ip",
-  etiqueta: "Dirección IP",
-  fuente: "IPv4 decimal punteada (RFC 791) — rango exacto por octeto",
+  etiqueta: mensaje("validador.ip.etiqueta"),
+  // Fuente: IPv4 decimal punteada (RFC 791) — rango exacto por octeto.
+  fuente: mensaje("validador.ip.fuente"),
   certeza: "estructural",
   // Una IP identifica un dispositivo, casi nunca a una persona sola: delata en combinación.
   categoria: "cuasi-identificador",
@@ -131,10 +137,10 @@ export const validadorIp: Validador = {
  */
 export const validadorCoordenada: Validador = {
   id: "coordenada",
-  etiqueta: "Coordenada geográfica",
-  fuente:
-    "Rango definicional común a latitud y longitud: [−180, 180]. No se distingue cuál de las dos " +
-    "es, así que no se aplica el rango estrecho de la latitud",
+  etiqueta: mensaje("validador.coordenada.etiqueta"),
+  // Fuente: rango definicional común a latitud y longitud, [−180, 180]. No se distingue cuál de
+  // las dos es, así que no se aplica el rango estrecho de la latitud.
+  fuente: mensaje("validador.coordenada.fuente"),
   certeza: "estructural",
   categoria: "cuasi-identificador",
   prioridad: 75,
@@ -153,9 +159,9 @@ export const validadorCoordenada: Validador = {
  */
 export const validadorFecha: Validador = {
   id: "fecha",
-  etiqueta: "Fecha",
-  fuente:
-    "ISO 8601 (AAAA-MM-DD) y formato DD/MM/AAAA; se verifica que la fecha exista",
+  etiqueta: mensaje("validador.fecha.etiqueta"),
+  // Fuente: ISO 8601 (AAAA-MM-DD) y formato DD/MM/AAAA; se verifica que la fecha exista.
+  fuente: mensaje("validador.fecha.fuente"),
   certeza: "estructural",
   // Por sí sola una fecha no identifica a nadie. Si la columna es de nacimiento, el clasificador
   // la sube a cuasi-identificador por el nombre — y lo dice.
@@ -179,8 +185,9 @@ export const validadorFecha: Validador = {
 /** Número sin más señal. Prioridad baja: cualquier validador específico le gana. */
 export const validadorNumero: Validador = {
   id: "numero",
-  etiqueta: "Número",
-  fuente: "Forma numérica (sin significado de dominio)",
+  etiqueta: mensaje("validador.numero.etiqueta"),
+  // Fuente: forma numérica (sin significado de dominio).
+  fuente: mensaje("validador.numero.fuente"),
   certeza: "estructural",
   categoria: "no-personal",
   prioridad: 10,

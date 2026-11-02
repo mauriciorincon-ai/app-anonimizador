@@ -31,6 +31,7 @@ import {
 } from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import { MarcaDeSello } from "@/components/sello";
+import { Rico, useT } from "@/components/texto";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
 import {
   abrirArchivoDeBitacora,
@@ -40,35 +41,15 @@ import {
   useBitacora,
 } from "@/lib/bitacora";
 import { numero, porcentaje } from "@/lib/formato";
+import { plural } from "@/lib/idioma";
+import { BITACORA } from "@/lib/idioma/textos/bitacora";
 import { nombreDeTecnica } from "@/lib/tecnicas-en-palabras";
-import type { MotivoDeBitacora } from "@/workers/contrato";
 
 /** El mismo mínimo que la bóveda y la llave: una frase corta no la salva el PBKDF2. */
 const MINIMO = 12;
 
-/**
- * Cada fallo con su frase.
- *
- * La primera es la que más trabajo hace: **abrir una bóveda donde se esperaba una bitácora** es el
- * error más probable del usuario —dos archivos cifrados de la misma app, guardados el mismo día— y
- * responderle «frase incorrecta» lo mandaría a probar frases media hora. La palabra mágica del
- * archivo permite distinguirlo sin descifrar nada, así que se distingue.
- */
-const FALLOS: Record<MotivoDeBitacora, string> = {
-  "no-es-una-bitacora":
-    "Ese archivo no es una bitácora de Velo. Busca el que termina en .velolog — si el tuyo termina en .velo, esa es la bóveda, y se abre en El regreso.",
-  "version-distinta":
-    "Esa bitácora la hizo otra versión de Velo y esta no sabe leerla.",
-  "frase-incorrecta":
-    "La frase no abre esta bitácora. También sale este mensaje si el archivo se dañó o lo modificaron.",
-  "costo-inaceptable":
-    "La bitácora declara un costo de descifrado fuera de lo razonable: está dañada o la modificaron.",
-  "contenido-invalido":
-    "El archivo se descifró, pero lo que hay dentro no tiene la forma de una bitácora de Velo.",
-  "lectura-fallida": "No se pudo leer el archivo.",
-};
-
 export function Bitacora() {
+  const { t } = useT();
   const estado = useBitacora();
   const abierta =
     estado.archivo.fase === "abierta" ? estado.archivo.contenido : null;
@@ -85,9 +66,12 @@ export function Bitacora() {
       ) : null}
 
       {estado.guardado && !estado.pendiente ? (
-        <Panel etiqueta="Guardada" titulo="Tu bitácora, lista para guardar">
+        <Panel
+          etiqueta={t(BITACORA.lista.etiqueta)}
+          titulo={t(BITACORA.lista.titulo)}
+        >
           <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-            Sustituye el archivo anterior: una bitácora es una sola y crece.
+            <Rico texto={BITACORA.lista.nota} />
           </p>
           <a
             href={estado.guardado.url}
@@ -95,7 +79,7 @@ export function Bitacora() {
             className={`${clasesDeBoton("principal")} mt-4`}
           >
             <IconoDescargar />
-            Guardar la bitácora
+            {t(BITACORA.guardar)}
           </a>
         </Panel>
       ) : null}
@@ -123,6 +107,7 @@ function Anotacion({
   sellando: boolean;
   guardado: { url: string; nombre: string } | null;
 }) {
+  const { t } = useT();
   const idDeFrase = useId();
   const idDeAyuda = useId();
   const [frase, setFrase] = useState("");
@@ -131,14 +116,9 @@ function Anotacion({
   if (guardado) {
     return (
       <Panel
-        etiqueta="Paso 2 · guardar"
-        titulo="Anotado. Ahora guarda el archivo"
-        nota={
-          <>
-            Sin guardarlo, esta anotación se pierde al cerrar la pestaña — Velo
-            no tiene dónde recordarla.
-          </>
-        }
+        etiqueta={t(BITACORA.anotacion.guardada.etiqueta)}
+        titulo={t(BITACORA.anotacion.guardada.titulo)}
+        nota={<Rico texto={BITACORA.anotacion.guardada.nota} />}
       >
         <a
           href={guardado.url}
@@ -146,11 +126,11 @@ function Anotacion({
           className={clasesDeBoton("principal")}
         >
           <IconoDescargar />
-          Guardar la bitácora
+          {t(BITACORA.guardar)}
         </a>
         <p className="text-tinta-suave mt-3 text-[0.875rem] leading-relaxed">
           <code className="font-mono text-[0.8125rem]">{guardado.nombre}</code>{" "}
-          — sustituye al archivo anterior. Una bitácora es una sola y crece.
+          <Rico texto={BITACORA.anotacion.guardada.sustituye} />
         </p>
       </Panel>
     );
@@ -158,25 +138,27 @@ function Anotacion({
 
   return (
     <Panel
-      etiqueta="Paso 1 · la anotación"
+      etiqueta={t(BITACORA.anotacion.etiqueta)}
       titulo={
         primera
-          ? "Tu primera anotación"
-          : `Añadir al final de las ${numero(yaTiene)}`
+          ? t(BITACORA.anotacion.tituloPrimera)
+          : t(
+              plural(
+                yaTiene,
+                BITACORA.anotacion.tituloSiguienteUna,
+                BITACORA.anotacion.tituloSiguienteVarias,
+              ),
+              { n: yaTiene },
+            )
       }
       nota={
-        primera ? (
-          <>
-            No tienes ninguna bitácora abierta, así que esta empieza una. Si ya
-            tenías una, ábrela primero ahí abajo y la anotación se le añade al
-            final en vez de empezar otra.
-          </>
-        ) : (
-          <>
-            Se añade al final. Las anteriores no se tocan: lo que ya está
-            escrito no cambia porque se escriba algo nuevo.
-          </>
-        )
+        <Rico
+          texto={
+            primera
+              ? BITACORA.anotacion.notaPrimera
+              : BITACORA.anotacion.notaSiguiente
+          }
+        />
       }
     >
       <ResumenDeEntrada entrada={entrada} />
@@ -187,8 +169,8 @@ function Anotacion({
           className="text-tinta block text-[0.9375rem]"
         >
           {primera
-            ? "Elige la frase de paso de tu bitácora"
-            : "Frase de paso de tu bitácora"}
+            ? t(BITACORA.anotacion.fraseNueva)
+            : t(BITACORA.anotacion.fraseExistente)}
         </label>
         <input
           id={idDeFrase}
@@ -202,17 +184,14 @@ function Anotacion({
           onChange={(evento) => setFrase(evento.target.value)}
         />
         <p id={idDeAyuda} className="text-tinta-tenue mt-2 text-[0.8125rem]">
-          Al menos {MINIMO} caracteres.{" "}
-          {primera ? (
-            <>
-              Que <strong className="font-medium">no sea</strong> la de la
-              bóveda ni la del proyecto: son tres secretos con tres alcances, y
-              reusarlos convierte la filtración de uno en la filtración de todo.
-              Sin ella no hay forma de leer tu bitácora — ni Velo, ni nadie.
-            </>
-          ) : (
-            "La misma con la que la abriste. Velo no la recuerda entre pasos, a propósito."
-          )}
+          <Rico
+            texto={
+              primera
+                ? BITACORA.anotacion.ayudaPrimera
+                : BITACORA.anotacion.ayudaSiguiente
+            }
+            datos={{ minimo: MINIMO }}
+          />
         </p>
       </div>
 
@@ -228,18 +207,18 @@ function Anotacion({
         >
           <IconoMas />
           {sellando
-            ? "Cifrando…"
+            ? t(BITACORA.anotacion.cifrando)
             : primera
-              ? "Cifrar y empezar la bitácora"
-              : "Añadir y cifrar"}
+              ? t(BITACORA.anotacion.cifrarPrimera)
+              : t(BITACORA.anotacion.anadir)}
         </Boton>
         <Boton type="button" variante="discreto" onClick={descartarAnotacion}>
           <IconoEquis />
-          Descartar la anotación
+          {t(BITACORA.anotacion.descartar)}
         </Boton>
         {sellando ? (
           <p role="status" className="text-tinta-suave text-[0.875rem]">
-            Derivando la llave de cifrado y sellando el archivo.
+            <Rico texto={BITACORA.anotacion.derivando} />
           </p>
         ) : null}
       </div>
@@ -254,6 +233,7 @@ function Apertura({
 }: {
   estado: ReturnType<typeof useBitacora>["archivo"];
 }) {
+  const { t } = useT();
   const idDeFrase = useId();
   const entrada = useRef<HTMLInputElement>(null);
   const [frase, setFrase] = useState("");
@@ -265,16 +245,9 @@ function Apertura({
 
   return (
     <Panel
-      etiqueta="Tu bitácora"
-      titulo="Abre la bitácora que guardaste"
-      nota={
-        <>
-          El archivo{" "}
-          <code className="font-mono text-[0.8125rem]">.velolog</code> y su
-          frase. Se descifra dentro de esta pestaña; nada se envía a ningún
-          sitio.
-        </>
-      }
+      etiqueta={t(BITACORA.apertura.etiqueta)}
+      titulo={t(BITACORA.apertura.titulo)}
+      nota={<Rico texto={BITACORA.apertura.nota} />}
     >
       {/* El input va escondido detrás de un botón propio, como en `/regreso`. No es capricho: el
           control nativo escribe «Choose File / No file chosen» en el idioma del NAVEGADOR, no en el
@@ -293,14 +266,14 @@ function Apertura({
           onClick={() => entrada.current?.click()}
         >
           <IconoCuaderno />
-          Elegir la bitácora
+          {t(BITACORA.apertura.elegir)}
         </Boton>
         <input
           ref={entrada}
           type="file"
           accept=".velolog"
           disabled={abriendo}
-          aria-label="Archivo de bitácora"
+          aria-label={t(BITACORA.apertura.ariaArchivo)}
           className="sr-only"
           onChange={(evento) => {
             setArchivo(evento.target.files?.[0] ?? null);
@@ -314,7 +287,7 @@ function Apertura({
           </p>
         ) : (
           <p className="text-tinta-tenue text-[0.875rem]">
-            Ningún archivo elegido todavía.
+            {t(BITACORA.apertura.ningunArchivo)}
           </p>
         )}
       </div>
@@ -324,7 +297,7 @@ function Apertura({
           htmlFor={idDeFrase}
           className="text-tinta block text-[0.9375rem]"
         >
-          Frase de paso
+          {t(BITACORA.apertura.frase)}
         </label>
         <input
           id={idDeFrase}
@@ -348,11 +321,13 @@ function Apertura({
           }}
         >
           <IconoAbrir />
-          {abriendo ? "Descifrando…" : "Abrir la bitácora"}
+          {abriendo
+            ? t(BITACORA.apertura.descifrando)
+            : t(BITACORA.apertura.abrir)}
         </Boton>
         {abriendo ? (
           <p role="status" className="text-tinta-suave text-[0.875rem]">
-            Derivando la llave. Tarda lo que tiene que tardar.
+            <Rico texto={BITACORA.apertura.derivando} />
           </p>
         ) : null}
       </div>
@@ -362,7 +337,7 @@ function Apertura({
           role="alert"
           className="text-alerta mt-4 text-[0.875rem] leading-relaxed"
         >
-          {FALLOS[estado.motivo]}
+          <Rico texto={BITACORA.apertura.fallos[estado.motivo]} />
         </p>
       ) : null}
     </Panel>
@@ -378,6 +353,7 @@ function Entradas({
   entradas: readonly EntradaDeBitacora[];
   huella: string;
 }) {
+  const { t, idioma } = useT();
   // De la más reciente a la más antigua: al abrir la bitácora, lo que se busca casi siempre es lo
   // último. El ARCHIVO las guarda en orden de registro —la primera es la más antigua— y esa es la
   // que no se toca; el orden de lectura es cosa de la pantalla.
@@ -386,18 +362,16 @@ function Entradas({
 
   return (
     <Panel
-      etiqueta="Tu historial"
-      titulo={
-        entradas.length === 1
-          ? "Un tratamiento anotado"
-          : `${numero(entradas.length)} tratamientos anotados`
-      }
-      nota={
-        <>
-          De la más reciente a la más antigua. Cada una lleva las dos huellas,
-          así que puedes atarla al certificado que entregaste.
-        </>
-      }
+      etiqueta={t(BITACORA.entradas.etiqueta)}
+      titulo={t(
+        plural(
+          entradas.length,
+          BITACORA.entradas.tituloUna,
+          BITACORA.entradas.tituloVarias,
+        ),
+        { n: entradas.length },
+      )}
+      nota={<Rico texto={BITACORA.entradas.nota} />}
     >
       <ul className="divide-borde divide-y">
         {recientesPrimero.map((entrada, indice) => {
@@ -415,11 +389,23 @@ function Entradas({
                   {entrada.archivo}
                 </span>
                 <span className="text-tinta-tenue mt-0.5 block text-[0.8125rem]">
-                  {entrada.fecha} · {numero(entrada.filas)}{" "}
-                  {entrada.filas === 1 ? "fila" : "filas"} ·{" "}
-                  {entrada.tecnicas.length === 0
-                    ? "sin técnicas"
-                    : entrada.tecnicas.map(nombreDeTecnica).join(", ")}
+                  {t(BITACORA.entradas.linea, {
+                    fecha: entrada.fecha,
+                    filas: entrada.filas,
+                    unidadFilas: t(
+                      plural(
+                        entrada.filas,
+                        BITACORA.unidades.fila,
+                        BITACORA.unidades.filas,
+                      ),
+                    ),
+                    tecnicas:
+                      entrada.tecnicas.length === 0
+                        ? t(BITACORA.entradas.sinTecnicas)
+                        : entrada.tecnicas
+                            .map((clave) => nombreDeTecnica(clave, idioma))
+                            .join(", "),
+                  })}
                 </span>
               </button>
               {desplegada ? (
@@ -434,12 +420,11 @@ function Entradas({
 
       <div className="border-borde mt-5 border-t pt-4">
         <p className="text-tinta-tenue text-[0.8125rem] leading-relaxed">
-          Huella de la bitácora:{" "}
+          <Rico texto={BITACORA.entradas.huellaAntes} />{" "}
           <code className="font-mono text-[0.75rem]">
             {huella.slice(0, 16)}…
           </code>{" "}
-          — del contenido en claro, no del archivo cifrado: ese cambia entero
-          cada vez que se guarda, por diseño.
+          <Rico texto={BITACORA.entradas.huellaDespues} />
         </p>
         {/* Cerrarla es la única forma de abrir otra, y hace falta de verdad: mata el worker, y con
             él la bitácora descifrada. Sin este botón, `cerrarBitacora` sería un exportado sin
@@ -451,41 +436,53 @@ function Entradas({
           onClick={cerrarBitacora}
         >
           <IconoEquis />
-          Cerrar la bitácora
+          {t(BITACORA.entradas.cerrar)}
         </Boton>
       </div>
-      <MarcaDeSello />
+      <MarcaDeSello clase="text-tinta-tenue size-8" />
     </Panel>
   );
 }
 
 /** El detalle de una entrada. Lo usan la anotación pendiente y la lista, para que digan lo mismo. */
 function ResumenDeEntrada({ entrada }: { entrada: EntradaDeBitacora }) {
+  const { t, idioma } = useT();
   return (
     <dl className="text-[0.875rem] leading-relaxed">
-      <Dato termino="Archivo" valor={entrada.archivo} />
-      <Dato termino="Fecha" valor={entrada.fecha} />
+      <Dato termino={t(BITACORA.detalle.archivo)} valor={entrada.archivo} />
+      <Dato termino={t(BITACORA.detalle.fecha)} valor={entrada.fecha} />
       <Dato
-        termino="Filas"
-        valor={`${numero(entrada.filas)} ${entrada.filas === 1 ? "fila" : "filas"}`}
+        termino={t(BITACORA.detalle.filas)}
+        valor={`${numero(entrada.filas, idioma)} ${t(
+          plural(
+            entrada.filas,
+            BITACORA.unidades.fila,
+            BITACORA.unidades.filas,
+          ),
+        )}`}
       />
       <Dato
-        termino="Técnicas"
+        termino={t(BITACORA.detalle.tecnicas)}
         valor={
           entrada.tecnicas.length === 0
-            ? "ninguna"
-            : entrada.tecnicas.map(nombreDeTecnica).join(", ")
+            ? t(BITACORA.detalle.ninguna)
+            : entrada.tecnicas
+                .map((clave) => nombreDeTecnica(clave, idioma))
+                .join(", ")
         }
       />
       {/* Las DOS puntas del riesgo, nunca la reducción entre ellas. Es la decisión del ADR-007 y
           viene de la lección más cara del S2: «bajó del 30 % al 2 %» es cierta y puede engañar, y
           una bitácora se lee meses después, sin la pantalla al lado que la matice. */}
       <Dato
-        termino="Registros únicos"
-        valor={`${porcentaje(entrada.unicosAntes)} antes · ${porcentaje(entrada.unicosDespues)} después`}
+        termino={t(BITACORA.detalle.unicos)}
+        valor={t(BITACORA.detalle.unicosValor, {
+          antes: porcentaje(entrada.unicosAntes, idioma),
+          despues: porcentaje(entrada.unicosDespues, idioma),
+        })}
       />
       <Dato
-        termino="Política"
+        termino={t(BITACORA.detalle.politica)}
         valor={
           <code className="font-mono text-[0.8125rem]">
             {entrada.hashDePolitica.slice(0, 8)}
@@ -493,7 +490,7 @@ function ResumenDeEntrada({ entrada }: { entrada: EntradaDeBitacora }) {
         }
       />
       <Dato
-        termino="Huella de entrada"
+        termino={t(BITACORA.detalle.huellaDeEntrada)}
         valor={
           <code className="font-mono text-[0.75rem]">
             {entrada.huellaDeEntrada.slice(0, 16)}…
@@ -501,7 +498,7 @@ function ResumenDeEntrada({ entrada }: { entrada: EntradaDeBitacora }) {
         }
       />
       <Dato
-        termino="Huella de salida"
+        termino={t(BITACORA.detalle.huellaDeSalida)}
         valor={
           <code className="font-mono text-[0.75rem]">
             {entrada.huellaDeSalida.slice(0, 16)}…
@@ -510,9 +507,7 @@ function ResumenDeEntrada({ entrada }: { entrada: EntradaDeBitacora }) {
       />
       {!entrada.esTitular ? (
         <div className="text-aviso mt-2 text-[0.8125rem] leading-relaxed">
-          Aquel tratamiento llevaba salvedades que descalificaban su cifra de
-          reducción. Las dos proporciones de arriba son ciertas por separado;
-          restarlas y presentarlo como el efecto del tratamiento, no.
+          <Rico texto={BITACORA.detalle.salvedades} />
         </div>
       ) : null}
     </dl>

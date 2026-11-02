@@ -24,6 +24,8 @@
 import { useSyncExternalStore } from "react";
 
 import type { EntradaDeBitacora } from "@/engine/bitacora";
+import { mensaje as mensajeDeMotor } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { asaDeArchivo, type AsaDeArchivo } from "@/lib/sesion";
 import type {
   ContenidoDeBitacora,
@@ -36,7 +38,7 @@ export type EstadoDelArchivo =
   | { fase: "sin-archivo" }
   | { fase: "abriendo" }
   | { fase: "abierta"; contenido: ContenidoDeBitacora }
-  | { fase: "rechazada"; motivo: MotivoDeBitacora; detalle: string };
+  | { fase: "rechazada"; motivo: MotivoDeBitacora; detalle: MensajeDeMotor };
 
 export interface EstadoDeBitacora {
   readonly archivo: EstadoDelArchivo;
@@ -99,7 +101,7 @@ function asegurarWorker(): Worker {
       archivo: {
         fase: "rechazada",
         motivo: "lectura-fallida",
-        detalle: "No se pudo leer el archivo.",
+        detalle: mensajeDeMotor("bitacora.lecturaFallida"),
       },
       sellando: false,
       etapa: null,

@@ -10,6 +10,8 @@
 // infrecuente. Un apellido poco común no deja de ser un apellido porque no esté en esta lista — por
 // eso el clasificador combina esta señal con el nombre de la columna en vez de depender solo de ella.
 
+import { mensaje } from "@/lib/idioma";
+
 import type { Validador } from "../validadores/tipos";
 
 /** Quita tildes y pasa a minúsculas para que "MARÍA", "maria" y "María" sean el mismo token. */
@@ -336,11 +338,11 @@ export function pareceNombreDePersona(valor: string): boolean {
 
 export const validadorNombre: Validador = {
   id: "nombre",
-  etiqueta: "Nombre de persona",
-  fuente:
-    "Diccionario de nombres y apellidos de uso corriente en Colombia (léxico, no registro de " +
-    "personas). Reconoce lo frecuente; lo infrecuente se le escapa, y por eso el clasificador " +
-    "combina esta señal con el nombre de la columna.",
+  etiqueta: mensaje("validador.nombre.etiqueta"),
+  // Fuente: diccionario de nombres y apellidos de uso corriente en Colombia (léxico, no registro
+  // de personas). Reconoce lo frecuente; lo infrecuente se le escapa, y por eso el clasificador
+  // combina esta señal con el nombre de la columna.
+  fuente: mensaje("validador.nombre.fuente"),
   certeza: "estructural",
   categoria: "identificador-directo",
   prioridad: 65,

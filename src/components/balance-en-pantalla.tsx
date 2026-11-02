@@ -12,94 +12,103 @@
 // test del reporte compara las posiciones en el documento: es un test de composición, no de cifra.
 
 import { Panel } from "@/components/panel";
+import { Rico, useT } from "@/components/texto";
 import type { BalanceDelTratamiento, Salvedad } from "@/engine/balance";
 import { numero, porcentaje } from "@/lib/formato";
+import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 
-function textoDeSalvedad(salvedad: Salvedad): React.ReactNode {
+const B = TRANSFORMAR.balance;
+
+/**
+ * El texto de una salvedad. Las columnas que nombra son del usuario, así que se pintan aparte (en
+ * su `<span>`) y nunca dentro de un texto del catálogo: un nombre con `**` o con comillas
+ * invertidas no puede volverse énfasis.
+ */
+function TextoDeSalvedad({ salvedad }: { salvedad: Salvedad }) {
+  const { idioma } = useT();
   switch (salvedad.tipo) {
     case "identificadores-sin-tratar":
       return (
         <>
-          <strong className="font-medium">
-            La política deja intactas{" "}
-            {salvedad.columnas.length === 1
-              ? "una columna que señala"
-              : `${numero(salvedad.columnas.length)} columnas que señalan`}
-          </strong>{" "}
-          a la persona sin ayuda de ninguna otra:{" "}
-          <span className="font-mono">{salvedad.columnas.join(" · ")}</span>.
-          Mientras estén en el archivo, ninguna cifra de aquí abajo describe
-          datos tratados.
+          <Rico
+            texto={
+              salvedad.columnas.length === 1
+                ? B.sinTratar.uno
+                : B.sinTratar.varias
+            }
+            datos={{ n: salvedad.columnas.length }}
+          />{" "}
+          <span className="font-mono">{salvedad.columnas.join(" · ")}</span>
+          <Rico texto={B.sinTratar.cierre} />
         </>
       );
     case "reparto-sin-k":
       return (
         <>
-          <strong className="font-medium">
-            {salvedad.columnas.length === 1
-              ? "Una columna salió intacta"
-              : `${numero(salvedad.columnas.length)} columnas salieron intactas`}
-          </strong>
-          : las marcaste para que Velo decidiera cuánto generalizarlas y la
-          política no fijó un grupo mínimo (k), así que no había hasta dónde
-          generalizar.{" "}
+          <Rico
+            texto={
+              salvedad.columnas.length === 1
+                ? B.repartoSinK.uno
+                : B.repartoSinK.varias
+            }
+            datos={{ n: salvedad.columnas.length }}
+          />{" "}
           <span className="font-mono">{salvedad.columnas.join(" · ")}</span>.
         </>
       );
     case "unicos-restantes":
       return (
-        <>
-          <strong className="font-medium">
-            {numero(salvedad.cuantos)} registros
-          </strong>{" "}
-          ({porcentaje(salvedad.proporcion)}) siguen <strong>solos</strong> en
-          su combinación de valores: nadie más en la tabla comparte la suya.
-        </>
+        <Rico
+          texto={
+            salvedad.cuantos === 1
+              ? B.unicosRestantes.uno
+              : B.unicosRestantes.varios
+          }
+          datos={{
+            cuantos: salvedad.cuantos,
+            proporcion: porcentaje(salvedad.proporcion, idioma),
+          }}
+        />
       );
     case "k-no-alcanzado":
       return (
-        <>
-          Pediste grupos de al menos{" "}
-          <strong className="font-medium">{numero(salvedad.kObjetivo)}</strong>{" "}
-          y el reparto llegó a{" "}
-          <strong className="font-medium">{numero(salvedad.kAlcanzado)}</strong>
-          . El archivo no cumple el k que declara.
-        </>
+        <Rico
+          texto={B.kNoAlcanzado}
+          datos={{
+            kObjetivo: salvedad.kObjetivo,
+            kAlcanzado: salvedad.kAlcanzado,
+          }}
+        />
       );
     case "k-del-reparto-no-es-el-del-archivo":
       return (
-        <>
-          El reparto alcanzó k={numero(salvedad.kDelReparto)} sobre las columnas
-          que generaliza, pero el archivo completo tiene grupos de{" "}
-          <strong className="font-medium">
-            {numero(salvedad.kDelArchivo)}
-          </strong>
-          : hay cuasi-identificadores fuera del reparto que los parten.{" "}
-          <strong className="font-medium">
-            El número que vale es el del archivo.
-          </strong>
-        </>
+        <Rico
+          texto={B.kDelReparto}
+          datos={{
+            kDelReparto: salvedad.kDelReparto,
+            kDelArchivo: salvedad.kDelArchivo,
+          }}
+        />
       );
     case "clases-homogeneas":
       return (
         <>
-          <strong className="font-medium">{numero(salvedad.filas)}</strong>{" "}
-          registros están en grupos donde todos comparten el mismo valor de{" "}
-          <span className="font-mono">{salvedad.atributo}</span>. Dar con el
-          grupo basta para saber el dato, aunque no se sepa cuál de las filas es
-          la persona.
+          <Rico texto={B.homogeneas.antes} datos={{ filas: salvedad.filas }} />{" "}
+          <span className="font-mono">{salvedad.atributo}</span>
+          <Rico texto={B.homogeneas.despues} />
         </>
       );
     case "colisiones-de-seudonimo":
       return (
         <>
-          En <span className="font-mono">{salvedad.columna}</span>,{" "}
-          <strong className="font-medium">{numero(salvedad.cuantas)}</strong>{" "}
-          {salvedad.cuantas === 1
-            ? "par de valores distintos recibió"
-            : "pares de valores distintos recibieron"}{" "}
-          el mismo seudónimo. Conservar el formato reduce el espacio disponible
-          y algunos chocan: dos entidades distintas se ven como una.
+          <Rico texto={B.colisiones.antes} />{" "}
+          <span className="font-mono">{salvedad.columna}</span>
+          <Rico
+            texto={
+              salvedad.cuantas === 1 ? B.colisiones.uno : B.colisiones.varias
+            }
+            datos={{ cuantas: salvedad.cuantas }}
+          />
         </>
       );
   }
@@ -110,20 +119,14 @@ export function BalanceEnPantalla({
 }: {
   balance: BalanceDelTratamiento;
 }) {
+  const { t, idioma } = useT();
   const { antes, despues, reduccion, salvedades, esTitular } = balance;
 
   return (
     <Panel
-      etiqueta="Paso 4 · el balance"
-      titulo="Qué cambió, y qué sigue igual"
-      nota={
-        <>
-          Las dos medidas salen del mismo cálculo, corrido sobre el archivo que
-          entró y sobre el que vas a descargar. Se refieren solo al cruce de
-          cuasi-identificadores: una columna que Velo no supo leer no entra a
-          ninguna de las dos cuentas.
-        </>
-      }
+      etiqueta={t(B.panel.etiqueta)}
+      titulo={t(B.panel.titulo)}
+      nota={<Rico texto={B.panel.nota} />}
     >
       {/* PRIMERO las salvedades. Siempre. */}
       {salvedades.length > 0 ? (
@@ -137,15 +140,13 @@ export function BalanceEnPantalla({
                   : "border-aviso bg-aviso-tenue text-tinta"
               }`}
             >
-              {textoDeSalvedad(salvedad)}
+              <TextoDeSalvedad salvedad={salvedad} />
             </li>
           ))}
         </ul>
       ) : (
         <p className="text-tinta-suave text-[0.875rem] leading-relaxed">
-          Velo no encontró salvedades que matizar sobre las columnas que revisó.
-          Eso no vuelve anónimo el archivo: quiere decir que las comprobaciones
-          que Velo sabe hacer salieron limpias.
+          <Rico texto={B.sinSalvedades} />
         </p>
       )}
 
@@ -153,49 +154,67 @@ export function BalanceEnPantalla({
       <div className="mt-5">
         {reduccion === null ? (
           <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-            Antes del tratamiento no había ningún registro único en las columnas
-            cruzadas, así que no hay reducción que medir. La cifra que importa
-            es la de abajo: cuántos hay <strong>ahora</strong>.
+            <Rico texto={B.sinReduccion} />
           </p>
         ) : esTitular ? (
           <>
             <p className="font-display text-acento text-[clamp(2.5rem,8vw,3.5rem)] leading-none font-semibold tabular-nums">
-              −<span data-testid="reduccion">{porcentaje(reduccion)}</span>
+              −
+              <span data-testid="reduccion">
+                {porcentaje(reduccion, idioma)}
+              </span>
             </p>
             <p className="text-tinta-suave mt-2 text-[0.9375rem] leading-relaxed">
-              de registros únicos respecto del archivo original, sobre las{" "}
-              {numero(antes.qis.length)} columnas cruzadas. Pasó de{" "}
-              {numero(antes.unicos)} a {numero(despues.unicos)} de{" "}
-              {numero(antes.filas)} registros.
+              <Rico
+                texto={B.titular}
+                datos={{
+                  qis: antes.qis.length,
+                  antes: antes.unicos,
+                  despues: despues.unicos,
+                  filas: antes.filas,
+                }}
+              />
             </p>
           </>
         ) : (
           <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-            La proporción de registros únicos bajó de{" "}
-            {porcentaje(antes.proporcionUnicos)} a{" "}
-            {porcentaje(despues.proporcionUnicos)} — una reducción del{" "}
+            <Rico
+              texto={B.noTitular.antes}
+              datos={{
+                antes: porcentaje(antes.proporcionUnicos, idioma),
+                despues: porcentaje(despues.proporcionUnicos, idioma),
+              }}
+            />{" "}
             <span data-testid="reduccion" className="text-tinta font-medium">
-              {porcentaje(reduccion)}
+              {porcentaje(reduccion, idioma)}
             </span>
             .{" "}
             <strong className="text-alerta font-medium">
-              Esa cifra no describe un archivo tratado
+              {t(B.noTitular.aviso)}
             </strong>{" "}
-            mientras siga en pie lo de arriba: se refiere solo al cruce de
-            cuasi-identificadores, y no cuenta nada de lo que quedó sin tocar.
+            <Rico texto={B.noTitular.despues} />
           </p>
         )}
       </div>
 
       <dl className="border-borde mt-5 grid gap-4 border-t pt-4 sm:grid-cols-4">
-        <Cifra titulo="Únicos, antes" valor={numero(antes.unicos)} />
         <Cifra
-          titulo="Únicos, después"
-          valor={numero(despues.unicos)}
+          titulo={t(B.cifras.unicosAntes)}
+          valor={numero(antes.unicos, idioma)}
+        />
+        <Cifra
+          titulo={t(B.cifras.unicosDespues)}
+          valor={numero(despues.unicos, idioma)}
           alerta={despues.unicos > 0}
         />
-        <Cifra titulo="Grupo mínimo, antes" valor={numero(antes.kMinimo)} />
-        <Cifra titulo="Grupo mínimo, después" valor={numero(despues.kMinimo)} />
+        <Cifra
+          titulo={t(B.cifras.kAntes)}
+          valor={numero(antes.kMinimo, idioma)}
+        />
+        <Cifra
+          titulo={t(B.cifras.kDespues)}
+          valor={numero(despues.kMinimo, idioma)}
+        />
       </dl>
     </Panel>
   );

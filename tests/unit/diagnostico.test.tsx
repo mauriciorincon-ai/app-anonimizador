@@ -13,6 +13,7 @@ import { clasificar } from "@/engine/clasificador";
 import { ConstructorColumnar } from "@/engine/columnar";
 import { evaluarRiesgo } from "@/engine/riesgo";
 import { porcentaje } from "@/lib/formato";
+import { fijarIdioma } from "@/lib/idioma/estado";
 import type { Informe } from "@/workers/contrato";
 
 function informeDe(perfil: string, filas = 400): Informe {
@@ -66,7 +67,9 @@ describe("archivo con datos personales", () => {
       name: "Cuánta gente queda sola en tu tabla",
     });
     expect(
-      within(panel).getByText(porcentaje(informe.riesgo.proporcionUnicos)),
+      within(panel).getByText(
+        porcentaje(informe.riesgo.proporcionUnicos, "es"),
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText(/de 400 registros/)).toBeInTheDocument();
     // La marca `naturaleza: "exacto"` tiene que ser visible: en el S2 llegan los estimadores
@@ -223,5 +226,55 @@ describe("archivo sin datos personales", () => {
     expect(
       screen.getByText("No hay ningún cruce que medir"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("el mismo informe, en inglés", () => {
+  // El informe lo produce el motor real UNA vez y la pantalla lo dice en el idioma que se pida:
+  // el motor devuelve claves y datos, no frases, así que ningún texto se queda en español.
+  const informe = informeDe("clinico");
+
+  it("dice el encabezado, el riesgo exacto y la evidencia en inglés, con las cifras del inglés", () => {
+    fijarIdioma("en");
+    render(<InformeDeDiagnostico informe={informe} />);
+
+    expect(screen.getByText("Diagnosis")).toBeInTheDocument();
+    // Miles con coma y decimales con punto: la convención del inglés, no la del español.
+    expect(screen.getByText(/400 rows · 24 columns/)).toBeInTheDocument();
+    const panel = screen.getByRole("region", {
+      name: "How many people end up alone in your table",
+    });
+    expect(
+      within(panel).getByText(
+        porcentaje(informe.riesgo.proporcionUnicos, "en"),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/of 400 records/)).toBeInTheDocument();
+    expect(screen.getByText("Exact figure.")).toBeInTheDocument();
+
+    // La etiqueta y la fuente de la columna salen del motor como mensajes, y se dicen en inglés.
+    const tabla = screen.getByRole("table");
+    const fila = within(tabla).getByRole("rowheader", { name: /nit_empresa/ });
+    const celdas = within(fila.closest("tr")!).getAllByRole("cell");
+    expect(celdas[0]).toHaveTextContent("NIT with check digit");
+    expect(celdas[0]).toHaveTextContent("Confirmed");
+    // La cita conserva el nombre propio de la fuente oficial.
+    expect(celdas[0]).toHaveTextContent(/DIAN, Administrative Order 4 of 1989/);
+    expect(celdas[1]).toHaveTextContent("Direct identifier");
+  });
+
+  it("no deja nada en español: ni las columnas excluidas ni el alcance del consejero", () => {
+    fijarIdioma("en");
+    render(<InformeDeDiagnostico informe={informe} />);
+
+    expect(
+      screen.getByText(/this is not the whole universe of possible crossings/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/columns were left out, and why/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/quedaron fuera/)).toBeNull();
+    // Y una clave sin catálogo se vería como «⟦clave⟧»: ninguna debe aparecer.
+    expect(document.body.textContent).not.toContain("⟦");
   });
 });

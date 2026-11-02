@@ -11,10 +11,8 @@
     "metricas[].fuente": "Una de cuatro: \"medido\" (salió de un contador o un comando), \"calculada\" (medido operado con una tarifa o una regla, y se dice cuál), \"declarado\" (lo fijó una persona), \"estimacion\" (deducido). Una cifra sin fuente no entra.",
     "enlaces.produccion": "null cuando la app no tiene URL pública. `razon` explica por qué, y es lo que la vitrina muestra en lugar del enlace. Nunca se rellena con un enlace de repositorio ni con una promesa."
   },
-
   "schema_version": "1.0.0",
-  "actualizado": "2026-08-21",
-
+  "actualizado": "2026-11-01",
   "app": {
     "slug": "anonimizador",
     "nombre": "Velo",
@@ -24,14 +22,12 @@
     "sprints_cerrados": 4,
     "version_repo": "0.1.0"
   },
-
   "promesa": {
     "tagline": "Velo para entregar. Desvelo para recuperar.",
-    "intro": "La aduana de tus datos: revisa tus tablas antes de que salgan hacia una IA, una herramienta en la nube o el computador de un tercero, te dice a quién señalan con el dedo, te las devuelve tratadas — y cuando el trabajo vuelve, recupera los valores originales. Todo ocurre dentro del navegador: no hay servidor, no hay carga, no hay copia.",
-    "para_quien": "Para quien tiene que entregar datos de personas a un tercero —un consultor, una herramienta, un modelo— y hoy elige entre mandar el archivo tal cual o no mandarlo. En Colombia, además, con la Ley 1581 de 2012 encima.",
-    "diferencial": "El mercado hace media travesía: micro-herramientas que anonimizan en un solo sentido, o suites empresariales inaccesibles. Velo es la única que hace el viaje completo dentro del navegador —entregas sin entregar, y recuperas con tu bóveda— con validadores que citan su fuente oficial, certificado con las dos huellas, y cero inteligencia artificial: el mismo archivo produce siempre el mismo resultado, byte por byte."
+    "intro": "Antes de mandar una tabla con datos de personas a una IA, a una herramienta en la nube o a un consultor, Velo te muestra qué columnas identifican a alguien. Las disfraza con reglas exactas y, cuando el trabajo vuelve, te devuelve los valores reales. Todo pasa dentro de tu navegador: el archivo no se sube a ningún servidor.",
+    "para_quien": "Para analistas, consultores y equipos que tienen que compartir tablas con nombres, cédulas o diagnósticos y hoy solo eligen entre mandar el archivo tal cual o no mandarlo. En Colombia, además, con la Ley 1581 de 2012 de protección de datos personales encima.",
+    "diferencial": "Las herramientas gratuitas de navegador anonimizan en un solo sentido, y las empresariales cierran el ciclo en servidores ajenos y a precio corporativo. Velo hace el viaje de ida y vuelta sin salir de tu navegador: entregas datos disfrazados y, con tu bóveda cifrada, recuperas los reales. No usa inteligencia artificial, así que el mismo archivo da siempre el mismo resultado, byte por byte."
   },
-
   "funcionalidades": {
     "total": 14,
     "fuente_del_conteo": "docs/MANUAL-DE-USO.md",
@@ -40,25 +36,25 @@
       {
         "orden": 1,
         "estrella": false,
-        "nombre": "Mira lo que te delata",
-        "linea": "Trae la tabla y Velo te dice a quién señala, y por qué.",
+        "nombre": "Descubre quién queda expuesto",
+        "linea": "Sueltas la tabla y Velo te dice qué columnas identifican a una persona, y con qué certeza.",
         "features": [
           {
             "id": "C1",
-            "nombre": "Carga de CSV y Excel, por arrastre y por teclado",
-            "que_hace": "CSV sin tope, porque se lee por partes y nunca existe entero en memoria; Excel hasta 150 MB, porque hay que abrirlo completo. El progreso dice la etapa real —tomando la huella, leyendo, reconociendo columnas, midiendo el riesgo— y no dibuja una barra donde no hay fracción que mostrar.",
+            "nombre": "Abre CSV y Excel sin subirlos a ningún lado",
+            "que_hace": "Arrastras tu archivo y se abre dentro de la pestaña del navegador, sin pasar por ningún servidor. Los CSV no tienen tope de tamaño porque se leen por partes, y los Excel llegan hasta 150 MB. Mientras trabaja, Velo te dice en qué etapa va.",
             "seccion_manual": "1. Trae tu tabla"
           },
           {
             "id": "C2",
-            "nombre": "Detección por columna con las cuatro categorías de la Ley 1581",
-            "que_hace": "Identificador directo, dato sensible del artículo 5, cuasi-identificador y no personal, con tres niveles de certeza: confirmado por un dígito de verificación oficial (NIT con el mod 11 de la DIAN, tarjetas con Luhn, IBAN con el 97-10), reconocido por su forma, o sin confirmar cuando la pista es el nombre de la columna. Cada validador cita su fuente en el código.",
+            "nombre": "Detecta qué columnas identifican a alguien",
+            "que_hace": "Velo clasifica cada columna en las cuatro categorías de la ley colombiana de datos personales: identificador directo, dato sensible, cuasi-identificador o no personal. Cuando hay un dígito de verificación oficial, como en el NIT o en las tarjetas, lo recalcula para confirmar el hallazgo.",
             "seccion_manual": "2. Lee el diagnóstico · Columna por columna"
           },
           {
             "id": "C13",
-            "nombre": "Reporte del diagnóstico, autocontenido y con huella",
-            "que_hace": "Un HTML que se abre con doble clic sin internet y sin instalar nada, con lo detectado, las categorías, las cifras de riesgo y el SHA-256 del archivo. No lleva ni una fila de la tabla: las muestras van enmascaradas y las columnas sensibles no llevan ninguna.",
+            "nombre": "Un reporte del diagnóstico para compartir",
+            "que_hace": "Te llevas el diagnóstico en un archivo que se abre con doble clic, sin internet. Muestra qué se encontró y cuánto riesgo hay, con la huella digital de tu archivo, y no copia ni una sola fila de tu tabla.",
             "seccion_manual": "3. Llévate el reporte"
           }
         ]
@@ -66,19 +62,19 @@
       {
         "orden": 2,
         "estrella": false,
-        "nombre": "Decide qué se le hace",
-        "linea": "La política es tuya, y es un archivo que puedes volver a usar.",
+        "nombre": "Tú decides el tratamiento",
+        "linea": "Una regla por columna, o una política lista para Colombia o Estados Unidos, guardada como archivo.",
         "features": [
           {
             "id": "C3",
-            "nombre": "Política por columna, exportable como archivo",
-            "que_hace": "Una fila por columna con su técnica. La política no se guarda en ningún sitio —lleva los nombres de las columnas, que son datos del usuario— así que se exporta e importa como archivo, con su propio hash SHA-256 como identidad: dos archivos que compartan los ocho caracteres del nombre recibieron el mismo tratamiento.",
+            "nombre": "Una regla por columna, guardada como archivo",
+            "que_hace": "Eliges qué se le hace a cada columna y guardas esa política como un archivo, para aplicarla igual el mes siguiente. El archivo entregado lleva en su nombre una huella de la política, así sabes qué tratamiento recibió.",
             "seccion_manual": "4. Transforma: el taller · La política"
           },
           {
             "id": "C14",
-            "nombre": "Políticas de fábrica: Habeas Data y HIPAA Safe Harbor",
-            "que_hace": "Habeas Data (Ley 1581 de 2012 y Decreto 1377 de 2013, con las técnicas de la guía AGN + SIC y un objetivo de grupo mínimo de 5) o HIPAA Safe Harbor (los 18 identificadores de 45 CFR §164.514(b)(2), que manda borrar y no seudonimizar). Cada una declara cuántos de sus puntos reconoce por contenido, cuántos solo por el nombre y cuántos quedan para la persona. Al tocar una regla, Velo avisa de que ya no es esa política.",
+            "nombre": "Políticas listas: Habeas Data y HIPAA",
+            "que_hace": "Con un clic aplicas el tratamiento que pide la ley colombiana de Habeas Data o la regla HIPAA para datos de salud de Estados Unidos. Cada política te dice qué puntos reconoce sola y cuáles te toca revisar a ti.",
             "seccion_manual": "4. Transforma: el taller · La política"
           }
         ]
@@ -86,25 +82,25 @@
       {
         "orden": 3,
         "estrella": false,
-        "nombre": "Vela con exactitud",
-        "linea": "Conserva la forma, pierde la identidad — y los cruces sobreviven.",
+        "nombre": "Disfraza sin romper los datos",
+        "linea": "Los datos pierden la identidad y conservan la forma, y los cruces entre archivos siguen funcionando.",
         "features": [
           {
             "id": "C4",
-            "nombre": "Cuatro familias de técnicas",
-            "que_hace": "Enmascarar, seudonimizar (HMAC-SHA256 con llave derivada por PBKDF2 de 600.000 vueltas), generalizar y suprimir, elegidas columna por columna, con vista previa de lo que va a recibir la otra persona antes de escribir nada.",
+            "nombre": "Cuatro maneras de disfrazar un dato",
+            "que_hace": "Para cada columna eliges tapar parte del valor, cambiarlo por un seudónimo, agruparlo en rangos o quitarlo. Antes de escribir nada ves, valor por valor, exactamente lo que va a recibir la otra persona.",
             "seccion_manual": "4. Transforma: el taller · Antes y después"
           },
           {
             "id": "C10",
-            "nombre": "Formato conservado con el dígito de verificación recalculado",
-            "que_hace": "Un NIT sigue siendo un NIT: el seudónimo mantiene la forma y su dígito de verificación se recalcula con el mod 11 de la DIAN. No es cifrado que preserva formato —FF3 está roto y el código dice por qué— y las colisiones que el formato provoca se cuentan y se declaran.",
+            "nombre": "Una cédula disfrazada sigue pareciendo cédula",
+            "que_hace": "El seudónimo conserva la forma del dato original, así el sistema que lo recibe no lo rechaza. En el NIT, Velo recalcula el dígito de verificación de la DIAN, y si dos valores acaban con el mismo seudónimo, te lo cuenta.",
             "seccion_manual": "4. Transforma: el taller · La política"
           },
           {
             "id": "C9",
-            "nombre": "Seudónimos estables entre entregas",
-            "que_hace": "La misma frase de paso y la misma sal producen los mismos seudónimos, así que el archivo de marzo se puede cruzar con el de abril sin tener los datos reales delante. Perder la frase es perder la vuelta, y se dice antes.",
+            "nombre": "Los cruces entre archivos sobreviven",
+            "que_hace": "Con la misma frase de paso y la misma sal, que Velo te muestra para que la guardes, cada valor recibe el mismo seudónimo en todas tus entregas. Así cruzas el archivo de marzo con el de abril sin tener los datos reales delante.",
             "seccion_manual": "4. Transforma: el taller · La llave"
           }
         ]
@@ -112,25 +108,25 @@
       {
         "orden": 4,
         "estrella": false,
-        "nombre": "Mide el riesgo de verdad",
-        "linea": "Lo exacto y lo estimado, en dos planos que nunca se suman.",
+        "nombre": "Mide el riesgo con cifras exactas",
+        "linea": "Cuánta gente sigue expuesta antes y después, contada fila por fila y separada de lo estimado.",
         "features": [
           {
             "id": "C5",
-            "nombre": "k-anonimato con Mondrian y consejero de cruces",
-            "que_hace": "El consejero muestra qué columnas delatan solas y qué combinaciones son las más delatoras, con su k real, y declara cuántas evaluó y qué quedó fuera con su motivo. «Generalizar hasta alcanzar el k» reparte con Mondrian (LeFevre et al., ICDE 2006) sobre las columnas marcadas, con l-diversity y t-closeness medidas — y sin borrar filas para lograrlo.",
+            "nombre": "Descubre qué combinaciones delatan",
+            "que_hace": "Columnas que solas no identifican a nadie, juntas pueden señalar a media tabla. Velo te muestra las combinaciones más delatoras y puede volver esos valores más generales, como una edad en un rango, hasta que nadie quede en un grupo menor que el que pidas.",
             "seccion_manual": "2. Lee el diagnóstico · El consejero de cruces"
           },
           {
             "id": "C6",
-            "nombre": "Riesgo exacto y riesgo poblacional estimado, separados",
-            "que_hace": "Las cifras del archivo se cuentan registro por registro y van marcadas «cifra exacta» (modelo prosecutor). El riesgo de la población sale de un modelo con su supuesto, va marcado «estimado» con su fuente al lado —Benedetti–Franconi (1998) y Zayatz (1991)— y solo aparece si la persona declara la población. Nunca se promedian entre sí.",
+            "nombre": "Riesgo exacto y estimado, nunca mezclados",
+            "que_hace": "El riesgo de tu archivo se cuenta fila por fila y va marcado como exacto. Si declaras el tamaño de la población, Velo estima también el riesgo en ella con dos modelos publicados, marcado como estimado y nunca mezclado con el exacto.",
             "seccion_manual": "4. Transforma: el taller · El riesgo estimado"
           },
           {
             "id": "C7",
-            "nombre": "Balance de antes y después, con la advertencia arriba de la cifra",
-            "que_hace": "Qué cambió, cuánto riesgo se redujo y cuánta utilidad se perdió — con una regla dura: si queda algo sin tratar, eso se lee antes que cualquier porcentaje, y la cifra pierde el tratamiento de titular hasta que nada la desmienta.",
+            "nombre": "El antes y el después, sin maquillaje",
+            "que_hace": "Ves cuánto bajó el riesgo y cuánta utilidad perdieron los datos al tratarlos. Si algo quedó sin proteger, la advertencia aparece arriba, antes que cualquier porcentaje, para que una buena cifra no tape un problema.",
             "seccion_manual": "4. Transforma: el taller · Antes y después"
           }
         ]
@@ -138,32 +134,31 @@
       {
         "orden": 5,
         "estrella": true,
-        "nombre": "Entrega, recupera, deja constancia",
-        "linea": "El viaje completo — y todo lo que hiciste queda anotado.",
+        "nombre": "Entrega, recupera y deja constancia",
+        "linea": "Recuperas los valores reales cuando el trabajo vuelve, y cada entrega queda certificada y anotada.",
         "features": [
           {
             "id": "C8",
-            "nombre": "La bóveda cifrada y el regreso",
-            "que_hace": "Un seudónimo no vuelve por sí solo, y eso es lo que lo hace seguro de entregar. La bóveda —archivo aparte, cifrado con AES-GCM y llave derivada por PBKDF2 de 600.000 vueltas— sí lo deshace. La restauración es por VALOR, jamás por posición, y reconoce las columnas por su contenido: sobrevive a que el tercero reordene filas, añada columnas, borre otras y corrija valores a mano. Las cuatro cosas que le pueden pasar a una celda se cuentan todas, y las ambiguas se declaran ANTES de restaurar.",
+            "nombre": "La bóveda: recupera los datos reales",
+            "que_hace": "Una bóveda cifrada, que solo abres tú con tu frase, guarda qué valor real hay detrás de cada seudónimo. Cuando el trabajo vuelve, Velo restaura los originales aunque hayan reordenado filas, agregado columnas o corregido valores, y te avisa antes si hay valores ambiguos.",
             "seccion_manual": "5. La bóveda · 6. El regreso"
           },
           {
             "id": "C11",
-            "nombre": "Certificado del tratamiento con las dos huellas",
-            "que_hace": "El documento que viaja con el archivo: qué se le hizo, el balance con sus advertencias, la utilidad perdida, el hash completo de la política, y las huellas del archivo que entró y del que sale. Con la segunda, quien lo recibe comprueba que el documento habla de su copia en vez de creerlo — con la orden exacta para macOS, Linux y Windows. No es una firma digital, y lo dice.",
+            "nombre": "Un certificado que se puede comprobar",
+            "que_hace": "Cada entrega sale con un documento que dice qué se le hizo al archivo y cuánto riesgo quedó. Lleva la huella digital del archivo entregado, así quien lo recibe comprueba con un comando que habla de su copia.",
             "seccion_manual": "4. Transforma: el taller · El certificado"
           },
           {
             "id": "C12",
-            "nombre": "Bitácora cifrada de los tratamientos",
-            "que_hace": "Qué se trató, cuándo, con qué política y con qué riesgo antes y después — las dos proporciones y no la resta entre ellas, porque una bitácora se lee meses después sin ninguna pantalla al lado que la matice. Va cifrada porque un nombre de archivo ya cuenta de qué va su contenido, en archivo propio y con su propia frase de paso.",
+            "nombre": "Una bitácora cifrada de tus entregas",
+            "que_hace": "Llevas el registro de qué trataste, cuándo, con qué política y con qué riesgo antes y después, para responder meses más tarde. Va cifrada en un archivo aparte, porque hasta el nombre de un archivo cuenta de qué se trata.",
             "seccion_manual": "7. La bitácora"
           }
         ]
       }
     ]
   },
-
   "metricas": [
     {
       "clave": "funcionalidades",
@@ -184,26 +179,26 @@
     {
       "clave": "pruebas_unitarias",
       "etiqueta": "Pruebas unitarias y de integración",
-      "valor": 740,
+      "valor": 964,
       "unidad": "pruebas",
       "fuente": "medido",
-      "detalle": "Salida de `pnpm test` el 2026-08-21: 740 pruebas en 42 archivos. Un archivo y una prueba quedan omitidos por diseño."
+      "detalle": "Salida de `pnpm test` el 2026-11-01: 964 pruebas en 52 archivos. Un archivo y una prueba quedan omitidos por diseño."
     },
     {
       "clave": "pruebas_e2e",
       "etiqueta": "Pruebas de extremo a extremo",
-      "valor": 153,
+      "valor": 203,
       "unidad": "pruebas",
       "fuente": "medido",
-      "detalle": "Salida de `pnpm test:e2e` el 2026-08-22, en escritorio y móvil, incluidas axe en los dos temas, la garantía de red y las del despliegue por recorrido del brochure —entre ellas la que exige que la página no mueva el scroll por su cuenta—. Tres se omiten cuando no está el archivo sintético de 500.000 filas."
+      "detalle": "Salida de `pnpm test:e2e` el 2026-11-01 sobre el árbol del Sprint 005: 203 pasan y 3 se omiten por diseño (206 declaradas), porque el archivo de 500.000 filas y la bitácora de 2.000 entradas solo corren en escritorio. En escritorio y móvil, incluidas axe en los dos temas y en los dos idiomas, la garantía de red, las del despliegue por recorrido del brochure —entre ellas la que exige que la página no mueva el scroll por su cuenta— y las del cambio de idioma: el conmutador, `?lang=`, sin una sola petición y sin nada guardado en el navegador."
     },
     {
       "clave": "cobertura_lineas",
       "etiqueta": "Cobertura de líneas",
-      "valor": 96.17,
+      "valor": 95.89,
       "unidad": "%",
       "fuente": "medido",
-      "detalle": "v8 sobre src/engine y src/lib, con umbral de 80 % por glob en vitest.config.ts. 1.609 de 1.673 líneas."
+      "detalle": "v8 sobre src/engine y src/lib, con umbral de 80 % por glob en vitest.config.ts. 1.705 de 1.778 líneas, medidas el 2026-11-01."
     },
     {
       "clave": "dependencias_runtime",
@@ -248,21 +243,20 @@
     {
       "clave": "peso_brochure",
       "etiqueta": "Peso de este brochure",
-      "valor": 484920,
+      "valor": 526384,
       "unidad": "bytes",
       "fuente": "medido",
-      "detalle": "Archivo autocontenido, sin una sola petición externa. `wc -c docs/BROCHURE.html` el 2026-08-22. De esos bytes, 360 KB son las diez capturas de la app —cinco pantallas en tema claro y oscuro, en WebP dentro de `data:` URI—: es lo que cuesta que el brochure enseñe el producto y siga abriéndose con doble clic sin internet. No embebe tipografías: usa las del sistema."
+      "detalle": "Archivo autocontenido, sin una sola petición externa. `wc -c docs/BROCHURE.html` el 2026-11-01. Subió desde 484.920 por el diccionario en inglés (unos 33 KB) y el conmutador de idioma. De esos bytes, 360 KB son las diez capturas de la app —cinco pantallas en tema claro y oscuro, en WebP dentro de `data:` URI—: es lo que cuesta que el brochure enseñe el producto y siga abriéndose con doble clic sin internet. No embebe tipografías: usa las del sistema."
     },
     {
       "clave": "decisiones_registradas",
       "etiqueta": "Decisiones de arquitectura registradas",
-      "valor": 8,
+      "valor": 9,
       "unidad": "ADR",
       "fuente": "medido",
-      "detalle": "Archivos de decisions/, desde «cero IA generativa» hasta «el estimado no se compone con el exacto»."
+      "detalle": "Archivos de decisions/, desde «cero IA generativa» hasta «Velo en dos idiomas: los motores nombran, la interfaz dice»."
     }
   ],
-
   "stack": [
     {
       "nombre": "Next.js",
@@ -289,19 +283,17 @@
       "papel": "las pruebas, incluidas las permanentes de determinismo, de honestidad del lenguaje y de la garantía de red"
     }
   ],
-
   "privacidad": {
     "red_saliente_con_datos": false,
     "datos_persisten_en_servidor": false,
     "usa_ia": false,
-    "detalle": "El archivo se abre dentro de la pestaña, en un hilo aparte, y ahí se queda: no hay subida, no hay servidor que lo reciba y no queda copia al cerrar. La garantía tiene tres capas —un e2e que intercepta todas las peticiones del navegador durante el flujo completo, una CSP con connect-src 'self' que impide abrir cualquier conexión ajena, y un test de código fuente que veta fetch, localStorage e indexedDB en el motor—. La bóveda y la bitácora son la única excepción al «nada persiste», y son archivos cifrados que el usuario descarga y custodia con una acción explícita. Sin IA generativa en ninguna parte del producto: por eso el mismo archivo con la misma política y la misma llave produce siempre la misma salida, byte por byte, y por eso el resultado es auditable."
+    "detalle": "Tu archivo se abre dentro de la pestaña del navegador y ahí se queda: no se sube, ningún servidor lo recibe y al cerrar no queda copia. Tres controles lo sostienen: una prueba automática que vigila todas las conexiones del navegador durante el flujo completo, una regla de la página que le impide conectarse a cualquier otro sitio y una prueba sobre el código que no deja al motor usar la red ni guardar nada en el navegador. La bóveda y la bitácora son la única excepción: archivos cifrados que tú descargas y guardas cuando lo decides. Velo no usa inteligencia artificial: con el mismo archivo, la misma política y la misma llave, el resultado es siempre idéntico, byte por byte, y por eso se puede auditar."
   },
-
   "enlaces": {
     "produccion": null,
-    "razon": "Velo está desplegado y funcionando, pero su dirección todavía no se publica: el acceso va por lista de espera mientras se completa la ronda de pruebas.",
+    "razon": "Anonimizador Velo está desplegado y funcionando. Su dirección no se publica: el acceso es por lista de espera.",
     "repositorio": null,
-    "razon_repositorio": "El repositorio no se enlaza desde la vitrina (regla de cero enlaces del portafolio).",
+    "razon_repositorio": "El repositorio no se enlaza desde el Portafolio: ninguna ficha publica enlaces de acceso.",
     "brochure_archivo": "docs/BROCHURE.html",
     "brochure_ruta_local": "/conoce"
   }

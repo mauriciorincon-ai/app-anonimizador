@@ -1,7 +1,9 @@
 # Manual de uso — Velo
 
 > _Velo para entregar. Desvelo para recuperar._
-> Actualizado en el Sprint 004 · 13 de agosto de 2026
+> Actualizado en el Sprint 005 · 1 de noviembre de 2026
+>
+> English version: [MANUAL-DE-USO.en.md](MANUAL-DE-USO.en.md)
 
 Velo es la **aduana de tus datos**: lo que revisa tu tabla antes de que salga hacia una IA, una
 herramienta en la nube o el computador de un tercero. Este manual cubre todo lo que Velo sabe
@@ -26,6 +28,26 @@ camino de vuelta es la [bóveda](#5-la-bóveda-para-poder-deshacerlo) y
 [el regreso](#6-el-regreso-recuperar-lo-que-entregaste). Y lo que hiciste queda anotado en
 [la bitácora](#7-la-bitácora-acordarte-dentro-de-seis-meses), para dentro de seis meses. Cada uno
 tiene su sección más abajo.
+
+**Velo habla español e inglés.** En el encabezado de todas las pantallas hay dos botones, **ES** y
+**EN**: el que está subrayado es el idioma en uso. Al abrir, Velo usa el idioma de tu navegador; si
+prefieres otro, lo cambias ahí y toda la pantalla cambia con él —también el certificado y el
+informe del regreso que descargas, que se escriben en el idioma que tengas elegido en ese momento—.
+Si copias la dirección después de elegir, lleva `?lang=en` o `?lang=es` y abre igual para quien la
+reciba. **Velo no recuerda tu elección**: como el resto, vive solo en la pestaña, así que al
+recargar vuelve al idioma de tu navegador (o al de la dirección).
+
+Hay cosas que el idioma **no** cambia, y conviene saberlo: lo que viene de tus archivos (los
+nombres de columna, los valores, las muestras) se muestra tal como está; los reconocedores propios
+de un país siguen siendo los colombianos —cédula, NIT, celular, placa, y la Ley 1581 como marco—
+porque el inglés es el de la interfaz, no el de la detección; y la bóveda y la bitácora son el mismo archivo sin importar en qué
+idioma las guardaste. Una anotación de la bitácora conserva la fecha tal como se escribió cuando la
+anotaste. Igual con lo que Velo escribe **dentro de los archivos que descargas**: el archivo tratado
+conserva sus palabras en español (el « (o vacío)» que marca un valor generalizado vacío, el « a »
+entre los dos extremos de un rango) y los nombres con que se guardan (`velo-anonimizado-…`,
+`velo-boveda-…`, `velo-politica.json`), porque esos bytes dependen de tus datos, tu política y tu
+llave, nunca del idioma de la pantalla. El certificado y el informe del regreso son la excepción:
+salen en el idioma que usabas al descargarlos.
 
 Dicho con precisión, porque la diferencia importa: **un seudónimo sigue siendo irreversible por sí
 solo**. Quien reciba el archivo tratado no puede deshacerlo —eso es lo que lo hace seguro de
@@ -330,7 +352,7 @@ recuperar. Solo los seudónimos la admiten, y no es una limitación de esta vers
 (`103***89`) y generalizar (`30-39`) **destruyen** información, así que no hay tabla que lo deshaga
 — los dígitos que faltan ya no existen en ninguna parte. La pantalla te dice cuáles no van a volver.
 
-**Cómo se guarda.** Al transformar aparece el paso 4. Escribes una frase de paso —**puede y debería
+**Cómo se guarda.** Al transformar aparece el paso 9, «la bóveda». Escribes una frase de paso —**puede y debería
 ser distinta de la del proyecto**— y Velo prepara un archivo `.velo` cifrado que te descargas.
 
 Tres cosas sobre ese archivo, y las tres importan:
@@ -350,7 +372,7 @@ no hay un solo valor original legible.
 ### 6. El regreso: recuperar lo que entregaste
 
 Cuando el consultor, la empresa o la IA te devuelvan el archivo trabajado, entra a **`/regreso`** (el
-enlace está en el paso 4, y la ruta funciona sola: no necesitas tener nada cargado).
+enlace está en ese mismo paso 9, y la ruta funciona sola: no necesitas tener nada cargado).
 
 1. **Carga la bóveda** y escribe su frase. Velo te enseña su huella, cuántas correspondencias trae y
    qué columnas puede devolver.
@@ -467,8 +489,23 @@ compara los bytes.
 
 **Entregué un archivo el mes pasado. ¿Cómo consigo los mismos seudónimos?**
 Con la **misma frase de paso y la misma sal**. La frase la guardas tú; la sal te la enseña Velo al
-derivar la llave y **hoy no viaja dentro de la política exportada** — cópiala a tu gestor de
-contraseñas junto a la frase. (Que la sal viaje con la política llega con la bóveda.)
+derivar la llave. **No viaja dentro de la política exportada**, pero sí dentro de la bóveda,
+cifrada con todo lo demás: quien conserva la bóveda y recuerda la frase puede volver a derivar la
+misma llave. Si no guardaste bóveda —porque no marcaste ninguna columna como reversible—, cópiala a
+tu gestor de contraseñas junto a la frase.
+
+**¿Puedo usar Velo en inglés?**
+Sí, entero: las cinco pantallas, los avisos de las llaves, el certificado, el informe del regreso y
+el brochure. Cambia con los botones **ES** / **EN** del encabezado. El inglés está redactado, no
+traducido palabra por palabra, y dice lo mismo con la misma cautela: lo estimado va marcado como
+estimado en los dos idiomas.
+
+**Si uso Velo en inglés, ¿reconoce datos personales de otros países?**
+No más que antes. Los reconocedores propios de un país siguen siendo los colombianos: una cédula, un
+NIT, un celular o una placa colombianos se detectan igual en las dos pantallas, y un número de
+seguridad social de otro país, no. Los universales —correo, tarjeta de pago, IBAN, dirección IP,
+coordenadas, fechas— funcionan igual en los dos idiomas. El idioma cambia lo que lees, no lo que
+Velo sabe detectar.
 
 **¿Funciona sin internet?**
 La primera vez necesitas cargar la página. Después, el análisis ocurre entero en tu computador.

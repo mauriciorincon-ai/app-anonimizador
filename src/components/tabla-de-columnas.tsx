@@ -1,3 +1,5 @@
+"use client";
+
 // Qué hay en cada columna, y POR QUÉ Velo lo cree.
 //
 // El "por qué" no es una nota de pie opcional: es la mitad del producto. Una herramienta que
@@ -10,10 +12,16 @@
 // qué columna. En móvil se desplaza en horizontal dentro de una región enfocable con teclado.
 
 import { InsigniaDeCategoria, InsigniaDeCerteza } from "@/components/insignias";
+import { useT, type Dice } from "@/components/texto";
 import type { Evidencia, HallazgoDeColumna } from "@/engine/clasificador";
-import { numero, porcentaje } from "@/lib/formato";
+import { porcentaje } from "@/lib/formato";
+import { plural } from "@/lib/idioma";
+import { DIAGNOSTICO } from "@/lib/idioma/textos/diagnostico";
 
-function textoDeEvidencia(evidencia: Evidencia): {
+function textoDeEvidencia(
+  evidencia: Evidencia,
+  { t, m, idioma }: Dice,
+): {
   principal: string;
   fuente?: string;
 } {
@@ -23,13 +31,14 @@ function textoDeEvidencia(evidencia: Evidencia): {
         ? evidencia.aciertos / evidencia.muestreados
         : 0;
     return {
-      principal: `${porcentaje(proporcion)} de los ${numero(
-        evidencia.muestreados,
-      )} valores revisados cumplen.`,
-      fuente: evidencia.fuente,
+      principal: t(DIAGNOSTICO.tabla.cumplen, {
+        pct: porcentaje(proporcion, idioma),
+        n: evidencia.muestreados,
+      }),
+      fuente: m(evidencia.fuente),
     };
   }
-  return { principal: evidencia.nota };
+  return { principal: m(evidencia.nota) };
 }
 
 export function TablaDeColumnas({
@@ -37,15 +46,18 @@ export function TablaDeColumnas({
 }: {
   columnas: readonly HallazgoDeColumna[];
 }) {
+  const dice = useT();
+  const { t, m, idioma } = dice;
+  const { encabezados } = DIAGNOSTICO.tabla;
   return (
     <>
       <p className="text-tinta-tenue mb-3 text-[0.8125rem] sm:hidden">
-        La tabla se desplaza en horizontal.
+        {t(DIAGNOSTICO.tabla.desplaza)}
       </p>
       <div
         tabIndex={0}
         role="region"
-        aria-label="Detalle de las columnas del archivo"
+        aria-label={t(DIAGNOSTICO.tabla.detalle)}
         className="tabla-desplazable -mx-5 overflow-x-auto px-5"
       >
         <table className="w-full min-w-[42rem] border-collapse text-left">
@@ -55,25 +67,25 @@ export function TablaDeColumnas({
                 scope="col"
                 className="etiqueta pb-2 pr-4 whitespace-nowrap align-bottom"
               >
-                Columna
+                {t(encabezados.columna)}
               </th>
               <th
                 scope="col"
                 className="etiqueta pb-2 pr-4 whitespace-nowrap align-bottom"
               >
-                Qué encontramos
+                {t(encabezados.encontramos)}
               </th>
               <th
                 scope="col"
                 className="etiqueta pb-2 pr-4 whitespace-nowrap align-bottom"
               >
-                Categoría
+                {t(encabezados.categoria)}
               </th>
               <th
                 scope="col"
                 className="etiqueta pb-2 whitespace-nowrap align-bottom"
               >
-                Muestra
+                {t(encabezados.muestra)}
               </th>
             </tr>
           </thead>
@@ -89,15 +101,23 @@ export function TablaDeColumnas({
                 >
                   {columna.nombre}
                   <span className="cifra text-tinta-tenue mt-1 block font-sans text-[0.75rem]">
-                    {numero(columna.cardinalidad)}{" "}
-                    {columna.cardinalidad === 1
-                      ? "valor distinto"
-                      : "valores distintos"}
+                    {t(
+                      plural(
+                        columna.cardinalidad,
+                        DIAGNOSTICO.tabla.valorDistinto,
+                        DIAGNOSTICO.tabla.valoresDistintos,
+                      ),
+                      { n: columna.cardinalidad },
+                    )}
                     {columna.filasNoVacias < columna.filas ? (
                       <>
                         {" · "}
-                        {porcentaje(columna.filasNoVacias / columna.filas)} con
-                        dato
+                        {t(DIAGNOSTICO.tabla.conDato, {
+                          pct: porcentaje(
+                            columna.filasNoVacias / columna.filas,
+                            idioma,
+                          ),
+                        })}
                       </>
                     ) : null}
                   </span>
@@ -105,14 +125,17 @@ export function TablaDeColumnas({
 
                 <td className="max-w-[22rem] py-3 pr-4">
                   <span className="text-tinta text-[0.875rem] font-medium">
-                    {columna.etiqueta}
+                    {m(columna.etiqueta)}
                   </span>
                   <span className="mt-1 block">
                     <InsigniaDeCerteza certeza={columna.certeza} />
                   </span>
                   <ul className="mt-1.5 space-y-1">
                     {columna.evidencia.map((evidencia, i) => {
-                      const { principal, fuente } = textoDeEvidencia(evidencia);
+                      const { principal, fuente } = textoDeEvidencia(
+                        evidencia,
+                        dice,
+                      );
                       return (
                         <li
                           key={i}
@@ -152,21 +175,24 @@ export function TablaDeColumnas({
 }
 
 function Muestra({ muestra }: { muestra: HallazgoDeColumna["muestra"] }) {
+  const { t } = useT();
   if (muestra === null) {
     return (
-      <span className="text-tinta-tenue text-[0.8125rem]">columna vacía</span>
+      <span className="text-tinta-tenue text-[0.8125rem]">
+        {t(DIAGNOSTICO.tabla.columnaVacia)}
+      </span>
     );
   }
   if (muestra.omitida) {
     return (
       <span
         className="text-tinta-tenue text-[0.75rem] leading-snug"
-        title="Los valores de una columna sensible son pocos y muy repetidos ('Indígena', 'J45.9'): ninguna máscara los protege de verdad."
+        title={t(DIAGNOSTICO.tabla.sinMuestraTitulo)}
       >
-        sin muestra
+        {t(DIAGNOSTICO.tabla.sinMuestra)}
         <span className="sr-only">
           {" "}
-          — es una columna de datos sensibles y enmascararla no la protegería.
+          {t(DIAGNOSTICO.tabla.sinMuestraLector)}
         </span>
       </span>
     );

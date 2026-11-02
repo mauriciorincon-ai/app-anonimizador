@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
+import { decirMensaje } from "@/lib/idioma/mensajes";
 import {
   CARDINALIDAD_MAXIMA_DE_CORRELACION,
   COLUMNAS_MAXIMAS_DE_CORRELACION,
@@ -130,6 +131,10 @@ describe("el balance columna por columna", () => {
     expect(edad.bitsDespues).toBe(0);
     expect(edad.celdasCambiadas).toBe(1);
     expect(edad.bitsAntes).toBeCloseTo(Math.log2(40), 10);
+    // Y queda fuera del cruce diciendo por qué, sin datos: es una frase fija.
+    expect(
+      utilidad.fueraDelCruce.find((f) => f.nombre === "edad")?.motivo,
+    ).toEqual({ clave: "utilidad.fuera.suprimida" });
   });
 
   it("una columna que no cambió sale como intacta, no como transformada", () => {
@@ -210,7 +215,17 @@ describe("las relaciones entre columnas", () => {
 
     const fuera = utilidad.fueraDelCruce.find((f) => f.nombre === "correo");
     expect(fuera).toBeDefined();
-    expect(fuera!.motivo).toContain(String(CARDINALIDAD_MAXIMA_DE_CORRELACION));
+    // El motivo es un mensaje con el tope CRUDO: la pantalla (o el certificado) lo escribe.
+    expect(fuera!.motivo).toEqual({
+      clave: "utilidad.fuera.cardinalidad",
+      datos: { tope: CARDINALIDAD_MAXIMA_DE_CORRELACION },
+    });
+    expect(decirMensaje(fuera!.motivo, "es")).toContain(
+      `más de ${CARDINALIDAD_MAXIMA_DE_CORRELACION} valores distintos`,
+    );
+    expect(decirMensaje(fuera!.motivo, "en")).toContain(
+      `more than ${CARDINALIDAD_MAXIMA_DE_CORRELACION} distinct values`,
+    );
     expect(utilidad.correlaciones).toEqual([]);
   });
 
@@ -228,6 +243,12 @@ describe("las relaciones entre columnas", () => {
     const utilidad = medirUtilidad(tabla, tabla);
 
     expect(utilidad.fueraDelCruce).toHaveLength(3);
+    for (const sobrante of utilidad.fueraDelCruce) {
+      expect(sobrante.motivo).toEqual({
+        clave: "utilidad.fuera.sobrante",
+        datos: { tope: COLUMNAS_MAXIMAS_DE_CORRELACION },
+      });
+    }
     expect(utilidad.tope.columnasMaximas).toBe(COLUMNAS_MAXIMAS_DE_CORRELACION);
     // 8 columnas ⇒ 28 pares.
     expect(utilidad.correlaciones).toHaveLength(28);

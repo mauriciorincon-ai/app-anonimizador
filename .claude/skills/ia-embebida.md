@@ -150,6 +150,18 @@ dentro del adapter** (`CHAT_PROVIDER=mock` o equivalente) — jamás como interc
 
 Patrón completo: `wiki/patterns/mock-como-proveedor-de-primera-clase.md` (planeadora).
 
+## 9. Grounding en dos mitades — y el kit imprime salidas (Angel Ghost S2, kit v1.31.0)
+
+Una salida «fundada» se comprueba en DOS mitades, ambas código: **(1) cita** — la fuente que
+devuelve el modelo es una de las que se le dieron (idealmente el tipo no se construye sin una
+fuente real: «la regla dura que no compila»); **(2) fidelidad** — lo que AFIRMA es lo que dice la
+fuente citada (cotejo determinista de términos/cifras contra el fragmento, en el idioma de la
+fuente; el prompt pide escribir en ese idioma, no en el de la pregunta). Si falla cualquiera, la
+salida se descarta y se muestra el fallback determinista. **Y el kit de evaluación imprime unas
+cuantas salidas** además de contarlas: al menos una vez por sprint alguien las LEE. *(Angel Ghost
+S2: 17/17 «fundadas» con contenido falso — el contador medía citas; con la fidelidad pasan 11–13
+de 17, que es la cifra honesta.)* Patrón: `wiki/patterns/grounding-en-dos-mitades.md`.
+
 ## Checklist del sprint (lo verifica /deploy-check)
 
 - [ ] Toda llamada LLM pasa por `lib/ia/client.ts` y valida contra un schema de `schemas.ts`.
@@ -166,3 +178,5 @@ Patrón completo: `wiki/patterns/mock-como-proveedor-de-primera-clase.md` (plane
       retries automáticos).
 - [ ] Schemas de entrada de routes con **`.strict()`**; el cliente importa de `schemas.ts` solo
       con **`import type`** (§1).
+- [ ] Grounding en dos mitades (cita + fidelidad) con test en rojo, y el kit imprime salidas
+      leídas al menos una vez en el sprint (§9).

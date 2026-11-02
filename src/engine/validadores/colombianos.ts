@@ -2,6 +2,8 @@
 // lleva su fuente oficial citada AQUÍ, en el código, no en un documento aparte: el algoritmo es
 // tan citable como el resto del pipeline.
 
+import { mensaje } from "@/lib/idioma";
+
 import type { Validador } from "./tipos";
 
 /** Deja solo dígitos. Los NITs viajan como "900.123.456-7" y los celulares como "+57 300 …". */
@@ -37,8 +39,9 @@ export function digitoVerificacionNit(numeroBase: string): number | null {
 
 export const validadorNit: Validador = {
   id: "nit",
-  etiqueta: "NIT con dígito de verificación",
-  fuente: "DIAN, Orden Administrativa 4 de 1989 — pesos primos, módulo 11",
+  etiqueta: mensaje("validador.nit.etiqueta"),
+  // Fuente: DIAN, Orden Administrativa 4 de 1989 — pesos primos, módulo 11 (ver arriba).
+  fuente: mensaje("validador.nit.fuente"),
   certeza: "algoritmo-oficial",
   categoria: "identificador-directo",
   prioridad: 100,
@@ -74,10 +77,10 @@ const ENCABEZADO_DE_CEDULA =
 
 export const validadorCedula: Validador = {
   id: "cedula",
-  etiqueta: "Cédula de ciudadanía (formato)",
-  fuente:
-    "Registraduría Nacional — NUIP de 10 dígitos desde 1.000.000.000; series históricas ≤ 8 " +
-    "dígitos. No existe dígito de verificación público: la validación es estructural.",
+  etiqueta: mensaje("validador.cedula.etiqueta"),
+  // Fuente: Registraduría Nacional — NUIP de 10 dígitos desde 1.000.000.000; series históricas
+  // ≤ 8 dígitos. No existe dígito de verificación público: la validación es estructural.
+  fuente: mensaje("validador.cedula.fuente"),
   certeza: "estructural",
   categoria: "identificador-directo",
   prioridad: 60,
@@ -116,9 +119,9 @@ function nacionalDeDiezDigitos(valor: string): string | null {
 
 export const validadorCelular: Validador = {
   id: "celular-co",
-  etiqueta: "Celular colombiano",
-  fuente:
-    "CRC — numeración unificada a 10 dígitos (1-dic-2021); móviles inician por 3",
+  etiqueta: mensaje("validador.celularCo.etiqueta"),
+  // Fuente: CRC — numeración unificada a 10 dígitos (1-dic-2021); móviles inician por 3.
+  fuente: mensaje("validador.celularCo.fuente"),
   certeza: "estructural",
   categoria: "identificador-directo",
   prioridad: 70,
@@ -130,9 +133,9 @@ export const validadorCelular: Validador = {
 
 export const validadorFijo: Validador = {
   id: "fijo-co",
-  etiqueta: "Teléfono fijo colombiano",
-  fuente:
-    "CRC — numeración unificada a 10 dígitos: 60 + indicativo regional + 7 dígitos",
+  etiqueta: mensaje("validador.fijoCo.etiqueta"),
+  // Fuente: CRC — numeración unificada a 10 dígitos: 60 + indicativo regional + 7 dígitos.
+  fuente: mensaje("validador.fijoCo.fuente"),
   certeza: "estructural",
   categoria: "identificador-directo",
   prioridad: 70,
@@ -149,9 +152,9 @@ export const validadorFijo: Validador = {
  */
 export const validadorPlaca: Validador = {
   id: "placa-co",
-  etiqueta: "Placa de vehículo colombiana",
-  fuente:
-    "Formato oficial de matrículas de Colombia — carro ABC123, moto ABC12D",
+  etiqueta: mensaje("validador.placaCo.etiqueta"),
+  // Fuente: formato oficial de matrículas de Colombia — carro ABC123, moto ABC12D.
+  fuente: mensaje("validador.placaCo.fuente"),
   certeza: "estructural",
   categoria: "identificador-directo",
   prioridad: 80,

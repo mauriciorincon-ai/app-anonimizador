@@ -19,6 +19,7 @@ import {
   cuasiIdentificadores,
   type HallazgoDeColumna,
 } from "../../src/engine/clasificador";
+import { decirMensaje } from "../../src/lib/idioma/mensajes";
 
 const OPCIONES = {
   filas: 3_000,
@@ -72,7 +73,9 @@ describe("el POR QUÉ de cada detección", () => {
     expect(evidencia.origen).toBe("validador");
     if (evidencia.origen !== "validador")
       throw new Error("evidencia inesperada");
-    expect(evidencia.fuente).toMatch(/DIAN/);
+    // La fuente es una CITA: el nombre propio (DIAN) es el mismo en los dos idiomas.
+    expect(decirMensaje(evidencia.fuente, "es")).toMatch(/DIAN/);
+    expect(decirMensaje(evidencia.fuente, "en")).toMatch(/DIAN/);
     expect(evidencia.aciertos).toBeGreaterThan(0);
     expect(evidencia.aciertos).toBeLessThanOrEqual(evidencia.muestreados);
   });
@@ -100,10 +103,11 @@ describe("el POR QUÉ de cada detección", () => {
         (e) => e.origen === "nombre-de-columna",
       );
       expect(porNombreDeColumna).toBeDefined();
-      expect(
-        porNombreDeColumna?.origen === "nombre-de-columna" &&
-          porNombreDeColumna.nota,
-      ).toMatch(/art\. 5/);
+      expect(porNombreDeColumna?.origen).toBe("nombre-de-columna");
+      if (porNombreDeColumna?.origen !== "nombre-de-columna")
+        throw new Error("evidencia inesperada");
+      expect(decirMensaje(porNombreDeColumna.nota, "es")).toMatch(/art\. 5/);
+      expect(decirMensaje(porNombreDeColumna.nota, "en")).toMatch(/art\. 5/);
     }
   });
 

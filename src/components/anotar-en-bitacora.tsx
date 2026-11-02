@@ -20,14 +20,14 @@ import { useRouter } from "next/navigation";
 import { Boton } from "@/components/boton";
 import { IconoCuaderno } from "@/components/iconos";
 import { Panel } from "@/components/panel";
+import { Rico, useT } from "@/components/texto";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
 import { anotarTratamiento } from "@/lib/bitacora";
+import { LOCALE } from "@/lib/idioma";
+import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import { nombreDeTecnica } from "@/lib/tecnicas-en-palabras";
 
-const FORMATO_DE_FECHA = new Intl.DateTimeFormat("es-CO", {
-  dateStyle: "long",
-  timeStyle: "short",
-});
+const A = TRANSFORMAR.anotar;
 
 /**
  * La entrada, menos su fecha.
@@ -40,26 +40,24 @@ type EntradaSinFecha = Omit<EntradaDeBitacora, "fecha">;
 
 export function AnotarEnBitacora({ entrada }: { entrada: EntradaSinFecha }) {
   const router = useRouter();
+  const { t, idioma } = useT();
 
   return (
     <Panel
-      etiqueta="Paso 8 · la bitácora"
-      titulo="Anótalo, para acordarte dentro de seis meses"
-      nota={
-        <>
-          El certificado prueba <strong className="font-medium">este</strong>{" "}
-          tratamiento ante quien lo reciba. La bitácora es para ti: qué has
-          entregado, cuándo y con qué criterio, cuando alguien te lo pregunte
-          más adelante.
-        </>
-      }
+      etiqueta={t(A.etiqueta)}
+      titulo={t(A.titulo)}
+      nota={<Rico texto={A.nota} />}
     >
       <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-        Se anotan el nombre del archivo, la fecha, las técnicas que aplicaste
-        —sin decir a qué columnas—, las dos huellas y las proporciones de
-        registros únicos antes y después.{" "}
+        <Rico texto={A.cuerpo} />{" "}
         {entrada.tecnicas.length > 0 ? (
-          <>Aquí: {entrada.tecnicas.map(nombreDeTecnica).join(", ")}.</>
+          <>
+            {t(A.aqui)}{" "}
+            {entrada.tecnicas
+              .map((clave) => nombreDeTecnica(clave, idioma))
+              .join(", ")}
+            .
+          </>
         ) : null}
       </p>
 
@@ -68,20 +66,25 @@ export function AnotarEnBitacora({ entrada }: { entrada: EntradaSinFecha }) {
         variante="discreto"
         className="mt-4"
         onClick={() => {
+          // La fecha se escribe YA, en el idioma de ahora, y así se guarda: es un dato del usuario.
+          // Una entrada vieja se queda en el idioma en que se anotó; cambiar de idioma después no
+          // la reescribe.
           anotarTratamiento({
             ...entrada,
-            fecha: FORMATO_DE_FECHA.format(new Date()),
+            fecha: new Intl.DateTimeFormat(LOCALE[idioma], {
+              dateStyle: "long",
+              timeStyle: "short",
+            }).format(new Date()),
           });
           router.push("/bitacora");
         }}
       >
         <IconoCuaderno />
-        Anotar en mi bitácora
+        {t(A.boton)}
       </Boton>
 
       <p className="text-tinta-tenue mt-3 text-[0.875rem] leading-relaxed">
-        Te lleva a tu bitácora con la anotación lista. Allí eliges la frase, o
-        abres la que ya tienes para añadírsela al final.
+        <Rico texto={A.despues} />
       </p>
     </Panel>
   );

@@ -7,6 +7,8 @@
 
 import { describe, expect, it } from "vitest";
 
+import { decirMensaje } from "../../src/lib/idioma/mensajes";
+
 import {
   digitoVerificacionNit,
   validadorCedula,
@@ -16,6 +18,7 @@ import {
   validadorPlaca,
 } from "../../src/engine/validadores/colombianos";
 import { pareceNombreDePersona } from "../../src/engine/diccionarios/nombres";
+import { VALIDADORES } from "../../src/engine/validadores";
 import {
   cumpleIban,
   cumpleLuhn,
@@ -121,8 +124,11 @@ describe("Cédula — validación estructural declarada", () => {
     // Esto no es un test de vanidad: la UI presenta la certeza, y si alguien "mejorara" el
     // validador inventando un checksum, el producto empezaría a afirmar lo que no puede.
     expect(validadorCedula.certeza).toBe("estructural");
-    expect(validadorCedula.fuente).toMatch(
+    expect(decirMensaje(validadorCedula.fuente, "es")).toMatch(
       /no existe dígito de verificación público/i,
+    );
+    expect(decirMensaje(validadorCedula.fuente, "en")).toMatch(
+      /no public check digit/i,
     );
   });
 });
@@ -266,8 +272,12 @@ describe("Correo, IP, coordenada y fecha", () => {
     expect(validadorCoordenada.valida("-150.123456", CONTEXTO_NEUTRO)).toBe(
       true,
     );
-    expect(validadorCoordenada.fuente).not.toMatch(/−90|-90/);
-    expect(validadorCoordenada.fuente).toMatch(/\[−180, 180\]/);
+    // La cita es la misma verdad en los dos idiomas: ninguno menciona el rango estrecho.
+    for (const idioma of ["es", "en"] as const) {
+      const fuente = decirMensaje(validadorCoordenada.fuente, idioma);
+      expect(fuente).not.toMatch(/−90|-90/);
+      expect(fuente).toMatch(/\[−180, 180\]/);
+    }
   });
 
   it("verifica que la fecha EXISTA, no solo que tenga forma", () => {
@@ -306,5 +316,45 @@ describe("Nombres — el validador por diccionario y su límite declarado", () =
     expect(pareceNombreDePersona("Juan 123")).toBe(false);
     expect(pareceNombreDePersona("")).toBe(false);
     expect(pareceNombreDePersona("de la")).toBe(false); // solo partículas
+  });
+});
+
+describe("Etiquetas y fuentes — se dicen en los dos idiomas", () => {
+  it("cada validador resuelve su etiqueta y su fuente en español y en inglés", () => {
+    // El motor devuelve mensajes (clave + datos), no frases: si una clave no está en el catálogo,
+    // la interfaz mostraría «⟦clave⟧». Este recorrido es el que lo atrapa antes.
+    expect(VALIDADORES.length).toBeGreaterThan(10);
+    for (const validador of VALIDADORES) {
+      for (const idioma of ["es", "en"] as const) {
+        for (const mensajeDelValidador of [
+          validador.etiqueta,
+          validador.fuente,
+        ]) {
+          const frase = decirMensaje(mensajeDelValidador, idioma);
+          expect(frase, `${validador.id} (${idioma})`).not.toContain("⟦");
+          expect(frase.length, `${validador.id} (${idioma})`).toBeGreaterThan(
+            3,
+          );
+        }
+      }
+    }
+  });
+
+  it("las fuentes oficiales conservan sus nombres propios en inglés", () => {
+    // Una cita se reconoce por sus nombres propios; traducirlos la vuelve imposible de rastrear.
+    const citas: [typeof validadorNit, RegExp][] = [
+      [validadorNit, /DIAN/],
+      [validadorCedula, /Registraduría/],
+      [validadorCelular, /CRC/],
+      [validadorFijo, /CRC/],
+      [validadorTarjeta, /ISO\/IEC 7812-1/],
+      [validadorIban, /ISO 13616/],
+      [validadorEmail, /RFC 5322/],
+      [validadorIp, /RFC 791/],
+    ];
+    for (const [validador, nombre] of citas) {
+      expect(decirMensaje(validador.fuente, "es")).toMatch(nombre);
+      expect(decirMensaje(validador.fuente, "en")).toMatch(nombre);
+    }
   });
 });

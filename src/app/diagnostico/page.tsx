@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { clasesDeBoton } from "@/components/boton";
 import { InformeDeDiagnostico } from "@/components/informe-de-diagnostico";
 import { MarcaDeSello } from "@/components/sello";
+import { Rico } from "@/components/texto";
+import { DIAGNOSTICO } from "@/lib/idioma/textos/diagnostico";
 import { descartar, useSesion } from "@/lib/sesion";
 
 export default function PaginaDeDiagnostico() {
@@ -27,12 +29,10 @@ export default function PaginaDeDiagnostico() {
 
       <div className="border-borde mt-10 border-t pt-6">
         <Link href="/transformar" className={clasesDeBoton("principal")}>
-          Transformar este archivo
+          <Rico texto={DIAGNOSTICO.pagina.transformar} />
         </Link>
         <p className="text-tinta-suave mt-3 text-[0.9375rem] leading-relaxed">
-          El diagnóstico dice qué te delata. El taller lo cambia: eliges qué se
-          le hace a cada columna, ves el antes y el después, y te llevas el
-          archivo tratado. Sin salir de esta pestaña.
+          <Rico texto={DIAGNOSTICO.pagina.explicacion} />
         </p>
       </div>
 
@@ -48,11 +48,10 @@ export default function PaginaDeDiagnostico() {
             router.push("/");
           }}
         >
-          Analizar otro archivo
+          <Rico texto={DIAGNOSTICO.pagina.otroArchivo} />
         </button>
         <p className="text-tinta-tenue mt-3 text-[0.8125rem] leading-relaxed">
-          Al salir de aquí el informe se descarta. No hay copia en ningún lado —
-          ni en este navegador, ni en un servidor.
+          <Rico texto={DIAGNOSTICO.pagina.descarte} />
         </p>
       </div>
     </main>
@@ -64,19 +63,16 @@ function SinDatos() {
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-start px-6 py-20">
       <MarcaDeSello clase="text-tinta-tenue size-8" />
       <h1 className="font-display text-tinta mt-5 text-[clamp(1.75rem,5vw,2.25rem)] leading-tight font-semibold text-balance">
-        No quedó nada, y es a propósito
+        <Rico texto={DIAGNOSTICO.pagina.sinDatos.titulo} />
       </h1>
       <p className="text-tinta-suave mt-4 leading-relaxed text-pretty">
-        El diagnóstico vivía en la memoria de esta pestaña. Al recargar la
-        página se fue, porque nunca se guardó en ningún sitio: ni en tu disco,
-        ni en una base de datos, ni en un servidor nuestro.
+        <Rico texto={DIAGNOSTICO.pagina.sinDatos.porQue} />
       </p>
       <p className="text-tinta-suave mt-3 leading-relaxed text-pretty">
-        Es el mismo motivo por el que tus datos no se filtran. Vuelve a la
-        aduana y suelta el archivo otra vez: tarda lo mismo que la primera.
+        <Rico texto={DIAGNOSTICO.pagina.sinDatos.motivo} />
       </p>
       <Link href="/" className={`${clasesDeBoton("principal")} mt-8`}>
-        Volver a la aduana
+        <Rico texto={DIAGNOSTICO.pagina.sinDatos.volver} />
       </Link>
     </main>
   );

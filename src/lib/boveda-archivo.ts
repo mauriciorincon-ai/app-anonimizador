@@ -17,14 +17,12 @@ import {
   serializarBoveda,
   type Boveda,
 } from "@/engine/boveda";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { abrirCifrado, magiaDe, sellarCifrado } from "./archivo-cifrado";
 
 /** `VELO` en ASCII. Un archivo que no empieza así no es una bóveda, y se dice sin descifrar nada. */
 const MAGIA = magiaDe("VELO");
 const VERSION_DEL_ARCHIVO = 1;
-
-/** Cómo se nombra en los mensajes de error, para que digan qué se esperaba. */
-const QUE_ES = "una bóveda de Velo";
 
 /** La extensión del archivo que el usuario guarda. */
 export const EXTENSION_DE_BOVEDA = ".velo";
@@ -52,7 +50,8 @@ export type ResultadoDelArchivo =
         | "frase-incorrecta"
         | "costo-inaceptable"
         | "contenido-invalido";
-      detalle: string;
+      /** Qué pasó, como un `Mensaje`: este módulo no conoce el idioma (`motor-regreso.ts`). */
+      detalle: MensajeDeMotor;
     };
 
 /**
@@ -72,7 +71,8 @@ export async function abrirBoveda(
     VERSION_DEL_ARCHIVO,
     bytes,
     frase,
-    QUE_ES,
+    // Qué se esperaba: el sobre lo usa para nombrarlo en el mensaje de rechazo.
+    "boveda",
   );
   if (!sobre.ok) {
     return {

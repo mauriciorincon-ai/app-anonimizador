@@ -120,6 +120,27 @@ test('usuario crea un dashboard desde CSV y lo exporta', async ({ page }) => {
 });
 ```
 
+## El e2e corre contra el BUILD, jamás contra el dev server (kit v1.12.0, Velo S1)
+
+El `playwright.config.ts` del kit trae `command: "pnpm build && pnpm start"` y
+`reuseExistingServer: false` **en local igual que en CI**. No lo "optimices" volviendo a
+`pnpm dev`:
+
+- El dev server inyecta en la página cosas que **no existen en producción**: el **websocket de
+  HMR** y el **`eval()` de React dev**. Bajo una CSP estricta o un gate de red (`page.on('request')`
+  afirmando que no sale nada), eso son **rojos sobre un árbol limpio** — 5 en el S1 de Velo,
+  justo en el suite que sostenía la promesa central del producto.
+- Un suite que grita cuando no pasa nada **acaba ignorado**, y ese es el modo de falla caro: el
+  día que el rojo sea real, nadie lo va a mirar.
+- `reuseExistingServer: false` evita el fallo silencioso inverso: un `pnpm dev` olvidado en
+  :3000 secuestrando la corrida entera y haciendo pasar tests contra un artefacto que no es el
+  que se despliega.
+
+Precio: el tiempo del build en cada corrida local (por eso `timeout: 180_000`). Compra que el
+verde local signifique lo mismo que el verde de CI. Si necesitas el ciclo rápido mientras
+escribes un spec, corre `pnpm build` una vez y `pnpm start` a mano en otra terminal — pero el
+verde que reportas es el de la config del kit, sin tocar.
+
 ## Reglas anti-flakiness
 
 1. **No `sleep`/`setTimeout` arbitrario.** Usa `waitFor`, `findBy`, `expect.toBeVisible()` con polling.
@@ -140,7 +161,14 @@ test('usuario crea un dashboard desde CSV y lo exporta', async ({ page }) => {
    v1.7.3, habla S3): meter un elemento nuevo a una pantalla testeada y correr la suite "al
    cierre" deja e2e mintiendo fases enteras (el selector aseveraba "exactamente 3 juegos" con
    4 en pantalla). La suite de la pantalla modificada se corre ANTES de declarar la fase
-   completa.
+   completa — **INCLUIDO su scan de axe** (kit v1.24.1, hoja-de-vida S4: diferir axe a la fase
+   de integración dejó pasar un contraste roto UNA FASE ENTERA — el eyebrow usaba el tono
+   decorativo del DS como texto real; se cazó, pero tarde).
+10. **Carpeta temporal ÚNICA por test, creada por el propio test** (kit v1.28.0, Angel Ghost S1
+   — tres reincidencias en un sprint): `mkdtemp` (o `tempfile::tempdir()` en Rust) dentro del
+   test, y la aserción cuenta SOLO lo que ese test escribió. Jamás un inventario del temporal
+   compartido (`/tmp`, `os.tmpdir()`, `target/`): con `fullyParallel` otro test —u otro
+   proceso de la máquina— escribe ahí y la prueba falla o pasa por lo que hizo un vecino.
 
 ## Reglas anti-"comportamiento sin experiencia" (G-Metodo 2026-07-12, habla S2)
 

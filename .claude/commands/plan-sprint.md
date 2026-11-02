@@ -1,63 +1,47 @@
 ---
-description: Planea el trabajo del sprint activo leyendo la orden de construcción emitida por la casa planeadora.
+description: Plan del sprint en 5 pasos desde el archivo del sprint de la planeadora (inicio ejecutivo + plan + prompt). Plan mode; nada se construye antes del «construye».
 ---
 
 # /plan-sprint
 
-Prepara el plan de ejecución del sprint a partir de la **orden de construcción** que el usuario
-indique (o la más reciente en `portafolio/<slug>/ordenes/` de la planeadora,
-`~/Code/hr01-develop-ai-apps/`, agregada como directorio adicional de solo lectura).
+Prepara el plan de ejecución del sprint activo. Fuente: `portafolio/<slug>/sprints/SPRINT_NNN.md` de la
+planeadora (`~/Code/hr01-develop-ai-apps/`, solo lectura) — el que el usuario indique o el más reciente
+con `status: open`.
 
 ## Pasos
 
-1. Lee la orden de construcción completa.
-2. Lee sus referencias: `portafolio/<slug>/sprints/SPRINT_NNN.md` (con `status: open`), el brief,
-   y el prototipo READ-ONLY si la orden lo referencia.
-3. Lee los estándares del pipeline (`estandares/estandares.md` de la planeadora) — los 6+1 gates.
-4. Analiza el estado actual del código de **este** repo — y **LEE el código de las features
-   existentes que la nueva tocará**. El plan incluye SIEMPRE una sección **«Riesgos de
-   integración con lo existente»** (kit v1.7.3): qué interacciones podrían romper una regla
-   dura (honestidad, privacidad, presupuesto) o un comportamiento ya validado. La orden
-   describe el QUÉ; los riesgos nº 1 suelen vivir en el CÓMO-choca-con-lo-que-ya-existe
-   (precedente: el bucle parlante→micrófono de habla S3, ausente de la orden).
-5. Propón un plan de ejecución por fases:
-   - **Fase 0 — Setup:** deps, config, scaffolding si falta — y el **humo de credenciales**
-     si la orden trae aprovisionamiento (kit v1.7.4): validar cada credencial con su comando
-     de humo ANTES de la fase 1. Una credencial aprovisionada no es una credencial válida
-     (el 401 de Groq en hoja-de-vida S3 se descubrió en la integración).
-   - **Fase 1 — Motor/núcleo:** lógica pura con tests (y `lib/ia/` si el sprint toca LLM — skill `ia-embebida`).
-   - **Fase 2 — UI:** integración visual (paleta/microcopy del prototipo, construido desde cero).
-   - **Fase 3 — Integración + e2e:** tests end-to-end + axe.
-   - **Fase 4 — Calidad:** gates de los 6+1 estándares (`/deploy-check`).
-6. Para cada fase: archivos a crear/modificar, tests a escribir, criterio observable de "fase completa".
-7. Presenta el plan y espera su aprobación (plan mode). **La aprobación del plan significa SOLO
-   "el plan es correcto" — NO es la orden de arranque.**
-8. **Gate de arranque (obligatorio, kit v1.6.2):** tras la aprobación del plan, NO escribas
-   código. Emite el **bloque de arranque**:
-   - (a) Tu **recomendación de modelo y esfuerzo para ESTE sprint**, con su razón — por fase si
-     difiere (motor puro vs. UI/motion vs. integración). Tú recomiendas; **el usuario decide**
-     (modelo y esfuerzo son comandos suyos: `/model`).
-   - (b) El recordatorio operativo: *"fija modelo y esfuerzo con `/model` y dime cualquier
-     ajuste al plan"*.
-   - (c) Espera la palabra explícita **«construye»** del usuario. Si responde con ajustes,
-     incorpóralos y vuelve a esperar.
-   **Prohibido crear o editar archivos antes del «construye».**
-9. **Gates de FASE (obligatorio, kit v1.8.0):** durante la construcción, al terminar CADA
-   fase del plan:
-   - (a) **DETENTE** — prohibido arrancar la fase siguiente.
-   - (b) Entrega el **resumen completo de la fase**: qué se construyó, archivos
-     creados/modificados, tests corridos y su resultado, el criterio observable de "fase
-     completa" verificado, y cualquier desviación del plan.
-   - (c) Recuerda al usuario: *"valida el resumen y, si quieres, cambia modelo/esfuerzo con
-     `/model` para la siguiente fase"*.
-   - (d) Espera el **«continúa»** explícito. Ajustes del usuario se incorporan antes de
-     seguir.
-10. **Al concluir la construcción** (todas las fases aprobadas): corre **`/audita-sprint`**
-   (auditoría final de dos fases — OBLIGATORIA, método v1.10.0) ANTES del summary definitivo
-   y de entregar la guía/gate ⭐ al usuario.
+1. **Lee el archivo del sprint entero:** inicio ejecutivo (objetivo, resultado esperado, alcance incluido y
+   excluido, fases, dependencias, riesgos, criterios de fin, «reutiliza»), plan técnico breve y prompt de
+   arranque, más las referencias que cite (brief, visión, maqueta aprobada en `docs/diseno/`). Si el sprint
+   toca una feature votada del roadmap de CV Viva, anótalo.
+2. **Estado real del código y riesgos.** Lee las features existentes que el sprint tocará — el riesgo nº 1
+   vive en cómo lo nuevo choca con lo que ya existe — y contrasta con `grep`, no con la memoria. Lista qué
+   reutilizas y qué aprovisionamiento nuevo exige el sprint (solo si lo hay: su humo va en la primera fase).
+3. **Plan en ≤ 3 fases.** Por fase: objetivo, archivos a crear o modificar, tests, **criterio observable de
+   «fase completa»** y **horas estimadas**. Total ≈ 4 h activas por defecto (≤ 12 h con una línea de
+   justificación). Declara qué NO hace el sprint y la única mirada de DECISIÓN si la hay (pantalla o flujo
+   fuera de la maqueta, cambio que altera el uso, acción sobre protecciones del sistema). Sin fase 0 de
+   método ni fase de cierre: el cierre son los pasos 3–5 del workflow de la constitución.
+4. **Aprobación en plan mode y gate de arranque.** Presenta el plan y espera su aprobación. Aprobar el plan
+   NO arranca nada: emite el bloque de arranque — modelo **requerido** de cada fase según la tabla de la
+   constitución (desvío = una línea de por qué; esfuerzo solo sugerido) con su `/model` — y espera la
+   palabra **«construye»**. **Gate de modelo (kit v2.2.0):** antes de la F1 y al abrir cada fase escribes
+   «Fase N · modelo requerido: X · modelo activo: Y»; si no coinciden, NO construyes hasta su «vamos con Y»
+   o su `/model X`. Fable 5.1 solo si el usuario lo declara emergencia. **Relevo (regla 29):** segundo
+   intento fallido o 20 min sin avance verificable ⇒ paras y pides relevo en una línea; jamás un loop. Si llegan ajustes, incorpóralos y vuelve a esperar. **Prohibido crear o editar
+   archivos antes del «construye».**
+5. **Construye** en branch `sprint-NNN/<tema>` con commits convencionales etiquetados `[F1]` / `[F2]` /
+   `[F3]` en el subject (de ahí salen las horas por fase de `scripts/horas-sprint.mjs`). **Un solo STOP al
+   final de la construcción** con el resumen de las fases (qué, archivos, tests y resultado, criterio
+   verificado, desviaciones) — más la mirada de DECISIÓN del paso 3 si la hay, en matriz de una fila
+   (archivo · botón/estado · qué mirar · respuesta esperada), con la pregunta llana en la primera línea y
+   dónde abrirla. Después: `/audita-sprint` → `/deploy-check` o `/release-check` → cierre ejecutivo → PR.
+   **UN SOLO PR VIVO POR APP (regla 18, kit v2.1.0):** al arrancar el sprint y antes de abrir el PR corre
+   `gh pr list --state open`; un abierto (dependabot incluido) se procesa o se cierra, o se sigue en su rama; un
+   segundo PR solo complementario y con «complementa #N: <razón>» como primera línea del cuerpo. Al pedir el
+   merge entregas la lista de PRs abiertos, que debe ser ese uno.
 
 ## Output esperado
 
-Un plan en markdown con la estructura de arriba. Recuerda: **nunca escribes en la planeadora**; si
-detectas que el plan del sprint necesita cambio, anótalo como `## Desviación del plan` en tu
-bitácora y decláralo en el plan propuesto.
+El plan en markdown con la estructura del paso 3 y el bloque de arranque del paso 4. Nunca escribes en la
+planeadora: una desviación del plan se declara en el cierre ejecutivo del sprint.

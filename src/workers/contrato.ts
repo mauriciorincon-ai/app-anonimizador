@@ -20,6 +20,8 @@ import type {
 import type { AdvisorDeQis, RiesgoExacto } from "@/engine/riesgo";
 import type { RiesgoEstimado } from "@/engine/riesgo-estimado";
 import type { Utilidad } from "@/engine/utilidad";
+import type { Idioma } from "@/lib/idioma";
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 
 export type FormatoDeArchivo = "csv" | "excel";
 
@@ -50,7 +52,12 @@ export type MensajeAlWorker =
   | { tipo: "analizar-devuelto"; archivo: File }
   | { tipo: "restaurar" }
   | { tipo: "construir-restaurado" }
-  | { tipo: "construir-informe-del-regreso"; fecha: string }
+  /**
+   * El informe del regreso es un documento que se descarga: se escribe en el idioma de la pantalla
+   * donde se pidió. El idioma entra como dato, igual que la fecha, para que el documento siga
+   * siendo una función pura de lo que recibe.
+   */
+  | { tipo: "construir-informe-del-regreso"; fecha: string; idioma: Idioma }
   /**
    * Estima el riesgo poblacional del archivo que va a salir, con la población que el usuario
    * declaró. `null` es un caso legítimo y frecuente —no la declaró— y el motor contesta con su
@@ -304,7 +311,12 @@ export type MensajeDelWorker =
       sha256?: string;
     }
   | { tipo: "boveda-abierta"; resumen: ResumenDeBoveda }
-  | { tipo: "boveda-rechazada"; motivo: MotivoDeBoveda; detalle: string }
+  | {
+      tipo: "boveda-rechazada";
+      motivo: MotivoDeBoveda;
+      /** Un `Mensaje`, nunca una frase: a la página solo cruzan claves y datos. */
+      detalle: MensajeDeMotor;
+    }
   /** El archivo devuelto, ya parseado. Viajan metadatos y conteos; ninguna celda. */
   | {
       tipo: "devuelto-listo";
@@ -318,5 +330,10 @@ export type MensajeDelWorker =
   /** El veredicto de los dos estimadores. Ninguno se compone con el riesgo exacto. */
   | { tipo: "riesgo-estimado"; estimacion: RiesgoEstimado }
   | { tipo: "bitacora-abierta"; contenido: ContenidoDeBitacora }
-  | { tipo: "bitacora-rechazada"; motivo: MotivoDeBitacora; detalle: string }
+  | {
+      tipo: "bitacora-rechazada";
+      motivo: MotivoDeBitacora;
+      /** Un `Mensaje`, nunca una frase: a la página solo cruzan claves y datos. */
+      detalle: MensajeDeMotor;
+    }
   | { tipo: "error"; motivo: MotivoDeError };

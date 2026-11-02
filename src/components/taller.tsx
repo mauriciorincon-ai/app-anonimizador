@@ -24,6 +24,7 @@ import { DescargaDelArchivo } from "@/components/descarga-del-archivo";
 import { EditorDePolitica } from "@/components/editor-de-politica";
 import { LlaveDelProyecto } from "@/components/llave-del-proyecto";
 import { RiesgoEstimadoEnPantalla } from "@/components/riesgo-estimado-en-pantalla";
+import { Rico, useT } from "@/components/texto";
 import { VistaPrevia } from "@/components/vista-previa";
 import {
   esReversible,
@@ -31,7 +32,8 @@ import {
   VERSION_DE_POLITICA,
   type Politica,
 } from "@/engine/politica";
-import { numero } from "@/lib/formato";
+import type { Texto } from "@/lib/idioma";
+import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import {
   derivarLlaveDelProyecto,
   invalidarTransformacion,
@@ -73,16 +75,14 @@ const POLITICA_VACIA: Politica = {
 };
 
 /** Los fallos de la transformación dicen QUÉ HACER, igual que los de la aduana. */
-const FALLOS: Partial<Record<MotivoDeError, string>> = {
-  "sin-tabla":
-    "El archivo ya no está en memoria. Vuelve a la aduana y suéltalo otra vez.",
-  "sin-llave":
-    "La política pide seudónimos y todavía no hay llave. Deriva la llave y vuelve a intentarlo.",
-  "transformacion-fallida":
-    "Algo falló al aplicar la política. Revisa que las técnicas encajen con el tipo de cada columna — una fecha no se puede agrupar de 10 en 10.",
+const FALLOS: Partial<Record<MotivoDeError, Texto>> = {
+  "sin-tabla": TRANSFORMAR.taller.fallo.sinTabla,
+  "sin-llave": TRANSFORMAR.taller.fallo.sinLlave,
+  "transformacion-fallida": TRANSFORMAR.taller.fallo.transformacionFallida,
 };
 
 export function Taller({ informe }: { informe: Informe }) {
+  const { t } = useT();
   const taller = useTaller();
   const router = useRouter();
   const [politica, setPolitica] = useState<Politica>(POLITICA_VACIA);
@@ -111,17 +111,24 @@ export function Taller({ informe }: { informe: Informe }) {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <p className="etiqueta">El taller</p>
+      <p className="etiqueta">
+        <Rico texto={TRANSFORMAR.taller.etiqueta} />
+      </p>
       <h1 className="font-display text-tinta mt-1.5 text-[clamp(1.75rem,5vw,2.25rem)] leading-tight font-semibold text-balance">
-        Ahora sí, transformar
+        <Rico texto={TRANSFORMAR.taller.titulo} />
       </h1>
       <p className="text-tinta-suave mt-3 leading-relaxed text-pretty">
-        {numero(informe.diagnostico.filas)} filas y{" "}
-        {numero(informe.diagnostico.columnas.length)} columnas de{" "}
+        <Rico
+          texto={TRANSFORMAR.taller.resumen.antes}
+          datos={{
+            filas: informe.diagnostico.filas,
+            columnas: informe.diagnostico.columnas.length,
+          }}
+        />{" "}
         <span className="font-mono text-[0.9375rem]">
           {informe.archivo.nombre}
         </span>
-        . Todo lo que sigue ocurre en esta pestaña, igual que el diagnóstico.
+        <Rico texto={TRANSFORMAR.taller.resumen.despues} />
       </p>
 
       <div className="mt-8 space-y-6">
@@ -146,24 +153,23 @@ export function Taller({ informe }: { informe: Informe }) {
           >
             <IconoTransformar />
             {taller.transformacion.fase === "transformando"
-              ? "Transformando…"
-              : "Transformar"}
+              ? t(TRANSFORMAR.taller.transformando)
+              : t(TRANSFORMAR.taller.transformar)}
           </Boton>
           {politica.reglas.length === 0 ? (
             <p className="text-tinta-tenue text-[0.875rem]">
-              Elige qué hacer con al menos una columna, o aplica una política de
-              fábrica.
+              <Rico texto={TRANSFORMAR.taller.ayuda.sinReglas} />
             </p>
           ) : pideLlave && !llaveLista ? (
             <p className="text-tinta-tenue text-[0.875rem]">
-              La política pide seudónimos: hace falta la llave.
+              <Rico texto={TRANSFORMAR.taller.ayuda.sinLlave} />
             </p>
           ) : null}
           {taller.transformacion.fase === "transformando" ? (
             <p role="status" className="text-tinta-suave text-[0.875rem]">
               {taller.etapa === "midiendo-el-despues"
-                ? "Midiendo el riesgo del archivo que sale…"
-                : "Aplicando la política en el hilo donde viven los datos…"}
+                ? t(TRANSFORMAR.taller.progreso.midiendo)
+                : t(TRANSFORMAR.taller.progreso.aplicando)}
             </p>
           ) : null}
         </div>
@@ -173,10 +179,16 @@ export function Taller({ informe }: { informe: Informe }) {
             role="alert"
             className="rounded-3 border-alerta/35 bg-alerta-tenue border px-5 py-4"
           >
-            <p className="etiqueta text-alerta">No se pudo transformar</p>
+            <p className="etiqueta text-alerta">
+              <Rico texto={TRANSFORMAR.taller.fallo.titulo} />
+            </p>
             <p className="text-tinta mt-2 text-[0.9375rem] leading-relaxed">
-              {FALLOS[taller.transformacion.motivo] ??
-                "Vuelve a la aduana y suelta el archivo otra vez."}
+              <Rico
+                texto={
+                  FALLOS[taller.transformacion.motivo] ??
+                  TRANSFORMAR.taller.fallo.generico
+                }
+              />
             </p>
           </div>
         ) : null}
@@ -273,7 +285,7 @@ export function Taller({ informe }: { informe: Informe }) {
           onClick={() => router.push("/diagnostico")}
         >
           <IconoAtras />
-          Volver al diagnóstico
+          <Rico texto={TRANSFORMAR.taller.volverAlDiagnostico} />
         </button>
       </div>
     </main>

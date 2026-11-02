@@ -22,9 +22,12 @@ import { useId, useState } from "react";
 import { Boton } from "@/components/boton";
 import { IconoAdelante } from "@/components/iconos";
 import { Panel } from "@/components/panel";
+import { Rico, useT } from "@/components/texto";
+import { LLAVES } from "@/lib/idioma/textos/llaves";
 import { ITERACIONES_PBKDF2 } from "@/lib/llave";
-import { numero } from "@/lib/formato";
 import type { EstadoDeLlave } from "@/lib/sesion";
+
+const L = LLAVES.llave;
 
 /** Mínimo para que la frase valga la pena. Corta y el PBKDF2 no la salva. */
 const MINIMO = 12;
@@ -38,39 +41,32 @@ export function LlaveDelProyecto({
 }) {
   const idDeFrase = useId();
   const idDeAyuda = useId();
+  const { t } = useT();
   const [frase, setFrase] = useState("");
 
   if (llave.fase === "lista") {
     return (
       <Panel
-        etiqueta="Paso 2 · la llave"
-        titulo="Llave lista"
-        nota={
-          <>
-            Guarda la frase y esta sal en tu gestor de contraseñas. Sin las dos,
-            los seudónimos del mes que viene <strong>no van a cuadrar</strong>{" "}
-            con los de hoy.
-          </>
-        }
+        etiqueta={t(L.etiqueta)}
+        titulo={t(L.lista.titulo)}
+        nota={<Rico texto={L.lista.nota} />}
       >
         <dl className="grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="etiqueta">Huella de la llave</dt>
+            <dt className="etiqueta">{t(L.lista.huella)}</dt>
             <dd className="text-tinta mt-1 font-mono text-[0.9375rem]">
               {llave.huella}
             </dd>
           </div>
           <div>
-            <dt className="etiqueta">Sal</dt>
+            <dt className="etiqueta">{t(L.lista.sal)}</dt>
             <dd className="text-tinta mt-1 font-mono text-[0.8125rem] break-all">
               {llave.sal}
             </dd>
           </div>
         </dl>
         <p className="text-tinta-suave mt-4 text-[0.875rem] leading-relaxed">
-          La huella no revela la llave: es el resultado de firmar un texto fijo
-          y conocido con ella. Sirve para reconocer, mirando dos archivos, que
-          salieron de la misma llave.
+          <Rico texto={L.lista.explicacion} />
         </p>
       </Panel>
     );
@@ -81,38 +77,19 @@ export function LlaveDelProyecto({
 
   return (
     <Panel
-      etiqueta="Paso 2 · la llave"
-      titulo="Una frase que solo tú tienes"
-      nota={
-        <>
-          Velo no la guarda, no la manda a ningún lado y no puede recuperarla.
-          La frase entra al hilo donde viven tus datos, se convierte en llave
-          allí, y lo único que vuelve a esta pantalla es la huella.
-        </>
-      }
+      etiqueta={t(L.etiqueta)}
+      titulo={t(L.pedir.titulo)}
+      nota={<Rico texto={L.pedir.nota} />}
     >
       <ul className="text-tinta-suave space-y-2 text-[0.9375rem] leading-relaxed">
-        <li>
-          <strong className="text-tinta font-medium">
-            La misma frase da los mismos seudónimos.
-          </strong>{" "}
-          Es lo que permite cruzar el archivo de marzo con el de abril sin tener
-          los datos reales delante.
-        </li>
-        <li>
-          <strong className="text-tinta font-medium">
-            Si la pierdes, no hay vuelta atrás.
-          </strong>{" "}
-          Nadie puede regenerarla. Es la contrapartida de que nadie más la
-          tenga.
-        </li>
-        <li>
-          <strong className="text-tinta font-medium">
-            Si se filtra, los seudónimos se vuelven enlazables.
-          </strong>{" "}
-          Quien la tenga puede recalcularlos todos. Trátala como una contraseña,
-          no como un ajuste.
-        </li>
+        {[L.pedir.misma, L.pedir.perderla, L.pedir.filtrarla].map((punto) => (
+          <li key={punto.titulo.es}>
+            <strong className="text-tinta font-medium">
+              {t(punto.titulo)}
+            </strong>{" "}
+            <Rico texto={punto.cuerpo} />
+          </li>
+        ))}
       </ul>
 
       <div className="mt-5">
@@ -120,7 +97,7 @@ export function LlaveDelProyecto({
           htmlFor={idDeFrase}
           className="text-tinta block text-[0.9375rem]"
         >
-          Frase de paso del proyecto
+          {t(L.pedir.campo)}
         </label>
         <input
           id={idDeFrase}
@@ -134,8 +111,7 @@ export function LlaveDelProyecto({
           onChange={(evento) => setFrase(evento.target.value)}
         />
         <p id={idDeAyuda} className="text-tinta-tenue mt-2 text-[0.8125rem]">
-          Al menos {MINIMO} caracteres. Una frase de varias palabras aguanta
-          mucho mejor que una contraseña corta con símbolos.
+          <Rico texto={L.pedir.ayuda} datos={{ minimo: MINIMO }} />
         </p>
       </div>
 
@@ -150,13 +126,11 @@ export function LlaveDelProyecto({
           }}
         >
           <IconoAdelante />
-          {derivando ? "Derivando la llave…" : "Derivar la llave"}
+          {derivando ? t(L.pedir.derivando) : t(L.pedir.derivar)}
         </Boton>
         {derivando ? (
           <p role="status" className="text-tinta-suave text-[0.875rem]">
-            {numero(ITERACIONES_PBKDF2)} vueltas de PBKDF2, que es lo que
-            encarece por igual cada intento de adivinarla. En un equipo rápido
-            es un instante; en un teléfono, un momento.
+            <Rico texto={L.pedir.progreso} datos={{ n: ITERACIONES_PBKDF2 }} />
           </p>
         ) : null}
       </div>

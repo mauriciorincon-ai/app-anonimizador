@@ -13,6 +13,8 @@
 // Mezclar las dos cosas bajo una sola palabra ("detectado") sería exactamente la clase de
 // exageración que la regla de honestidad medida prohíbe.
 
+import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
+
 /** Tipo de dato que un validador reconoce. */
 export type TipoDetectado =
   | "nit"
@@ -67,10 +69,14 @@ export interface ContextoDeColumna {
 export interface Validador {
   /** Identificador estable; se usa en la UI, en los tests y en la serialización canónica. */
   readonly id: TipoDetectado;
-  /** Nombre en español llano para la interfaz. */
-  readonly etiqueta: string;
-  /** Fuente oficial del algoritmo. Va al código, no solo a la documentación. */
-  readonly fuente: string;
+  /** Nombre en lenguaje llano para la interfaz: un mensaje, que se dice en el idioma de quien lo lee. */
+  readonly etiqueta: MensajeDeMotor;
+  /**
+   * Fuente oficial del algoritmo. Va al código, no solo a la documentación — en el comentario de
+   * cada validador — y además viaja como cita al usuario: los nombres propios de la cita (DIAN,
+   * Registraduría, CRC, ISO…) son iguales en los dos idiomas.
+   */
+  readonly fuente: MensajeDeMotor;
   readonly certeza: Certeza;
   readonly categoria: CategoriaLey1581;
   /**

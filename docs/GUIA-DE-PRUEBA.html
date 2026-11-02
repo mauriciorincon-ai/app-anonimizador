@@ -265,7 +265,7 @@
         margin-left: 4px;
       }
       /* GATE CORTO ⭐⭐ — el subconjunto de las ⭐ que NINGUNA automatización puede juzgar.
-     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 26 ⭐ incluyen
+     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 28 ⭐ incluyen
      comprobaciones que una máquina SÍ puede hacer y que están en el gate para que el usuario las
      haga con SUS herramientas (recalcular una huella, mirar la pestaña Red). Esas se quedan fuera
      del corto a propósito, porque el CI ya las cubre por otro camino. Lo que queda son las seis
@@ -280,7 +280,7 @@
       }
 
       /* MODO RECORRIDO — solo con el filtro ⭐ activo.
-     El gate del ciclo son 26 pruebas repartidas por 20 bloques que nacieron en cuatro sprints
+     El gate del ciclo son 28 pruebas repartidas por los bloques que nacieron en cinco sprints
      distintos. Sin esto se leen como cuatro listas pegadas: el mismo chip de origen que sirve para
      la regresión («Heredada · S1») sugiere un orden que NO es el del recorrido. En modo recorrido
      cada prueba visible recibe su número de PARADA y la ruta donde ocurre, así que el orden a la
@@ -383,27 +383,27 @@
     <div class="pagina">
       <header>
         <p class="eyebrow">
-          Velo · Guía de prueba viva y acumulativa · Sprint 004 · 15 de agosto
+          Velo · Guía de prueba viva y acumulativa · Sprint 005 · 1 de noviembre
           de 2026
         </p>
         <h1>Guía de prueba</h1>
         <p class="suave">
           Todas las pruebas vigentes de Velo: las
-          <strong>114 de los sprints 001 a 003</strong> —que ahora son
-          regresión— más las que trae el Sprint 004, el sprint que
-          <strong>cierra el ciclo H1</strong> y entrega lo que hace el trabajo
-          defendible: el certificado con sus dos huellas, la bitácora cifrada y
-          el riesgo estimado. Cada línea lleva su origen. Las casillas se
-          guardan solas en este navegador, y el guardado se versiona por sprint:
-          nada de lo que marcaste antes aparece marcado aquí, porque una
-          regresión sin correr no está probada.
+          <strong>125 de los sprints 001 a 004</strong> —que ahora son
+          regresión— más las que trae el Sprint 005, el que pone a Velo en dos
+          idiomas: el conmutador ES · EN, el inglés de las cinco pantallas, y el
+          certificado y el informe del regreso en inglés con las mismas dos
+          huellas. Cada línea lleva su origen. Las casillas se guardan solas en
+          este navegador, y el guardado se versiona por sprint: nada de lo que
+          marcaste antes aparece marcado aquí, porque una regresión sin correr
+          no está probada.
         </p>
         <p class="chica">
           <strong>Dos gates, y el corto existe para que el largo no gane</strong
-          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 26 pruebas · ~90
-          min: el acumulado completo —8 del S1, 6 del S2, 8 del S3 y 4 del S4—
-          como <strong>un solo recorrido numerado</strong>, no como cuatro
-          listas pegadas. El
+          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 28 pruebas · ~90
+          min: el acumulado completo —8 del S1, 6 del S2, 8 del S3, 4 del S4 y 2
+          del S5— como <strong>un solo recorrido numerado</strong>, no como
+          cuatro listas pegadas. El
           <strong>Gate corto ⭐⭐ son 6 paradas · ~20 min</strong>: el
           subconjunto donde el veredicto <strong>solo puede ser humano</strong>
           —si Velo se entiende, si sus cifras exactas se distinguen de las
@@ -417,7 +417,7 @@
           —hay otras apps en curso—. Un gate que nunca se corre no protege nada,
           y un gate de 90 minutos compite con el resto de la vida. El corto no
           lo reemplaza ni lo cancela: es <strong>el piso</strong>, lo que se
-          pierde de verdad si el largo no ocurre nunca. Las 20 pruebas que deja
+          pierde de verdad si el largo no ocurre nunca. Las 22 pruebas que deja
           fuera <strong>no se borran</strong> —siguen enteras en el filtro ⭐— y
           son en su mayoría <em>compruébalo tú</em>: valiosas para que la
           confianza sea tuya, pero <strong>ya verificadas por la CI</strong> por
@@ -501,7 +501,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
         >
           <button type="button" data-filtro="todo" class="activo">Todo</button>
           <button type="button" data-filtro="cambios">
-            Lo que cambió en S4
+            Lo que cambió en S5
           </button>
           <button type="button" data-filtro="minimo">
             Gate mínimo ⭐ del ciclo
@@ -514,7 +514,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
         <p id="recorrido-largo">
           <strong
             >El recorrido del ciclo H1 —
-            <span id="recorrido-total">26</span> paradas · ~90 min.</strong
+            <span id="recorrido-total">28</span> paradas · ~90 min.</strong
           >
           Un solo camino, en el orden en que se hace: la aduana → el diagnóstico
           → el taller → el regreso → la bitácora, y al final el juicio del
@@ -2245,7 +2245,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           reporte del S2 ya no existe: se convirtió en esto.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="w1" /><label for="w1"
               >Trata <code>tmp/clinico-3000.csv</code> con cualquier política.
               <strong>Antes</strong> de generar el archivo, mira el paso del
@@ -2253,10 +2253,10 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               palabras que todavía no puede existir y por qué (le falta la
               huella del archivo que aún no se ha creado). Pulsa «Preparar el
               archivo» y el certificado aparece.
-              <span class="origen origen-nuevo">Nuevo · S4</span></label
+              <span class="origen origen-heredada">Heredada · S4</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="w2" /><label for="w2"
               >Descarga el certificado y ábrelo
               <strong>con el wifi apagado</strong>. Se ve entero. Trae
@@ -2265,10 +2265,10 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               salió. Tiene además una sección que explica
               <strong>cómo comprobarlas</strong>, con el comando literal para tu
               sistema. No hay ni una fila de tu tabla en todo el documento.
-              <span class="origen origen-nuevo">Nuevo · S4</span></label
+              <span class="origen origen-heredada">Heredada · S4</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="w3" /><label for="w3"
               ><strong
                 >Haz de tercero: comprueba el certificado con tus propias
@@ -2286,7 +2286,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
                 verdad</strong
               >. Si el comando falla, si sobra un paso o si el resultado no
               coincide, el certificado no vale nada y quiero saberlo.
-              <span class="origen origen-nuevo">Nuevo · S4</span>
+              <span class="origen origen-heredada">Heredada · S4</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
@@ -2311,7 +2311,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           la exacta.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="x1" /><label for="x1"
               >Después de transformar, baja al paso
               <strong>«Y en la población entera, ¿cuánto?»</strong>. Sin
@@ -2320,10 +2320,10 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               <strong>con la razón entera</strong>, no con un guion ni con un
               cero. El texto de ayuda dice que Velo no puede saber ese dato y
               que <strong>no se lo inventa</strong>.
-              <span class="origen origen-nuevo">Nuevo · S4</span></label
+              <span class="origen origen-heredada">Heredada · S4</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="x2" /><label for="x2"
               >Escribe <code>20000</code> y pulsa «Estimar». Aparecen las dos
               cifras, y cada una lleva <strong>en la misma línea</strong>: la
@@ -2333,10 +2333,10 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               explica que el archivo es una fracción demasiado pequeña de esa
               población. Velo prefiere no responder a responder flojo —
               comprueba que lo dice así, y no con un número débil.
-              <span class="origen origen-nuevo">Nuevo · S4</span></label
+              <span class="origen origen-heredada">Heredada · S4</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo data-esencial>
+          <li data-origen="heredado" data-minimo data-esencial>
             <input type="checkbox" id="x3" /><label for="x3"
               ><strong
                 >Léelo como un lector, no como quien lo mandó construir.</strong
@@ -2358,7 +2358,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               Si la respuesta es sí —aunque sea por un segundo— el diseño está
               fallando en lo único que este sprint no puede fallar, y es un
               hallazgo aunque todo lo demás esté bien.
-              <span class="origen origen-nuevo">Nuevo · S4</span>
+              <span class="origen origen-heredada">Heredada · S4</span>
               <span class="minimo">⭐ mínimo</span
               ><span class="esencial">⭐⭐ corto</span></label
             >
@@ -2386,7 +2386,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           que hiciste.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="y1" /><label for="y1"
               >Al final del taller está
               <strong>«Anótalo, para acordarte dentro de seis meses»</strong>.
@@ -2395,10 +2395,10 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               esperando. Comprueba también que se llega desde la portada, en el
               bloque <strong>«Y meses después»</strong>,
               <strong>sin escribir la dirección a mano</strong>.
-              <span class="origen origen-nuevo">Nuevo · S4</span></label
+              <span class="origen origen-heredada">Heredada · S4</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="y2" /><label for="y2"
               >Guárdala con una frase de paso. Vuelve al taller y trata
               <strong>otros dos archivos</strong> con técnicas distintas,
@@ -2407,10 +2407,10 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               con qué política, el riesgo antes y después, y
               <strong>las dos huellas</strong> — las mismas que puedes cotejar
               contra su certificado.
-              <span class="origen origen-nuevo">Nuevo · S4</span></label
+              <span class="origen origen-heredada">Heredada · S4</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="y3" /><label for="y3"
               ><strong>Cierra el navegador entero</strong> —no la pestaña: el
               navegador— y vuelve a abrirlo. Entra a <code>/bitacora</code>,
@@ -2424,11 +2424,11 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               navegador que la está ejecutando: esta solo existe si la haces tú,
               y es la que decide si la promesa de «dentro de seis meses» es
               real.
-              <span class="origen origen-nuevo">Nuevo · S4</span>
+              <span class="origen origen-heredada">Heredada · S4</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="y4" /><label for="y4"
               >Abre el archivo de la bitácora con un
               <strong>editor de texto</strong> (Bloc de notas, TextEdit). No se
@@ -2438,7 +2438,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               suelta la <strong>bóveda</strong> (<code>.velo</code>) donde va la
               bitácora — el mensaje te dice que esa es la bóveda y
               <strong>dónde se abre</strong>, en vez de dejarte adivinando.
-              <span class="origen origen-nuevo">Nuevo · S4</span></label
+              <span class="origen origen-heredada">Heredada · S4</span></label
             >
           </li>
         </ul>
@@ -2462,7 +2462,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           parada: el juicio sobre el conjunto, que es lo que se entrega.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo" data-minimo data-esencial>
+          <li data-origen="heredado" data-minimo data-esencial>
             <input type="checkbox" id="z1" /><label for="z1"
               ><strong
                 >Juicio humano — las cinco pantallas y el ciclo entero.</strong
@@ -2479,7 +2479,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               <strong>¿lo que Velo te dio alcanza para responder?</strong> Si
               falta algo para esa respuesta, ese hueco es el hallazgo más
               valioso de todo el gate.
-              <span class="origen origen-nuevo">Nuevo · S4</span>
+              <span class="origen origen-heredada">Heredada · S4</span>
               <span class="minimo">⭐ mínimo</span
               ><span class="esencial">⭐⭐ corto</span></label
             >
@@ -2493,6 +2493,98 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
             planeado; el mismo cambio callado es deuda escondida.
           </p>
         </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">AA</span>
+          <h2>Velo en dos idiomas</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~12 min · lo único que
+          cambió a la vista en el S5. Usa el archivo
+          <code>tmp/clinico-3000.csv</code> de arriba. Los textos en inglés se
+          maquetaron <strong>sin que nadie los lea todavía</strong>: esta es la
+          primera vez que una persona los juzga.
+        </p>
+        <ul class="pasos">
+          <li data-origen="nuevo">
+            <input type="checkbox" id="aa1" /><label for="aa1"
+              >Abre <code>/</code> con el navegador en español. Arriba, entre
+              «Velo» y el sello, hay dos botones <strong>ES</strong> y
+              <strong>EN</strong>. El que está en uso va
+              <strong>subrayado y en negrita</strong>; el otro, no. Con el
+              teclado (<kbd>Tab</kbd>, <kbd>Enter</kbd>) también se cambian.
+              <span class="origen origen-nuevo">Nuevo · S5</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="aa2" /><label for="aa2"
+              >Pulsa <strong>EN</strong>. <strong>Todo</strong> cambia a inglés
+              sin recargar: el título, el sello, «Cómo funciona», el pie. La
+              pestaña del navegador también cambia de título, y la dirección
+              ahora termina en <code>?lang=en</code>. Pulsa <strong>ES</strong>
+              y vuelve.
+              <span class="origen origen-nuevo">Nuevo · S5</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="aa3" /><label for="aa3"
+              >En inglés, suelta <code>tmp/clinico-3000.csv</code> y recorre las
+              cinco pantallas: el diagnóstico, el taller, el regreso y la
+              bitácora.
+              <strong>Busca una frase que se haya quedado en español</strong>
+              (los nombres de tus columnas y los valores son tuyos y se quedan
+              como están). Y, sobre todo, lee como si no supieras español:
+              <strong>¿suena escrito en inglés o traducido?</strong> Anota cada
+              frase que te haga releer.
+              <span class="origen origen-nuevo">Nuevo · S5</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="aa4" /><label for="aa4"
+              >Compara una advertencia en los dos idiomas: la de la
+              <strong>frase de paso</strong> (si la pierdes, la bóveda no se
+              recupera) y la de <strong>«estimado»</strong> en el riesgo
+              poblacional. En inglés dicen lo mismo y con la misma firmeza —ni
+              más suaves ni más fuertes—, y lo estimado sigue marcado como
+              estimado.
+              <span class="origen origen-nuevo">Nuevo · S5</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="aa5" /><label for="aa5"
+              >En inglés, transforma el archivo y descarga el
+              <strong>certificado</strong>. Se llama
+              <code>velo-certificate-…html</code>, abre con «Personal-data
+              treatment certificate» y trae las
+              <strong>dos mismas huellas</strong> que el certificado en español
+              del mismo tratamiento (cópialas y compáralas). Las advertencias
+              van <strong>antes</strong> de la cifra, igual que en español.
+              <span class="origen origen-nuevo">Nuevo · S5</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="aa6" /><label for="aa6"
+              >Recarga la página sin <code>?lang=</code> en la dirección. Vuelve
+              al idioma de tu navegador: <strong>Velo no recordó nada</strong>.
+              Compruébalo en las herramientas del navegador (Aplicación →
+              Almacenamiento): sin entradas, sin cookies.
+              <span class="origen origen-nuevo">Nuevo · S5</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="aa7" /><label for="aa7"
+              >Abre <code>/conoce</code> y luego <code>/conoce?lang=en</code>:
+              el brochure también cambia entero, con sus propios botones
+              <strong>ES</strong> / <strong>EN</strong>, y las tarjetas se
+              siguen desplegando con el recorrido.
+              <span class="origen origen-nuevo">Nuevo · S5</span></label
+            >
+          </li>
+        </ul>
       </section>
 
       <footer>
@@ -2561,6 +2653,18 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               las 26 paradas de corrido para que el acumulado de cuatro sprints
               se lea como un solo camino y no como cuatro listas pegadas.
             </li>
+            <li>
+              <strong>S5 · 1 de noviembre de 2026:</strong> las 125 de los
+              sprints 001–004 pasan a <strong>regresión</strong> y se suma el
+              bloque <strong>AA</strong>: Velo en dos idiomas, el conmutador, el
+              certificado en inglés con las mismas dos huellas y que nada se
+              recuerde. <strong>Ninguna prueba eliminada.</strong> Solo cambia a
+              la vista lo del idioma, y por eso solo hay un bloque nuevo; el
+              gate ⭐ pasa de 26 a <strong>28 pruebas</strong> y las dos nuevas
+              son juicios humanos (¿suena escrito o traducido?, ¿la advertencia
+              pesa igual?) que ninguna máquina puede dar. Se corren en el ensayo
+              general del H-2.
+            </li>
           </ul>
         </details>
       </footer>
@@ -2570,9 +2674,9 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
       (function () {
         // NS VERSIONADO POR SPRINT: al publicar la guía de un sprint nuevo se cambia s001 — así una
         // regresión sin correr jamás aparece marcada como hecha por el sprint anterior.
-        // S2: s001 → s002. S3: s002 → s003. S4: s003 → s004. Las 114 heredadas vuelven a estar sin
-        // marcar, que es el punto.
-        var NS = "guia-anonimizador:s004:";
+        // S2: s001 → s002. S3: s002 → s003. S4: s003 → s004. S5: s004 → s005. Las heredadas vuelven a
+        // estar sin marcar, que es el punto.
+        var NS = "guia-anonimizador:s005:";
         var casillas = Array.prototype.slice.call(
           document.querySelectorAll('input[type="checkbox"]'),
         );
@@ -2622,8 +2726,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               b.getAttribute("data-filtro") === filtro,
             );
           });
-          // MODO RECORRIDO: el gate ⭐ del ciclo son 26 pruebas nacidas en cuatro sprints distintos y
-          // repartidas por 20 bloques. Numerarlas de corrido es lo que las convierte en UN camino en vez
+          // MODO RECORRIDO: el gate ⭐ del ciclo son 28 pruebas nacidas en cinco sprints distintos y
+          // repartidas por sus bloques. Numerarlas de corrido es lo que las convierte en UN camino en vez
           // de cuatro listas pegadas — sin mover nada de sitio: el orden del documento YA es el del
           // recorrido, lo que faltaba era que se viera.
           document.body.classList.toggle("modo-recorrido", esRecorrido(filtro));
