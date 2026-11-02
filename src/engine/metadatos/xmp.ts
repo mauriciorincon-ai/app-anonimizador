@@ -110,23 +110,43 @@ function recortar(valor: string): { valor: string; recortado: boolean } {
  */
 const LARGO_MAXIMO_DE_ETIQUETA = 1024;
 
-/** El contenido de un elemento: sus `rdf:li` unidos con «; », o su texto si no tiene. */
+/**
+ * El contenido de un elemento: sus `rdf:li` unidos con «; », o su texto sin etiquetas si no tiene.
+ *
+ * Un solo recorrido con `indexOf`, sin expresiones. Una etiqueta es un `<` con su primer `>` a no más
+ * de `LARGO_MAXIMO_DE_ETIQUETA` caracteres, y ese `>` se recuerda: es el mismo para todos los `<` que
+ * haya antes de él. Con `/<[^>]{0,1024}>/g`, un mega de `<` costaba 1024 pasos por cada uno, y las
+ * propiedades anidadas lo pagaban una vez por propiedad: 10 s con siete (hallazgo M1 del S6).
+ */
 function textoDelElemento(contenido: string): string {
-  const items = [
-    ...contenido.matchAll(
-      new RegExp(
-        `<rdf:li\\b[^>]{0,${LARGO_MAXIMO_DE_ETIQUETA}}>([^<]*)</rdf:li>`,
-        "g",
-      ),
-    ),
-  ].map((m) => normalizar(m[1]));
+  const items: string[] = [];
+  const trozos: string[] = [];
+  let desde = 0;
+  let cierre = -1;
+  /** Dónde terminó un `<rdf:li…>` si es lo último que se vio antes del texto pendiente. */
+  let item = -1;
+  for (
+    let i = contenido.indexOf("<");
+    i >= 0;
+    i = contenido.indexOf("<", i + 1)
+  ) {
+    if (cierre < i) {
+      cierre = contenido.indexOf(">", i + 1);
+      if (cierre < 0) break;
+    }
+    if (cierre - i - 1 > LARGO_MAXIMO_DE_ETIQUETA) continue;
+    const etiqueta = contenido.slice(i, cierre + 1);
+    const texto = contenido.slice(desde, i);
+    if (item === desde && etiqueta === "</rdf:li>" && !texto.includes("<"))
+      items.push(normalizar(texto));
+    trozos.push(texto);
+    desde = cierre + 1;
+    item = /^<rdf:li\b/.test(etiqueta) ? desde : -1;
+    i = cierre;
+  }
   if (items.length > 0) return items.filter((i) => i !== "").join("; ");
-  return normalizar(
-    contenido.replace(
-      new RegExp(`<[^>]{0,${LARGO_MAXIMO_DE_ETIQUETA}}>`, "g"),
-      " ",
-    ),
-  );
+  trozos.push(contenido.slice(desde));
+  return normalizar(trozos.join(" "));
 }
 
 /**

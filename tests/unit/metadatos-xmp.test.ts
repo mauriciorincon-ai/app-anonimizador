@@ -99,6 +99,51 @@ describe("leerXmp", () => {
       expect(performance.now() - inicio).toBeLessThan(1_000);
     }
   });
+
+  it("un mega de `<` dentro de varias propiedades anidadas se lee en un recorrido, no en uno por `<`", () => {
+    // Cada propiedad recorre su rebanada entera; anidadas, la misma rebanada se recorre una vez por
+    // propiedad. Con una expresión `<[^>]{0,1024}>` eran 1024 pasos por `<` y por propiedad
+    // (hallazgo M1 de la auditoría del S6).
+    const nombres = [
+      "dc:creator",
+      "dc:title",
+      "dc:subject",
+      "dc:description",
+      "dc:rights",
+      "photoshop:City",
+      "xmp:CreatorTool",
+    ];
+    const anidar = (relleno: string) =>
+      nombres.map((n) => `<${n}>`).join("") +
+      relleno +
+      [...nombres]
+        .reverse()
+        .map((n) => `</${n}>`)
+        .join("");
+    for (const relleno of [
+      "<".repeat(LARGO_MAXIMO_DE_XMP - 1_000),
+      "<rdf:li ".repeat((LARGO_MAXIMO_DE_XMP - 1_000) / 8),
+    ]) {
+      const inicio = performance.now();
+      leerXmp(anidar(relleno), "xmp");
+      expect(performance.now() - inicio).toBeLessThan(500);
+    }
+  });
+
+  it("separa el texto de las etiquetas igual que antes: con `rdf:li`, sin ellos, y con un `<` suelto", () => {
+    const leer = (cuerpo: string) =>
+      leerXmp(`<dc:rights>${cuerpo}</dc:rights>`, "xmp").campos[0]?.valor;
+    expect(
+      leer(
+        "<rdf:Alt><rdf:li xml:lang='es'>A</rdf:li> <rdf:li>B</rdf:li></rdf:Alt>",
+      ),
+    ).toBe("A; B");
+    expect(leer("Uso <b>libre</b> con cita")).toBe("Uso libre con cita");
+    expect(leer("menor < mayor")).toBe("menor < mayor");
+    // Un `<` es etiqueta si su primer `>` está cerca; si no hay ninguno, es texto.
+    expect(leer(`a <${"x".repeat(2_000)}> b`)).toContain("x");
+    expect(leer("<<<")).toBe("<<<");
+  });
 });
 
 describe("decodificarEntidades", () => {
