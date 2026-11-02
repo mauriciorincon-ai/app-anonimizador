@@ -322,3 +322,44 @@ describe("la extensión", () => {
     expect(EXTENSION_DE_BITACORA).not.toBe(".velo");
   });
 });
+
+describe("una limpieza de metadatos en la bitácora (S6)", () => {
+  const limpieza: EntradaDeBitacora = {
+    ...entrada(9),
+    archivo: "foto-del-evento.jpg",
+    hashDePolitica: "",
+    tecnicas: [],
+    filas: 0,
+    unicosAntes: 0,
+    unicosDespues: 0,
+    metadatos: {
+      formato: "jpeg",
+      campos: 12,
+      elementos: 5,
+      revisionesQuitadas: 0,
+    },
+  };
+
+  it("una entrada sin el bloque se serializa igual que antes: la huella vieja no se mueve", () => {
+    const vieja = serializarBitacora(conEntradas(2));
+    expect(vieja).not.toContain("metadatos");
+    expect(serializarBitacora(conEntradas(2))).toBe(vieja);
+  });
+
+  it("una limpieza va y vuelve con su bloque, junto a un tratamiento", () => {
+    const bitacora = anadirEntrada(conEntradas(1), limpieza);
+    const leida = deserializarBitacora(serializarBitacora(bitacora));
+    expect(leida.ok).toBe(true);
+    if (!leida.ok) return;
+    expect(leida.bitacora.entradas[1].metadatos).toEqual(limpieza.metadatos);
+    expect(leida.bitacora.entradas[0].metadatos).toBeUndefined();
+    expect(huellaDeBitacora(leida.bitacora)).toBe(huellaDeBitacora(bitacora));
+  });
+
+  it("un formato que Velo no limpia invalida el archivo", () => {
+    const texto = serializarBitacora(
+      anadirEntrada(bitacoraVacia(), limpieza),
+    ).replace('"jpeg"', '"heic"');
+    expect(deserializarBitacora(texto).ok).toBe(false);
+  });
+});

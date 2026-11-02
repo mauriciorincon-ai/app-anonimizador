@@ -108,7 +108,7 @@ export function escapar(texto: string): string {
  * llamada `**x**` o `<script>` es un nombre, nunca marcado. Los datos cuyo nombre termina en
  * `_html` ya son HTML armado aquí (listas de `<code>`) y pasan tal cual.
  */
-function h(texto: Texto, idioma: Idioma, datos: Datos = {}): string {
+export function h(texto: Texto, idioma: Idioma, datos: Datos = {}): string {
   const seguros: Record<string, string | number> = {};
   for (const [nombre, valor] of Object.entries(datos))
     seguros[nombre] =
@@ -139,7 +139,7 @@ function decimales(valor: number, cuantos: number, idioma: Idioma): string {
   }).format(valor);
 }
 
-function megabytes(valor: number, idioma: Idioma): string {
+export function megabytes(valor: number, idioma: Idioma): string {
   if (valor < 1024 * 1024) {
     return `${formatoNumerico(idioma, { maximumFractionDigits: 0 }).format(valor / 1024)} KB`;
   }
@@ -162,7 +162,7 @@ const CERTEZA: Record<HallazgoDeColumna["certeza"], Texto> = {
 
 // El sello, dibujado a mano en el propio documento. Ver `src/components/sello.tsx`: si viniera de
 // una URL, la marca que promete que nada salió del navegador estaría hecha de algo que sí salió.
-const SELLO = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+export const SELLO = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
 <circle cx="12" cy="12" r="10.25" fill="none" stroke="currentColor" stroke-width="1.2"/>
 <circle cx="12" cy="12" r="7.75" fill="none" stroke="currentColor" stroke-width=".7" stroke-dasharray="1.1 1.9" stroke-linecap="round" opacity=".65"/>
 <path d="M7.6 9.9h8.8M9.4 12h5.2M7.6 14.1h8.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
@@ -178,7 +178,7 @@ const SELLO = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true
 //   · Las salvedades van antes que la cifra, y se ven antes que la cifra. Que la descalificante pese más
 //     que la que solo matiza no es decoración: es la diferencia entre "esto desmiente el número" y "esto
 //     lo acompaña".
-const ESTILOS = `
+export const ESTILOS = `
 :root{--papel:#fbf9f4;--superficie:#fff;--borde:#e2dccf;--tinta:#1a211d;--tinta-suave:#4f5a55;
 --tinta-tenue:#626b66;--acento:#0d6b57;--acento-tenue:#e4f0eb;--alerta:#9e3222;--alerta-tenue:#f8e9e5;
 --aviso:#7c5209;--aviso-tenue:#f6eedb;--sensible:#71355c;--sensible-tenue:#f4e9f0}
@@ -670,7 +670,10 @@ const NOMBRES_DE_DOCUMENTO: Record<
   },
 };
 
-function baseDelNombre(nombreDelArchivo: string, idioma: Idioma): string {
+export function baseDelNombre(
+  nombreDelArchivo: string,
+  idioma: Idioma,
+): string {
   const base = nombreDelArchivo
     .replace(/\.[^.]+$/, "")
     .replace(/[^\p{L}\p{N}._-]+/gu, "-")

@@ -557,4 +557,318 @@ export const DOCUMENTOS = {
       },
     },
   },
+
+  // El certificado de una limpieza de metadatos (S6): un PDF o una imagen, no una tabla. Lo que
+  // certifica es más estrecho que el de un tratamiento, y por eso lo dice antes que nada: se quitó
+  // lo que el archivo cuenta DE SÍ MISMO; lo que el archivo MUESTRA sigue igual.
+  limpieza: {
+    titulo: {
+      es: "Limpieza de metadatos de {archivo} — Velo",
+      en: "Metadata cleaning of {archivo} — Velo",
+    },
+    encabezado: {
+      es: "Certificado de limpieza de metadatos",
+      en: "Metadata cleaning certificate",
+    },
+    linea: {
+      es: "{formato} · {tamano} · {fecha}",
+      en: "{formato} · {tamano} · {fecha}",
+    },
+    limite: {
+      etiqueta: { es: "Lo que esto cubre", en: "What this covers" },
+      titulo: {
+        es: "Se limpió lo que el archivo dice de sí mismo, no lo que muestra",
+        en: "What the file says about itself was cleaned, not what it shows",
+      },
+      cuerpo: {
+        es: "Velo quitó los **metadatos**: quién hizo el archivo, con qué programa o cámara, cuándo, dónde estaba, qué versiones tuvo antes y los identificadores que lo atan a su original. **El texto de las páginas y lo que se ve en la imagen no se tocaron.** Si el contenido lleva datos personales —un nombre escrito en el documento, una cara, una placa o una dirección en la foto—, siguen ahí exactamente como estaban.",
+        en: "Velo removed the **metadata**: who made the file, with which program or camera, when, where it was, which versions it had before and the identifiers that tie it to its original. **The text of the pages and what can be seen in the image were not touched.** If the content itself carries personal data — a name written in the document, a face, a licence plate or an address in the photo — it is still there exactly as it was.",
+      },
+    },
+    identidad: {
+      huellaDeSalida: {
+        es: "SHA-256 del archivo que SALIÓ —el limpio, el que se entrega—, `{nombre}`:",
+        en: "SHA-256 of the file that CAME OUT — the clean one, the one handed over — `{nombre}`:",
+      },
+    },
+    quitado: {
+      etiqueta: { es: "Lo que se quitó", en: "What was removed" },
+      titulo: {
+        es: "Todo lo que no hace falta para ver el archivo",
+        en: "Everything that is not needed to view the file",
+      },
+      intro: {
+        es: "La limpieza conserva solo lo necesario para que la imagen se vea o el documento se abra; lo demás sale, también lo que Velo no sabe nombrar. Esta es la lista de lo que había:",
+        en: "The cleaning keeps only what is needed for the image to display or the document to open; everything else goes, including what Velo cannot name. This is the list of what was there:",
+      },
+      nada: {
+        es: "No había nada que quitar: el archivo no traía metadatos.",
+        en: "There was nothing to remove: the file carried no metadata.",
+      },
+      revisiones: {
+        es: "**Versiones anteriores quitadas:** {n}. El PDF se reescribió entero, sin ellas.",
+        en: "**Earlier versions removed:** {n}. The PDF was rewritten from scratch, without them.",
+      },
+      idNuevo: {
+        es: "**Identificador nuevo (`/ID`):** `{id}`. Se deriva del contenido limpio, así que ya no ata esta copia al original.",
+        en: "**New identifier (`/ID`):** `{id}`. It is derived from the clean content, so it no longer ties this copy to the original.",
+      },
+      otrasEtiquetas: {
+        es: "Además, **{n}** etiquetas técnicas sin nombre de persona (exposición, sensibilidad, balance de blancos…) se fueron con su bloque.",
+        en: "In addition, **{n}** technical tags with no personal meaning (exposure, sensitivity, white balance…) went with their block.",
+      },
+    },
+    conservado: {
+      etiqueta: { es: "Lo que se conservó", en: "What was kept" },
+      titulo: {
+        es: "Lo que el archivo necesita para verse igual",
+        en: "What the file needs to look the same",
+      },
+    },
+    campos: {
+      etiqueta: {
+        es: "Lo que decía el original",
+        en: "What the original said",
+      },
+      titulo: {
+        es: "Campos con nombre que tenía el archivo",
+        en: "Named fields the file carried",
+      },
+      nota: {
+        es: "Los valores van **enmascarados**: este documento dice que el campo estaba y qué revelaba, no lo que decía.",
+        en: "Values are **masked**: this document says the field was there and what it revealed, not what it said.",
+      },
+      ninguno: {
+        es: "El original no traía campos con nombre que Velo reconozca.",
+        en: "The original carried no named fields that Velo recognizes.",
+      },
+      campo: { es: "Campo", en: "Field" },
+      donde: { es: "Dónde estaba", en: "Where it was" },
+      revela: { es: "Qué revelaba", en: "What it revealed" },
+      muestra: { es: "Muestra", en: "Sample" },
+      contiene: {
+        es: "contiene: {tipo}",
+        en: "contains: {tipo}",
+      },
+    },
+    comprobacion: {
+      etiqueta: { es: "La comprobación", en: "The check" },
+      titulo: {
+        es: "Velo volvió a leer el archivo limpio",
+        en: "Velo read the clean file again",
+      },
+      cuerpoPdf: {
+        es: "El mismo lector que hizo la lista de arriba corrió sobre el archivo que sale. Encontró **{campos}** campos con nombre y **{revisiones}** versión del documento. Si hubiera encontrado uno solo, Velo no habría entregado el archivo.",
+        en: "The same reader that made the list above ran over the file that comes out. It found **{campos}** named fields and **{revisiones}** version of the document. Had it found a single one, Velo would not have handed the file over.",
+      },
+      cuerpoImagen: {
+        es: "El mismo lector que hizo la lista de arriba corrió sobre el archivo que sale. Encontró **{campos}** campos con nombre. Si hubiera encontrado uno solo, Velo no habría entregado el archivo.",
+        en: "The same reader that made the list above ran over the file that comes out. It found **{campos}** named fields. Had it found a single one, Velo would not have handed the file over.",
+      },
+    },
+    avisos: {
+      etiqueta: { es: "Lo que hay que saber", en: "What you need to know" },
+      titulo: {
+        es: "Lo que la limpieza no hizo, o hizo con un costo",
+        en: "What the cleaning did not do, or did at a cost",
+      },
+    },
+    verificacion: {
+      intro: {
+        es: "Abre una terminal en la carpeta donde está el archivo limpio y corre la línea que corresponda a tu sistema. Devuelve una cadena larga de letras y números:",
+        en: "Open a terminal in the folder where the clean file is and run the line that matches your system. It prints a long string of letters and numbers:",
+      },
+      coincide: {
+        es: "**Si esa cadena es igual a la huella de salida de arriba**, el archivo que tienes es exactamente el que produjo esta limpieza: ni un byte cambiado desde entonces.",
+        en: "**If that string equals the output fingerprint above**, the file you have is exactly the one this cleaning produced: not a single byte changed since.",
+      },
+      noCoincide: {
+        es: "**Si NO coincide, este certificado no habla de tu copia.** Puede ser inocente —un programa la abrió y la volvió a guardar, y al guardar pudo escribir metadatos nuevos— o puede no serlo. En cualquier caso, lo que este documento afirma no está probado sobre lo que tienes en la mano.",
+        en: "**If it does NOT match, this certificate is not about your copy.** It may be innocent — a program opened it and saved it again, and saving may have written new metadata — or it may not. Either way, what this document states is not proven about what you hold in your hand.",
+      },
+    },
+    pie: {
+      contenido: {
+        es: "**Qué lleva este documento y qué no.** Lleva los nombres de los campos, dónde estaban, qué revelaban, tamaños y muestras **enmascaradas** (por ejemplo `103***89`). No lleva el valor completo de ningún metadato ni una sola página o píxel del archivo.",
+        en: "**What this document contains and what it does not.** It contains the field names, where they were, what they revealed, sizes and **masked** samples (for example `103***89`). It contains neither the full value of any metadata field nor a single page or pixel of the file.",
+      },
+      noAfirma: {
+        es: "**Qué NO afirma Velo.** Que el archivo ya no diga quién lo hizo no lo vuelve anónimo: lo que muestra puede identificar a alguien, y un programa que lo abra y lo guarde de nuevo puede escribirle metadatos otra vez. Velo quitó lo que encontró y lo comprobó con su propio lector; no afirma que ningún otro lector encuentre nada en ningún formato que exista.",
+        en: "**What Velo does NOT claim.** The file no longer saying who made it does not make it anonymous: what it shows can identify someone, and a program that opens and saves it again can write metadata into it once more. Velo removed what it found and checked it with its own reader; it does not claim that no other reader will find anything in any format there is.",
+      },
+      generado: {
+        es: "Generado por **Velo** — la aduana de datos. La limpieza ocurrió íntegramente dentro del navegador de quien cargó el archivo: no hubo servidor, ni carga, ni copia.",
+        en: "Generated by **Velo** — the data customs checkpoint. The cleaning took place entirely inside the browser of the person who loaded the file: there was no server, no upload and no copy.",
+      },
+    },
+    formatos: {
+      pdf: { es: "Documento PDF", en: "PDF document" },
+      jpeg: { es: "Imagen JPEG", en: "JPEG image" },
+      png: { es: "Imagen PNG", en: "PNG image" },
+      webp: { es: "Imagen WebP", en: "WebP image" },
+    },
+    revela: {
+      autoria: { es: "Autoría", en: "Authorship" },
+      ubicacion: { es: "Ubicación", en: "Location" },
+      dispositivo: { es: "Dispositivo", en: "Device" },
+      software: { es: "Programa", en: "Software" },
+      fecha: { es: "Fecha", en: "Date" },
+      identificador: { es: "Identificador", en: "Identifier" },
+      descripcion: { es: "Descripción", en: "Description" },
+      otro: { es: "Otro", en: "Other" },
+    },
+    origen: {
+      exif: { es: "EXIF de la cámara", en: "Camera EXIF" },
+      gps: { es: "GPS del EXIF", en: "EXIF GPS block" },
+      xmp: { es: "Paquete XMP", en: "XMP packet" },
+      iptc: { es: "Bloque IPTC", en: "IPTC block" },
+      pngTexto: { es: "Texto del PNG", en: "PNG text" },
+      comentario: { es: "Comentario", en: "Comment" },
+      pdfInfo: { es: "Información del PDF", en: "PDF information" },
+      pdfXmp: { es: "XMP del PDF", en: "PDF XMP" },
+      pdfRevisionAnterior: {
+        es: "Versión anterior del PDF",
+        en: "Earlier PDF version",
+      },
+    },
+    clases: {
+      exif: {
+        es: "Bloque EXIF (cámara, fechas, ubicación)",
+        en: "EXIF block (camera, dates, location)",
+      },
+      xmp: { es: "Paquete XMP", en: "XMP packet" },
+      xmpExtendido: { es: "XMP extendido", en: "Extended XMP" },
+      iptc: {
+        es: "Datos IPTC (autoría, pie de foto)",
+        en: "IPTC data (authorship, caption)",
+      },
+      miniatura: { es: "Miniatura incrustada", en: "Embedded thumbnail" },
+      fabricante: {
+        es: "Nota del fabricante de la cámara",
+        en: "Camera maker note",
+      },
+      imagenesAdicionales: {
+        es: "Imágenes adicionales (MPF)",
+        en: "Additional images (MPF)",
+      },
+      procedencia: {
+        es: "Datos de procedencia (C2PA)",
+        en: "Provenance data (C2PA)",
+      },
+      comentario: { es: "Comentario", en: "Comment" },
+      texto: { es: "Texto incrustado", en: "Embedded text" },
+      fechaDeCambio: {
+        es: "Fecha de última modificación",
+        en: "Last-modified time",
+      },
+      aplicacion: { es: "Bloque de una aplicación", en: "Application block" },
+      auxiliar: { es: "Bloque auxiliar", en: "Ancillary block" },
+      bytesSobrantes: {
+        es: "Bytes después del final de la imagen",
+        en: "Bytes after the end of the image",
+      },
+      perfilDeColor: {
+        es: "Perfil de color (ICC)",
+        en: "Colour profile (ICC)",
+      },
+      orientacion: {
+        es: "Orientación (un EXIF mínimo con solo esa etiqueta)",
+        en: "Orientation (a minimal EXIF with that tag only)",
+      },
+      jfif: { es: "Cabecera JFIF", en: "JFIF header" },
+      adobe: {
+        es: "Marcador de Adobe (espacio de color)",
+        en: "Adobe marker (colour space)",
+      },
+      pdfInfo: {
+        es: "Diccionario de información del documento",
+        en: "Document information dictionary",
+      },
+      pdfXmp: {
+        es: "Metadatos XMP del documento",
+        en: "Document XMP metadata",
+      },
+      pdfPieceInfo: {
+        es: "Datos privados de la aplicación que lo editó",
+        en: "Private data of the editing application",
+      },
+      pdfMiniatura: { es: "Miniaturas de página", en: "Page thumbnails" },
+      pdfRevisiones: {
+        es: "Versiones anteriores del documento",
+        en: "Earlier versions of the document",
+      },
+      pdfHuerfanos: {
+        es: "Objetos que ya no se usaban pero seguían en los bytes",
+        en: "Objects no longer used but still in the bytes",
+      },
+      pdfId: {
+        es: "Identificador del archivo",
+        en: "File identifier",
+      },
+    },
+    cuantos: { es: "× {n}", en: "× {n}" },
+    sinTamano: { es: "dentro del documento", en: "inside the document" },
+    avisosDeLimpieza: {
+      extensionDistinta: {
+        es: "La extensión del nombre no correspondía al contenido; se trató por el contenido.",
+        en: "The file-name extension did not match the content; it was treated by its content.",
+      },
+      orientacionConservada: {
+        es: "Se conservó la orientación de la foto —una sola etiqueta EXIF— para que no aparezca girada.",
+        en: "The photo's orientation was kept — a single EXIF tag — so it does not appear rotated.",
+      },
+      imagenesAdicionales: {
+        es: "Había imágenes adicionales (por ejemplo, el mapa de ganancia HDR) y se quitaron con lo demás: en una pantalla HDR la foto puede verse con menos rango.",
+        en: "There were additional images (for example, the HDR gain map) and they went with the rest: on an HDR screen the photo may show less range.",
+      },
+      textoComprimido: {
+        es: "Había texto comprimido que Velo no leyó. Se quitó igual.",
+        en: "There was compressed text that Velo did not read. It was removed anyway.",
+      },
+      exifIlegible: {
+        es: "Un bloque EXIF no se pudo leer: se quitó entero igual, pero no se sabe qué decía.",
+        en: "An EXIF block could not be read: it was removed whole anyway, but what it said is unknown.",
+      },
+      valoresRecortados: {
+        es: "Algunos valores eran muy largos y aquí aparecen recortados.",
+        en: "Some values were very long and appear truncated here.",
+      },
+      camposDeMas: {
+        es: "Había más campos de los que este documento lista; se quitaron todos.",
+        en: "There were more fields than this document lists; all of them were removed.",
+      },
+      pdfFirmado: {
+        es: "!!El PDF estaba firmado.!! Reescribirlo invalida la firma: el archivo limpio ya no la verifica.",
+        en: "!!The PDF was signed.!! Rewriting it invalidates the signature: the clean file no longer verifies it.",
+      },
+      pdfAnotacionesUna: {
+        es: "!!Una anotación lleva nombre de autor.!! Velo la enseña y no la limpia: sigue en el archivo.",
+        en: "!!One annotation carries an author name.!! Velo shows it and does not clean it: it is still in the file.",
+      },
+      pdfAnotacionesVarias: {
+        es: "!!{n} anotaciones llevan nombre de autor.!! Velo las enseña y no las limpia: siguen en el archivo.",
+        en: "!!{n} annotations carry an author name.!! Velo shows them and does not clean them: they are still in the file.",
+      },
+      pdfAdjuntosUno: {
+        es: "!!Un archivo adjunto va dentro del PDF.!! Velo no lo abre ni lo limpia.",
+        en: "!!One attached file travels inside the PDF.!! Velo neither opens nor cleans it.",
+      },
+      pdfAdjuntosVarios: {
+        es: "!!{n} archivos adjuntos van dentro del PDF.!! Velo no los abre ni los limpia.",
+        en: "!!{n} attached files travel inside the PDF.!! Velo neither opens nor cleans them.",
+      },
+      pdfFormularios: {
+        es: "El PDF tiene campos de formulario: lo que alguien escribió en ellos no se tocó.",
+        en: "The PDF has form fields: whatever someone typed into them was not touched.",
+      },
+      pdfJavascript: {
+        es: "El PDF contiene JavaScript. Velo no lo quita.",
+        en: "The PDF contains JavaScript. Velo does not remove it.",
+      },
+      pdfFlujosDeObjetos: {
+        es: "Una versión anterior estaba guardada comprimida: se quitó, pero su contenido no se pudo listar.",
+        en: "An earlier version was stored compressed: it was removed, but its content could not be listed.",
+      },
+    },
+  },
 } as const satisfies Catalogo;
