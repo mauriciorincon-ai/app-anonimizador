@@ -221,7 +221,10 @@ export type MotivoDeError =
   | "excel-excede-memoria"
   /** Los de `MotivoJson`: un JSON que no se puede tratar. Son claves; el error no cita contenido. */
   | MotivoJson
-  /** El contenido no es lo que dice la extensión (un `.json` que empieza como un PDF, por ejemplo). */
+  /**
+   * Un `.pdf` o una imagen cuyos bytes no son ninguno de los cuatro formatos que Velo limpia. Un
+   * `.json` que no es JSON sale como `json-invalido`, no como este.
+   */
   | "formato-no-coincide"
   | "lectura-fallida"
   | "sin-tabla"

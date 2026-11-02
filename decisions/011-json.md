@@ -78,6 +78,11 @@ forms stream): a bad line is located by its number, and most tools write and rea
 - A list inside a record can still carry personal data. Velo says so, names the fields it saw there
   and does not look inside; treating list elements, or suppressing a whole list from the policy, is
   left as a documented next step.
+- **A JSON has no return trip.** The return flow (ADR-005/006) reads only CSV, so the reversible
+  option and the vault are switched off for a JSON and the screen says why; an imported policy that
+  asked for reversible columns has them applied as plain pseudonyms, and says so. A vault nobody can
+  use would be a promise Velo does not keep. Bringing JSON into the return flow is pending, not
+  discarded: it is the owner's call, recorded in S6's closing report.
 - Language: nothing in this ADR depends on it, except the two words Mondrian writes into labels (ADR-009 §7).
 
 ## Rejected
