@@ -379,6 +379,17 @@ export const TRANSFORMAR = {
         en: ". As long as they remain in the file, none of the figures below describes treated data.",
       },
     },
+    reticulaExcedeTope: {
+      es:
+        "**{n} columnas salieron intactas**: la política pide la generalización óptima y sus " +
+        "jerarquías dan {nodos} combinaciones de niveles, más de las {tope} que Velo recorre. " +
+        "Quita una columna del reparto, usa una jerarquía con menos niveles o elige Mondrian:",
+      en:
+        "**{n} columns came out untouched**: the policy asks for the optimal generalization and " +
+        "their hierarchies give {nodos} combinations of levels, more than the {tope} Velo walks " +
+        "through. Take a column out of the partition, use a hierarchy with fewer levels or choose " +
+        "Mondrian:",
+    },
     repartoSinK: {
       uno: {
         es:

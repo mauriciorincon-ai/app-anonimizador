@@ -214,6 +214,62 @@ describe("con Mondrian en la política, el archivo sigue siendo byte-idéntico",
   });
 });
 
+describe("con la generalización óptima (S7), el archivo sigue siendo byte-idéntico", () => {
+  // OLA recorre una retícula: el orden de los nodos de una altura y el desempate entre dos de igual
+  // pérdida son los dos sitios donde perder el determinismo. Y la óptima no escribe palabras, así
+  // que el idioma NO puede moverla: los dos idiomas dan el mismo archivo.
+  const CON_OPTIMA: Politica = {
+    ...POLITICA,
+    kObjetivo: 5,
+    reglas: [
+      ...POLITICA.reglas,
+      { columna: "municipio", tecnica: { tipo: "generalizar-automatico" } },
+      { columna: "estrato", tecnica: { tipo: "generalizar-automatico" } },
+      { columna: "sexo", tecnica: { tipo: "generalizar-automatico" } },
+    ],
+    generalizacion: {
+      algoritmo: "optima",
+      jerarquias: {
+        municipio: { tipo: "divipola" },
+        estrato: { tipo: "rango", amplitudes: [2, 4] },
+      },
+      diversidad: { l: 2, columnas: ["diagnostico"] },
+    },
+  };
+
+  async function huellaConOptima(
+    tabla: TablaColumnar,
+    idioma: "es" | "en" = "es",
+  ): Promise<string> {
+    const r = await aplicarPolitica(tabla, CON_OPTIMA, llaveA, idioma);
+    expect(r.mondrian).toBeNull();
+    expect(r.optima?.alcanzado).toBe(true);
+    return sha256(new TextEncoder().encode(serializarCsv(r.tabla)));
+  }
+
+  it("dos corridas dan el mismo SHA-256", async () => {
+    const primera = await huellaConOptima(tablaPorBloques(500));
+    expect(await huellaConOptima(tablaPorBloques(500))).toBe(primera);
+  });
+
+  it("ni el tamaño de los trozos del parser ni el idioma lo mueven", async () => {
+    const base = await huellaConOptima(tablaPorBloques(13));
+    expect(await huellaConOptima(tablaPorBloques(100_000))).toBe(base);
+    expect(await huellaConOptima(tablaPorBloques(500), "en")).toBe(base);
+  });
+
+  it("y no es Mondrian con otro nombre: la misma tabla con Mondrian da otro archivo", async () => {
+    const tabla = tablaPorBloques(500);
+    const { generalizacion: _optima, ...conMondrian } = CON_OPTIMA;
+    void _optima;
+    const r = await aplicarPolitica(tabla, conMondrian, llaveA, "es");
+    expect(r.mondrian).not.toBeNull();
+    expect(sha256(new TextEncoder().encode(serializarCsv(r.tabla)))).not.toBe(
+      await huellaConOptima(tabla),
+    );
+  });
+});
+
 describe("el gate no está comparando constantes", () => {
   it("otra política sobre la misma tabla da otro archivo", async () => {
     const tabla = tablaPorBloques(500);

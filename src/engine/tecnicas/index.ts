@@ -23,6 +23,7 @@ import {
 } from "../columnar";
 import { enmascarar } from "../mascara";
 import { anonimizarConMondrian, type ResultadoDeMondrian } from "../mondrian";
+import { generalizarOptimo, type ResultadoOptimo } from "../optima";
 import type { EntradaDeBoveda } from "../boveda";
 import {
   columnasDeMondrian,
@@ -59,6 +60,11 @@ export interface TablaTransformada {
   readonly pendientesDeMondrian: readonly string[];
   /** El reparto, cuando la política pidió k. `null` cuando no había nada que repartir. */
   readonly mondrian: ResultadoDeMondrian | null;
+  /**
+   * S7: el reparto por la generalización ÓPTIMA, cuando la política la pide en vez de Mondrian. A lo
+   * sumo uno de los dos no es `null`.
+   */
+  readonly optima: ResultadoOptimo | null;
   /**
    * El material de la bóveda: una entrada por columna **reversible**, con su diccionario original y
    * los seudónimos que salieron de él, en paralelo.
@@ -193,22 +199,40 @@ export async function aplicarPolitica(
   // llevar de verdad, no lo que llevaba al entrar. Y va aparte porque no es una técnica por
   // columna — mira todas las marcadas a la vez y decide dónde cortar.
   const transformada: TablaColumnar = { columnas, filas: tabla.filas };
+  const conReparto = paraMondrian.length > 0 && politica.kObjetivo !== null;
+  const pideOptima = politica.generalizacion?.algoritmo === "optima";
   const mondrian =
-    paraMondrian.length > 0 && politica.kObjetivo !== null
+    conReparto && !pideOptima
       ? anonimizarConMondrian(
           transformada,
           paraMondrian,
-          politica.kObjetivo,
+          politica.kObjetivo!,
           idioma,
         )
       : null;
+  // La óptima no escribe palabras (rangos, códigos y `*`): el idioma no entra.
+  const optima =
+    conReparto && pideOptima
+      ? generalizarOptimo(
+          transformada,
+          paraMondrian,
+          politica.generalizacion!.jerarquias,
+          politica.kObjetivo!,
+          politica.generalizacion!.diversidad ?? null,
+        )
+      : null;
+  // Una retícula que pasa del tope no se recorre: sus columnas salen intactas, y el balance lo dice
+  // antes que cualquier cifra (`reticula-excede-tope`).
+  const optimaAplicada =
+    optima !== null && optima.motivo !== "excede-tope" ? optima : null;
 
   return {
-    tabla: mondrian?.tabla ?? transformada,
+    tabla: mondrian?.tabla ?? optimaAplicada?.tabla ?? transformada,
     suprimidas,
     colisiones,
-    pendientesDeMondrian: mondrian === null ? paraMondrian : [],
+    pendientesDeMondrian: conReparto ? [] : paraMondrian,
     mondrian,
+    optima,
     correspondencias,
   };
 }

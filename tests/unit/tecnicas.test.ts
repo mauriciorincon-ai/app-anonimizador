@@ -330,6 +330,69 @@ describe("el pipeline completo", () => {
     expect(valoresDe(r.tabla, "monto")[0]).toBe("0");
   });
 
+  it("con la óptima pedida, corre ella y NO Mondrian, sobre las mismas columnas del reparto", async () => {
+    const filas = Array.from({ length: 60 }, (_, i) => [
+      ["05001", "05002", "11001", "76001", "76054"][i % 5],
+      String(20 + (i % 40)),
+      String(i),
+    ]);
+    const tabla = tablaDe(["municipio", "edad", "monto"], filas);
+    const politica: Politica = {
+      version: 1,
+      origen: "manual",
+      kObjetivo: 5,
+      reglas: [
+        { columna: "municipio", tecnica: { tipo: "generalizar-automatico" } },
+        { columna: "edad", tecnica: { tipo: "generalizar-automatico" } },
+      ],
+      generalizacion: {
+        algoritmo: "optima",
+        jerarquias: {
+          municipio: { tipo: "divipola" },
+          edad: { tipo: "edad-dane" },
+        },
+      },
+    };
+    const r = await aplicarPolitica(tabla, politica, null, "es");
+
+    expect(r.mondrian).toBeNull();
+    expect(r.pendientesDeMondrian).toEqual([]);
+    expect(r.optima?.alcanzado).toBe(true);
+    expect(r.optima?.kAlcanzado).toBeGreaterThanOrEqual(5);
+    expect(r.optima?.dimensiones).toEqual(["municipio", "edad"]);
+    // La salida es la de la óptima: cada columna en UN nivel para todo el archivo.
+    const edades = new Set(valoresDe(r.tabla, "edad"));
+    expect(
+      [...edades].every((e) => /^\d+-\d+$|^\d+\+$|^\*$|^\d+$/.test(e)),
+    ).toBe(true);
+    expect(valoresDe(r.tabla, "monto")[0]).toBe("0");
+  });
+
+  it("una retícula sobre el tope deja el reparto intacto y lo entrega para que se diga", async () => {
+    const larga = {
+      tipo: "rango" as const,
+      amplitudes: [1, 2, 4, 8, 16, 32],
+    };
+    const nombres = ["a", "b", "c", "d", "e"];
+    const tabla = tablaDe(nombres, [["1", "2", "3", "4", "5"]]);
+    const politica: Politica = {
+      version: 1,
+      origen: "manual",
+      kObjetivo: 2,
+      reglas: nombres.map((columna) => ({
+        columna,
+        tecnica: { tipo: "generalizar-automatico" as const },
+      })),
+      generalizacion: {
+        algoritmo: "optima",
+        jerarquias: Object.fromEntries(nombres.map((n) => [n, larga])),
+      },
+    };
+    const r = await aplicarPolitica(tabla, politica, null, "es");
+    expect(r.optima?.motivo).toBe("excede-tope");
+    expect(valoresDe(r.tabla, "a")).toEqual(["1"]);
+  });
+
   it("Mondrian corre DESPUÉS de las técnicas por columna, sobre lo que el archivo llevará", async () => {
     // Generalizar lo que entró en vez de lo que sale produciría intervalos sobre valores que ya no
     // existen en el archivo: etiquetas que hablan de un dato que nadie va a recibir.

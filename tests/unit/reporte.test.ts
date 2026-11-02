@@ -19,6 +19,7 @@ import {
 } from "@/engine/reporte";
 import { evaluarRiesgo } from "@/engine/riesgo";
 import { balanceDelTratamiento } from "@/engine/balance";
+import type { GeneralizacionAplicada } from "@/engine/optima";
 import { hashDePolitica, type Politica } from "@/engine/politica";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
@@ -912,5 +913,66 @@ describe("el certificado en cada idioma", () => {
     expect(nombreDelCertificado("***.csv", "en")).toBe(
       "velo-certificate-file.html",
     );
+  });
+});
+
+describe("la generalización óptima en el certificado (S7)", () => {
+  const OPTIMA: GeneralizacionAplicada = {
+    kObjetivo: 5,
+    kAlcanzado: 7,
+    lObjetivo: 2,
+    lAlcanzado: 1,
+    columnasSensibles: ["diagnostico"],
+    columnas: [
+      { nombre: "municipio", jerarquia: { tipo: "divipola" }, nivel: "departamento" },
+      { nombre: "edad", jerarquia: { tipo: "edad-dane" }, nivel: "quinquenio" },
+      { nombre: "sexo", jerarquia: { tipo: "supresion" }, nivel: "valor" },
+    ],
+    nodosRevisados: 9,
+    nodosEnLaReticula: 24,
+  };
+
+  async function conOptima(generalizacion: GeneralizacionAplicada | null) {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    return { ...datos, tratamiento: { ...datos.tratamiento!, generalizacion } };
+  }
+
+  it("con Mondrian no hay sección: el certificado del S6 no cambia", async () => {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    expect(construirReporte(await conOptima(null))).toBe(construirReporte(datos));
+    expect(construirReporte(datos)).not.toContain("La generalización óptima");
+  });
+
+  it("dice cada columna con su escalera y su nivel, el k y la ℓ medidos", async () => {
+    const html = construirReporte(await conOptima(OPTIMA));
+    expect(html).toContain("La generalización óptima");
+    expect(html).toContain("Velo revisó 9");
+    expect(html).toContain("Municipio, departamento, región (DIVIPOLA, DANE)");
+    expect(html).toContain("<b>departamento</b>");
+    expect(html).toContain("<b>quinquenio</b>");
+    expect(html).toContain("<b>sin generalizar</b>");
+    expect(html).toContain("Grupo más pequeño sobre las columnas del reparto: 7");
+    // La ℓ no alcanzada se dice, no se esconde detrás del k que sí se alcanzó.
+    expect(html).toContain("La ℓ pedida no se alcanzó.");
+  });
+
+  it("cita la fuente y la fecha de cada escalera de fábrica usada, y solo de esas", async () => {
+    const html = construirReporte(await conOptima(OPTIMA));
+    expect(html).toContain("Fuentes de las escaleras de fábrica");
+    expect(html).toContain("gdxc-w37w");
+    expect(html).toContain("Ley 2056 de 2020, artículo 45");
+    expect(html).toContain("NotaTecnica-PPED-jul2025.pdf");
+    expect(html).toContain("consultada el 2026-11-02");
+    // No usó CIIU: no la cita.
+    expect(html).not.toContain("CIIU Rev. 4 A.C.");
+  });
+
+  it("en inglés, redactada y no traducida", async () => {
+    const html = construirReporte({ ...(await conOptima(OPTIMA)), idioma: "en" });
+    expect(html).toContain("The optimal generalization");
+    expect(html).toContain("Sources of the built-in ladders");
+    expect(html).toContain("accessed 2026-11-02");
+    expect(html).toContain("<b>five-year group</b>");
+    expect(html).not.toContain("La generalización óptima");
   });
 });

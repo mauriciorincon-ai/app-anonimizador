@@ -49,6 +49,10 @@ const IGUALES_A_PROPOSITO: Readonly<Record<string, string>> = {
     "es bilingüe a propósito: quien llegó a una pantalla que no entiende debe reconocer dónde se cambia",
   "documentos › utilidad.bits":
     "la unidad de información se escribe «bits» en los dos idiomas",
+  "generalizacion › tabla.encabezados.mondrian":
+    "Mondrian es el nombre del algoritmo (LeFevre, DeWitt y Ramakrishnan, 2006) en los dos idiomas",
+  "generalizacion › tabla.no":
+    "la negación de la tabla se escribe «No» en los dos idiomas",
 };
 
 interface Hoja {

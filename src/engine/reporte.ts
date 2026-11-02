@@ -33,8 +33,12 @@ import {
 import { decirMensaje } from "@/lib/idioma/mensajes";
 import { DOCUMENTOS as D } from "@/lib/idioma/textos/documentos";
 import { MOTOR_TRANSFORMAR as M } from "@/lib/idioma/textos/motor-transformar";
+import { escaleraEnPalabras, nivelEnPalabras } from "@/lib/tecnicas-en-palabras";
 
 import type { BalanceDelTratamiento, Salvedad } from "./balance";
+import type { JerarquiaDeFabrica } from "./jerarquias/fabrica";
+import { FUENTES, FUENTES_DE_LA_ESCALERA } from "./jerarquias/fuentes";
+import type { GeneralizacionAplicada } from "./optima";
 import type { Diagnostico, HallazgoDeColumna } from "./clasificador";
 import type {
   ColumnaRestaurada,
@@ -71,6 +75,8 @@ export interface DatosDelTratamiento {
   sha256DeSalida: string;
   /** Nombre del archivo tratado. Va en el comando de verificación, para poder copiarlo y pegarlo. */
   nombreDeSalida: string;
+  /** S7: la generalización óptima tal como se aplicó; ausente o `null` con Mondrian. */
+  generalizacion?: GeneralizacionAplicada | null;
 }
 
 export interface DatosDelReporte {
@@ -421,6 +427,13 @@ function itemDeSalvedad(salvedad: Salvedad, idioma: Idioma): string {
             lista_html: listaDeCodigo(salvedad.columnas),
           },
         );
+      case "reticula-excede-tope":
+        return h(S.reticulaExcedeTope, idioma, {
+          n: salvedad.columnas.length,
+          nodos: numero(salvedad.nodos, idioma),
+          tope: numero(salvedad.tope, idioma),
+          lista_html: listaDeCodigo(salvedad.columnas),
+        });
       case "reparto-sin-k":
         return h(
           plural(
@@ -532,6 +545,77 @@ ${cifra}
     separador: decir(M["salida.mondrian.separador"], idiomaDelTrabajo).trim(),
     vacio: decir(M["salida.mondrian.sufijoVacio"], idiomaDelTrabajo).trim(),
   })}</p>
+</section>`;
+}
+
+/**
+ * Cómo se llegó al k con la generalización óptima (S7): cada columna con su escalera y el nivel
+ * elegido, el k y la ℓ medidos, y la fuente y la fecha de cada escalera de fábrica que se usó.
+ */
+function seccionDeLaGeneralizacion(
+  g: GeneralizacionAplicada,
+  idioma: Idioma,
+): string {
+  const G = D.generalizacion;
+  const filas = g.columnas
+    .map(
+      (c) => `<tr>
+<td class="col">${escapar(c.nombre)}</td>
+<td>${escapar(escaleraEnPalabras(c.jerarquia, idioma))}</td>
+<td><b>${escapar(nivelEnPalabras(c.nivel, idioma))}</b></td>
+</tr>`,
+    )
+    .join("");
+  const citadas = [
+    ...new Set(
+      g.columnas.flatMap((c) =>
+        c.jerarquia.tipo in FUENTES_DE_LA_ESCALERA
+          ? FUENTES_DE_LA_ESCALERA[c.jerarquia.tipo as JerarquiaDeFabrica]
+          : [],
+      ),
+    ),
+  ];
+  const fuentes = citadas
+    .map(
+      (clave) =>
+        `<li>${h(G.fuentes[clave], idioma)} · <code>${escapar(FUENTES[clave].url)}</code> · ${h(
+          G.consultada,
+          idioma,
+          { fecha: FUENTES[clave].consultada },
+        )}</li>`,
+    )
+    .join("");
+  const diversidad =
+    g.lObjetivo === null
+      ? ""
+      : `<p>${h(G.l, idioma, {
+          columnas_html: listaDeCodigo(g.columnasSensibles),
+          objetivo: g.lObjetivo,
+          alcanzado: g.lAlcanzado ?? 0,
+        })}</p>${
+          (g.lAlcanzado ?? 0) < g.lObjetivo
+            ? `<p class="alerta">${h(G.lNoAlcanzada, idioma, { objetivo: g.lObjetivo })}</p>`
+            : ""
+        }`;
+
+  return `<section>
+<p class="etiqueta">${h(G.etiqueta, idioma)}</p>
+<h2>${h(G.titulo, idioma)}</h2>
+<p>${h(G.explicacion, idioma, {
+    total: numero(g.nodosEnLaReticula, idioma),
+    revisadas: numero(g.nodosRevisados, idioma),
+  })}</p>
+<p>${h(G.k, idioma, { objetivo: g.kObjetivo, alcanzado: g.kAlcanzado })}</p>
+${diversidad}
+<table style="margin-top:16px">
+<thead><tr><th>${h(G.encabezados.columna, idioma)}</th><th>${h(G.encabezados.escalera, idioma)}</th><th>${h(G.encabezados.nivel, idioma)}</th></tr></thead>
+<tbody>${filas}</tbody></table>
+${
+  fuentes
+    ? `<h2 style="margin-top:18px;font-size:1.05rem">${h(G.fuentesTitulo, idioma)}</h2>
+<ul class="limpia">${fuentes}</ul>`
+    : ""
+}
 </section>`;
 }
 
@@ -761,6 +845,7 @@ ${
 </section>
 
 ${tratamiento ? seccionDelTratamiento(tratamiento, idioma) : ""}
+${tratamiento?.generalizacion ? seccionDeLaGeneralizacion(tratamiento.generalizacion, idioma) : ""}
 
 ${seccionDeRiesgo(riesgo, resumen["identificador-directo"], hayTratamiento, idioma)}
 

@@ -40,6 +40,7 @@ import {
   type TablaColumnar,
 } from "./columnar";
 import { nivelesDe, pasosDe, type Jerarquia } from "./jerarquias";
+import type { JerarquiaDeLaPolitica } from "./politica";
 import { clasesDeEquivalencia } from "./riesgo";
 
 /**
@@ -75,6 +76,28 @@ export interface ResultadoOptimo {
   /** Bits de las dimensiones antes y después: lo que se minimizó. */
   readonly bitsAntes: number;
   readonly bitsDespues: number;
+  readonly nodosRevisados: number;
+  readonly nodosEnLaReticula: number;
+}
+
+/**
+ * La generalización óptima tal como se aplicó (S7): lo que cruza a la página para el certificado.
+ * Nombres de columna, escaleras, claves de nivel y cifras; ningún valor.
+ */
+export interface GeneralizacionAplicada {
+  readonly kObjetivo: number;
+  /** k REAL sobre las columnas del reparto. */
+  readonly kAlcanzado: number;
+  readonly lObjetivo: number | null;
+  readonly lAlcanzado: number | null;
+  /** Las columnas sensibles sobre las que se pidió la ℓ (vacía si no se pidió). */
+  readonly columnasSensibles: readonly string[];
+  readonly columnas: readonly {
+    readonly nombre: string;
+    readonly jerarquia: JerarquiaDeLaPolitica;
+    /** La clave del nivel elegido (`quinquenio`, `departamento`, `rango-10`, `suprimido`…). */
+    readonly nivel: string;
+  }[];
   readonly nodosRevisados: number;
   readonly nodosEnLaReticula: number;
 }
