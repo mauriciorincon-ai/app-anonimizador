@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { EditorDePolitica } from "@/components/editor-de-politica";
 import type { HallazgoDeColumna } from "@/engine/clasificador";
-import type { Politica } from "@/engine/politica";
+import { exportarPolitica, type Politica } from "@/engine/politica";
 import { fijarIdioma } from "@/lib/idioma/estado";
 
 const COLUMNAS = [
@@ -215,5 +215,198 @@ describe("el editor en inglés", () => {
         /Could not import: The file is not a JSON that can be read/,
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("la bóveda en un JSON (S6): el regreso lee solo CSV", () => {
+  const SEUDONIMO: Politica["reglas"][number] = {
+    columna: "edad",
+    tecnica: { tipo: "seudonimizar", longitud: 16 },
+  };
+  const CON_SEUDONIMO: Politica = { ...SIN_REGLAS, reglas: [SEUDONIMO] };
+
+  function casilla(): HTMLInputElement {
+    return screen.getByRole("checkbox") as HTMLInputElement;
+  }
+
+  it("en un JSON la casilla de poder deshacer está apagada y dice por qué", () => {
+    render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={CON_SEUDONIMO}
+        onCambio={vi.fn()}
+        formato="json"
+      />,
+    );
+    expect(casilla()).toBeDisabled();
+    expect(casilla()).not.toBeChecked();
+    expect(
+      screen.getByText(
+        /No disponible con un JSON: el regreso funciona solo con CSV/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/no serviría de nada/)).toBeInTheDocument();
+    // No hay la frase que promete la bóveda: la que prometía lo contrario de lo que se ve.
+    expect(screen.queryByText(/Guarda la correspondencia/)).toBeNull();
+  });
+
+  it("apagada no manda nada a la política aunque se intente", () => {
+    const onCambio = vi.fn();
+    render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={CON_SEUDONIMO}
+        onCambio={onCambio}
+        formato="json"
+      />,
+    );
+    fireEvent.click(casilla());
+    expect(onCambio).not.toHaveBeenCalled();
+  });
+
+  it("en un JSON no aparece el aviso de «vas a poder guardar una bóveda»", () => {
+    render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={CON_SEUDONIMO}
+        onCambio={vi.fn()}
+        formato="json"
+      />,
+    );
+    expect(screen.queryByText(/guardar una bóveda/)).toBeNull();
+  });
+
+  it.each(["csv", "excel"] as const)(
+    "en %s la casilla sigue activa y funciona como siempre",
+    (formato) => {
+      const onCambio = vi.fn();
+      render(
+        <EditorDePolitica
+          columnas={COLUMNAS}
+          politica={CON_SEUDONIMO}
+          onCambio={onCambio}
+          formato={formato}
+        />,
+      );
+      expect(casilla()).toBeEnabled();
+      expect(
+        screen.getByText(/Guarda la correspondencia en un archivo cifrado/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/No disponible con un JSON/)).toBeNull();
+      fireEvent.click(casilla());
+      const siguiente = onCambio.mock.calls[0][0] as Politica;
+      expect(siguiente.reglas[0]!.tecnica).toMatchObject({
+        tipo: "seudonimizar",
+        reversible: true,
+      });
+    },
+  );
+
+  it("sin decir el formato se comporta como un CSV", () => {
+    render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={CON_SEUDONIMO}
+        onCambio={vi.fn()}
+      />,
+    );
+    expect(casilla()).toBeEnabled();
+  });
+
+  it("la columna que no es seudónimo no trae casilla, tampoco en un JSON", () => {
+    render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={SIN_REGLAS}
+        onCambio={vi.fn()}
+        formato="json"
+      />,
+    );
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
+  it("lo dice en inglés", () => {
+    fijarIdioma("en");
+    render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={CON_SEUDONIMO}
+        onCambio={vi.fn()}
+        formato="json"
+      />,
+    );
+    expect(casilla()).toBeDisabled();
+    expect(
+      screen.getByText(
+        /Not available with a JSON: the return flow works only with CSV, so a vault for this file would be useless/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No disponible/)).toBeNull();
+  });
+
+  describe("una política importada que pedía bóveda", () => {
+    const PEDIA_VUELTA: Politica = {
+      ...SIN_REGLAS,
+      reglas: [
+        {
+          columna: "edad",
+          tecnica: { tipo: "seudonimizar", longitud: 16, reversible: true },
+        },
+        {
+          columna: "municipio",
+          tecnica: {
+            tipo: "seudonimizar-con-formato",
+            formato: "cedula",
+            reversible: true,
+          },
+        },
+      ],
+    };
+
+    async function importarEn(formato: "json" | "csv", onCambio = vi.fn()) {
+      const { container } = render(
+        <EditorDePolitica
+          columnas={COLUMNAS}
+          politica={SIN_REGLAS}
+          onCambio={onCambio}
+          formato={formato}
+        />,
+      );
+      const texto = exportarPolitica(PEDIA_VUELTA);
+      const archivo = new File([texto], "velo-politica.json", {
+        type: "application/json",
+      });
+      // jsdom no implementa `File.text()` en todas las versiones: se completa si falta.
+      if (!archivo.text) Object.assign(archivo, { text: async () => texto });
+      fireEvent.change(
+        container.querySelector('input[type="file"]') as HTMLInputElement,
+        { target: { files: [archivo] } },
+      );
+      return onCambio;
+    }
+
+    it("en un JSON se le quita la vuelta y se avisa, con el número de columnas", async () => {
+      const onCambio = await importarEn("json");
+      expect(
+        await screen.findByText(
+          /pedía poder deshacer 2 columnas con una bóveda/,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "esas columnas quedaron",
+      );
+      const aplicada = onCambio.mock.calls[0][0] as Politica;
+      expect(aplicada.reglas).toHaveLength(2);
+      for (const regla of aplicada.reglas)
+        expect(regla.tecnica).not.toHaveProperty("reversible", true);
+    });
+
+    it("en un CSV se respeta tal cual y no se avisa de nada", async () => {
+      const onCambio = await importarEn("csv");
+      await vi.waitFor(() => expect(onCambio).toHaveBeenCalled());
+      const aplicada = onCambio.mock.calls[0][0] as Politica;
+      expect(aplicada.reglas[0]!.tecnica).toMatchObject({ reversible: true });
+      expect(screen.queryByRole("status")).toBeNull();
+    });
   });
 });

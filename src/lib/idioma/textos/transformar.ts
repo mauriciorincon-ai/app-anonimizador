@@ -219,6 +219,36 @@ export const TRANSFORMAR = {
         es: "Guarda la correspondencia en un archivo cifrado. Sin la bóveda, el seudónimo sigue sin vuelta.",
         en: "Saves the mapping in an encrypted file. Without the vault, the pseudonym can't be reversed.",
       },
+      // Un JSON no tiene regreso (el regreso lee solo CSV): una bóveda para él sería inútil, y
+      // ofrecerla sería prometer una vuelta que no existe.
+      soloIda: {
+        es:
+          "No disponible con un JSON: el regreso funciona solo con CSV, así que una bóveda de " +
+          "este archivo no serviría de nada.",
+        en:
+          "Not available with a JSON: the return flow works only with CSV, so a vault for this " +
+          "file would be useless.",
+      },
+      vueltaQuitadaUna: {
+        es:
+          "La política importada pedía poder deshacer una columna con una bóveda. Con un JSON no " +
+          "se puede (el regreso funciona solo con CSV): esa columna quedó con seudónimo sin " +
+          "vuelta.",
+        en:
+          "The imported policy asked to make one column undoable with a vault. That is not " +
+          "possible with a JSON (the return flow works only with CSV): that column was left " +
+          "with a one-way pseudonym.",
+      },
+      vueltaQuitadaVarias: {
+        es:
+          "La política importada pedía poder deshacer {n} columnas con una bóveda. Con un JSON " +
+          "no se puede (el regreso funciona solo con CSV): esas columnas quedaron con seudónimo " +
+          "sin vuelta.",
+        en:
+          "The imported policy asked to make {n} columns undoable with a vault. That is not " +
+          "possible with a JSON (the return flow works only with CSV): those columns were left " +
+          "with one-way pseudonyms.",
+      },
     },
     vuelta: {
       aviso: {

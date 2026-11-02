@@ -136,6 +136,7 @@ export function Taller({ informe }: { informe: Informe }) {
           columnas={informe.diagnostico.columnas}
           politica={politica}
           onCambio={cambiarPolitica}
+          formato={informe.archivo.formato}
         />
 
         {pideLlave ? (

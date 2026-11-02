@@ -12,6 +12,7 @@
 
 import { PanelDelAdvisor } from "@/components/advisor-de-qis";
 import { DescargaDelCertificado } from "@/components/descarga-del-certificado";
+import { EstructuraDelJson } from "@/components/estructura-del-json";
 import { InsigniaDeCategoria } from "@/components/insignias";
 import { Panel } from "@/components/panel";
 import { PanelDeRiesgo } from "@/components/panel-de-riesgo";
@@ -33,7 +34,8 @@ const ORDEN_DE_CATEGORIAS: readonly CategoriaLey1581[] = [
 
 export function InformeDeDiagnostico({ informe }: { informe: Informe }) {
   const { t, idioma } = useT();
-  const { archivo, diagnostico, riesgo, advisor, medicion } = informe;
+  const { archivo, diagnostico, riesgo, advisor, medicion, estructura } =
+    informe;
   const conDatosPersonales =
     diagnostico.resumen["identificador-directo"] +
       diagnostico.resumen["cuasi-identificador"] +
@@ -50,11 +52,16 @@ export function InformeDeDiagnostico({ informe }: { informe: Informe }) {
           {archivo.nombre}
         </h1>
         <p className="cifra text-tinta-suave mt-2 text-[0.9375rem]">
-          {t(DIAGNOSTICO.informe.tamano, {
-            filas: diagnostico.filas,
-            columnas: diagnostico.columnas.length,
-            peso: bytes(archivo.bytes, idioma),
-          })}
+          {t(
+            estructura
+              ? DIAGNOSTICO.informe.tamanoJson
+              : DIAGNOSTICO.informe.tamano,
+            {
+              filas: diagnostico.filas,
+              columnas: diagnostico.columnas.length,
+              peso: bytes(archivo.bytes, idioma),
+            },
+          )}
         </p>
         <p className="cifra text-tinta-tenue mt-1 text-[0.75rem]">
           {medicion.heapMb !== null
@@ -111,6 +118,10 @@ export function InformeDeDiagnostico({ informe }: { informe: Informe }) {
         riesgo={riesgo}
         identificadoresDirectos={diagnostico.resumen["identificador-directo"]}
       />
+
+      {/* Solo en un JSON. Va antes de la tabla de columnas: lo que sale sin tratar (las listas)
+          explica por qué la tabla de abajo no es todo el archivo. */}
+      {estructura ? <EstructuraDelJson estructura={estructura} /> : null}
 
       <Panel
         etiqueta={t(DIAGNOSTICO.informe.columnas.etiqueta)}

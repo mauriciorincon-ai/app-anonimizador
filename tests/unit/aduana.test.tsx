@@ -210,3 +210,207 @@ describe("la zona de carga, en inglés", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("JSON en la zona de carga (S6)", () => {
+  it("el selector de archivos acepta JSON y JSON Lines además de CSV y Excel", () => {
+    montar({ fase: "vacio" });
+    const accept = screen
+      .getByLabelText("Elegir archivo")
+      .getAttribute("accept");
+    for (const admitido of [
+      ".csv",
+      ".xlsx",
+      ".xls",
+      ".json",
+      ".jsonl",
+      ".ndjson",
+      "application/json",
+    ])
+      expect(accept).toContain(admitido);
+  });
+
+  it("la pista bajo la zona nombra el JSON junto al CSV y al Excel, en los dos idiomas", () => {
+    montar({ fase: "vacio" });
+    expect(screen.getByText(/CSV, Excel o JSON/)).toBeInTheDocument();
+    expect(screen.getByText(/hasta 150 MB/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/el JSON se limita por la cantidad de celdas/),
+    ).toBeInTheDocument();
+  });
+
+  it("la pista en inglés nombra el JSON y conserva el tope de Excel", () => {
+    fijarIdioma("en");
+    montar({ fase: "vacio" });
+    expect(screen.getByText(/CSV, Excel or JSON/)).toBeInTheDocument();
+    expect(screen.getByText(/up to 150 MB/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/JSON is capped by its number of cells/),
+    ).toBeInTheDocument();
+  });
+
+  it("soltar un .json avisa del archivo igual que un CSV", () => {
+    const onArchivo = vi.fn();
+    const { container } = montar({ fase: "vacio" }, { onArchivo });
+    const archivo = new File(["[]"], "pacientes.json", {
+      type: "application/json",
+    });
+    fireEvent.drop(container.firstElementChild!, {
+      dataTransfer: { files: [archivo] },
+    });
+    expect(onArchivo).toHaveBeenCalledWith(archivo);
+  });
+
+  it("el formato no soportado ya nombra el JSON entre lo que sí se lee", () => {
+    montar({
+      fase: "error",
+      motivo: "formato-no-soportado",
+      nombre: "notas.txt",
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "CSV (.csv), Excel (.xlsx, .xls) y JSON (.json, .jsonl, .ndjson)",
+    );
+  });
+
+  // Cada motivo nuevo: qué está mal (el título del alert) y qué hacer (un trozo de la salida).
+  const MOTIVOS_JSON = [
+    {
+      motivo: "json-invalido",
+      es: [
+        "Ese archivo no es un JSON válido",
+        /ábrelo en un editor, corrígelo/,
+      ],
+      en: ["That file is not valid JSON", /open it in an editor, fix it/],
+    },
+    {
+      motivo: "json-no-es-registros",
+      es: [
+        "Ese JSON no es una lista de registros",
+        /envuélvelos en un arreglo o guarda uno por línea/,
+      ],
+      en: [
+        "That JSON is not a list of records",
+        /wrap them in an array or save one per line/,
+      ],
+    },
+    {
+      motivo: "json-demasiado-profundo",
+      es: [
+        "Ese JSON tiene demasiados niveles de anidamiento",
+        /hasta 32 niveles dentro de un registro.*aplánalo en el origen/,
+      ],
+      en: [
+        "That JSON is nested too deeply",
+        /up to 32 levels inside a record.*flatten it at the source/,
+      ],
+    },
+    {
+      motivo: "json-demasiado-ancho",
+      es: [
+        "Ese JSON tiene demasiados campos distintos",
+        /hasta 256 rutas distintas.*una clave fija y el dato como valor/,
+      ],
+      en: [
+        "That JSON has too many distinct fields",
+        /up to 256 distinct paths.*a fixed key, with the data as its value/,
+      ],
+    },
+    {
+      motivo: "json-claves-duplicadas",
+      es: ["Un registro repite una clave", /cada clave aparezca una sola vez/],
+      en: ["A record repeats a key", /each key appears only once/],
+    },
+    {
+      motivo: "json-excede-tope",
+      es: [
+        "Ese JSON es más grande de lo que Velo puede tratar",
+        /40\.000\.000 celdas.*Divide el archivo en partes/,
+      ],
+      en: [
+        "That JSON is bigger than Velo can handle",
+        /40,000,000 cells.*Split the file into parts/,
+      ],
+    },
+    {
+      motivo: "formato-no-coincide",
+      es: [
+        "El contenido no es el que anuncia el nombre del archivo",
+        /un .json que en realidad es un PDF/,
+      ],
+      en: [
+        "The content is not what the file name announces",
+        /a .json that is really a PDF/,
+      ],
+    },
+  ] as const;
+
+  it.each(MOTIVOS_JSON)(
+    "$motivo: dice qué está mal y qué hacer, en español",
+    ({ motivo, es }) => {
+      montar({ fase: "error", motivo, nombre: "datos.json" });
+      const alerta = screen.getByRole("alert", { name: es[0] });
+      expect(alerta).toHaveTextContent(es[1]);
+      expect(alerta).toHaveTextContent("datos.json");
+      // Nunca la clave cruda del motivo, ni un marcador sin llenar.
+      expect(alerta.textContent).not.toContain(motivo);
+      expect(alerta.textContent).not.toMatch(/\{[A-Za-z]+\}/);
+      // Sin línea que citar, no hay frase de línea ni hueco donde iba.
+      expect(alerta).not.toHaveTextContent(/línea \d/);
+      expect(
+        screen.getByRole("button", { name: "Elegir otro archivo" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it.each(MOTIVOS_JSON)(
+    "$motivo: dice qué está mal y qué hacer, en inglés",
+    ({ motivo, en }) => {
+      fijarIdioma("en");
+      montar({ fase: "error", motivo, nombre: "data.json" });
+      const alerta = screen.getByRole("alert", { name: en[0] });
+      expect(alerta).toHaveTextContent(en[1]);
+      expect(alerta.textContent).not.toContain(motivo);
+      expect(alerta.textContent).not.toMatch(/\{[A-Za-z]+\}/);
+      expect(alerta.textContent).not.toMatch(/[¿¡]/);
+      expect(alerta).not.toHaveTextContent(/line \d/);
+      expect(
+        screen.getByRole("button", { name: "Choose another file" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("cita la línea donde el lector se detuvo, como número, en los dos idiomas", () => {
+    montar({
+      fase: "error",
+      motivo: "json-invalido",
+      nombre: "datos.jsonl",
+      linea: 1234,
+    });
+    // «1234», no «1.234»: una línea no lleva separador de miles.
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Velo se detuvo en la línea 1234: ahí, o justo antes, aparece el problema.",
+    );
+  });
+
+  it("la línea también se cita en inglés", () => {
+    fijarIdioma("en");
+    montar({
+      fase: "error",
+      motivo: "json-claves-duplicadas",
+      nombre: "data.jsonl",
+      linea: 7,
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Velo stopped at line 7: the problem is there, or just before it.",
+    );
+  });
+
+  it("la línea 1 de un arreglo en una sola línea también se dice", () => {
+    montar({
+      fase: "error",
+      motivo: "json-invalido",
+      nombre: "uno.json",
+      linea: 1,
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(/en la línea 1:/);
+  });
+});

@@ -16,12 +16,13 @@ import { useState } from "react";
 
 import { clasesDeBoton } from "@/components/boton";
 import { IconoLupa, IconoReiniciar, IconoTabla } from "@/components/iconos";
-import { useT } from "@/components/texto";
+import { Rico, useT } from "@/components/texto";
 import { bytes as enBytes, porcentaje } from "@/lib/formato";
 import type { Texto } from "@/lib/idioma";
 import { INICIO } from "@/lib/idioma/textos/inicio";
 import type { EstadoDeSesion } from "@/lib/sesion";
 import { TOPE_EXCEL_BYTES } from "@/lib/archivo";
+import { TOPES_JSON } from "@/engine/json/tipos";
 import type { EtapaDelWorker, MotivoDeError } from "@/workers/contrato";
 
 // Solo las etapas del ANÁLISIS. Las de la transformación viven en `/transformar`, que es donde se
@@ -42,6 +43,14 @@ const ERRORES: Partial<
   "excel-excede-tope": INICIO.carga.errores.excelExcedeTope,
   "excel-excede-memoria": INICIO.carga.errores.excelExcedeMemoria,
   "lectura-fallida": INICIO.carga.errores.lecturaFallida,
+  // JSON (S6): seis motivos del lector y el de «el contenido no es lo que dice el nombre».
+  "json-invalido": INICIO.carga.errores.jsonInvalido,
+  "json-no-es-registros": INICIO.carga.errores.jsonNoEsRegistros,
+  "json-demasiado-profundo": INICIO.carga.errores.jsonDemasiadoProfundo,
+  "json-demasiado-ancho": INICIO.carga.errores.jsonDemasiadoAncho,
+  "json-claves-duplicadas": INICIO.carga.errores.jsonClavesDuplicadas,
+  "json-excede-tope": INICIO.carga.errores.jsonExcedeTope,
+  "formato-no-coincide": INICIO.carga.errores.formatoNoCoincide,
 };
 
 export function ZonaDeCarga({
@@ -72,6 +81,7 @@ export function ZonaDeCarga({
       <Fallo
         motivo={estado.motivo}
         nombre={estado.nombre}
+        linea={estado.linea}
         onReintentar={onReintentar}
       />
     );
@@ -107,7 +117,7 @@ export function ZonaDeCarga({
         <input
           id="archivo"
           type="file"
-          accept=".csv,.xlsx,.xls,text/csv"
+          accept=".csv,.xlsx,.xls,text/csv,.json,.jsonl,.ndjson,application/json"
           className="peer sr-only"
           onChange={(e) => {
             const archivo = e.target.files?.[0];
@@ -236,10 +246,13 @@ function EnCurso({
 function Fallo({
   motivo,
   nombre,
+  linea,
   onReintentar,
 }: {
   motivo: MotivoDeError;
   nombre: string;
+  /** Solo la dan los motivos del lector de JSON, y es un número: jamás el contenido de la línea. */
+  linea?: number;
   onReintentar: () => void;
 }) {
   const { t, idioma } = useT();
@@ -248,6 +261,16 @@ function Fallo({
   // llegara aquí sería por una navegación rara, y la salida honesta es la misma de siempre —
   // volver a soltar el archivo—, no un «error inesperado» que deja al usuario donde estaba.
   const { titulo, salida } = ERRORES[motivo] ?? INICIO.carga.errores.perdido;
+  // Los topes del lector de JSON son los mismos en el worker y aquí: el mensaje los cita de la
+  // fuente, no los copia, para que un cambio de tope no deje una cifra vieja en pantalla.
+  const datos = {
+    tope: enBytes(TOPE_EXCEL_BYTES, idioma),
+    profundidad: TOPES_JSON.profundidad,
+    rutas: TOPES_JSON.rutas,
+    celdas: TOPES_JSON.celdas,
+    largoClave: TOPES_JSON.largoDeClave,
+    largoTexto: TOPES_JSON.largoDeTexto,
+  };
   return (
     <div
       role="alert"
@@ -259,14 +282,20 @@ function Fallo({
         id="titulo-de-error"
         className="font-display text-tinta text-2xl font-semibold"
       >
-        {t(titulo, { tope: enBytes(TOPE_EXCEL_BYTES, idioma) })}
+        {t(titulo, datos)}
       </h2>
       <p className="text-tinta-suave font-mono text-[0.8125rem] break-all">
         {nombre}
       </p>
       <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-        {t(salida, { tope: enBytes(TOPE_EXCEL_BYTES, idioma) })}
+        <Rico texto={salida} datos={datos} />
       </p>
+      {linea !== undefined ? (
+        // Como cadena y no como número: una línea no lleva separador de miles.
+        <p className="text-tinta-suave cifra text-[0.8125rem]">
+          {t(INICIO.carga.lineaDelError, { linea: String(linea) })}
+        </p>
+      ) : null}
       <button
         type="button"
         onClick={onReintentar}
