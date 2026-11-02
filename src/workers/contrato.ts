@@ -17,13 +17,18 @@ import type {
   ReconocimientoDeBoveda,
   SalvedadDelRegreso,
 } from "@/engine/restaurar";
+import type { EstructuraJson, MotivoJson } from "@/engine/json/tipos";
 import type { AdvisorDeQis, RiesgoExacto } from "@/engine/riesgo";
 import type { RiesgoEstimado } from "@/engine/riesgo-estimado";
 import type { Utilidad } from "@/engine/utilidad";
 import type { Idioma } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 
-export type FormatoDeArchivo = "csv" | "excel";
+/**
+ * `json` cubre un arreglo de objetos Y JSON Lines (`.json`, `.jsonl`, `.ndjson`): cuál de las dos
+ * formas es lo decide el worker mirando el contenido (`EstructuraJson.forma`), no la extensión.
+ */
+export type FormatoDeArchivo = "csv" | "excel" | "json";
 
 export type MensajeAlWorker =
   | { tipo: "analizar"; archivo: File }
@@ -194,6 +199,10 @@ export type MotivoDeError =
   | "archivo-vacio"
   | "excel-excede-tope"
   | "excel-excede-memoria"
+  /** Los de `MotivoJson`: un JSON que no se puede tratar. Son claves; el error no cita contenido. */
+  | MotivoJson
+  /** El contenido no es lo que dice la extensión (un `.json` que empieza como un PDF, por ejemplo). */
+  | "formato-no-coincide"
   | "lectura-fallida"
   | "sin-tabla"
   | "sin-llave"
@@ -220,6 +229,11 @@ export interface Informe {
   diagnostico: Diagnostico;
   riesgo: RiesgoExacto;
   advisor: AdvisorDeQis;
+  /**
+   * Solo en un JSON: qué rutas se tratan, cuáles NO (las listas) y cuáles no están en todos los
+   * registros. Ausente en CSV y Excel. La interfaz lo lee en `informe-de-diagnostico.tsx`.
+   */
+  estructura?: EstructuraJson;
   /** Lo que costó, medido. Se enseña porque un instrumento honesto muestra su propio trabajo. */
   medicion: {
     msLectura: number;
