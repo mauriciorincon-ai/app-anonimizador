@@ -660,7 +660,8 @@ and the diagnosis says so.
   map of an HDR photo), they are removed, and a notice says so.
 - **In a PDF** the file is **rewritten whole**, and the pages and their content are copied as they
   are. The information dictionary (author, software, dates), the XMP, the data from the application
-  that made it, page thumbnails and orphan objects are removed. And so are the **earlier
+  that made it, the date each page was last edited, page thumbnails and orphan objects are removed.
+  And so are the **earlier
   versions**: every time a program “saves” by adding changes at the end, the earlier version stays
   inside the file even though it cannot be seen —a replaced text, a previous author, a deleted
   page—. The clean copy keeps **a single version**. The document identifier (`/ID`), which ties a
@@ -731,8 +732,8 @@ This section is as much a part of the product as the others.
   named fields” is not the same as “no metadata”, and Velo does not claim that no other tool, in no
   format that exists, will find anything.
 - **In a PDF, Velo warns about annotations with an author, attached files, form fields and embedded
-  JavaScript, but does not clean them:** the name of whoever commented or what someone typed into a
-  form is still in the clean copy. A signed PDF loses its signature when cleaned, and a
+  JavaScript, but does not clean them:** the name of whoever commented (and any date the annotation
+  carries) or what someone typed into a form is still in the clean copy. A signed PDF loses its signature when cleaned, and a
   password-protected one is not opened.
 - **In a JSON, lists are not treated:** they go into the file as they are, even if they hold emails,
   phone numbers or ID numbers, and the policy does not reach them. Velo declares it on screen, with

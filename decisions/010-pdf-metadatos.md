@@ -61,7 +61,8 @@ What the spike showed about `pdf-lib`:
    only for three things: load (`updateMetadata: false`), prune, save (`useObjectStreams: false`).
    Never in `src/engine/` and never in the page.
 2. **Cleaning = rewrite, not edit.** Prune from `/Root`; drop `Info` from the trailer and the
-   `/Metadata`, `/PieceInfo`, `/Thumb` keys everywhere; set the new `/ID` in two steps. Pages and
+   `/Metadata`, `/PieceInfo`, `/Thumb` keys everywhere (and, since S6's audit, `/LastModified`, the
+   page edit date that pairs with `/PieceInfo`); set the new `/ID` in two steps. Pages and
    content streams are copied as they are: no pixel and no page is touched.
 3. **An own byte scanner (no library) reports what the rewrite removes**: how many revisions the file
    had (`%%EOF`, `startxref`, `/Prev`, repeated `N G obj` definitions), the earlier `Info` values in

@@ -645,7 +645,8 @@ la limpieza no depende de ella. Por eso «Velo no encontró campos con nombre» 
   quitan, y el aviso lo dice.
 - **En un PDF** el archivo se **reescribe entero**, y las páginas y su contenido se copian tal cual.
   Se quitan el diccionario de información (autor, programa, fechas), el XMP, los datos de la
-  aplicación que lo creó, las miniaturas de página y los objetos huérfanos. Y se quitan las
+  aplicación que lo creó, la fecha de la última edición de cada página, las miniaturas de página y
+  los objetos huérfanos. Y se quitan las
   **versiones anteriores**: cada vez que un programa «guarda» sumando cambios al final, la versión
   anterior se queda dentro del archivo aunque no se vea —un texto reemplazado, un autor anterior,
   una página borrada—. La copia limpia guarda **una sola versión**. El identificador del documento
@@ -716,8 +717,8 @@ Esta sección es tan parte del producto como las otras.
   nombre» no es lo mismo que «sin metadatos», y Velo no afirma que ninguna otra herramienta, en
   ningún formato que exista, encuentre nada.
 - **En un PDF, Velo avisa de las anotaciones con autor, los archivos adjuntos, los campos de
-  formulario y el JavaScript incrustado, pero no los limpia:** el nombre de quien comentó o lo que
-  alguien escribió en un formulario sigue en la copia limpia. Un PDF firmado pierde su firma al
+  formulario y el JavaScript incrustado, pero no los limpia:** el nombre de quien comentó (y la
+  fecha que la anotación traiga) o lo que alguien escribió en un formulario sigue en la copia limpia. Un PDF firmado pierde su firma al
   limpiarse, y uno protegido con contraseña no se abre.
 - **En un JSON, las listas no se tratan:** salen del archivo tal cual, aunque lleven correos,
   teléfonos o documentos, y la política no las alcanza. Velo lo declara en pantalla, con la ruta y
