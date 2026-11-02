@@ -16,6 +16,7 @@
 
 import { ConstructorColumnar, type ColumnaColumnar } from "../columnar";
 import type { Tecnica } from "../politica";
+import { serializarCanonico } from "../serializacion";
 import { AzarSembrado, semillaDeCelda, TOPE_UNIFORME } from "./azar";
 import {
   DOS_A_LA_32,
@@ -158,6 +159,8 @@ export async function aplicarRuido(
   let recortes = 0;
   let noNumericas = 0;
   const salida = new ConstructorColumnar([columna.nombre], filas || 1);
+  // Los parámetros entran a la semilla: otra técnica, otro azar (ver `azar.ts`).
+  const firmaDeLaTecnica = serializarCanonico(tecnica);
 
   for (let f = 0; f < filas; f++) {
     const valor = columna.valores[columna.codigos[f]];
@@ -166,7 +169,7 @@ export async function aplicarRuido(
       continue;
     }
     const azar = new AzarSembrado(
-      await semillaDeCelda(llave, huella, columna.nombre, f),
+      await semillaDeCelda(llave, huella, firmaDeLaTecnica, columna.nombre, f),
     );
 
     if (tecnica.tipo === "respuesta-aleatorizada") {
@@ -260,7 +263,9 @@ export function informeDePrivacidad(
   if (ruido.length === 0) return null;
   const epsilonPorFila = ruido.reduce(
     (suma, r) =>
-      r.aplicado && r.epsilonEfectivo !== null ? suma + r.epsilonEfectivo : suma,
+      r.aplicado && r.epsilonEfectivo !== null
+        ? suma + r.epsilonEfectivo
+        : suma,
     0,
   );
   return { columnas: ruido, epsilonPorFila };

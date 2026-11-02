@@ -241,6 +241,34 @@ describe("las técnicas sobre una columna", () => {
     ).not.toEqual(a);
   });
 
+  it("el mismo archivo con otro ε recibe otro azar: dos entregas no se restan para despejar el valor", async () => {
+    // Si la técnica no entrara a la semilla, el ruido con ε = 2 sería el de ε = 1 a escala —mismo
+    // signo en todas las celdas— y restar las dos entregas despejaría el valor original. Con el
+    // valor en el centro del rango, el recorte no cambia el signo: el signo ES el del ruido.
+    const columna = columnaDe(Array(400).fill("50"));
+    const signos = async (epsilon: number) =>
+      filas(
+        (
+          await aplicarRuido(
+            columna,
+            { ...LAPLACE, epsilon, decimales: 0 },
+            llaveA,
+            "h1",
+          )
+        ).columna,
+      ).map((y) => Math.sign(Number(y) - 50));
+    const [uno, dos] = [await signos(1), await signos(2)];
+    const ambos = uno.flatMap((s, i) =>
+      s !== 0 && dos[i] !== 0 ? [s === dos[i]] : [],
+    );
+    const iguales = ambos.filter(Boolean).length / ambos.length;
+    // Independientes: la mitad, con su margen; correlacionados: todos.
+    expect(ambos.length).toBeGreaterThan(300);
+    expect(Math.abs(iguales - 0.5)).toBeLessThan(
+      CINCO_SIGMAS(0.5, ambos.length),
+    );
+  });
+
   it("respuesta aleatorizada: responde dentro del dominio y dice verdad a la tasa 1 − w + w/m", async () => {
     const dominio = ["A", "B", "C", "D"];
     const valores = Array.from({ length: 4000 }, (_, i) => dominio[i % 4]);

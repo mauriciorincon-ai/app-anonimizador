@@ -78,11 +78,13 @@ export const PRIVACIDAD = {
     es:
       "Muestreo exacto, sin coma flotante: Canonne, Kamath y Steinke, «The Discrete Gaussian for " +
       "Differential Privacy», NeurIPS 2020 (algoritmos 1 y 2). El azar sale de la llave del " +
-      "proyecto: el mismo archivo con la misma llave da el mismo ruido, y no se puede promediar.",
+      "proyecto: el mismo archivo con la misma llave y la misma técnica da el mismo ruido, y no se " +
+      "puede promediar; otro ε u otro rango da otro ruido, independiente.",
     en:
       "Exact sampling, with no floating point: Canonne, Kamath and Steinke, “The Discrete " +
       "Gaussian for Differential Privacy”, NeurIPS 2020 (algorithms 1 and 2). The randomness comes " +
-      "from the project key: the same file with the same key gets the same noise, and it cannot " +
-      "be averaged away.",
+      "from the project key: the same file with the same key and the same technique gets the " +
+      "same noise, and it cannot be averaged away; another ε or range gets other noise, " +
+      "independent.",
   },
 } as const;

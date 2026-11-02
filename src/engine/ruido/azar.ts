@@ -8,7 +8,7 @@
 //
 // La semilla de cada celda (32 bytes):
 //
-//     HMAC-SHA256(llave, "velo-ruido-v1" ‖ 0 ‖ huella ‖ 0 ‖ campo ‖ 0 ‖ fila)
+//     HMAC-SHA256(llave, "velo-ruido-v1" ‖ 0 ‖ huella ‖ 0 ‖ tecnica ‖ 0 ‖ campo ‖ 0 ‖ fila)
 //
 //   · la etiqueta separa este dominio del de los seudónimos (que firman el valor solo): ningún
 //     ruido puede coincidir con un seudónimo, y los seudónimos no cambian;
@@ -17,6 +17,12 @@
 //     ruido en cada fila, y quien conociera un valor de marzo despejaría el ruido y leería el de
 //     abril exacto. Con ella, archivos distintos reciben ruido independiente y el ε de cada
 //     entrega se suma, como dice la teoría (ADR-014);
+//   · la `tecnica` es la serialización canónica de la técnica con sus parámetros (mecanismo, ε,
+//     rango, decimales, porcentaje). Sin ella, el MISMO archivo entregado con ε = 1 y con ε = 2
+//     compartiría el azar: el segundo ruido sería el primero a escala, y restando las dos entregas
+//     se despeja el valor. Con ella, otra técnica es otro azar, independiente, y los ε se suman;
+//     la misma técnica repite el mismo ruido, y una entrega repetida no enseña nada nuevo. Es JSON:
+//     no lleva un 0 crudo, así que no se confunde con el campo que la sigue;
 //   · el campo y la fila hacen independiente cada celda.
 //
 // Las palabras de 32 bits: el bloque 0 es la semilla misma; el bloque b ≥ 1 es
@@ -35,6 +41,7 @@ const codificador = new TextEncoder();
 export async function semillaDeCelda(
   llave: CryptoKey,
   huella: string,
+  tecnica: string,
   campo: string,
   fila: number,
 ): Promise<Uint8Array> {
@@ -42,7 +49,7 @@ export async function semillaDeCelda(
     "HMAC",
     llave,
     codificador.encode(
-      `${ETIQUETA_DEL_RUIDO}\0${huella}\0${campo}\0${String(fila)}`,
+      `${ETIQUETA_DEL_RUIDO}\0${huella}\0${tecnica}\0${campo}\0${String(fila)}`,
     ),
   );
   return new Uint8Array(firma);
