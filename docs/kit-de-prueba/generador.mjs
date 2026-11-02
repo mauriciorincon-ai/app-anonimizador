@@ -962,7 +962,11 @@ export function listasEsperadas(perfil = "con-listas") {
 }
 
 // ── CLI ───────────────────────────────────────────────────────────────────────────────────────
-function leerArgumentos(argv) {
+function leerArgumentos(entrada) {
+  // `pnpm kit:generar -- --filas …` (la forma que documenta CLAUDE.md) le pasa al script el `--`
+  // suelto con pnpm 11; leído de a pares, corría todo un lugar y el generador ignoraba en silencio
+  // lo pedido. Se descarta antes de leer.
+  const argv = entrada.filter((arg) => arg !== "--");
   const opciones = {
     filas: 1000,
     seed: 42,

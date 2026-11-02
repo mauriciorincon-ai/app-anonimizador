@@ -987,6 +987,23 @@ describe("la CLI", () => {
     ).toBe(true);
   });
 
+  it("un `--` suelto delante (pnpm kit:generar -- …) no descuadra los argumentos", () => {
+    const salida = join(carpeta, "con-guion.png");
+    const resultado = correr([
+      "--",
+      "--formato",
+      "png",
+      "--seed",
+      "42",
+      "--salida",
+      salida,
+    ]);
+    expect(resultado.status, resultado.stderr).toBe(0);
+    expect(readFileSync(salida).equals(generarPng({ semilla: 42 }).bytes)).toBe(
+      true,
+    );
+  });
+
   it("un perfil de PDF desconocido termina con código 1, lo dice y no escribe nada", () => {
     const salida = join(carpeta, "perfil-malo.pdf");
     const resultado = correr([
