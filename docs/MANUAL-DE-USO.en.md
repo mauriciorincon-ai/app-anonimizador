@@ -580,7 +580,10 @@ appears, apart from the balance. For each column it gives the mechanism, the eff
 one asked for, if they differ), how many cells received noise and the notes: how many cells were
 clipped, how many were not a number, how many values the domain has. At the end, **“ε per row”**:
 the sum of the ε of the columns with noise, because that is how they compose. Velo shows the ε
-**rounded up**: if it is off, it is off on the side of saying less protection, not more.
+**rounded up**: if it is off, it is off on the side of saying less protection, not more. If no
+column carries an ε (you only perturbed), the panel is called **“Noise with no formal guarantee ·
+No differential privacy”** and says nothing about ε, on screen, in the certificate and in the log:
+perturbation is not differential privacy.
 
 **What ε does not cover**, and the panel says so in so many words:
 

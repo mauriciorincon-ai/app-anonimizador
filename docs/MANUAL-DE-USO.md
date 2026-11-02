@@ -570,7 +570,10 @@ local»**, aparte del balance. Por columna dice el mecanismo, el ε efectivo (y 
 difieren), cuántas celdas recibieron ruido y las notas: cuántas celdas se recortaron, cuántas no
 eran un número, de cuántos valores es el dominio. Al final, **«ε por fila»**: la suma de los ε de
 las columnas con ruido, porque así se componen. Velo muestra el ε **redondeado hacia arriba**: se
-equivoca por el lado de decir menos protección, no más.
+equivoca por el lado de decir menos protección, no más. Si ninguna columna lleva ε (solo
+perturbaste), el panel se llama **«Ruido sin garantía formal · Sin privacidad diferencial»** y no
+habla de ε, en pantalla, en el certificado y en la bitácora: la perturbación no es privacidad
+diferencial.
 
 **Lo que ε no cubre**, y el panel lo dice con todas sus letras:
 
