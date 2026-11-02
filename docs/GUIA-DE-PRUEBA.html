@@ -265,7 +265,7 @@
         margin-left: 4px;
       }
       /* GATE CORTO ⭐⭐ — el subconjunto de las ⭐ que NINGUNA automatización puede juzgar.
-     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 26 ⭐ incluyen
+     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 28 ⭐ incluyen
      comprobaciones que una máquina SÍ puede hacer y que están en el gate para que el usuario las
      haga con SUS herramientas (recalcular una huella, mirar la pestaña Red). Esas se quedan fuera
      del corto a propósito, porque el CI ya las cubre por otro camino. Lo que queda son las seis
@@ -280,7 +280,7 @@
       }
 
       /* MODO RECORRIDO — solo con el filtro ⭐ activo.
-     El gate del ciclo son 26 pruebas repartidas por 20 bloques que nacieron en cuatro sprints
+     El gate del ciclo son 28 pruebas repartidas por los bloques que nacieron en cinco sprints
      distintos. Sin esto se leen como cuatro listas pegadas: el mismo chip de origen que sirve para
      la regresión («Heredada · S1») sugiere un orden que NO es el del recorrido. En modo recorrido
      cada prueba visible recibe su número de PARADA y la ruta donde ocurre, así que el orden a la
@@ -383,27 +383,27 @@
     <div class="pagina">
       <header>
         <p class="eyebrow">
-          Velo · Guía de prueba viva y acumulativa · Sprint 004 · 15 de agosto
+          Velo · Guía de prueba viva y acumulativa · Sprint 005 · 1 de noviembre
           de 2026
         </p>
         <h1>Guía de prueba</h1>
         <p class="suave">
           Todas las pruebas vigentes de Velo: las
-          <strong>114 de los sprints 001 a 003</strong> —que ahora son
-          regresión— más las que trae el Sprint 004, el sprint que
-          <strong>cierra el ciclo H1</strong> y entrega lo que hace el trabajo
-          defendible: el certificado con sus dos huellas, la bitácora cifrada y
-          el riesgo estimado. Cada línea lleva su origen. Las casillas se
-          guardan solas en este navegador, y el guardado se versiona por sprint:
-          nada de lo que marcaste antes aparece marcado aquí, porque una
-          regresión sin correr no está probada.
+          <strong>125 de los sprints 001 a 004</strong> —que ahora son
+          regresión— más las que trae el Sprint 005, el que pone a Velo en dos
+          idiomas: el conmutador ES · EN, el inglés de las cinco pantallas, y el
+          certificado y el informe del regreso en inglés con las mismas dos
+          huellas. Cada línea lleva su origen. Las casillas se guardan solas en
+          este navegador, y el guardado se versiona por sprint: nada de lo que
+          marcaste antes aparece marcado aquí, porque una regresión sin correr
+          no está probada.
         </p>
         <p class="chica">
           <strong>Dos gates, y el corto existe para que el largo no gane</strong
-          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 26 pruebas · ~90
-          min: el acumulado completo —8 del S1, 6 del S2, 8 del S3 y 4 del S4—
-          como <strong>un solo recorrido numerado</strong>, no como cuatro
-          listas pegadas. El
+          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 28 pruebas · ~90
+          min: el acumulado completo —8 del S1, 6 del S2, 8 del S3, 4 del S4 y 2
+          del S5— como <strong>un solo recorrido numerado</strong>, no como
+          cuatro listas pegadas. El
           <strong>Gate corto ⭐⭐ son 6 paradas · ~20 min</strong>: el
           subconjunto donde el veredicto <strong>solo puede ser humano</strong>
           —si Velo se entiende, si sus cifras exactas se distinguen de las
@@ -417,7 +417,7 @@
           —hay otras apps en curso—. Un gate que nunca se corre no protege nada,
           y un gate de 90 minutos compite con el resto de la vida. El corto no
           lo reemplaza ni lo cancela: es <strong>el piso</strong>, lo que se
-          pierde de verdad si el largo no ocurre nunca. Las 20 pruebas que deja
+          pierde de verdad si el largo no ocurre nunca. Las 22 pruebas que deja
           fuera <strong>no se borran</strong> —siguen enteras en el filtro ⭐— y
           son en su mayoría <em>compruébalo tú</em>: valiosas para que la
           confianza sea tuya, pero <strong>ya verificadas por la CI</strong> por
@@ -2726,8 +2726,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               b.getAttribute("data-filtro") === filtro,
             );
           });
-          // MODO RECORRIDO: el gate ⭐ del ciclo son 26 pruebas nacidas en cuatro sprints distintos y
-          // repartidas por 20 bloques. Numerarlas de corrido es lo que las convierte en UN camino en vez
+          // MODO RECORRIDO: el gate ⭐ del ciclo son 28 pruebas nacidas en cinco sprints distintos y
+          // repartidas por sus bloques. Numerarlas de corrido es lo que las convierte en UN camino en vez
           // de cuatro listas pegadas — sin mover nada de sitio: el orden del documento YA es el del
           // recorrido, lo que faltaba era que se viera.
           document.body.classList.toggle("modo-recorrido", esRecorrido(filtro));
