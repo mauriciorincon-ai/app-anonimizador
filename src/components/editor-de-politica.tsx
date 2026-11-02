@@ -23,6 +23,7 @@ import { useId, useRef, useState } from "react";
 
 import { Boton } from "@/components/boton";
 import { ComoLlegarAlK } from "@/components/como-llegar-al-k";
+import { ParametrosDeRuido } from "@/components/parametros-de-ruido";
 import { IconoExportar, IconoImportar } from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import { Rico, useT } from "@/components/texto";
@@ -110,6 +111,23 @@ const OPCIONES: readonly { valor: string; texto: Texto; tecnica: Tecnica }[] = [
     valor: "generalizar-automatico",
     texto: E.opcion.generalizarAutomatico,
     tecnica: { tipo: "generalizar-automatico" },
+  },
+  {
+    // S7: los parámetros (ε, rango, decimales) se eligen debajo del menú (`ParametrosDeRuido`).
+    // Los de partida son un ejemplo, no una recomendación: el rango tiene que ser el del dato.
+    valor: "laplace",
+    texto: E.opcion.laplace,
+    tecnica: { tipo: "laplace", epsilon: 1, minimo: 0, maximo: 100, decimales: 0 },
+  },
+  {
+    valor: "respuesta-aleatorizada",
+    texto: E.opcion.respuestaAleatorizada,
+    tecnica: { tipo: "respuesta-aleatorizada", epsilon: 1 },
+  },
+  {
+    valor: "perturbar",
+    texto: E.opcion.perturbar,
+    tecnica: { tipo: "perturbar", porcentaje: 10 },
   },
   {
     valor: "suprimir",
@@ -207,6 +225,18 @@ export function EditorDePolitica({
           columna: nombre,
           tecnica: { ...tecnica, reversible: reversible || undefined },
         },
+      ],
+    });
+  }
+
+  /** S7: los parámetros del ruido de una columna (ya validados por `ParametrosDeRuido`). */
+  function cambiarParametros(nombre: string, tecnica: Tecnica): void {
+    onCambio({
+      ...politica,
+      origen: origenTrasEditar(politica.origen),
+      reglas: [
+        ...politica.reglas.filter((r) => r.columna !== nombre),
+        { columna: nombre, tecnica },
       ],
     });
   }
@@ -382,6 +412,11 @@ export function EditorDePolitica({
                     columna={columna.nombre}
                     tecnica={tecnicaDe(politica, columna.nombre)}
                     onCambio={cambiarReversible}
+                  />
+                  <ParametrosDeRuido
+                    columna={columna.nombre}
+                    tecnica={tecnicaDe(politica, columna.nombre)}
+                    onCambio={cambiarParametros}
                   />
                 </td>
               </tr>

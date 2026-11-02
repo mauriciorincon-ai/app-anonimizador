@@ -11,6 +11,7 @@ import type { BalanceDelTratamiento } from "@/engine/balance";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
 import type { Diagnostico } from "@/engine/clasificador";
 import type { GeneralizacionAplicada } from "@/engine/optima";
+import type { InformeDePrivacidad } from "@/engine/ruido";
 import type { JerarquiaDeLaPolitica, Politica } from "@/engine/politica";
 import type {
   CeldasDeColumna,
@@ -388,7 +389,7 @@ export interface MuestraDeTransformacion {
  * **un campo del contrato nace con su lector o no nace.** Si un consumidor futuro —el certificado
  * del S4, por ejemplo— necesita una de las cuatro, vuelve con quien la lea, no «por si acaso».
  */
-export type { GeneralizacionAplicada };
+export type { GeneralizacionAplicada, InformeDePrivacidad };
 
 export interface ResultadoDeTransformacion {
   /** Identidad del tratamiento: mismo hash ⇒ mismo trato. */
@@ -411,6 +412,11 @@ export interface ResultadoDeTransformacion {
    * escalera de fábrica. Cruzan nombres de columna, escaleras, claves de nivel y cifras.
    */
   readonly generalizacion: GeneralizacionAplicada | null;
+  /**
+   * S7: el ruido con garantía de cada columna (mecanismo, ε pedido y efectivo, recortes, dominio) y
+   * el ε por fila; `null` sin ruido. Lo leen el panel de privacidad, el certificado y la bitácora.
+   */
+  readonly privacidad: InformeDePrivacidad | null;
 }
 
 

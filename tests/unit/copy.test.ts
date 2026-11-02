@@ -83,6 +83,26 @@ const PROHIBIDAS: readonly { patron: RegExp; porque: string }[] = [
     patron: /\bzero[-\s]+(re-?identification[-\s]+)?risk\b|\brisk[-\s]+free\b/i,
     porque: "no technique takes the risk to zero; saying so would be false",
   },
+
+  // ── El ruido con garantía (S7) ──
+  // La privacidad diferencial tiene un ε y un alcance; «garantizada» a secas promete lo que ningún
+  // ε cubre (las demás columnas, las entregas repetidas). Velo dice el ε y su alcance, nunca esto.
+  {
+    patron: /privacidad\s+(\w+\s+)?garantizad/i,
+    porque: "toda cifra de privacidad lleva su ε y su alcance; «garantizada» a secas es falso",
+  },
+  {
+    patron: /garantiza\w*\s+(la\s+|tu\s+|su\s+)?privacidad/i,
+    porque: "toda cifra de privacidad lleva su ε y su alcance; «garantizada» a secas es falso",
+  },
+  {
+    patron: /guaranteed\s+privacy/i,
+    porque: "every privacy figure carries its ε and its scope; plain «guaranteed» is false",
+  },
+  {
+    patron: /privacy\s+(is\s+|are\s+)?guaranteed|guarantee[sd]?\s+(the\s+|your\s+|full\s+)?privacy/i,
+    porque: "every privacy figure carries its ε and its scope; plain «guaranteed» is false",
+  },
 ];
 
 function archivos(ruta: string): string[] {
@@ -147,6 +167,13 @@ describe("los patrones prohibidos ven lo que deben ver", () => {
     "a zero-risk release",
     "zero risk of exposure",
     "risk-free sharing",
+    "privacidad garantizada",
+    "con privacidad diferencial garantizada",
+    "Velo garantiza la privacidad",
+    "garantiza tu privacidad",
+    "guaranteed privacy",
+    "Privacy is guaranteed.",
+    "Velo guarantees your privacy",
   ])("atrapa «%s»", (frase) => {
     expect(cae(frase)).toBe(true);
   });
@@ -161,6 +188,11 @@ describe("los patrones prohibidos ven lo que deben ver", () => {
     "That figure does not describe a fully recovered file",
     "the third party may have renamed them",
     "there is no risk figure without its caveats",
+    "Ruido con garantía",
+    "Noise with a guarantee",
+    "Perturbación, sin garantía formal.",
+    "Local differential privacy, ε = 1 per value of this field.",
+    "Privacidad diferencial local, ε = 1 por valor de este campo.",
   ])("deja pasar «%s»", (frase) => {
     expect(cae(frase)).toBe(false);
   });

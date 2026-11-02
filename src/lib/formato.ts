@@ -29,6 +29,17 @@ export function numero(valor: number, idioma: Idioma): string {
   return formatoNumerico(idioma, { maximumFractionDigits: 0 }).format(valor);
 }
 
+/**
+ * Un ε (S7), con hasta tres decimales y redondeado HACIA ARRIBA: un ε menor promete más privacidad,
+ * así que la cifra que se lee nunca puede ser menor que la que se garantiza (0,99999987 se dice
+ * «1», jamás «0,999»).
+ */
+export function epsilon(valor: number, idioma: Idioma): string {
+  return formatoNumerico(idioma, { maximumFractionDigits: 3 }).format(
+    Math.ceil(valor * 1000 - 1e-9) / 1000,
+  );
+}
+
 /** Por debajo de esto, un decimal ya no alcanza y el redondeo escribiría un cero. */
 const MINIMO_REPRESENTABLE = 0.05;
 

@@ -71,6 +71,16 @@ export type Salvedad = { readonly gravedad: "descalifica" | "matiza" } & (
       readonly tope: number;
     }
   | {
+      /**
+       * S7: la política pidió respuesta aleatorizada sobre una columna con más valores distintos de
+       * los que esa técnica acepta. Salió **intacta**: inventarle un dominio más chico sería mentir
+       * sobre lo que se protegió.
+       */
+      readonly tipo: "ruido-no-aplicado";
+      readonly columnas: readonly string[];
+      readonly maximo: number;
+    }
+  | {
       /** Registros que siguen SOLOS en su clase después del tratamiento. */
       readonly tipo: "unicos-restantes";
       readonly cuantos: number;
@@ -145,6 +155,11 @@ export interface EntradasDelBalance {
   readonly diversidad: readonly MedidaDeDiversidad[];
   /** Columnas del reparto que quedaron sin generalizar porque la política no fijó un k. */
   readonly pendientesDeMondrian: readonly string[];
+  /** S7: columnas con respuesta aleatorizada que no se aplicó (dominio de más de `maximo`). */
+  readonly ruidoNoAplicado?: {
+    readonly columnas: readonly string[];
+    readonly maximo: number;
+  } | null;
   /** S7: la retícula de la generalización óptima que no se recorrió por pasar del tope. */
   readonly reticulaExcedida?: {
     readonly dimensiones: readonly string[];
@@ -160,6 +175,7 @@ const ORDEN: Record<Salvedad["tipo"], number> = {
   // consecuencia se lee como una excusa.
   "reparto-sin-k": 1,
   "reticula-excede-tope": 1,
+  "ruido-no-aplicado": 1,
   "unicos-restantes": 2,
   "k-no-alcanzado": 3,
   "k-del-reparto-no-es-el-del-archivo": 4,
@@ -201,6 +217,7 @@ export function balanceDelTratamiento(
     diversidad,
     pendientesDeMondrian,
     reticulaExcedida,
+    ruidoNoAplicado,
   } = entradas;
 
   const qisAntes = diagnostico.columnas
@@ -237,6 +254,15 @@ export function balanceDelTratamiento(
       columnas: reticulaExcedida.dimensiones,
       nodos: reticulaExcedida.nodos,
       tope: reticulaExcedida.tope,
+    });
+  }
+
+  if (ruidoNoAplicado && ruidoNoAplicado.columnas.length > 0) {
+    salvedades.push({
+      gravedad: "descalifica",
+      tipo: "ruido-no-aplicado",
+      columnas: ruidoNoAplicado.columnas,
+      maximo: ruidoNoAplicado.maximo,
     });
   }
 

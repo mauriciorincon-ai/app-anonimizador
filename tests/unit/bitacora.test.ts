@@ -363,3 +363,37 @@ describe("una limpieza de metadatos en la bitácora (S6)", () => {
     expect(deserializarBitacora(texto).ok).toBe(false);
   });
 });
+
+describe("el ruido con garantía en la bitácora (S7)", () => {
+  const conRuido: EntradaDeBitacora = {
+    ...entrada(7),
+    tecnicas: ["laplace", "respuesta-aleatorizada", "perturbar"],
+    privacidad: {
+      epsilonPorFila: 2.9999999,
+      mecanismos: ["laplace", "respuesta-aleatorizada"],
+      perturbadas: 1,
+    },
+  };
+
+  it("una entrada sin el bloque se serializa igual que antes: la huella vieja no se mueve", () => {
+    expect(serializarBitacora(conEntradas(2))).not.toContain("privacidad");
+  });
+
+  it("el ε por fila y los mecanismos van y vuelven, sin nombres de columna", () => {
+    const bitacora = anadirEntrada(conEntradas(1), conRuido);
+    const texto = serializarBitacora(bitacora);
+    const leida = deserializarBitacora(texto);
+    expect(leida.ok).toBe(true);
+    if (!leida.ok) return;
+    expect(leida.bitacora.entradas[1].privacidad).toEqual(conRuido.privacidad);
+    expect(huellaDeBitacora(leida.bitacora)).toBe(huellaDeBitacora(bitacora));
+  });
+
+  it("un mecanismo que no tiene ε no entra a la lista de los que sí", () => {
+    const texto = serializarBitacora(
+      anadirEntrada(bitacoraVacia(), conRuido),
+    ).replace('"respuesta-aleatorizada"]', '"perturbar"]');
+    expect(texto).toContain('"perturbar"]');
+    expect(deserializarBitacora(texto).ok).toBe(false);
+  });
+});

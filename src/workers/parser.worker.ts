@@ -71,6 +71,7 @@ import {
   nombreDelInforme,
 } from "@/engine/reporte";
 import { restaurar, type Restauracion } from "@/engine/restaurar";
+import { DOMINIO_MAXIMO, informeDePrivacidad } from "@/engine/ruido";
 import {
   clasesDeEquivalencia,
   evaluarRiesgo,
@@ -539,7 +540,14 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
     // El idioma del trabajo llega como dato (la pantalla al pulsar «transformar») y se queda en el
     // resultado: el certificado lo lee de ahí, no del idioma que tenga la pantalla al descargarlo.
     // `construirArchivo` no lee ningún idioma: la tabla que escribe ya nació en el del trabajo.
-    const resultado = await aplicarPolitica(original, politica, llave, idioma);
+    // La huella del archivo de entrada entra a la semilla del ruido (S7, `ruido/azar.ts`).
+    const resultado = await aplicarPolitica(
+      original,
+      politica,
+      llave,
+      idioma,
+      huella,
+    );
 
     avisar("midiendo-el-despues", original.filas, 0, 0);
     const sensibles = diagnostico.columnas
@@ -574,6 +582,12 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
           : null),
       diversidad,
       pendientesDeMondrian: resultado.pendientesDeMondrian,
+      ruidoNoAplicado: {
+        columnas: resultado.ruido
+          .filter((r) => !r.aplicado)
+          .map((r) => r.columna),
+        maximo: DOMINIO_MAXIMO,
+      },
       reticulaExcedida:
         resultado.optima?.motivo === "excede-tope"
           ? {
@@ -647,6 +661,7 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
           optimaAplicada && politica.generalizacion
             ? generalizacionAplicada(optimaAplicada, politica.generalizacion)
             : null,
+        privacidad: informeDePrivacidad(resultado.ruido),
       },
     });
   } catch {

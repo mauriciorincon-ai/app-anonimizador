@@ -53,6 +53,8 @@ const IGUALES_A_PROPOSITO: Readonly<Record<string, string>> = {
     "Mondrian es el nombre del algoritmo (LeFevre, DeWitt y Ramakrishnan, 2006) en los dos idiomas",
   "generalizacion › tabla.no":
     "la negación de la tabla se escribe «No» en los dos idiomas",
+  "transformar › editor.ruido.etiquetas.epsilon":
+    "ε es el símbolo de la privacidad diferencial en los dos idiomas",
 };
 
 interface Hoja {

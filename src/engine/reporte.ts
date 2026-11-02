@@ -18,7 +18,12 @@
 // nombres de columna, las muestras— se escapa. Este documento lo va a abrir alguien más, y una
 // columna llamada `<script>` no puede convertirse en un script.
 
-import { numero, porcentaje, unoEn } from "@/lib/formato";
+import {
+  epsilon as epsilonEnTexto,
+  numero,
+  porcentaje,
+  unoEn,
+} from "@/lib/formato";
 import {
   decir,
   formatoNumerico,
@@ -33,12 +38,15 @@ import {
 import { decirMensaje } from "@/lib/idioma/mensajes";
 import { DOCUMENTOS as D } from "@/lib/idioma/textos/documentos";
 import { MOTOR_TRANSFORMAR as M } from "@/lib/idioma/textos/motor-transformar";
+import { PRIVACIDAD as P } from "@/lib/idioma/textos/privacidad";
 import { escaleraEnPalabras, nivelEnPalabras } from "@/lib/tecnicas-en-palabras";
 
 import type { BalanceDelTratamiento, Salvedad } from "./balance";
 import type { JerarquiaDeFabrica } from "./jerarquias/fabrica";
 import { FUENTES, FUENTES_DE_LA_ESCALERA } from "./jerarquias/fuentes";
 import type { GeneralizacionAplicada } from "./optima";
+import type { InformeDePrivacidad } from "./ruido";
+import { DOMINIO_MAXIMO } from "./ruido/limites";
 import type { Diagnostico, HallazgoDeColumna } from "./clasificador";
 import type {
   ColumnaRestaurada,
@@ -77,6 +85,8 @@ export interface DatosDelTratamiento {
   nombreDeSalida: string;
   /** S7: la generalización óptima tal como se aplicó; ausente o `null` con Mondrian. */
   generalizacion?: GeneralizacionAplicada | null;
+  /** S7: el ruido con garantía de cada columna y el ε por fila; ausente o `null` sin ruido. */
+  privacidad?: InformeDePrivacidad | null;
 }
 
 export interface DatosDelReporte {
@@ -427,6 +437,12 @@ function itemDeSalvedad(salvedad: Salvedad, idioma: Idioma): string {
             lista_html: listaDeCodigo(salvedad.columnas),
           },
         );
+      case "ruido-no-aplicado":
+        return h(S.ruidoNoAplicado, idioma, {
+          n: salvedad.columnas.length,
+          maximo: numero(salvedad.maximo, idioma),
+          lista_html: listaDeCodigo(salvedad.columnas),
+        });
       case "reticula-excede-tope":
         return h(S.reticulaExcedeTope, idioma, {
           n: salvedad.columnas.length,
@@ -616,6 +632,71 @@ ${
 <ul class="limpia">${fuentes}</ul>`
     : ""
 }
+</section>`;
+}
+
+/**
+ * El ruido con garantía (S7): cada columna con su mecanismo, su ε efectivo y su alcance, y el ε por
+ * fila. Sección APARTE del balance: el k y ε no se suman, y el documento no los pone juntos.
+ */
+function seccionDePrivacidad(
+  privacidad: InformeDePrivacidad,
+  idioma: Idioma,
+): string {
+  const conEpsilon = privacidad.columnas.some(
+    (c) => c.aplicado && c.epsilonEfectivo !== null,
+  );
+  const filas = privacidad.columnas
+    .map((c) => {
+      const notas: string[] = [];
+      if (!c.aplicado)
+        notas.push(
+          h(P.notas.noAplicada, idioma, {
+            n: numero(c.dominio ?? 0, idioma),
+            maximo: numero(DOMINIO_MAXIMO, idioma),
+          }),
+        );
+      else {
+        if (c.dominio !== null)
+          notas.push(h(P.notas.dominio, idioma, { n: numero(c.dominio, idioma) }));
+        if (c.recortes > 0)
+          notas.push(h(P.notas.recortes, idioma, { n: numero(c.recortes, idioma) }));
+        if (c.noNumericas > 0)
+          notas.push(h(P.notas.noNumericas, idioma, { n: numero(c.noNumericas, idioma) }));
+      }
+      const valorDeEpsilon = !c.aplicado
+        ? "—"
+        : c.epsilonEfectivo === null
+          ? h(P.sinGarantia, idioma)
+          : h(P.efectivo, idioma, {
+              efectivo: epsilonEnTexto(c.epsilonEfectivo, idioma),
+              pedido: epsilonEnTexto(c.epsilon ?? 0, idioma),
+            });
+      return `<tr>
+<td class="col">${escapar(c.columna)}</td>
+<td>${h(P.mecanismos[c.mecanismo], idioma)}</td>
+<td>${valorDeEpsilon}</td>
+<td>${numero(c.tratadas, idioma)}</td>
+<td>${notas.join(" · ") || "—"}</td>
+</tr>`;
+    })
+    .join("");
+
+  return `<section>
+<p class="etiqueta">${h(P.etiqueta, idioma)}</p>
+<h2>${h(P.titulo, idioma)}</h2>
+<p>${h(P.intro, idioma)}</p>
+<p>${
+    conEpsilon
+      ? h(P.porFila, idioma, {
+          epsilon: epsilonEnTexto(privacidad.epsilonPorFila, idioma),
+        })
+      : h(P.sinEpsilon, idioma)
+  }</p>
+<table style="margin-top:16px">
+<thead><tr><th>${h(P.encabezados.columna, idioma)}</th><th>${h(P.encabezados.mecanismo, idioma)}</th><th>${h(P.encabezados.epsilon, idioma)}</th><th>${h(P.encabezados.celdas, idioma)}</th><th>${h(P.encabezados.notas, idioma)}</th></tr></thead>
+<tbody>${filas}</tbody></table>
+<p class="por-que" style="margin-top:14px">${h(P.fuente, idioma)}</p>
 </section>`;
 }
 
@@ -846,6 +927,7 @@ ${
 
 ${tratamiento ? seccionDelTratamiento(tratamiento, idioma) : ""}
 ${tratamiento?.generalizacion ? seccionDeLaGeneralizacion(tratamiento.generalizacion, idioma) : ""}
+${tratamiento?.privacidad ? seccionDePrivacidad(tratamiento.privacidad, idioma) : ""}
 
 ${seccionDeRiesgo(riesgo, resumen["identificador-directo"], hayTratamiento, idioma)}
 

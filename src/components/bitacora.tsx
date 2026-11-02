@@ -40,7 +40,12 @@ import {
   guardarBitacora,
   useBitacora,
 } from "@/lib/bitacora";
-import { NOMBRE_DEL_FORMATO, numero, porcentaje } from "@/lib/formato";
+import {
+  epsilon,
+  NOMBRE_DEL_FORMATO,
+  numero,
+  porcentaje,
+} from "@/lib/formato";
 import { plural } from "@/lib/idioma";
 import { BITACORA } from "@/lib/idioma/textos/bitacora";
 import { nombreDeTecnica } from "@/lib/tecnicas-en-palabras";
@@ -479,6 +484,25 @@ function ResumenDeEntrada({ entrada }: { entrada: EntradaDeBitacora }) {
                 .join(", ")
         }
       />
+      {entrada.privacidad && entrada.privacidad.mecanismos.length > 0 ? (
+        <Dato
+          termino={t(BITACORA.detalle.privacidad)}
+          valor={t(BITACORA.detalle.privacidadValor, {
+            epsilon: epsilon(entrada.privacidad.epsilonPorFila, idioma),
+            mecanismos: entrada.privacidad.mecanismos
+              .map((m) => nombreDeTecnica(m, idioma))
+              .join(", "),
+          })}
+        />
+      ) : null}
+      {entrada.privacidad && entrada.privacidad.perturbadas > 0 ? (
+        <Dato
+          termino={t(BITACORA.detalle.privacidad)}
+          valor={t(BITACORA.detalle.perturbadas, {
+            n: numero(entrada.privacidad.perturbadas, idioma),
+          })}
+        />
+      ) : null}
       {/* Las DOS puntas del riesgo, nunca la reducción entre ellas. Es la decisión del ADR-007 y
           viene de la lección más cara del S2: «bajó del 30 % al 2 %» es cierta y puede engañar, y
           una bitácora se lee meses después, sin la pantalla al lado que la matice. */}

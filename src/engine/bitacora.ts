@@ -75,6 +75,20 @@ export interface EntradaDeBitacora {
    * que antes, así que la huella de una bitácora vieja no se mueve por abrirla con esta versión.
    */
   readonly metadatos?: MetadatosDeLaEntrada;
+  /**
+   * S7: el ruido con garantía del tratamiento. Opcional y sin subir la versión, por la misma razón
+   * que `metadatos`: una entrada sin el bloque se serializa igual que antes.
+   */
+  readonly privacidad?: PrivacidadDeLaEntrada;
+}
+
+export interface PrivacidadDeLaEntrada {
+  /** ε por fila: la suma del ε efectivo de las columnas con privacidad diferencial que se aplicaron. */
+  readonly epsilonPorFila: number;
+  /** Los mecanismos con ε que se aplicaron, sin nombres de columna: qué se hizo, no a qué. */
+  readonly mecanismos: readonly string[];
+  /** Columnas con perturbación simple, que no tiene garantía formal ni ε. */
+  readonly perturbadas: number;
 }
 
 export interface MetadatosDeLaEntrada {
@@ -153,6 +167,13 @@ const entradaSchema = z.object({
       campos: z.number().int().nonnegative(),
       elementos: z.number().int().nonnegative(),
       revisionesQuitadas: z.number().int().nonnegative(),
+    })
+    .optional(),
+  privacidad: z
+    .object({
+      epsilonPorFila: z.number().nonnegative(),
+      mecanismos: z.array(z.enum(["laplace", "respuesta-aleatorizada"])),
+      perturbadas: z.number().int().nonnegative(),
     })
     .optional(),
 });

@@ -307,6 +307,10 @@ export const DOCUMENTOS = {
         es: "La política deja **intactas** {n} columnas que señalan a la persona sin ayuda de ninguna otra: {lista_html}. Mientras estén en el archivo, ninguna cifra de esta página describe datos tratados.",
         en: "The policy leaves {n} columns **untouched** that point to the person without any help from another: {lista_html}. As long as they stay in the file, no figure on this page describes treated data.",
       },
+      ruidoNoAplicado: {
+        es: "{n} columnas salieron **intactas**: la política pidió respuesta aleatorizada y tienen más de {maximo} valores distintos, que es lo que esa técnica acepta. {lista_html}.",
+        en: "{n} columns came out **untouched**: the policy asked for randomized response and they have more than {maximo} distinct values, which is what that technique accepts. {lista_html}.",
+      },
       reticulaExcedeTope: {
         es: "{n} columnas salieron **intactas**: la política pidió la generalización óptima y sus jerarquías dan {nodos} combinaciones de niveles, más de las {tope} que Velo recorre. {lista_html}.",
         en: "{n} columns came out **untouched**: the policy asked for the optimal generalization and their hierarchies give {nodos} combinations of levels, more than the {tope} Velo walks through. {lista_html}.",

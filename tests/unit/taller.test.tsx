@@ -176,6 +176,8 @@ const CLAVES_DEL_RESULTADO: Record<keyof ResultadoDeTransformacion, true> = {
   ms: true,
   // S7: lo lee el certificado (`seccionDeLaGeneralizacion`), que cuenta la óptima y sus fuentes.
   generalizacion: true,
+  // S7: lo leen el panel de privacidad, el certificado y la bitácora (`privacidad?` de la entrada).
+  privacidad: true,
 };
 
 function archivoListo(
@@ -195,7 +197,7 @@ function archivoListo(
 // ── Los tests ─────────────────────────────────────────────────────────────────────────────────
 
 describe("el contrato del tratamiento (§5 — deuda B2)", () => {
-  it("cruzan ocho campos, y cada uno tiene su lector", () => {
+  it("cruzan nueve campos, y cada uno tiene su lector", () => {
     // Los nombres se escriben aquí para que un humano los lea, no porque el runtime los necesite:
     // la garantía fuerte la da el tipo de `CLAVES_DEL_RESULTADO`, que no compila si sobra o falta
     // uno. Esta lista obliga además a que el campo nuevo se vea en el diff del PR. `idioma` (el del
@@ -208,6 +210,7 @@ describe("el contrato del tratamiento (§5 — deuda B2)", () => {
       "idioma",
       "ms",
       "muestras",
+      "privacidad",
       "suprimidas",
       "utilidad",
     ]);

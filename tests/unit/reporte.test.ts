@@ -20,6 +20,7 @@ import {
 import { evaluarRiesgo } from "@/engine/riesgo";
 import { balanceDelTratamiento } from "@/engine/balance";
 import type { GeneralizacionAplicada } from "@/engine/optima";
+import type { InformeDePrivacidad } from "@/engine/ruido";
 import { hashDePolitica, type Politica } from "@/engine/politica";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
@@ -974,5 +975,77 @@ describe("la generalización óptima en el certificado (S7)", () => {
     expect(html).toContain("accessed 2026-11-02");
     expect(html).toContain("<b>five-year group</b>");
     expect(html).not.toContain("La generalización óptima");
+  });
+});
+
+describe("el ruido con garantía en el certificado (S7)", () => {
+  const PRIVACIDAD: InformeDePrivacidad = {
+    epsilonPorFila: 1 + 0.99999987,
+    columnas: [
+      {
+        columna: "monto",
+        mecanismo: "laplace",
+        epsilon: 1,
+        epsilonEfectivo: 1,
+        tratadas: 590,
+        recortes: 4,
+        noNumericas: 0,
+        dominio: null,
+        aplicado: true,
+      },
+      {
+        columna: "diagnostico",
+        mecanismo: "respuesta-aleatorizada",
+        epsilon: 1,
+        epsilonEfectivo: 0.99999987,
+        tratadas: 600,
+        recortes: 0,
+        noNumericas: 0,
+        dominio: 8,
+        aplicado: true,
+      },
+      {
+        columna: "latitud",
+        mecanismo: "perturbar",
+        epsilon: null,
+        epsilonEfectivo: null,
+        tratadas: 600,
+        recortes: 0,
+        noNumericas: 0,
+        dominio: null,
+        aplicado: true,
+      },
+    ],
+  };
+
+  async function conPrivacidad(privacidad: InformeDePrivacidad | null) {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    return { ...datos, tratamiento: { ...datos.tratamiento!, privacidad } };
+  }
+
+  it("sin ruido no hay sección: el certificado del S6 no cambia", async () => {
+    const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
+    expect(construirReporte(await conPrivacidad(null))).toBe(construirReporte(datos));
+  });
+
+  it("cada columna con su mecanismo, su ε efectivo y su alcance; el ε por fila hacia arriba", async () => {
+    const html = construirReporte(await conPrivacidad(PRIVACIDAD));
+    expect(html).toContain("Privacidad diferencial local");
+    expect(html).toContain("ε por fila: <b>2</b>");
+    expect(html).toContain("Laplace discreto");
+    expect(html).toContain("4 fuera del rango declarado");
+    expect(html).toContain("1 (pedido: 1)");
+    expect(html).toContain("sacado del archivo");
+    expect(html).toContain("Perturbación ±%, sin garantía formal");
+    expect(html).toContain("Canonne, Kamath y Steinke");
+    expect(html).toContain("no se suma con ε");
+  });
+
+  it("en inglés, redactada y no traducida", async () => {
+    const html = construirReporte({ ...(await conPrivacidad(PRIVACIDAD)), idioma: "en" });
+    expect(html).toContain("Local differential privacy");
+    expect(html).toContain("ε per row: <b>2</b>");
+    expect(html).toContain("no formal guarantee");
+    expect(html).not.toContain("Privacidad diferencial local");
   });
 });
