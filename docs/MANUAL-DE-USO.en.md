@@ -42,7 +42,12 @@ your files (column names, values, samples) is shown exactly as it is; the countr
 recognizers are still the Colombian ones —cédula, NIT, mobile number, license plate, and Law 1581
 as the framework— because English is the language of the interface, not of detection; and the
 vault and the log are the same file whatever language you saved them in. A log entry keeps the date
-exactly as it was written when you logged it.
+exactly as it was written when you logged it. The same goes for what Velo writes **inside the files
+you download**: the treated file keeps its Spanish words (the " (o vacío)" that marks an empty
+generalized value, the " a " between the two ends of a range) and the names of the files it saves
+(`velo-anonimizado-…`, `velo-boveda-…`, `velo-politica.json`), because those bytes depend on your
+data, your policy and your key, never on the language of the screen. The certificate and the return
+report are the exception: they follow the language you were using when you downloaded them.
 
 To put it precisely, because the difference matters: **a pseudonym on its own is still
 irreversible**. Whoever receives the treated file cannot undo it —that is what makes it safe to
