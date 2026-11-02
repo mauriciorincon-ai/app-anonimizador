@@ -22,6 +22,8 @@
 //   pnpm kit:generar -- --filas 5000 --perfil limpio --salida tmp/limpio.csv
 //   pnpm kit:generar -- --filas 2000 --perfil anidado --formato json --salida tmp/anidado.json
 //   pnpm kit:generar -- --filas 2000 --perfil anidado --formato jsonl --salida tmp/anidado.jsonl
+//   pnpm kit:generar -- --formato jpeg --seed 42 --salida tmp/foto.jpg --centinelas tmp/foto.json
+//   pnpm kit:generar -- --formato pdf --perfil con-revisiones --seed 42 --salida tmp/doc.pdf
 //
 // Formatos (`--formato`): csv (default) · xlsx · json (UN arreglo de objetos) · jsonl (JSON Lines,
 // un objeto por línea). Un formato desconocido es un error: jamás cae en silencio a CSV.
@@ -36,47 +38,40 @@
 // heterogeneo (claves que faltan, tipos mezclados, null vs ausente vs "", un número mayor que
 // 2⁵³, la clave `__proto__` y claves enteras fuera de orden).
 //
+// Binarios con metadatos falsos (`--formato pdf|jpeg|png|webp`, carpeta `binarios/`): archivos VÁLIDOS
+// (un visor los abre, un navegador muestra la imagen) cargados de metadatos inventados, para probar
+// la limpieza. Misma semilla ⇒ mismos bytes. `--centinelas <ruta>` escribe un JSON con las cadenas
+// que quedaron escondidas en los metadatos (todas ≥ 6 caracteres, ninguna en el contenido visible):
+// el test las busca en la salida del limpiador y afirma que ya no están. No llevan `--filas` ni
+// `--perfil`, salvo el PDF: `--perfil simple|con-revisiones|cifrado|firmado` (default con-revisiones).
+//
 // La forma canónica de JSON que escribe el kit: compacta (sin espacios), una línea por registro.
 //   json  : "[\n" + registros.join(",\n") + "\n]\n"
 //   jsonl : cada registro + "\n"
 // Es la misma que reescribe el motor de Velo, así que el viaje de identidad es byte-igual.
 
 import { createHash } from "node:crypto";
-import { createWriteStream, mkdirSync } from "node:fs";
+import { createWriteStream, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { once } from "node:events";
 
-// ── Aleatoriedad reproducible ─────────────────────────────────────────────────────────────────
-// mulberry32: PRNG de 32 bits, determinista y sin dependencias. Cero Math.random() en todo el
-// archivo — es la misma regla que gobierna el motor.
-function mulberry32(semilla) {
-  let a = semilla >>> 0;
-  return function siguiente() {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import {
+  APELLIDOS,
+  DOMINIOS,
+  MUNICIPIOS,
+  NOMBRES,
+  cedula,
+  crearAzar,
+} from "./binarios/azar.mjs";
+import { generarJpeg } from "./binarios/jpeg.mjs";
+import { PERFILES_PDF, generarPdf } from "./binarios/pdf.mjs";
+import { generarPng } from "./binarios/png.mjs";
+import { generarWebp } from "./binarios/webp.mjs";
 
-function crearAzar(semilla) {
-  const rnd = mulberry32(semilla);
-  return {
-    /** Entero en [min, max] inclusive. */
-    entero: (min, max) => min + Math.floor(rnd() * (max - min + 1)),
-    /** Elemento de un arreglo. */
-    de: (lista) => lista[Math.floor(rnd() * lista.length)],
-    /** true con probabilidad p. */
-    conProbabilidad: (p) => rnd() < p,
-    /** Cadena de n dígitos, con el primero opcionalmente forzado. */
-    digitos: (n, primero) => {
-      let s = primero ?? String(1 + Math.floor(rnd() * 9));
-      while (s.length < n) s += String(Math.floor(rnd() * 10));
-      return s;
-    },
-  };
-}
+// ── Aleatoriedad reproducible ─────────────────────────────────────────────────────────────────
+// `crearAzar` (mulberry32, sin Math.random) y los léxicos de nombres y municipios viven en
+// `binarios/azar.mjs`, compartidos con los generadores de binarios. Sigue siendo el mismo PRNG:
+// misma semilla ⇒ mismo archivo, byte por byte.
 
 // ── Algoritmos oficiales (los mismos que validará el motor, aquí para GENERAR) ─────────────────
 
@@ -131,25 +126,12 @@ export function ibanConChecksum(pais, bban) {
 }
 
 // ── Léxicos (palabras, no personas) ───────────────────────────────────────────────────────────
-const NOMBRES = [
-  "María", "Juan", "Ana", "Carlos", "Luisa", "Andrés", "Camila", "Jorge", "Paula", "Diego",
-  "Valentina", "Santiago", "Daniela", "Felipe", "Laura", "Sebastián", "Isabela", "Mateo",
-];
-const APELLIDOS = [
-  "Gómez", "Rodríguez", "Martínez", "López", "Ramírez", "Torres", "Vargas", "Castro", "Rojas",
-  "Moreno", "Jiménez", "Herrera", "Mendoza", "Peña", "Cárdenas", "Osorio",
-];
-const MUNICIPIOS = [
-  "Bogotá", "Medellín", "Cali", "Barranquilla", "Bucaramanga", "Cartagena", "Pereira", "Manizales",
-  "Villavicencio", "Neiva", "Pasto", "Armenia", "Sincelejo", "Tunja", "Popayán", "Montería",
-];
 // Nombres y apellidos REALES pero POCO FRECUENTES, elegidos a propósito FUERA del diccionario
 // del motor. Es la regla anti-supuesto-compartido aplicada al léxico: si el fixture solo trajera
 // nombres que el diccionario ya conoce, el test estaría midiendo al motor contra su propia lista
 // y jamás vería el falso negativo. Un apellido no deja de serlo por no estar en un diccionario.
 const NOMBRES_RAROS = ["Zoraida", "Euclides", "Nohemí", "Arístides", "Yeimy", "Ovidio"];
 const APELLIDOS_RAROS = ["Tarazona", "Chaparro", "Piraquive", "Cuéllar", "Anzola", "Bejarano"];
-const DOMINIOS = ["ejemplo.com", "correo-demo.co", "prueba.org", "muestra.net"];
 // Códigos con forma CIE-10 pero inventados: la columna es sensible (art. 5), el valor no es real.
 const DIAGNOSTICOS = ["J45.9", "E11.9", "I10.X", "F32.1", "M54.5", "K21.0", "N39.0", "B24.X"];
 const ASEGURADORAS = ["Salud Aurora", "Prevención Andes", "Vital Caribe", "Mutual Orinoco"];
@@ -160,17 +142,6 @@ const SUCURSALES = ["SUC-01", "SUC-02", "SUC-03", "SUC-07", "SUC-11"];
 // ── Fábricas de valores, con sus casos FUERA de rango ──────────────────────────────────────────
 // `tasaInvalida` es la fracción de valores que se emiten deliberadamente rotos. No es ruido: es
 // lo que impide que el clasificador se pruebe contra su propio supuesto.
-
-function cedula(azar, tasaInvalida) {
-  if (azar.conProbabilidad(tasaInvalida)) {
-    // Imposibles reales: cero, demasiado corta, demasiado larga, con letras.
-    return azar.de(["0", "99", "1", "123456789012", "10A2456789"]);
-  }
-  // NUIP actual (10 dígitos desde 1.000.000.000) y series históricas de hasta 8.
-  return azar.conProbabilidad(0.7)
-    ? String(azar.entero(1_000_000_000, 1_299_999_999))
-    : String(azar.entero(1_000_000, 79_999_999));
-}
 
 function nit(azar, tasaInvalida) {
   const base = String(azar.entero(800_000_000, 999_999_999));
@@ -863,14 +834,61 @@ async function escribirRegistros(opciones, forma) {
 export const generarJson = (opciones) => escribirRegistros(opciones, "json");
 export const generarJsonl = (opciones) => escribirRegistros(opciones, "jsonl");
 
+// ── Binarios con metadatos falsos ─────────────────────────────────────────────────────────────
+export const FORMATOS_BINARIOS = ["pdf", "jpeg", "png", "webp"];
+export { PERFILES_PDF };
+const EXTENSIONES_BINARIAS = { pdf: "pdf", jpeg: "jpg", png: "png", webp: "webp" };
+
+/**
+ * Escribe un binario (PDF, JPEG, PNG o WebP) y, si se pide, el JSON de sus centinelas. El perfil solo
+ * existe para el PDF (por omisión `con-revisiones`); pedirlo para una imagen es un error, no algo
+ * que se ignore en silencio. Devuelve `columnas: []` para que el contrato sea el de los demás.
+ */
+export async function generarBinario(opciones) {
+  const { formato, perfil, seed = 42, salida, centinelas: rutaDeCentinelas } = opciones;
+  let resultado;
+  if (formato === "pdf") {
+    resultado = generarPdf({ semilla: seed, perfil: perfil ?? "con-revisiones" });
+  } else if (perfil !== undefined) {
+    throw new Error(`el formato «${formato}» no tiene perfiles: solo el PDF los tiene`);
+  } else if (formato === "jpeg") {
+    resultado = generarJpeg({ semilla: seed });
+  } else if (formato === "png") {
+    resultado = generarPng({ semilla: seed });
+  } else {
+    resultado = generarWebp({ semilla: seed });
+  }
+  const { bytes, centinelas } = resultado;
+
+  mkdirSync(dirname(salida), { recursive: true });
+  writeFileSync(salida, bytes);
+  if (rutaDeCentinelas) {
+    mkdirSync(dirname(rutaDeCentinelas), { recursive: true });
+    writeFileSync(rutaDeCentinelas, `${JSON.stringify(centinelas, null, 2)}\n`, "utf8");
+  }
+  return {
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    columnas: [],
+    centinelas,
+    tamano: bytes.length,
+  };
+}
+
 /**
  * La puerta única del kit: valida y reparte por formato. Un formato o un perfil que no existen son
  * un error, no un CSV: un fixture generado con la opción equivocada no puede pasar por bueno.
  */
 export async function generar(opciones) {
   const { formato = "csv", perfil = "clinico", filas } = opciones;
+  if (FORMATOS_BINARIOS.includes(formato)) return generarBinario(opciones);
   if (!FORMATOS.includes(formato)) {
-    throw new Error(`formato desconocido: «${formato}» (los válidos: ${FORMATOS.join(", ")})`);
+    const validos = [...FORMATOS, ...FORMATOS_BINARIOS].join(", ");
+    throw new Error(`formato desconocido: «${formato}» (los válidos: ${validos})`);
+  }
+  if (opciones.centinelas) {
+    throw new Error(
+      `--centinelas solo aplica a los binarios (${FORMATOS_BINARIOS.join(", ")}), no a ${formato}`,
+    );
   }
   if (!PERFILES[perfil] && !PERFILES_JSON[perfil]) {
     const validos = [...Object.keys(PERFILES), ...PERFILES_SOLO_JSON].join(", ");
@@ -951,19 +969,29 @@ function leerArgumentos(argv) {
     perfil: "clinico",
     formato: "csv",
     salida: "",
+    centinelas: "",
     tasaInvalida: 0.08,
     tasaVacia: 0.03,
   };
+  let perfilPedido = false;
   for (let i = 0; i < argv.length; i += 2) {
     const clave = argv[i]?.replace(/^--/, "");
     const valor = argv[i + 1];
     if (clave === undefined || valor === undefined) continue;
-    if (clave === "perfil" || clave === "salida" || clave === "formato") opciones[clave] = valor;
+    if (clave === "perfil") perfilPedido = true;
+    if (["perfil", "salida", "formato", "centinelas"].includes(clave)) opciones[clave] = valor;
     else if (clave in opciones) opciones[clave] = Number(valor);
   }
+  const esBinario = FORMATOS_BINARIOS.includes(opciones.formato);
+  // El «clinico» por omisión es de los perfiles tabulares: en un binario, el perfil solo existe si
+  // se pidió (y solo lo acepta el PDF).
+  if (esBinario && !perfilPedido) {
+    opciones.perfil = opciones.formato === "pdf" ? "con-revisiones" : undefined;
+  }
   if (!opciones.salida) {
-    opciones.salida =
-      `tmp/kit-de-prueba/${opciones.perfil}-${opciones.filas}-s${opciones.seed}.${opciones.formato}`;
+    opciones.salida = esBinario
+      ? `tmp/kit-de-prueba/${opciones.formato === "pdf" ? `documento-${opciones.perfil}` : "foto"}-s${opciones.seed}.${EXTENSIONES_BINARIAS[opciones.formato]}`
+      : `tmp/kit-de-prueba/${opciones.perfil}-${opciones.filas}-s${opciones.seed}.${opciones.formato}`;
   }
   return opciones;
 }
@@ -973,19 +1001,28 @@ const esEjecucionDirecta = process.argv[1] && process.argv[1].endsWith("generado
 if (esEjecucionDirecta) {
   const opciones = leerArgumentos(process.argv.slice(2));
   opciones.salida = resolve(process.cwd(), opciones.salida);
+  if (opciones.centinelas) opciones.centinelas = resolve(process.cwd(), opciones.centinelas);
   const inicio = Date.now();
   try {
-    const { sha256, columnas } = await generar(opciones);
+    const { sha256, columnas, centinelas, tamano } = await generar(opciones);
     const segundos = ((Date.now() - inicio) / 1000).toFixed(2);
     const esJson = opciones.formato === "json" || opciones.formato === "jsonl";
-    console.log(
-      esJson
-        ? `✓ ${opciones.filas} registros × ${columnas.length} rutas · perfil ${opciones.perfil} · ${opciones.formato}`
-        : `✓ ${opciones.filas} filas × ${columnas.length} columnas · perfil ${opciones.perfil}`,
-    );
+    if (FORMATOS_BINARIOS.includes(opciones.formato)) {
+      const perfil = opciones.perfil ? ` · perfil ${opciones.perfil}` : "";
+      console.log(`✓ ${opciones.formato}${perfil} · ${tamano} bytes`);
+    } else {
+      console.log(
+        esJson
+          ? `✓ ${opciones.filas} registros × ${columnas.length} rutas · perfil ${opciones.perfil} · ${opciones.formato}`
+          : `✓ ${opciones.filas} filas × ${columnas.length} columnas · perfil ${opciones.perfil}`,
+      );
+    }
     console.log(`  archivo : ${opciones.salida}`);
     console.log(`  semilla : ${opciones.seed}  (misma semilla ⇒ mismo archivo, byte por byte)`);
     if (sha256) console.log(`  sha-256 : ${sha256}`);
+    if (centinelas && opciones.centinelas) {
+      console.log(`  centinelas : ${centinelas.length} cadenas escondidas → ${opciones.centinelas}`);
+    }
     console.log(`  tiempo  : ${segundos} s`);
   } catch (error) {
     console.error(`✗ ${error instanceof Error ? error.message : String(error)}`);
