@@ -246,7 +246,7 @@ describe("las técnicas sobre una columna", () => {
     // signo en todas las celdas— y restar las dos entregas despejaría el valor original. Con el
     // valor en el centro del rango, el recorte no cambia el signo: el signo ES el del ruido.
     const columna = columnaDe(Array(400).fill("50"));
-    const signos = async (epsilon: number) =>
+    const signos = async (epsilon: 1 | 2) =>
       filas(
         (
           await aplicarRuido(
