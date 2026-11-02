@@ -252,6 +252,10 @@ export function Taller({ informe }: { informe: Informe }) {
                 // se redacta en el idioma de al descargar, pero declara el del archivo.
                 idiomaDelTrabajo: hecha.idioma,
                 suprimidas: hecha.suprimidas,
+                // S7: cómo se llegó al k y el ruido con su ε. Campo por campo, como los de arriba:
+                // un campo del resultado que no se pasa aquí no llega al certificado.
+                generalizacion: hecha.generalizacion,
+                privacidad: hecha.privacidad,
               }}
             />
             {/* Anotar exige lo mismo que certificar: que el archivo exista, porque una entrada sin

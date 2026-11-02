@@ -120,5 +120,19 @@ test("comparar, elegir la óptima, transformar y guardar: cada campo en un nivel
   }
   expect(subieron).toBeGreaterThan(0);
 
+  // El certificado cuenta cómo se llegó al k, con la fuente y la fecha de la escalera de fábrica.
+  const descargarCertificado = page.getByRole("button", {
+    name: "Descargar el certificado",
+  });
+  await descargarCertificado.waitFor({ timeout: 60_000 });
+  const [certificado] = await Promise.all([
+    page.waitForEvent("download"),
+    descargarCertificado.click(),
+  ]);
+  const html = readFileSync((await certificado.path())!, "utf8");
+  expect(html).toContain("La generalización óptima");
+  expect(html).toContain("gdxc-w37w");
+  expect(html).toContain("Ley 2056 de 2020, artículo 45");
+
   expect(red).toEqual([]);
 });
