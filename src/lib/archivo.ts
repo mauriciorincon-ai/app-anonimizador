@@ -32,6 +32,24 @@ export const AVISO_EXCEL_BYTES = 40 * 1024 * 1024;
  * sin grafo encima: 100 MB son ≈ 200 MB.
  */
 export const TOPE_PDF_BYTES = 50 * 1024 * 1024;
+
+/**
+ * S8: celdas (filas × columnas) por encima de las cuales un CSV se lee en ALTO VOLUMEN, por pasadas
+ * y sin la tabla entera en memoria (`src/workers/alto-volumen.ts`). Es una constante de BUILD, no una
+ * medida del equipo ni del reloj: el mismo archivo entra por el mismo camino en cualquier máquina. El
+ * mismo número que el tope de celdas del JSON (ADR-011). Vive aquí, y no en el worker, porque la
+ * pantalla lo cita.
+ */
+export const TOPE_DE_CELDAS_EN_MEMORIA = 20_000_000;
+
+/** S8: con cuántas filas se clasifica un archivo de alto volumen (las primeras, en su orden). */
+export const FILAS_PARA_CLASIFICAR_EN_ALTO_VOLUMEN = 5_000;
+
+/**
+ * S8: combinaciones distintas de cuasi-identificadores que el riesgo exacto de un archivo de alto
+ * volumen puede contar: una menos que el máximo de un `Map` de V8 (2²⁴).
+ */
+export const COMBINACIONES_DEL_RIESGO = (1 << 24) - 1;
 export const TOPE_IMAGEN_BYTES = 100 * 1024 * 1024;
 
 export function formatoDeArchivo(nombre: string): FormatoDeArchivo | null {

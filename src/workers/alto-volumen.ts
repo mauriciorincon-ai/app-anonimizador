@@ -79,6 +79,11 @@ import {
   type ColisionEnColumna,
   type TablaTransformada,
 } from "@/engine/tecnicas";
+import {
+  COMBINACIONES_DEL_RIESGO,
+  FILAS_PARA_CLASIFICAR_EN_ALTO_VOLUMEN,
+  TOPE_DE_CELDAS_EN_MEMORIA,
+} from "@/lib/archivo";
 import { mensaje } from "@/lib/idioma";
 import type { Idioma } from "@/lib/idioma";
 
@@ -86,13 +91,8 @@ import { lotesDeCsv } from "./csv";
 
 // ── Los topes ───────────────────────────────────────────────────────────────────────────────────
 
-/**
- * Celdas (filas × columnas) por encima de las cuales un CSV se lee en alto volumen. Es una
- * constante de BUILD, no una medida del equipo ni del reloj: el mismo archivo entra por el mismo
- * camino en cualquier máquina. Las pruebas la pasan baja para forzar el camino. El mismo número que
- * el tope de celdas del JSON (ADR-011), medido para que la tabla en memoria quede cerca de 1,3 GB.
- */
-export const TOPE_DE_CELDAS_EN_MEMORIA = 20_000_000;
+/** El tope de celdas en memoria (`src/lib/archivo.ts`, que la pantalla cita). */
+export { TOPE_DE_CELDAS_EN_MEMORIA };
 
 /**
  * Todos por debajo de 2²⁴ (16 777 216): es el máximo de entradas de un `Map` de V8, y por encima
@@ -121,8 +121,8 @@ export const TOPES_DEL_ALTO_VOLUMEN: TopesDelAltoVolumen = {
   distintosPorColumna: 1 << 21,
   distintosEnTotal: 1 << 23,
   filasDelReparto: 16_000_000,
-  filasParaClasificar: 5_000,
-  combinacionesDelRiesgo: (1 << 24) - 1,
+  filasParaClasificar: FILAS_PARA_CLASIFICAR_EN_ALTO_VOLUMEN,
+  combinacionesDelRiesgo: COMBINACIONES_DEL_RIESGO,
 };
 
 /** Algo que el alto volumen no puede hacer con este archivo, dicho con su clave y su conteo. */
@@ -462,29 +462,8 @@ export async function prepararTransformacion(
   } = elReparto(politica, nombres);
   let reparto: TablaTransformada | null = null;
   if (conReparto) {
-    if (pasada.filas > topes.filasDelReparto)
-      throw new NoCabeEnAltoVolumen(
-        "alto-volumen-reparto-no-cabe",
-        topes.filasDelReparto,
-      );
-    const indices = delReparto.map((n) => nombres.indexOf(n));
-    let constructor: ConstructorColumnar | null = null;
-    for await (const parte of filasDelArchivo(archivo, {
-      ...opciones,
-      huella,
-    })) {
-      if ("encabezado" in parte) {
-        constructor = new ConstructorColumnar(
-          indices.map((i) => parte.encabezado[i]),
-          1 << 16,
-        );
-        continue;
-      }
-      for (const fila of parte.filas)
-        constructor!.agregarFila(indices.map((i) => fila[i]));
-    }
     reparto = await aplicarPolitica(
-      constructor!.finalizar(),
+      await leerColumnas(archivo, pasada, delReparto, { ...opciones, huella }),
       politica,
       llave,
       idioma,
@@ -586,6 +565,39 @@ export async function prepararTransformacion(
     llave,
     huella,
   };
+}
+
+/**
+ * Unas columnas del archivo, TODAS sus filas, como una tabla normal: la de la pasada B, y la de la
+ * comparación de los dos caminos. Con los valores originales y su diccionario en orden de primera
+ * aparición, que es lo que tendría la tabla en memoria.
+ */
+export async function leerColumnas(
+  archivo: Blob,
+  pasada: Pick<PasadaDeDiagnostico, "nombres" | "filas">,
+  columnas: readonly string[],
+  opciones: OpcionesDeLaPasada = {},
+): Promise<TablaColumnar> {
+  const topes = opciones.topes ?? TOPES_DEL_ALTO_VOLUMEN;
+  if (pasada.filas > topes.filasDelReparto)
+    throw new NoCabeEnAltoVolumen(
+      "alto-volumen-reparto-no-cabe",
+      topes.filasDelReparto,
+    );
+  const indices = columnas.map((n) => pasada.nombres.indexOf(n));
+  let constructor: ConstructorColumnar | null = null;
+  for await (const parte of filasDelArchivo(archivo, opciones)) {
+    if ("encabezado" in parte) {
+      constructor = new ConstructorColumnar(
+        indices.map((i) => parte.encabezado[i]),
+        1 << 16,
+      );
+      continue;
+    }
+    for (const fila of parte.filas)
+      constructor!.agregarFila(indices.map((i) => fila[i]));
+  }
+  return constructor!.finalizar();
 }
 
 // ── Una fila transformada ─────────────────────────────────────────────────────────────────────
