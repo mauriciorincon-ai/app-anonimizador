@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm build:brochure && next dev",
+    "dev": "pnpm build:brochure && next dev -H 127.0.0.1 -p 3300",
     "build": "pnpm build:brochure && next build",
     "build:brochure": "node scripts/copiar-brochure.mjs",
-    "start": "next start",
+    "start": "next start -H 127.0.0.1 -p 3300",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --coverage",

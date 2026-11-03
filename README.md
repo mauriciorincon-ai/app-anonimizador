@@ -136,7 +136,7 @@ de ~2 s con 4 campos a entre 12 y 32 s con 6.
 
 ```bash
 pnpm install
-pnpm dev            # http://localhost:3000
+pnpm dev            # http://127.0.0.1:3300
 ```
 
 Necesitas Node 22+ y pnpm (la versión la fija `packageManager` en el `package.json`).

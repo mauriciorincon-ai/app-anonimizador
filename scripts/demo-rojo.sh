@@ -13,7 +13,7 @@
 # Uso:
 #   scripts/demo-rojo.sh --archivo <ruta> --buscar '<texto exacto>' --reemplazar '<texto>' \
 #       --gate '<comando que debe FALLAR>' --debe-nombrar '<texto que el fallo debe decir>' \
-#       [--puerto 3000] [--esperar-verde '<comando tras restaurar>'] [--minimo-tests N]
+#       [--puerto 3300] [--esperar-verde '<comando tras restaurar>'] [--minimo-tests N]
 #
 # Salida: 0 si el gate falló con la mutación NOMBRANDO lo esperado y volvió a pasar (o no se
 #         pidió) tras restaurar; 1 si el gate NO falló (la demo no es demo), si falló sin correr

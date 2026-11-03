@@ -25,7 +25,7 @@ import { join } from "node:path";
 
 import { chromium } from "@playwright/test";
 
-const BASE = process.env.BASE_URL ?? "http://localhost:3000";
+const BASE = process.env.BASE_URL ?? "http://127.0.0.1:3300";
 const SALIDA = join(process.cwd(), "tmp", "capturas");
 const BROCHURE = join(process.cwd(), "docs", "BROCHURE.html");
 const MUESTRA = join(SALIDA, "muestra.csv");

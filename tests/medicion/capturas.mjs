@@ -16,7 +16,7 @@ import { chromium, devices } from "@playwright/test";
 const SALIDA = join(process.cwd(), "tmp", "capturas");
 mkdirSync(SALIDA, { recursive: true });
 
-const BASE = process.env.BASE ?? "http://localhost:3000";
+const BASE = process.env.BASE ?? "http://127.0.0.1:3300";
 const FIXTURE = join(process.cwd(), "tmp", "e2e", "clinico-2000-s42.csv");
 const FRASE = "una frase larga de prueba";
 const FRASE_BOVEDA = "otra frase larga, la de la boveda";
