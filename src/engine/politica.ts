@@ -95,6 +95,26 @@ function enLaRejilla(valor: number, decimales: number): boolean {
   return Math.abs(escalado - Math.round(escalado)) < 1e-6;
 }
 
+/**
+ * Los formatos que un seudónimo puede conservar (S8). Una sola lista: el esquema, el motor del
+ * seudónimo y el desplegable del editor salen de ella, y un formato nuevo no puede quedar en
+ * uno y faltar en otro. Los dos primeros son colombianos (S1); el resto, europeos (S8, ADR-016).
+ */
+export const FORMATOS_DE_SEUDONIMO = [
+  "cedula",
+  "nit",
+  "iban",
+  "dni",
+  "nie",
+  "nir",
+  "codice-fiscale",
+  "steuer-idnr",
+  "bsn",
+  "pesel",
+] as const;
+
+export type FormatoDeSeudonimo = (typeof FORMATOS_DE_SEUDONIMO)[number];
+
 const tecnicaSchema = z.discriminatedUnion("tipo", [
   /** Se deja tal cual. Es una decisión explícita, no la ausencia de una. */
   z.object({ tipo: z.literal("conservar") }),
@@ -109,13 +129,13 @@ const tecnicaSchema = z.discriminatedUnion("tipo", [
     reversible: reversibleSchema,
   }),
   /**
-   * HMAC → dígitos → dígito de verificación oficial recalculado. El seudónimo PARECE un NIT o una
-   * cédula para que el sistema del destino no rechace el archivo. **No es FPE** y no se puede
+   * HMAC → dígitos → dígito de verificación oficial recalculado. El seudónimo PARECE un NIT, una
+   * cédula, un IBAN o un documento europeo para que el sistema del destino no rechace el archivo. **No es FPE** y no se puede
    * revertir por algoritmo (ver `tecnicas/formato.ts`).
    */
   z.object({
     tipo: z.literal("seudonimizar-con-formato"),
-    formato: z.enum(["nit", "cedula"]),
+    formato: z.enum(FORMATOS_DE_SEUDONIMO),
     reversible: reversibleSchema,
   }),
   /** Números a intervalos: edad 37 con amplitud 10 → `30-39`. */
@@ -263,8 +283,10 @@ export const politicaSchema = z.object({
     "manual",
     "habeas-data",
     "hipaa",
+    "rgpd",
     "habeas-data-editada",
     "hipaa-editada",
+    "rgpd-editada",
   ]),
   reglas: z.array(reglaSchema),
   /** k que Mondrian debe alcanzar sobre las columnas marcadas `generalizar-automatico`. */
