@@ -118,8 +118,12 @@ export interface TopesDelAltoVolumen {
 }
 
 export const TOPES_DEL_ALTO_VOLUMEN: TopesDelAltoVolumen = {
-  distintosPorColumna: 1 << 21,
-  distintosEnTotal: 1 << 23,
+  // Medidos con el CSV `clinico` de 5 M de filas (ADR-015): con 2²¹ y 2²³ el diagnóstico llegó a
+  // 3,5 GB de RSS y con la mitad, a 3,6 GB, así que no son los diccionarios lo que pesa. Se quedan
+  // los de la corrida que llegó de punta a punta: una columna que no cabe se trata por valor, con
+  // la misma salida.
+  distintosPorColumna: 1 << 20,
+  distintosEnTotal: 1 << 22,
   filasDelReparto: 16_000_000,
   filasParaClasificar: FILAS_PARA_CLASIFICAR_EN_ALTO_VOLUMEN,
   combinacionesDelRiesgo: COMBINACIONES_DEL_RIESGO,
