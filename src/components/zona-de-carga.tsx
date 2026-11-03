@@ -17,11 +17,12 @@ import { useState } from "react";
 import { clasesDeBoton } from "@/components/boton";
 import { IconoLupa, IconoReiniciar, IconoTabla } from "@/components/iconos";
 import { Rico, useT } from "@/components/texto";
-import { bytes as enBytes, porcentaje } from "@/lib/formato";
+import { bytes as enBytes, numero, porcentaje } from "@/lib/formato";
 import { plural, type Texto } from "@/lib/idioma";
 import { INICIO } from "@/lib/idioma/textos/inicio";
 import type { EstadoDeSesion } from "@/lib/sesion";
 import {
+  COMBINACIONES_DEL_RIESGO,
   esDeMetadatos,
   TOPE_EXCEL_BYTES,
   TOPE_IMAGEN_BYTES,
@@ -35,6 +36,7 @@ import type { EtapaDelWorker, MotivoDeError } from "@/workers/contrato";
 const ETAPAS: Partial<Record<EtapaDelWorker, Texto>> = {
   huella: INICIO.carga.etapas.huella,
   leyendo: INICIO.carga.etapas.leyendo,
+  "alto-volumen": INICIO.carga.etapas.altoVolumen,
   clasificando: INICIO.carga.etapas.clasificando,
   "midiendo-riesgo": INICIO.carga.etapas.midiendoRiesgo,
   "leyendo-metadatos": INICIO.carga.etapas.leyendoMetadatos,
@@ -49,6 +51,8 @@ const ERRORES: Partial<
   "excel-excede-tope": INICIO.carga.errores.excelExcedeTope,
   "excel-excede-memoria": INICIO.carga.errores.excelExcedeMemoria,
   "lectura-fallida": INICIO.carga.errores.lecturaFallida,
+  // S8: el riesgo exacto no se puede contar, y Velo no lo estima.
+  "alto-volumen-histograma-no-cabe": INICIO.carga.errores.altoVolumenHistograma,
   // JSON (S6): seis motivos del lector y el de «el contenido no es lo que dice el nombre».
   "json-invalido": INICIO.carga.errores.jsonInvalido,
   "json-no-es-registros": INICIO.carga.errores.jsonNoEsRegistros,
@@ -316,6 +320,7 @@ function Fallo({
     celdas: TOPES_JSON.celdas,
     largoClave: TOPES_JSON.largoDeClave,
     largoTexto: TOPES_JSON.largoDeTexto,
+    combinaciones: numero(COMBINACIONES_DEL_RIESGO, idioma),
   };
   return (
     <div

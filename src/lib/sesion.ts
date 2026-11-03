@@ -104,6 +104,14 @@ export interface EstadoDelTaller {
   /** El archivo listo para guardar, como asa opaca. Ver `AsaDeArchivo`. */
   readonly archivo: AsaDeArchivo | null;
   /**
+   * S8: el archivo que el worker escribió directamente en el que el usuario eligió (alto volumen).
+   * Ya está en su equipo: no hay asa ni URL, solo su nombre y su tamaño para decirlo.
+   */
+  readonly archivoEnDisco: {
+    readonly nombre: string;
+    readonly bytes: number;
+  } | null;
+  /**
    * SHA-256 del archivo anonimizado, calculado en el worker sobre los bytes que forman el `Blob`.
    *
    * **Viaja aparte del asa, y no dentro de ella, porque no es lo mismo.** `AsaDeArchivo` es la
@@ -202,6 +210,18 @@ export interface AsaDeArchivo {
  * que exista un solo sitio en toda la app donde un `Blob` del usuario deja de ser alcanzable. Dos
  * implementaciones serían dos sitios que auditar, y una de las dos acabaría divergiendo.
  */
+/**
+ * El asa del archivo de un mensaje que trae su `Blob`: todos, salvo el que el worker escribió en el
+ * archivo que el usuario eligió (S8), que no tiene nada que descargar y se trata aparte.
+ */
+export function asaDelMensaje(mensaje: {
+  readonly blob?: Blob;
+  readonly nombre: string;
+}): AsaDeArchivo {
+  if (!mensaje.blob) throw new Error("el archivo no viene como Blob");
+  return asaDeArchivo(mensaje.blob, mensaje.nombre);
+}
+
 export function asaDeArchivo(blob: Blob, nombre: string): AsaDeArchivo {
   // El `Blob` se convierte en URL aquí mismo y la referencia se pierde al salir de esta función.
   // A partir de este punto ni siquiera existe un objeto sobre el que se pudiera llamar `.text()`:
@@ -225,6 +245,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   transformacion: { fase: "sin-hacer" },
   etapa: null,
   archivo: null,
+  archivoEnDisco: null,
   huellaDeSalida: null,
   boveda: { fase: "sin-sellar" },
   archivoDeBoveda: null,
@@ -306,7 +327,8 @@ export function invalidarTransformacion(): void {
   // política la borraba justo al elegir el camino que se acababa de comparar.
   if (
     tallerActual.transformacion.fase === "sin-hacer" &&
-    tallerActual.archivo === null
+    tallerActual.archivo === null &&
+    tallerActual.archivoEnDisco === null
   ) {
     return;
   }
@@ -314,6 +336,7 @@ export function invalidarTransformacion(): void {
   publicarTaller({
     transformacion: { fase: "sin-hacer" },
     archivo: null,
+    archivoEnDisco: null,
     huellaDeSalida: null,
     etapa: null,
     // La bóveda también caduca: describe la correspondencia de una política que ya no es la que
@@ -343,6 +366,7 @@ export function transformar(politica: Politica): void {
   publicarTaller({
     transformacion: { fase: "transformando" },
     archivo: null,
+    archivoEnDisco: null,
     huellaDeSalida: null,
     etapa: "transformando",
   });
@@ -408,10 +432,18 @@ export function pedirEstimacion(poblacion: number | null): void {
   worker.postMessage({ tipo: "estimar-riesgo", poblacion });
 }
 
-export function prepararArchivo(): void {
+/**
+ * `destino` (S8): el archivo que el usuario eligió con el selector del sistema, en alto volumen. La
+ * página solo pasa el asa: el worker escribe en él, y la página nunca lee lo escrito.
+ */
+export function prepararArchivo(destino?: FileSystemFileHandle): void {
   if (!worker) return;
   publicarTaller({ etapa: "escribiendo" });
-  worker.postMessage({ tipo: "construir-archivo" });
+  worker.postMessage(
+    destino
+      ? { tipo: "construir-archivo", destino }
+      : { tipo: "construir-archivo" },
+  );
 }
 
 /** Limpia los metadatos del PDF o la imagen cargados. Sin opciones: ver el mensaje `limpiar`. */
@@ -520,7 +552,7 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
         fase: "hecha",
         resumen: mensaje.resumen,
         // El `Blob` se envuelve AQUÍ, en el mismo sitio que el anonimizado (ADR-005).
-        archivo: asaDeArchivo(mensaje.blob, mensaje.nombre),
+        archivo: asaDelMensaje(mensaje),
       },
       etapa: null,
     });
@@ -576,14 +608,22 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
     // forma de llegar a él es pedirle una URL.
     if (mensaje.proposito === "boveda") {
       publicarTaller({
-        archivoDeBoveda: asaDeArchivo(mensaje.blob, mensaje.nombre),
+        archivoDeBoveda: asaDelMensaje(mensaje),
         boveda: { fase: "sellada" },
         etapa: null,
       });
       return;
     }
+    if (mensaje.enDisco) {
+      publicarTaller({
+        archivoEnDisco: { nombre: mensaje.nombre, bytes: mensaje.bytes },
+        huellaDeSalida: mensaje.sha256 ?? null,
+        etapa: null,
+      });
+      return;
+    }
     publicarTaller({
-      archivo: asaDeArchivo(mensaje.blob, mensaje.nombre),
+      archivo: asaDelMensaje(mensaje),
       // `?? null` y no un `!`: el contrato declara la huella opcional porque solo el archivo
       // anonimizado la trae, y este camino es justamente ese. Afirmarlo con `!` sería fiarse de una
       // correspondencia que el tipo no garantiza.
@@ -606,7 +646,10 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
     (mensaje.motivo === "sin-tabla" ||
       mensaje.motivo === "sin-llave" ||
       mensaje.motivo === "sin-boveda" ||
-      mensaje.motivo === "transformacion-fallida")
+      mensaje.motivo === "transformacion-fallida" ||
+      // S8: lo que el alto volumen no puede transformar se dice en el taller, sin tumbar el informe.
+      mensaje.motivo === "alto-volumen-boveda-no-cabe" ||
+      mensaje.motivo === "alto-volumen-reparto-no-cabe")
   ) {
     // Un fallo transformando NO tumba el informe: el archivo original sigue analizado y la
     // pantalla puede decir qué pasó sin obligar a cargarlo de nuevo.

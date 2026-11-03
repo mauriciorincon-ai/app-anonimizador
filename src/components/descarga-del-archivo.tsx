@@ -13,6 +13,10 @@
 // La página nunca lee el archivo. No es una promesa: es que no tiene cómo. Lo que llega hasta aquí
 // es una CADENA —la URL `blob:`—; el `Blob` se quedó en `src/lib/sesion.ts` y su referencia se
 // perdió al crear la URL. No hay ningún objeto sobre el que se pudiera llamar `.text()`.
+//
+// S8, alto volumen: donde el navegador deja elegir un archivo de destino, el primer paso abre el
+// selector del sistema y el worker escribe por trozos en el archivo elegido. La página solo le pasa
+// el asa; no lee nada de lo escrito, y aquí llega el nombre y el tamaño para decir que ya está.
 
 import { Boton } from "@/components/boton";
 import { Panel } from "@/components/panel";
@@ -38,6 +42,9 @@ export function DescargaDelArchivo({
   hashDePolitica,
   idiomaDelTrabajo,
   onPreparar,
+  altoVolumen = false,
+  enDisco = null,
+  onElegirDestino,
 }: {
   archivo: AsaDeArchivo | null;
   preparando: boolean;
@@ -48,6 +55,12 @@ export function DescargaDelArchivo({
   /** El idioma de la pantalla al pulsar «transformar»: el del archivo, aunque ahora haya otro. */
   idiomaDelTrabajo: Idioma;
   onPreparar: () => void;
+  /** S8: el archivo es de alto volumen (se escribe por trozos). */
+  altoVolumen?: boolean;
+  /** S8: lo que el worker ya escribió en el archivo que el usuario eligió. */
+  enDisco?: { readonly nombre: string; readonly bytes: number } | null;
+  /** S8: abre el selector del sistema. Ausente donde el navegador no lo tiene. */
+  onElegirDestino?: () => void;
 }) {
   const { t, idioma } = useT();
   return (
@@ -99,11 +112,41 @@ export function DescargaDelArchivo({
         </p>
       ) : null}
 
+      {altoVolumen && enDisco === null && archivo === null ? (
+        <p className="text-tinta-suave mt-3 text-[0.875rem] leading-relaxed">
+          <Rico
+            texto={onElegirDestino ? E.elegirDestinoNota : E.enMemoriaNota}
+          />
+        </p>
+      ) : null}
+
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        {archivo === null ? (
-          <Boton type="button" disabled={preparando} onClick={onPreparar}>
+        {enDisco !== null ? (
+          // El símbolo, la palabra y el color juntos: el color nunca va solo.
+          <p className="text-acento text-[0.9375rem] font-medium" role="status">
+            <span aria-hidden="true" className="mr-1.5">
+              ✓
+            </span>
+            <Rico
+              texto={E.guardadoEnTuEquipo}
+              datos={{
+                nombre: enDisco.nombre,
+                tamano: enBytes(enDisco.bytes, idioma),
+              }}
+            />
+          </p>
+        ) : archivo === null ? (
+          <Boton
+            type="button"
+            disabled={preparando}
+            onClick={onElegirDestino ?? onPreparar}
+          >
             <IconoDocumento />
-            {preparando ? t(E.preparando) : t(E.preparar)}
+            {preparando
+              ? t(E.preparando)
+              : onElegirDestino
+                ? t(E.elegirDestino)
+                : t(E.preparar)}
           </Boton>
         ) : (
           <>

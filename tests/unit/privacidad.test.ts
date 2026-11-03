@@ -71,6 +71,22 @@ const PROHIBIDOS_FUERA_DEL_WORKER: readonly {
     patron: /new FileReader/,
     porque: "el mismo agujero, por la puerta de atrás",
   },
+  // S8: en alto volumen el worker escribe en el archivo que el usuario eligió. La página solo pasa
+  // el asa que devuelve el selector; abrirla para escribir o para leer, o leer cualquier flujo, la
+  // pondría a mirar lo que se escribe.
+  {
+    patron: /\.createWritable\(/,
+    porque:
+      "la página escribiría ella misma el archivo, con el contenido en la mano",
+  },
+  {
+    patron: /\.getWriter\(|\.getReader\(/,
+    porque: "un flujo abierto en la página es contenido que pasa por la página",
+  },
+  {
+    patron: /\.getFile\(/,
+    porque: "leería de vuelta lo que el worker escribió",
+  },
 ];
 
 function archivos(directorio: string): string[] {

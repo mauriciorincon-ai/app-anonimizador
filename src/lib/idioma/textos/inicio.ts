@@ -160,6 +160,10 @@ export const INICIO = {
         en: "Taking the file's fingerprint",
       },
       leyendo: { es: "Leyendo el archivo", en: "Reading the file" },
+      altoVolumen: {
+        es: "Modo alto volumen: el archivo se lee por pasadas",
+        en: "High-volume mode: the file is read in passes",
+      },
       clasificando: {
         es: "Reconociendo qué hay en cada columna",
         en: "Recognizing what is in each column",
@@ -272,6 +276,24 @@ export const INICIO = {
           en:
             "It happens with very wide workbooks or ones with many sheets. Save it as CSV and " +
             "try again: that way Velo reads it in parts instead of whole.",
+        },
+      },
+      altoVolumenHistograma: {
+        titulo: {
+          es: "Demasiadas combinaciones para medir el riesgo exacto",
+          en: "Too many combinations to measure the exact risk",
+        },
+        salida: {
+          es:
+            "Los cuasi-identificadores de este archivo forman más de {combinaciones} combinaciones " +
+            "distintas: casi cada registro es único, y Velo no puede contarlas. No estima: generaliza " +
+            "antes alguna de esas columnas (la fecha a año, el municipio a departamento) y vuelve a " +
+            "soltarlo.",
+          en:
+            "This file's quasi-identifiers form more than {combinaciones} distinct combinations: " +
+            "almost every record is unique, and Velo cannot count them. It does not estimate: " +
+            "generalize one of those columns first (the date to the year, the town to the region) " +
+            "and drop the file again.",
         },
       },
       lecturaFallida: {

@@ -62,7 +62,8 @@ import type { CategoriaLey1581 } from "./validadores/tipos";
 
 export interface DatosDelTratamiento {
   balance: BalanceDelTratamiento;
-  utilidad: Utilidad;
+  /** `null` en alto volumen (S8): no se mide, y la sección lo dice. */
+  utilidad: Utilidad | null;
   /** Identidad de la política aplicada: mismo hash ⇒ mismo tratamiento. */
   hashDePolitica: string;
   /**
@@ -278,7 +279,9 @@ function filaDeColumna(columna: HallazgoDeColumna, idioma: Idioma): string {
 
   return `<tr>
 <td class="col">${escapar(columna.nombre)}<br><small style="color:var(--tinta-tenue)">${h(
-    D.columnas.valoresDistintos,
+    columna.cardinalidadAlMenos
+      ? D.columnas.masDeValoresDistintos
+      : D.columnas.valoresDistintos,
     idioma,
     { n: columna.cardinalidad },
   )}</small></td>
@@ -724,8 +727,14 @@ ${
 </section>`;
 }
 
-function seccionDeUtilidad(utilidad: Utilidad, idioma: Idioma): string {
+function seccionDeUtilidad(utilidad: Utilidad | null, idioma: Idioma): string {
   const U = D.utilidad;
+  if (utilidad === null)
+    return `<section>
+<p class="etiqueta">${h(U.etiqueta, idioma)}</p>
+<h2>${h(U.titulo, idioma)}</h2>
+<p>${h(U.noMedida, idioma)}</p>
+</section>`;
   const perdidas = utilidad.columnas.filter((c) => c.estado !== "intacta");
   const filas = perdidas
     .map(

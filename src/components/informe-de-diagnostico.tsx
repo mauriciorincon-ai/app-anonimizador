@@ -20,6 +20,10 @@ import { TablaDeColumnas } from "@/components/tabla-de-columnas";
 import { Rico, useT } from "@/components/texto";
 import { MUESTRA_MAXIMA } from "@/engine/clasificador";
 import type { CategoriaLey1581 } from "@/engine/validadores/tipos";
+import {
+  FILAS_PARA_CLASIFICAR_EN_ALTO_VOLUMEN,
+  TOPE_DE_CELDAS_EN_MEMORIA,
+} from "@/lib/archivo";
 import { bytes, milisegundos, numero } from "@/lib/formato";
 import { DIAGNOSTICO } from "@/lib/idioma/textos/diagnostico";
 import type { Informe } from "@/workers/contrato";
@@ -98,6 +102,24 @@ export function InformeDeDiagnostico({ informe }: { informe: Informe }) {
           ))}
         </ul>
       </header>
+
+      {/* S8: antes que cualquier cifra, que el archivo se leyó por pasadas y qué cambia por eso. */}
+      {informe.modo === "alto-volumen" ? (
+        <Panel
+          etiqueta={t(DIAGNOSTICO.informe.altoVolumen.etiqueta)}
+          titulo={t(DIAGNOSTICO.informe.altoVolumen.titulo)}
+        >
+          <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
+            <Rico
+              texto={DIAGNOSTICO.informe.altoVolumen.texto}
+              datos={{
+                celdas: numero(TOPE_DE_CELDAS_EN_MEMORIA, idioma),
+                filas: numero(FILAS_PARA_CLASIFICAR_EN_ALTO_VOLUMEN, idioma),
+              }}
+            />
+          </p>
+        </Panel>
+      ) : null}
 
       {conDatosPersonales ? null : (
         <Panel

@@ -53,6 +53,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   transformacion: { fase: "sin-hacer" },
   etapa: null,
   archivo: null,
+  archivoEnDisco: null,
   huellaDeSalida: null,
   boveda: { fase: "sin-sellar" },
   archivoDeBoveda: null,

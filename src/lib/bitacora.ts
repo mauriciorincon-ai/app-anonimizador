@@ -26,7 +26,7 @@ import { useSyncExternalStore } from "react";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
 import { mensaje as mensajeDeMotor } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
-import { asaDeArchivo, type AsaDeArchivo } from "@/lib/sesion";
+import { asaDelMensaje, type AsaDeArchivo } from "@/lib/sesion";
 import type {
   ContenidoDeBitacora,
   EtapaDelWorker,
@@ -194,7 +194,7 @@ function recibir(mensaje: MensajeDelWorker): void {
         // El `Blob` se envuelve AQUÍ y no se guarda: a partir de esta línea la única forma de
         // llegar a él es pedirle una URL.
         publicar({
-          guardado: asaDeArchivo(mensaje.blob, mensaje.nombre),
+          guardado: asaDelMensaje(mensaje),
           etapa: null,
         });
       }

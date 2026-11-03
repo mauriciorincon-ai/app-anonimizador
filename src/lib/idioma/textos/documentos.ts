@@ -204,6 +204,10 @@ export const DOCUMENTOS = {
       es: "{n} valores distintos",
       en: "{n} distinct values",
     },
+    masDeValoresDistintos: {
+      es: "más de {n} valores distintos",
+      en: "more than {n} distinct values",
+    },
     cumplen: {
       es: "{pct} de los {n} valores revisados cumplen.",
       en: "{pct} of the {n} values checked comply.",
@@ -422,6 +426,11 @@ export const DOCUMENTOS = {
     intro: {
       es: "Cada bit de riesgo que se quita sale de un bit de información que alguien iba a usar. Estas son las cifras del intercambio; qué tanto duele cada una lo sabe quien conoce para qué era el archivo.",
       en: "Every bit of risk removed comes out of a bit of information that someone was going to use. These are the figures of the trade-off; how much each one hurts is something only whoever knows what the file was for can tell.",
+    },
+    // S8: en alto volumen no se mide, y el certificado lo dice en vez de omitir la sección.
+    noMedida: {
+      es: "**En este archivo no se midió.** Es un archivo de alto volumen, que Velo leyó por pasadas sin tenerlo entero en memoria, y medir lo que perdió exige comparar las dos tablas enteras. El riesgo de arriba sí es exacto; esta cifra no se estima.",
+      en: "**It was not measured for this file.** It is a high-volume file, which Velo read in passes without holding it whole in memory, and measuring what it lost requires comparing both whole tables. The risk above is exact; this figure is not estimated.",
     },
     informacionAntes: {
       es: "Información total, antes",

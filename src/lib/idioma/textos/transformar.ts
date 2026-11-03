@@ -114,6 +114,27 @@ export const TRANSFORMAR = {
         es: "La política pide seudónimos y todavía no hay llave. Deriva la llave y vuelve a intentarlo.",
         en: "The policy asks for pseudonyms and there is no key yet. Derive the key and try again.",
       },
+      // S8: lo que el alto volumen no puede transformar, con la salida.
+      bovedaNoCabe: {
+        es:
+          "Una columna con **«Poder deshacerlo con una bóveda»** tiene demasiados valores distintos " +
+          "para guardar su bóveda en un archivo de alto volumen. Quita esa casilla en esa columna, " +
+          "o divide el archivo en partes.",
+        en:
+          "A column with **“Be able to undo it with a vault”** has too many distinct values to keep " +
+          "its vault in a high-volume file. Untick that box for that column, or split the file into " +
+          "parts.",
+      },
+      repartoNoCabe: {
+        es:
+          "El archivo tiene demasiadas filas para el reparto (Mondrian o la generalización " +
+          "óptima) en alto volumen. Generaliza esas columnas con una técnica por columna, o divide " +
+          "el archivo en partes.",
+        en:
+          "The file has too many rows for the partition (Mondrian or the optimal generalization) in " +
+          "high volume. Generalize those columns with a per-column technique, or split the file " +
+          "into parts.",
+      },
       transformacionFallida: {
         es:
           "Algo falló al aplicar la política. Revisa que las técnicas encajen con el tipo de cada " +
@@ -217,8 +238,14 @@ export const TRANSFORMAR = {
         es: "ε de {columna}",
         en: "ε for {columna}",
       },
-      minimo: { es: "Mínimo posible de {columna}", en: "Lowest possible {columna}" },
-      maximo: { es: "Máximo posible de {columna}", en: "Highest possible {columna}" },
+      minimo: {
+        es: "Mínimo posible de {columna}",
+        en: "Lowest possible {columna}",
+      },
+      maximo: {
+        es: "Máximo posible de {columna}",
+        en: "Highest possible {columna}",
+      },
       decimales: { es: "Decimales de {columna}", en: "Decimals of {columna}" },
       porcentaje: {
         es: "Cuánto puede moverse {columna} (%)",
@@ -708,6 +735,33 @@ export const TRANSFORMAR = {
     preparar: { es: "Preparar el archivo", en: "Prepare the file" },
     preparando: { es: "Escribiendo el archivo…", en: "Writing the file…" },
     guardar: { es: "Guardar", en: "Save" },
+    // S8: alto volumen. El archivo se escribe por trozos en el que el usuario elige.
+    elegirDestino: {
+      es: "Elegir dónde guardarlo",
+      en: "Choose where to save it",
+    },
+    elegirDestinoNota: {
+      es:
+        "Es un archivo de alto volumen: Velo lo escribe por trozos directamente en el archivo que " +
+        "elijas, sin armarlo entero en la memoria de la pestaña. Nada sale de tu equipo.",
+      en:
+        "It is a high-volume file: Velo writes it in chunks straight into the file you choose, " +
+        "without building it whole in the tab's memory. Nothing leaves your computer.",
+    },
+    enMemoriaNota: {
+      es:
+        "Es un archivo de alto volumen, y este navegador no deja elegir un archivo de destino: Velo " +
+        "lo arma en la memoria de la pestaña antes de guardarlo. Con un archivo muy grande puede no " +
+        "caber; en Chrome o Edge se escribe por trozos.",
+      en:
+        "It is a high-volume file, and this browser does not let you choose a destination file: " +
+        "Velo builds it in the tab's memory before saving it. A very large file may not fit; in " +
+        "Chrome or Edge it is written in chunks.",
+    },
+    guardadoEnTuEquipo: {
+      es: "Guardado en tu equipo: **{nombre}** · {tamano}",
+      en: "Saved on your computer: **{nombre}** · {tamano}",
+    },
     escribeTuNavegador: {
       es: "{tamano} · lo escribe tu navegador, no un servidor",
       en: "{tamano} · written by your browser, not by a server",

@@ -178,6 +178,11 @@ export const REGRESO = {
     // El caso de Excel se dice aquí y no se soporta a medias: `.xlsx` es un zip y PapaParse lo lee
     // como texto binario, así que el fallo llega como archivo ilegible o vacío según el caso.
     fallos: {
+      // S8: una columna devuelta con más valores distintos que los que se pueden guardar.
+      "alto-volumen-devuelto-no-cabe": {
+        es: "Una columna del archivo devuelto tiene demasiados valores distintos para restaurarlo por pasadas. Divide el archivo en partes y restaura cada una con la misma bóveda.",
+        en: "A column of the returned file has too many distinct values to restore it in passes. Split the file into parts and restore each one with the same vault.",
+      },
       "archivo-vacio": {
         es: "Ese archivo no tiene filas que restaurar. Comprueba que sea el que te devolvieron y que no esté vacío.",
         en: "That file has no rows to restore. Check that it is the one you were sent back, and that it is not empty.",

@@ -48,6 +48,17 @@ import {
   useTaller,
 } from "@/lib/sesion";
 import type { Informe, MotivoDeError } from "@/workers/contrato";
+import { nombreDelArchivoAnonimizado } from "@/engine/csv";
+
+/**
+ * S8: el selector de archivo del sistema (Chrome, Edge). Se pide DENTRO del clic, que es lo que el
+ * navegador exige, y lo único que se hace con lo que devuelve es pasárselo al worker.
+ */
+type ConSelectorDeArchivo = Window & {
+  showSaveFilePicker?: (opciones: {
+    suggestedName: string;
+  }) => Promise<FileSystemFileHandle>;
+};
 
 /**
  * El certificado se carga cuando hace falta, no al abrir el taller.
@@ -83,6 +94,8 @@ const FALLOS: Partial<Record<MotivoDeError, Texto>> = {
   "sin-tabla": TRANSFORMAR.taller.fallo.sinTabla,
   "sin-llave": TRANSFORMAR.taller.fallo.sinLlave,
   "transformacion-fallida": TRANSFORMAR.taller.fallo.transformacionFallida,
+  "alto-volumen-boveda-no-cabe": TRANSFORMAR.taller.fallo.bovedaNoCabe,
+  "alto-volumen-reparto-no-cabe": TRANSFORMAR.taller.fallo.repartoNoCabe,
 };
 
 export function Taller({ informe }: { informe: Informe }) {
@@ -90,6 +103,25 @@ export function Taller({ informe }: { informe: Informe }) {
   const taller = useTaller();
   const router = useRouter();
   const [politica, setPolitica] = useState<Politica>(POLITICA_VACIA);
+  const [haySelector] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof (window as ConSelectorDeArchivo).showSaveFilePicker === "function",
+  );
+  const altoVolumen = informe.modo === "alto-volumen";
+  const elegirDestino = async (hashDePolitica: string) => {
+    const elegir = (window as ConSelectorDeArchivo).showSaveFilePicker;
+    if (!elegir) return;
+    try {
+      prepararArchivo(
+        await elegir.call(window, {
+          suggestedName: nombreDelArchivoAnonimizado(hashDePolitica),
+        }),
+      );
+    } catch {
+      // Cerró el selector sin elegir: no pasa nada, el botón sigue ahí.
+    }
+  };
   const columnasReversibles = politica.reglas
     .filter((regla) => esReversible(regla.tecnica))
     .map((regla) => regla.columna);
@@ -228,7 +260,14 @@ export function Taller({ informe }: { informe: Informe }) {
               suprimidas={hecha.suprimidas}
               hashDePolitica={hecha.hashDePolitica}
               idiomaDelTrabajo={hecha.idioma}
-              onPreparar={prepararArchivo}
+              onPreparar={() => prepararArchivo()}
+              altoVolumen={altoVolumen}
+              enDisco={taller.archivoEnDisco}
+              onElegirDestino={
+                altoVolumen && haySelector
+                  ? () => void elegirDestino(hecha.hashDePolitica)
+                  : undefined
+              }
             />
             {/* El archivo no puede salir solo. Un CSV anonimizado sin un documento que diga qué se
                 le hizo obliga a quien lo recibe a creer; y el reporte del diagnóstico, que describe
@@ -242,7 +281,7 @@ export function Taller({ informe }: { informe: Informe }) {
                 vez de enseñar un botón muerto. */}
             <DescargaDelCertificado
               informe={informe}
-              archivo={taller.archivo}
+              archivo={taller.archivo ?? taller.archivoEnDisco}
               huellaDeSalida={taller.huellaDeSalida}
               tratamiento={{
                 balance: hecha.balance,
