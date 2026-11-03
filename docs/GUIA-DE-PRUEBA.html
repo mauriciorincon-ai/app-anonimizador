@@ -265,7 +265,7 @@
         margin-left: 4px;
       }
       /* GATE CORTO ⭐⭐ — el subconjunto de las ⭐ que NINGUNA automatización puede juzgar.
-     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 36 ⭐ incluyen
+     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 42 ⭐ incluyen
      comprobaciones que una máquina SÍ puede hacer y que están en el gate para que el usuario las
      haga con SUS herramientas (recalcular una huella, mirar la pestaña Red). Esas se quedan fuera
      del corto a propósito, porque el CI ya las cubre por otro camino. Lo que queda son las seis
@@ -280,7 +280,7 @@
       }
 
       /* MODO RECORRIDO — solo con el filtro ⭐ activo.
-     El gate del ciclo son 36 pruebas repartidas por los bloques que nacieron en siete sprints
+     El gate del ciclo son 42 pruebas repartidas por los bloques que nacieron en ocho sprints
      distintos. Sin esto se leen como cuatro listas pegadas: el mismo chip de origen que sirve para
      la regresión («Heredada · S1») sugiere un orden que NO es el del recorrido. En modo recorrido
      cada prueba visible recibe su número de PARADA y la ruta donde ocurre, así que el orden a la
@@ -383,32 +383,31 @@
     <div class="pagina">
       <header>
         <p class="eyebrow">
-          Velo · Guía de prueba viva y acumulativa · Sprint 007 · 2 de noviembre
+          Velo · Guía de prueba viva y acumulativa · Sprint 008 · 2 de noviembre
           de 2026
         </p>
         <h1>Guía de prueba</h1>
         <p class="suave">
           Todas las pruebas vigentes de Velo: las
-          <strong>150 de los sprints 001 a 006</strong> —que ahora son
-          regresión— más las <strong>29</strong> que trae el Sprint 007, el de
-          la protección a la medida: la limpieza de metadatos de las fotos
-          <strong>HEIC</strong>, el <strong>regreso de un JSON</strong>, la
-          <strong>generalización óptima</strong> («Cómo llegar al k», con sus
-          escaleras oficiales y sus fuentes en el certificado) y el
-          <strong>ruido con garantía</strong> (privacidad diferencial local:
-          Laplace y respuesta aleatorizada, más una perturbación sin garantía
-          formal; con el ε y su alcance en pantalla, en el certificado y en la
-          bitácora). Son <strong>179 pruebas</strong>. Cada línea lleva su
+          <strong>179 de los sprints 001 a 007</strong> —que ahora son
+          regresión— más las <strong>25</strong> que trae el Sprint 008, el de
+          los archivos enormes y la política europea: el
+          <strong>modo de alto volumen</strong> (un CSV de más de 20 millones de
+          celdas se lee por pasadas, se guarda donde tú eliges y vuelve igual al
+          original) y la <strong>política RGPD</strong> (ocho documentos
+          confirmados por su algoritmo oficial, seudónimos que conservan el
+          formato de su país, y un certificado que dice «seudonimizado» y nunca
+          «anónimo»). Son <strong>204 pruebas</strong>. Cada línea lleva su
           origen. Las casillas se guardan solas en este navegador, y el guardado
           se versiona por sprint: nada de lo que marcaste antes aparece marcado
           aquí, porque una regresión sin correr no está probada.
         </p>
         <p class="chica">
           <strong>Dos gates, y el corto existe para que el largo no gane</strong
-          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 36 pruebas · ~110
+          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 42 pruebas · ~125
           min: el acumulado completo —8 del S1, 6 del S2, 8 del S3, 4 del S4, 2
-          del S5, 4 del S6 y 4 del S7— como
-          <strong>un solo recorrido numerado</strong>, no como siete listas
+          del S5, 4 del S6, 4 del S7 y 6 del S8— como
+          <strong>un solo recorrido numerado</strong>, no como ocho listas
           pegadas. El <strong>Gate corto ⭐⭐ son 6 paradas · ~20 min</strong>:
           el subconjunto donde el veredicto
           <strong>solo puede ser humano</strong>
@@ -423,35 +422,43 @@
           —hay otras apps en curso—. Un gate que nunca se corre no protege nada,
           y un gate de 90 minutos compite con el resto de la vida. El corto no
           lo reemplaza ni lo cancela: es <strong>el piso</strong>, lo que se
-          pierde de verdad si el largo no ocurre nunca. Las 30 pruebas que deja
+          pierde de verdad si el largo no ocurre nunca. Las 36 pruebas que deja
           fuera <strong>no se borran</strong> —siguen enteras en el filtro ⭐— y
           son en su mayoría <em>compruébalo tú</em>: valiosas para que la
           confianza sea tuya, pero <strong>ya verificadas por la CI</strong> por
           otro camino (recalcular la huella, la pestaña Red, el reporte sin
-          wifi, el <code>.velo</code> ilegible). Todo eso lo respalda la CI
-          —<strong>1.996 pruebas unitarias, 258 e2e</strong>, axe en dos temas y
-          dos tamaños, Lighthouse ≥90 en las 4 categorías de las
-          <strong>cinco rutas</strong>— y se corre en pases completos.
+          wifi, el <code>.velo</code> ilegible). Todo eso lo respalda la CI —axe
+          en dos temas y dos tamaños, Lighthouse ≥90 en las 4 categorías de las
+          <strong>cinco rutas</strong>, y las pruebas unitarias y e2e (las
+          cifras exactas de este sprint las trae su cierre; al cierre del S7
+          eran <strong>1.996 y 258</strong>)— y se corre en pases completos.
         </p>
         <p class="chica">
           <strong
-            >Este sprint estrena cuatro pruebas que solo puedes hacer
-            tú.</strong
+            >Este sprint estrena seis pruebas que solo puedes hacer tú.</strong
           >
-          Una es de <em>ver</em>: que
-          <strong>la foto HEIC limpia se ve igual y no sale girada</strong>; la
-          CI comprueba que los píxeles son los mismos, no cómo se ven en tu
-          visor. Otra es de <em>comprobar con tus manos</em>:
-          <strong>que el JSON restaurado es el original, byte por byte</strong>
-          —con <code>shasum</code> y <code>cmp</code>, sobre un archivo que tú
-          trajiste de vuelta—. Y dos son de <em>comprensión</em>:
+          Dos son de <em>comprobar con tus manos</em> lo que la CI no puede:
           <strong
-            >si la tabla de los dos caminos hacia el k te deja elegir, y qué
-            dice el ε y qué no</strong
+            >que el archivo se escribe donde elegiste con el selector del
+            sistema, con la red en cero</strong
           >
-          — la CI sabe que la cifra y su alcance están en pantalla, no si se
-          leen como lo que son. Las pruebas con comandos (<code>shasum</code>,
-          <code>grep</code>) están también, sin ⭐ extra.
+          —ese selector no se puede automatizar—, y
+          <strong
+            >que el archivo de 21 millones de celdas vuelve idéntico al
+            original</strong
+          >
+          —con <code>shasum</code>, sobre un archivo que tú trajiste de vuelta—.
+          Dos son de <em>comprensión</em>:
+          <strong
+            >si el aviso «Este archivo se leyó por pasadas» deja claro qué
+            cambia, y si la advertencia de la política RGPD se lee como lo que
+            es</strong
+          >
+          — una lectura de Velo, no un sello. Y dos son de
+          <em>abrir con tus herramientas</em>
+          <strong>el archivo seudonimizado y su certificado</strong>. Las
+          pruebas con comandos (<code>shasum</code>, <code>grep</code>) están
+          también, sin ⭐ extra.
         </p>
         <div class="url-caja">
           <p class="eyebrow" style="margin: 0 0 6px">URL de prueba</p>
@@ -499,7 +506,9 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
             Los archivos de JSON, PDF e imágenes (S6) se generan en sus propios
             bloques, <strong>AB</strong> y <strong>AC</strong>; los del S7 —la
             foto HEIC, el JSON Lines del regreso y el archivo de las escaleras—,
-            en <strong>AD</strong>, <strong>AE</strong> y <strong>AF</strong>.
+            en <strong>AD</strong>, <strong>AE</strong> y <strong>AF</strong>;
+            los del S8 —el CSV ancho del alto volumen y el europeo de la
+            política RGPD—, en <strong>AH</strong> y <strong>AI</strong>.
           </p>
         </div>
       </header>
@@ -516,7 +525,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
         >
           <button type="button" data-filtro="todo" class="activo">Todo</button>
           <button type="button" data-filtro="cambios">
-            Lo que cambió en S7
+            Lo que cambió en S8
           </button>
           <button type="button" data-filtro="minimo">
             Gate mínimo ⭐ del ciclo
@@ -529,13 +538,14 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
         <p id="recorrido-largo">
           <strong
             >El recorrido del ciclo —
-            <span id="recorrido-total">36</span> paradas · ~110 min.</strong
+            <span id="recorrido-total">42</span> paradas · ~125 min.</strong
           >
           Un solo camino, en el orden en que se hace: la aduana → el diagnóstico
           → el taller → el regreso → la bitácora, y al final el juicio del
-          conjunto. Tras él vienen los bloques que sumaron los sprints 5, 6 y 7:
-          idioma, JSON, PDF e imágenes, y la protección a la medida (HEIC, el
-          regreso de un JSON, la generalización óptima y el ruido).
+          conjunto. Tras él vienen los bloques que sumaron los sprints 5, 6, 7 y
+          8: idioma, JSON, PDF e imágenes, la protección a la medida (HEIC, el
+          regreso de un JSON, la generalización óptima y el ruido), y los
+          archivos enormes y la política RGPD.
         </p>
         <div id="recorrido-corto" hidden>
           <p>
@@ -550,7 +560,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
             archivo, una pasada, seis paradas.
           </p>
           <p class="chica suave">
-            <strong>Lo que deja fuera, y por qué:</strong> las otras 30 ⭐ son
+            <strong>Lo que deja fuera, y por qué:</strong> las otras 36 ⭐ son
             en su mayoría <em>compruébalo tú</em> —recalcular la huella SHA-256,
             mirar la pestaña Red, abrir el <code>.velo</code> con un editor,
             abrir el reporte sin wifi—. Valen mucho, pero
@@ -2675,7 +2685,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="mejorado">
+          <li data-origen="heredado">
             <input type="checkbox" id="ab4" /><label for="ab4"
               >Pulsa «Transformar este archivo», pon
               <strong>Seudónimo (hex)</strong> en
@@ -2688,7 +2698,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
               archivo se llama <strong>velo-anonimizado-</strong> + 8 caracteres
               + <strong>.json</strong>, y no se ofrece guardar ninguna bóveda,
               porque no pediste ninguna.
-              <span class="origen origen-mejorado">Corregida · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
           <li data-origen="heredado">
@@ -3048,7 +3058,7 @@ node docs/kit-de-prueba/generador.mjs --formato pdf --perfil firmado        --se
           unas coordenadas inventados.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ad1" /><label for="ad1"
               >Suelta <code>tmp/foto-s42.heic</code> (una imagen diminuta, de
               cuatro bandas de color, a propósito). La zona de carga lo acepta
@@ -3066,10 +3076,10 @@ node docs/kit-de-prueba/generador.mjs --formato pdf --perfil firmado        --se
               busca <code>udes:name</code> y <code>udes:description</code>: son
               la descripción de usuario que un HEIC guarda aparte, y también se
               enseñan.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ad2" /><label for="ad2"
               >En <strong>«Qué se quita y qué se conserva»</strong>: lo que se
               quita incluye el
@@ -3088,10 +3098,10 @@ node docs/kit-de-prueba/generador.mjs --formato pdf --perfil firmado        --se
               propiedad, así que aquí no hace falta el EXIF mínimo del JPEG. La
               nota repite que la limpieza es por <strong>lista blanca</strong>:
               lo que Velo no sabe nombrar se quita igual.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ad3" /><label for="ad3"
               >Pulsa <strong>«Limpiar este archivo»</strong> y luego
               <strong>«Limpiar»</strong>. Verás «Reescribiendo el archivo sin
@@ -3111,10 +3121,10 @@ node docs/kit-de-prueba/generador.mjs --formato pdf --perfil firmado        --se
               primeros caracteres del SHA-256 que imprimió el generador +
               <strong>.heic</strong>. Sigue siendo un HEIC: Velo no lo convierte
               a otro formato.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="ad4" /><label for="ad4"
               ><strong>Juicio humano — ¿es la misma foto?</strong> Abre
               <code>tmp/foto-s42.heic</code> y la copia limpia, una al lado de
@@ -3131,11 +3141,11 @@ node docs/kit-de-prueba/generador.mjs --formato pdf --perfil firmado        --se
               cámara, ni ubicación, ni autor, ni fechas. Una diferencia de
               color, de giro o de nitidez es un hallazgo grave. La CI comprueba
               que los píxeles son los mismos; no sabe cómo se ve en tu visor.
-              <span class="origen origen-nuevo">Nuevo · S7</span>
+              <span class="origen origen-heredada">Heredada · S7</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ad5" /><label for="ad5"
               >Mira la vista previa del
               <strong>certificado de la limpieza</strong> y descárgalo (<code
@@ -3153,10 +3163,10 @@ node docs/kit-de-prueba/generador.mjs --formato pdf --perfil firmado        --se
               <strong>0 en la copia limpia y en el certificado</strong>: el
               certificado nombra los campos con muestras enmascaradas, nunca el
               valor completo.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ad6" /><label for="ad6"
               >Haz <code>cp tmp/foto-s42.heic tmp/foto-disfrazada.jpg</code> y
               suelta <code>foto-disfrazada.jpg</code>. El diagnóstico dice
@@ -3165,7 +3175,7 @@ node docs/kit-de-prueba/generador.mjs --formato pdf --perfil firmado        --se
                 >«La extensión del archivo no coincide con su contenido»</strong
               >: Velo lo trató por lo que es. Limpia: la copia sale como
               <strong>velo-limpio-….heic</strong>, no <code>.jpg</code>.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
         </ul>
@@ -3236,7 +3246,7 @@ node docs/kit-de-prueba/generador.mjs --formato heic --seed 42 --salida tmp/foto
           ida, y la vuelta en una pestaña nueva.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ae1" /><label for="ae1"
               >Suelta <code>tmp/anidado.jsonl</code> (JSON Lines: un registro
               por línea). El diagnóstico dice
@@ -3248,10 +3258,10 @@ node docs/kit-de-prueba/generador.mjs --formato heic --seed 42 --salida tmp/foto
               <strong>activa</strong>: ya no hay una nota que diga que un JSON
               es «solo ida». Márcala; aparece el aviso de que, al transformar,
               vas a poder <strong>guardar una bóveda</strong>.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ae2" /><label for="ae2"
               >Deriva la llave, pulsa «Transformar», «Preparar el archivo» y
               guarda. El archivo se llama <strong>velo-anonimizado-</strong> + 8
@@ -3262,10 +3272,11 @@ node docs/kit-de-prueba/generador.mjs --formato heic --seed 42 --salida tmp/foto
               <strong><code>.velo</code></strong
               >. Los tres avisos son los de siempre: la frase no se recupera, la
               bóveda es tan sensible como el original, y conviene guardarla
-              aparte. <span class="origen origen-nuevo">Nuevo · S7</span></label
+              aparte.
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ae3" /><label for="ae3"
               >Comprueba que lo entregado no lleva los originales:
               <code
@@ -3275,10 +3286,10 @@ node docs/kit-de-prueba/generador.mjs --formato heic --seed 42 --salida tmp/foto
               da un número mayor que 0 en el original y
               <strong>0 en el anonimizado</strong>. Es un correo inventado por
               el generador; con cualquier otro del original pasa lo mismo.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ae4" /><label for="ae4"
               ><strong
                 >Llega como llegaría el trabajo devuelto, en otra
@@ -3298,10 +3309,11 @@ node docs/kit-de-prueba/generador.mjs --formato heic --seed 42 --salida tmp/foto
               <strong
                 >todas las celdas que la bóveda cubría volvieron a su valor
                 original</strong
-              >. <span class="origen origen-nuevo">Nuevo · S7</span></label
+              >.
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="ae5" /><label for="ae5"
               ><strong>Compruébalo tú: es el original, byte por byte.</strong>
               Pulsa «Preparar el archivo restaurado» y «Guardar el archivo
@@ -3322,11 +3334,11 @@ node docs/kit-de-prueba/generador.mjs --formato heic --seed 42 --salida tmp/foto
               compacto, un registro por línea: un original con sangrías o
               espacios vuelve con la misma estructura y los mismos valores, pero
               con los espacios normalizados. El paso siguiente es el caso real.
-              <span class="origen origen-nuevo">Nuevo · S7</span>
+              <span class="origen origen-heredada">Heredada · S7</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ae6" /><label for="ae6"
               ><strong>Haz de tercero con un JSON.</strong> Abre
               <code>velo-anonimizado-….jsonl</code> en un editor de texto y
@@ -3342,10 +3354,10 @@ node docs/kit-de-prueba/generador.mjs --formato heic --seed 42 --salida tmp/foto
               sitio donde lo pusiste, y la edad que cambiaste
               <strong>sigue como la dejaste</strong>. Velo devolvió lo suyo y no
               tocó lo tuyo.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ae7" /><label for="ae7"
               >Lo que Velo no puede leer como archivo devuelto, lo dice. Suelta
               <code>tmp/roto.json</code> (el de AB): el mensaje es
@@ -3356,7 +3368,7 @@ node docs/kit-de-prueba/generador.mjs --formato heic --seed 42 --salida tmp/foto
               Suelta <code>tmp/clinico.xlsx</code>: dice que el archivo devuelto
               tiene que ser CSV o JSON, y que si te lo devolvieron en Excel lo
               abras y lo guardes como CSV.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
         </ul>
@@ -3403,7 +3415,7 @@ printf '[\n{"a": 1,\n"b": 2},\n{"a": 3,\n"b": }\n]\n' &gt; tmp/roto.json</pre>
           sexo y un diagnóstico, todo inventado.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="af1" /><label for="af1"
               >Suelta <code>tmp/jerarquias.csv</code> y ve al taller. Pon
               <strong>«Generalizar hasta alcanzar el k»</strong> en
@@ -3414,10 +3426,10 @@ printf '[\n{"a": 1,\n"b": 2},\n{"a": 3,\n"b": }\n]\n' &gt; tmp/roto.json</pre>
               <strong>«Cómo llegar al k»</strong>, con una frase por camino y
               dos opciones: <strong>«Mondrian (el de siempre)»</strong>, que es
               la marcada, y <strong>«La generalización óptima»</strong>.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="af2" /><label for="af2"
               >En <strong>«La escalera de cada columna»</strong>, cada columna
               trae una propuesta que sale de su tipo y su nombre, nunca de sus
@@ -3439,10 +3451,10 @@ printf '[\n{"a": 1,\n"b": 2},\n{"a": 3,\n"b": }\n]\n' &gt; tmp/roto.json</pre>
               <strong>«ℓ distinta (opcional) sobre diagnostico»</strong>, con su
               nota: pide que en cada grupo haya al menos ℓ valores distintos del
               dato sensible.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="af3" /><label for="af3"
               ><strong>Juicio humano — elegir con la tabla.</strong> Pulsa
               <strong>«Comparar los dos caminos»</strong>. Aparece
@@ -3465,11 +3477,11 @@ printf '[\n{"a": 1,\n"b": 2},\n{"a": 3,\n"b": }\n]\n' &gt; tmp/roto.json</pre>
               y no del archivo entero? <strong>(3)</strong> ¿te sientes en
               condiciones de elegir, o tuviste que releer? Si la tabla se lee
               como un tablero de números y no como una decisión, es un hallazgo.
-              <span class="origen origen-nuevo">Nuevo · S7</span>
+              <span class="origen origen-heredada">Heredada · S7</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="af4" /><label for="af4"
               >Elige <strong>«La generalización óptima»</strong>: la tabla se
               queda, porque compara los dos caminos y no depende de cuál elijas.
@@ -3478,10 +3490,11 @@ printf '[\n{"a": 1,\n"b": 2},\n{"a": 3,\n"b": }\n]\n' &gt; tmp/roto.json</pre>
               cosa y Velo no las deja a la vista. Pulsa «Comparar los dos
               caminos» otra vez: la tabla vuelve y trae una fila nueva,
               <strong>«ℓ distinta (pedida: 2)»</strong>, con lo que alcanzó cada
-              camino. <span class="origen origen-nuevo">Nuevo · S7</span></label
+              camino.
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="af5" /><label for="af5"
               >Pulsa «Transformar» (aquí no hace falta llave: no hay
               seudónimos), «Preparar el archivo» y guarda
@@ -3498,10 +3511,10 @@ printf '[\n{"a": 1,\n"b": 2},\n{"a": 3,\n"b": }\n]\n' &gt; tmp/roto.json</pre>
               >, nunca unos con uno y otros con otro. La generalización óptima
               no borra ninguna fila (el archivo tiene las mismas 2.000 más el
               encabezado).
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="af6" /><label for="af6"
               >Descarga el certificado («Descargar el certificado»,
               <code>velo-certificado-….html</code>). Tiene una sección
@@ -3520,10 +3533,10 @@ printf '[\n{"a": 1,\n"b": 2},\n{"a": 3,\n"b": }\n]\n' &gt; tmp/roto.json</pre>
               A.C.). Compruébalo:
               <code>grep -c "gdxc-w37w" velo-certificado-….html</code> da un
               número mayor que 0.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="af7" /><label for="af7"
               >Genera <code>tmp/jerarquias-500k.csv</code> y repite el recorrido
               hasta «Comparar los dos caminos». El botón dice «Comparando…» y la
@@ -3533,7 +3546,7 @@ printf '[\n{"a": 1,\n"b": 2},\n{"a": 3,\n"b": }\n]\n' &gt; tmp/roto.json</pre>
               tanto: no se congela, porque corre en segundo plano. Ten presente
               que la búsqueda corre <em>dos veces</em>: al comparar y al
               transformar.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
         </ul>
@@ -3592,7 +3605,7 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
           del proyecto. Usa <code>tmp/jerarquias.csv</code> del bloque anterior.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ag1" /><label for="ag1"
               >En el taller pon <strong>«Ruido de Laplace (ε)»</strong> en
               <code>edad</code>. Debajo del menú aparecen sus parámetros: el
@@ -3607,10 +3620,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               >: el ε y su alcance, siempre juntos. Cambia el ε a 0,1: la nota
               se actualiza y recuerda que, a menor ε, más ruido. No hay casilla
               de «Poder deshacerlo con una bóveda»: el ruido no se deshace.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ag2" /><label for="ag2"
               >Vuelve el ε de <code>edad</code> a 1. Pon
               <strong>«Respuesta aleatorizada (ε)»</strong> en
@@ -3621,18 +3634,19 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               <strong
                 >esos valores posibles salen del archivo: que un valor aparezca
                 no está protegido por ε</strong
-              >. <span class="origen origen-nuevo">Nuevo · S7</span></label
+              >.
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ag3" /><label for="ag3"
               >Escribe una frase de paso del proyecto y pulsa
               <strong>«Derivar la llave»</strong>: el ruido sale de la llave, y
               sin ella no se transforma. Pulsa «Transformar».
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="ag4" /><label for="ag4"
               ><strong>Juicio humano — ¿qué dice ε y qué no?</strong> Debajo del
               balance hay un panel <strong>aparte</strong>, con la etiqueta
@@ -3663,11 +3677,11 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               escribe redondeado <em>hacia arriba</em>: nunca promete más de lo
               que hay. Si tuviste que releer, o si una frase promete más que su
               número, es un hallazgo.
-              <span class="origen origen-nuevo">Nuevo · S7</span>
+              <span class="origen origen-heredada">Heredada · S7</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ag5" /><label for="ag5"
               >Pulsa «Preparar el archivo» y guarda
               <code>velo-anonimizado-….csv</code>. Pulsa «Transformar» otra vez,
@@ -3682,10 +3696,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               huella es <strong>otra</strong>, porque otro ε es otro azar,
               independiente del primero (si no, restando las dos entregas se
               despejaría la edad).
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ag6" /><label for="ag6"
               >Descarga el certificado. Trae la misma sección, con la etiqueta
               «Ruido con garantía» y el título «Privacidad diferencial local»:
@@ -3699,10 +3713,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               número mayor que 0. En ningún sitio del documento hay una frase
               que prometa privacidad o anonimato absolutos, y se abre con el
               wifi apagado.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ag7" /><label for="ag7"
               >Pulsa <strong>«Anotar en mi bitácora»</strong>, guárdala con una
               frase de paso y abre <code>/bitacora</code> con ese archivo. La
@@ -3711,10 +3725,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               <strong>«ε = 3 por fila»</strong> y los mecanismos entre
               paréntesis. Guarda el ε y los mecanismos, <strong>no</strong> los
               nombres de las columnas con ruido.
-              <span class="origen origen-nuevo">Nuevo · S7</span></label
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ag8" /><label for="ag8"
               >Vuelve al taller y cambia <code>edad</code> a
               <strong>«Perturbar ±%»</strong>, con 10. La nota dice
@@ -3737,10 +3751,11 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               >
               y ya no hay «ε por fila». En la bitácora, esa entrada dice
               <strong>«Perturbación»</strong>, no «Privacidad diferencial
-              local». <span class="origen origen-nuevo">Nuevo · S7</span></label
+              local».
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ag9" /><label for="ag9"
               >Carga <code>tmp/clinico-3000.csv</code> y pon
               <strong>«Respuesta aleatorizada (ε)»</strong> en
@@ -3755,7 +3770,8 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
                 >«no se aplicó: N valores distintos, más de 64; la columna salió
                 intacta»</strong
               >. Velo prefiere decir que no pudo a aparentar un ruido que no
-              puso. <span class="origen origen-nuevo">Nuevo · S7</span></label
+              puso.
+              <span class="origen origen-heredada">Heredada · S7</span></label
             >
           </li>
         </ul>
@@ -3780,6 +3796,724 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
             dos corridas iguales (mismo archivo, misma llave) que den archivos
             distintos; y un valor original completo en el panel o en el
             certificado.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">AH</span>
+          <h2>Archivos enormes: el modo de alto volumen</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~35 min, más ~25 si
+          haces la medida opcional del final · hasta el S7 Velo guardaba la
+          tabla entera en la memoria de la pestaña. Desde el S8, un CSV que pasa
+          de <strong>20.000.000 de celdas</strong> (filas × columnas) se lee
+          <strong>por pasadas</strong>, sin tenerlo entero en memoria, y lo que
+          sale es lo que saldría si cupiera: mismas técnicas, mismos bytes. El
+          archivo de abajo no es realista, es ancho a propósito —210 columnas ×
+          100.000 filas, unos 42 MB— para cruzar el umbral en segundos.
+          Necesitas dos sesiones: la ida, y la vuelta en una pestaña nueva. Para
+          el paso de «Elegir dónde guardarlo» usa
+          <strong>Chrome o Edge</strong>; Firefox y Safari no tienen ese
+          selector, y ese es justo el otro camino que se prueba más abajo.
+        </p>
+        <ul class="pasos">
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ah1" /><label for="ah1"
+              >Genera <code>tmp/ancho-100k.csv</code> (kit de abajo) y suéltalo
+              en la portada. Mientras lee, la etapa dice
+              <strong>«Modo alto volumen: el archivo se lee por pasadas»</strong
+              >. Al terminar, el diagnóstico dice
+              <strong>«100.000 filas · 210 columnas»</strong> y, antes del panel
+              del riesgo, hay un panel con la etiqueta
+              <strong>«Alto volumen»</strong> y el título
+              <strong>«Este archivo se leyó por pasadas»</strong>. La tabla de
+              columnas sigue ahí, con las 210 filas y cada cifra entera: en este
+              archivo ninguna columna pasa de los topes, así que ninguna dice
+              «más de…». <code>cedula_titular</code> es la columna personal; las
+              209 <code>dato_…</code> no lo son.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="ah2" /><label for="ah2"
+              ><strong>Juicio humano — el aviso, leído como un extraño.</strong>
+              Lee el panel «Este archivo se leyó por pasadas» sin ayuda y
+              responde: <strong>(1)</strong> ¿por qué se leyó por pasadas? (Pasa
+              de 20.000.000 de celdas, lo que Velo guarda en memoria; no es una
+              medida de tu equipo.) <strong>(2)</strong> ¿el riesgo de abajo es
+              una estimación? (No: sale de todas las filas y es exacto.)
+              <strong>(3)</strong> ¿qué cambia? Debe leerse que la clasificación
+              mira las <strong>primeras 5.000 filas</strong>, que el consejero
+              combina solo los cuasi-identificadores y que lo que el archivo
+              pierde al tratarlo <strong>no se mide</strong>, las tres con el
+              mismo peso que el resto de la pantalla y no escondidas. Después
+              mira el panel del riesgo: en este archivo dice
+              <strong>«No hay ningún cruce que medir»</strong>, porque ninguna
+              columna es cuasi-identificador, y aclara que eso no vuelve anónimo
+              el archivo. (La cifra de riesgo con cruces la ves en la medida
+              opcional del final.) Si «por pasadas» te suena a «aproximado», o
+              si la lista de lo que cambia pasa desapercibida, es un hallazgo.
+              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ah3" /><label for="ah3"
+              >Pulsa «Transformar este archivo». En el taller pulsa
+              <strong>«Habeas Data (Colombia)»</strong>: las 209
+              <code>dato_…</code> quedan en «Dejar como está» y
+              <code>cedula_titular</code> en «Seudónimo de cédula». Cambia la
+              técnica de <code>cedula_titular</code> a
+              <strong>«Seudónimo (hex)»</strong> y marca
+              <strong>«Poder deshacerlo con una bóveda»</strong> (con esta
+              política no viene marcada). Por qué hex: el seudónimo con formato
+              de cédula tiene del orden de mil millones de valores posibles y,
+              con 100.000 cédulas distintas, unos cuantos pares chocarían y el
+              regreso los declararía ambiguos (el bloque <strong>U</strong> lo
+              muestra); el hexadecimal no, y por eso este archivo puede volver
+              idéntico. Escribe una frase de paso, pulsa
+              <strong>«Derivar la llave»</strong> y «Transformar». Tarda más que
+              un archivo normal, pero la página responde: corre en segundo
+              plano. Termina con el balance
+              <strong>«Qué cambió, y qué sigue igual»</strong>.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="ah4" /><label for="ah4"
+              ><strong
+                >Compruébalo tú: el archivo se escribe en tu disco, y la red no
+                ve nada.</strong
+              >
+              (Chrome o Edge.) Antes de empezar, abre las herramientas de
+              desarrollo (F12) → pestaña <strong>Red</strong> y limpia el
+              registro. En el panel <strong>«Llévate el archivo»</strong> el
+              botón dice <strong>«Elegir dónde guardarlo»</strong> —no «Preparar
+              el archivo»—, con la nota
+              <em
+                >«Es un archivo de alto volumen: Velo lo escribe por trozos
+                directamente en el archivo que elijas, sin armarlo entero en la
+                memoria de la pestaña. Nada sale de tu equipo.»</em
+              >
+              <strong>(1)</strong> Púlsalo y cierra el selector sin elegir nada:
+              no pasa nada, el botón sigue ahí y en tu carpeta no apareció
+              ningún archivo. <strong>(2)</strong> Púlsalo otra vez y elige una
+              carpeta: el nombre propuesto es
+              <strong>velo-anonimizado-</strong> + 8 caracteres +
+              <strong>.csv</strong>. Al terminar aparece
+              <strong>«✓ Guardado en tu equipo: velo-anonimizado-….csv»</strong>
+              con su tamaño, y ese archivo existe en la carpeta que elegiste y
+              pesa lo mismo que dice. <strong>(3)</strong> En la pestaña Red no
+              apareció ninguna petición nueva que salga del dominio de Velo ni
+              que lleve datos (como mucho, algún archivo de la propia
+              aplicación): los bytes fueron a tu disco y a ningún otro lado. Lo
+              único que la CI no puede hacer es abrir el selector del sistema;
+              por eso esta prueba es tuya.
+              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ah5" /><label for="ah5"
+              >Compruébalo con tus herramientas.
+              <code>wc -l velo-anonimizado-….csv</code> da
+              <strong>100001</strong> (el encabezado y las 100.000 filas). Y las
+              cédulas originales no están:
+              <code
+                >CED=$(sed -n 2p tmp/ancho-100k.csv | cut -d, -f1); grep -c
+                "$CED" tmp/ancho-100k.csv velo-anonimizado-….csv</code
+              >
+              da un número mayor que 0 en el original y
+              <strong>0 en el anonimizado</strong> (<code>$CED</code> es la
+              cédula inventada de la primera fila).
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ah6" /><label for="ah6"
+              >Más abajo está el paso de la bóveda, titulado
+              <strong>«La correspondencia para poder deshacerlo»</strong>. Su
+              nota dice <strong>«Hay una columna reversible»</strong> y que la
+              bóveda es un archivo cifrado con la correspondencia entre cada
+              seudónimo y su valor original. Escribe una frase de paso
+              <strong>distinta</strong> a la de la llave, pulsa «Cifrar y
+              preparar la bóveda» y «Guardar la bóveda»: el archivo termina en
+              <strong>.velo</strong> y dice que cubre una columna,
+              <code>cedula_titular</code>. Los tres avisos son los de siempre:
+              la bóveda lleva tus datos originales, sin la frase no hay
+              recuperación, y conviene que la frase sea otra.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ah7" /><label for="ah7"
+              >Pulsa <strong>«Descargar el certificado»</strong> y ábrelo
+              (<code>velo-certificado-….html</code>). En la sección de lo que el
+              archivo perdió (etiqueta «Lo que el archivo perdió», título «El
+              otro lado de la balanza») no hay cifras de bits: dice
+              <strong>«En este archivo no se midió»</strong>, explica que es un
+              archivo de alto volumen leído por pasadas y que medir lo que
+              perdió exige comparar las dos tablas enteras, y que
+              <strong
+                >el riesgo sí es exacto, pero esa cifra no se estima</strong
+              >. Compruébalo:
+              <code>grep -c "no se midió" velo-certificado-….html</code> da un
+              número mayor que 0. Y la huella de salida del certificado es la
+              del archivo que escribió el navegador:
+              <code
+                >grep -c "$(shasum -a 256 velo-anonimizado-….csv | cut -d' '
+                -f1)" velo-certificado-….html</code
+              >
+              da 1 o más.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ah8" /><label for="ah8"
+              ><strong>El otro camino de guardado.</strong> Abre una pestaña
+              nueva y repite desde soltar <code>tmp/ancho-100k.csv</code> hasta
+              «Transformar», con Firefox o Safari (no tienen selector de
+              destino) o con Chrome sin él: en la pantalla del diagnóstico,
+              antes de pulsar «Transformar este archivo», abre la consola (F12 →
+              Consola) y escribe a mano
+              <code>delete window.showSaveFilePicker</code>. Sigue con
+              «Transformar este archivo» y el resto del recorrido. Ahora la nota
+              del panel «Llévate el archivo» dice
+              <em
+                >«Es un archivo de alto volumen, y este navegador no deja elegir
+                un archivo de destino: Velo lo arma en la memoria de la pestaña
+                antes de guardarlo. Con un archivo muy grande puede no caber; en
+                Chrome o Edge se escribe por trozos.»</em
+              >, el botón es <strong>«Preparar el archivo»</strong> y después
+              aparece el enlace
+              <strong>«Guardar velo-anonimizado-….csv»</strong> con
+              <strong>«lo escribe tu navegador, no un servidor»</strong>. El
+              aviso va <em>antes</em> del botón: aquí es donde un archivo mucho
+              más grande puede no caber, y Velo lo dice antes de que pulses, no
+              después.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="ah9" /><label for="ah9"
+              ><strong
+                >Llega como llegaría el trabajo devuelto, en otra sesión, y
+                compruébalo: es el original, byte por byte.</strong
+              >
+              Con el archivo y la bóveda de la primera pasada (la de «Elegir
+              dónde guardarlo»), cierra la pestaña, abre una nueva y entra a
+              <code>/regreso</code>. Paso 1: abre la bóveda (el
+              <code>.velo</code> y su frase) y aparece
+              <strong>«Bóveda abierta»</strong>. Paso 2: elige
+              <code>velo-anonimizado-….csv</code> sin tocarlo y verás
+              <strong>«100.000 filas»</strong>. Paso 3: pulsa
+              <strong>«Restaurar los valores originales»</strong>: dice que
+              todas las celdas que la bóveda cubría volvieron a su valor
+              original. Pulsa «Preparar el archivo restaurado» y
+              <strong>«Guardar el archivo restaurado»</strong> (el restaurado
+              siempre se baja por el camino de la memoria, también en Chrome).
+              Se llama <strong>velo-restaurado-</strong> + 8 caracteres +
+              <strong>.csv</strong>. Ahora
+              <code
+                >shasum -a 256 tmp/ancho-100k.csv velo-restaurado-….csv</code
+              >
+              da <strong>dos huellas iguales</strong>, y
+              <code>cmp tmp/ancho-100k.csv velo-restaurado-….csv</code> no
+              imprime nada: 21 millones de celdas leídas por pasadas,
+              anonimizadas y devueltas, y el original sigue siendo el original.
+              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ah10" /><label for="ah10"
+              >Un JSON enorme sigue deteniéndose, y lo dice. Genera
+              <code>tmp/ancho-100k.jsonl</code> (unos 316 MB: el mismo perfil
+              como JSON Lines, 100.000 registros × 210 rutas son 21 millones de
+              celdas) y suéltalo. Velo no lo lee por pasadas, porque el alto
+              volumen es solo para CSV: dice
+              <strong
+                >«Ese JSON es más grande de lo que Velo puede tratar»</strong
+              >, que superó los límites —<strong>20.000.000 celdas</strong> en
+              total, registros por campos distintos— y qué hacer:
+              <strong>dividir el archivo en partes</strong> (en JSON Lines basta
+              con cortar entre líneas). No cita ningún trozo del archivo y puede
+              tardar unos segundos. Borra el archivo cuando termines.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ah11" /><label for="ah11"
+              ><strong>Opcional — la medida de referencia.</strong> Para quien
+              quiera ver el techo y tenga tiempo y varios GB libres: genera
+              <code>tmp/clinico-5m.csv</code> (5.000.000 de filas × 24 columnas,
+              ~1,36 GB; ocupa ese espacio en disco y tarda unas decenas de
+              segundos en generarse), suéltalo, aplica Habeas Data con una llave
+              y transforma. Mira: <strong>(1)</strong> el riesgo sigue siendo
+              exacto y lo dice: <strong>«Cifra exacta.»</strong> y «Se contó
+              registro por registro sobre tus 5.000.000 filas»;
+              <strong>(2)</strong> las columnas casi únicas (la cédula, por
+              ejemplo) dicen
+              <strong>«más de 1.048.576 valores distintos»</strong> en vez de
+              una cifra que no sería cierta; <strong>(3)</strong> si marcas
+              «Poder deshacerlo con una bóveda» en una de ellas, Velo no la
+              transforma y dice que tiene demasiados valores distintos para
+              guardar su bóveda en un archivo de alto volumen, y qué hacer (es
+              el límite declarado, no un fallo). En el Mac del autor (Chromium,
+              producción, guardado por el camino de la memoria) el diagnóstico
+              tardó 109 s, la transformación 283 s y la escritura 267 s, con un
+              pico de 4,9 GB de memoria de la pestaña (un techo, no la memoria
+              viva). Cierra otras pestañas antes y vigila el pico —en Chrome,
+              Shift+Esc abre su administrador de tareas—:
+              <strong>no debe pasar de los varios GB libres de tu equipo</strong
+              >. Con Chrome o Edge, «Elegir dónde guardarlo» evita armar 1,3 GB
+              en la memoria. Si tu equipo es más chico y el navegador cierra la
+              pestaña, anota el momento: es el límite del equipo, y Velo no lo
+              estima ni lo esconde.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+        </ul>
+        <div class="kit">
+          <p>
+            <strong>Kit de prueba:</strong> el perfil <code>ancho</code> trae
+            una cédula y 209 columnas de un dígito, todo inventado; el
+            <code>clinico</code> es el de siempre. (<code
+              >pnpm kit:generar --</code
+            >
+            es lo mismo que <code>node docs/kit-de-prueba/generador.mjs</code>.)
+          </p>
+          <pre>
+pnpm kit:generar -- --filas 100000  --seed 42 --perfil ancho --salida tmp/ancho-100k.csv
+pnpm kit:generar -- --filas 100000  --seed 42 --perfil ancho --formato jsonl --salida tmp/ancho-100k.jsonl
+pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clinico-5m.csv</pre>
+          <p class="chica suave" style="margin: 6px 0 0">
+            Con 100.000 filas × 210 columnas son 21 millones de celdas, apenas
+            sobre el tope de 20 millones. El tope es una constante del programa,
+            no una medida de tu equipo: el mismo archivo toma el mismo camino en
+            cualquier computador. El archivo realista es el de 5 millones de
+            filas del último paso.
+          </p>
+        </div>
+        <div class="diferido">
+          <p>
+            <strong>Pendiente de decisión del dueño (no descartado):</strong> el
+            alto volumen para JSON (hoy un JSON de más de 20 millones de celdas
+            se detiene con su tope). También sigue pendiente bajar el pico de
+            memoria (4,9 GB a 5 millones de filas). Y hay límites que no son una
+            decisión: Excel conserva su tope de 150 MB, el archivo restaurado se
+            arma en memoria, y en este modo no se miden la utilidad ni las
+            colisiones de seudónimo.
+          </p>
+        </div>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> una cifra de alto volumen
+            presentada como del archivo entero cuando sale de las primeras 5.000
+            filas; una columna que no cupo sin su «más de N»; un riesgo estimado
+            presentado como exacto; el selector de destino que deja un archivo a
+            medias al cancelar o que genera tráfico; un restaurado que no sea el
+            original byte por byte; un certificado de alto volumen con una cifra
+            de utilidad inventada; y un JSON enorme que se procese en silencio o
+            falle sin decir qué hacer.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">AI</span>
+          <h2>La política RGPD: seudonimizado, no anónimo</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> · ~30 min · la tercera
+          política de fábrica, para datos de la Unión Europea. Velo hace lo que
+          puede hacer un programa que solo ve una tabla:
+          <strong>seudonimiza</strong> los identificadores (con el formato de su
+          país), <strong>quita</strong> las categorías especiales y las
+          condenas, y <strong>generaliza</strong> los cuasi-identificadores. Y
+          dice lo que no hace: no declara anónimo el archivo, no hace el
+          análisis de los «medios razonables» del considerando 26 y no certifica
+          cumplimiento. Usa <code>tmp/europeo.csv</code> (1.500 filas, 18
+          columnas: ocho documentos nacionales, campos con nombre en francés y
+          en alemán, un diagnóstico y un dato de condenas; todo inventado).
+        </p>
+        <ul class="pasos">
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai1" /><label for="ai1"
+              >Genera y suelta <code>tmp/europeo.csv</code>. En la tabla del
+              diagnóstico cada documento sale con el nombre llano de su norma y
+              su país, la insignia <strong>«Confirmado»</strong> (con ✓) y,
+              debajo, la fuente de su algoritmo:
+              <strong>«Cuenta bancaria IBAN»</strong>,
+              <strong>«DNI (España)»</strong>, <strong>«NIE (España)»</strong>,
+              <strong>«NIR (Francia)»</strong>,
+              <strong>«Codice fiscale (Italia)»</strong>,
+              <strong>«Steuer-IdNr (Alemania)»</strong>,
+              <strong>«BSN (Países Bajos)»</strong> y
+              <strong>«PESEL (Polonia)»</strong>. Por ejemplo, el NIR cita
+              <em
+                >«Clave del NIR: 97 menos los 13 primeros dígitos módulo 97, con
+                2A y 2B de Córcega — INSEE»</em
+              >
+              y el BSN, la prueba del 11 del RvIG. No todos los valores cumplen:
+              el kit trae a propósito números con el control mal calculado, y la
+              línea de evidencia dice qué proporción cumplió («… de los …
+              valores revisados cumplen»). <code>correo</code> y
+              <code>nombre_completo</code> salen como identificador directo.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai2" /><label for="ai2"
+              >Mira las columnas con nombre en otra lengua.
+              <code>geburtsdatum</code>, <code>code_postal</code>,
+              <code>geschlecht</code> y <code>nationalite</code> salen como
+              <strong>«Cuasi-identificador»</strong> por el encabezado;
+              <code>diagnose</code> y <code>casier_judiciaire</code>, como
+              <strong>«Dato sensible · art. 5»</strong>, y su muestra dice «sin
+              muestra». <code>geschlecht</code>, <code>nationalite</code>,
+              <code>diagnose</code> y <code>casier_judiciaire</code> traen la
+              certeza <strong>«Sin confirmar»</strong>: la conclusión se apoya
+              en el nombre de la columna, no en los valores (la nota cita
+              <em>«RGPD art. 9 — salud, origen étnico o racial…»</em> o
+              <em
+                >«RGPD art. 10 — los datos de condenas e infracciones
+                penales…»</em
+              >). <code>geburtsdatum</code> y <code>code_postal</code> traen
+              <strong>«Por su forma»</strong>, porque los valores dan la forma
+              (una fecha, un número) y el encabezado los sube de categoría. Una
+              nota de texto: la insignia «Dato sensible · art. 5» es el nombre
+              de la categoría de Velo (el art. 5 de la ley colombiana); los
+              artículos del RGPD están en la nota de cada columna. Si eso te
+              confunde en un archivo europeo, es un hallazgo de texto.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai3" /><label for="ai3"
+              >Pulsa «Transformar este archivo» y, en el taller,
+              <strong>«RGPD · GDPR (UE)»</strong>. Aparece el aviso de la
+              política: su fuente (<em
+                >«Reglamento (UE) 2016/679 (RGPD): art. 4.1 datos personales,
+                art. 4.5 seudonimización, art. 9 categorías especiales, art. 10
+                condenas e infracciones penales y considerando 26»</em
+              >), la advertencia y la lista
+              <strong>«Qué cubre, artículo por artículo»</strong>. Cada línea
+              trae el artículo (<strong>art. 4.1</strong> tres veces,
+              <strong>art. 9</strong> y <strong>art. 10</strong>), cómo lo ve
+              Velo (<em>por el contenido de la columna</em> o
+              <em>solo por el nombre de la columna</em>), la fuente —<em
+                >«Reglamento (UE) 2016/679, art. 4, punto 1 — DO L 119,
+                4.5.2016»</em
+              >, el Diario Oficial de la UE— y
+              <strong>«consultada el 2026-11-02»</strong>. Al final, Velo resume
+              esa fuente en 6 puntos: 2 que reconoce por el contenido, 3 solo
+              por el nombre y 1 que ningún programa puede reconocer (los códigos
+              internos): esos los marcas tú.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="ai4" /><label for="ai4"
+              ><strong
+                >Juicio humano — la advertencia, leída como un extraño.</strong
+              >
+              Lee la advertencia del aviso sin ayuda:
+              <em
+                >«No es una certificación de cumplimiento… Seudonimizar no es
+                anonimizar: el archivo sigue siendo dato personal para quien
+                tenga la llave y la bóveda (art. 4.5)… El k = 5 lo eligió Velo y
+                se puede cambiar: el RGPD no fija ningún k.»</em
+              >
+              Responde: <strong>(1)</strong> si el archivo está en manos de
+              alguien con la llave y la bóveda, ¿sigue siendo dato personal?
+              (Sí.) <strong>(2)</strong> ¿quién decide si, para otra persona,
+              deja de serlo? (Quien trata los datos, con su contexto; Velo no
+              hace ese análisis.) <strong>(3)</strong> ¿el 5 parece cosa de la
+              ley? (No: es una elección de Velo.) <strong>(4)</strong> ¿algo
+              suena a sello de aprobación? Si te quedas con la idea de que Velo
+              resuelve por ti la pregunta legal, o tuviste que releer para
+              entender qué NO afirma, es un hallazgo.
+              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai5" /><label for="ai5"
+              >Mira la tabla del taller: la política ya está aplicada. Los ocho
+              documentos salen con su seudónimo propio —<code>dni_es</code> con
+              <strong>«DNI · seudónimo»</strong>, <code>nie_es</code> con «NIE ·
+              seudónimo», <code>nir_fr</code> con «NIR · seudónimo»,
+              <code>codice_fiscale_it</code> con «Cod. fiscale · seudón.»,
+              <code>steuer_id_de</code> con «Steuer-IdNr · seudón.»,
+              <code>bsn_nl</code> con «BSN · seudónimo»,
+              <code>pesel_pl</code> con «PESEL · seudónimo» e
+              <code>iban_es</code> con «IBAN · seudónimo»—;
+              <code>correo</code> y <code>nombre_completo</code> con
+              <strong>«Seudónimo (hex)»</strong>; <code>diagnose</code> y
+              <code>casier_judiciaire</code> con
+              <strong>«Quitar la columna»</strong> (art. 9 y art. 10);
+              <code>geburtsdatum</code>, <code>code_postal</code>,
+              <code>geschlecht</code> y <code>nationalite</code> con
+              <strong>«Generalizar hasta alcanzar el k»</strong>;
+              <code>fecha_atencion</code> con «Fecha: dejar año y mes» y
+              <code>monto</code> con «Dejar como está». En cada fila de
+              seudónimo la casilla
+              <strong>«Poder deshacerlo con una bóveda»</strong> ya viene
+              marcada: con esta política la reversibilidad la marca la política,
+              no tú. <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai6" /><label for="ai6"
+              >Debajo de la tabla está
+              <strong
+                >«Grupo mínimo (k) para las columnas que se generalizan
+                solas»</strong
+              >, con un <strong>5</strong> y la frase
+              <em
+                >«Con k = 5, Velo generaliza esas columnas hasta que nadie quede
+                en un grupo de menos de 5 registros…»</em
+              >. Cámbialo a 10: la frase pasa a «Con k = 10…» y el aviso de
+              origen dice que ya no es RGPD · GDPR (UE). Vuelve a 5. Ese 5 no lo
+              pide el reglamento —lo dijo la advertencia—, y aquí compruebas que
+              es una perilla.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai7" /><label for="ai7"
+              >Abre con el teclado el desplegable de técnica de
+              <code>dni_es</code>: ofrece un seudónimo por documento —«Seudónimo
+              de cédula», «Seudónimo de NIT», «IBAN · seudónimo», «DNI ·
+              seudónimo», «NIE · seudónimo», «NIR · seudónimo», «Cod. fiscale ·
+              seudón.», «Steuer-IdNr · seudón.», «BSN · seudónimo» y «PESEL ·
+              seudónimo»— además de «Seudónimo (hex)», que no finge ser ningún
+              documento. Los nombres cortos son a propósito: en una pantalla
+              estrecha el desplegable cerrado deja pocos caracteres visibles.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai8" /><label for="ai8"
+              >Escribe una frase de paso, pulsa «Derivar la llave» y
+              «Transformar». Termina con el balance «Qué cambió, y qué sigue
+              igual». Más abajo aparece la bóveda aunque no la pediste: el paso
+              <strong>«La correspondencia para poder deshacerlo»</strong> dice
+              <strong>«Hay 10 columnas reversibles»</strong> (los ocho
+              documentos, el correo y el nombre: todos los identificadores
+              directos), porque con esta política los identificadores salen
+              reversibles: la llave y la bóveda son la «información adicional»
+              que el art. 4.5 pide guardar aparte. Si no quieres la bóveda para
+              alguna, la quitas en la tabla, columna por columna.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="ai9" /><label for="ai9"
+              ><strong
+                >Compruébalo tú: lo que salió, con tus herramientas.</strong
+              >
+              Pulsa «Preparar el archivo» y guarda
+              <code>velo-anonimizado-….csv</code>. <strong>(1)</strong> Las
+              categorías especiales y las condenas no están:
+              <code
+                >head -1 tmp/europeo.csv | tr ',' '\n' | grep -c -e diagnose -e
+                casier_judiciaire</code
+              >
+              da 2; con el archivo entregado da <strong>0</strong>.
+              <strong>(2)</strong> Cada documento conserva la forma de su país:
+              abre el archivo y mira el DNI (8 cifras y una letra), el NIE (X, Y
+              o Z, 7 cifras y una letra), el NIR (15 cifras), el codice fiscale
+              (16 caracteres), el Steuer-IdNr (11 cifras), el BSN (9 cifras) y
+              el PESEL (11 cifras). <strong>(3)</strong> Ninguno es el original:
+              <code
+                >comm -12 &lt;(tail -n +2 tmp/europeo.csv | cut -d, -f2 | sort
+                -u) &lt;(tail -n +2 velo-anonimizado-….csv | cut -d, -f2 | sort
+                -u) | grep -c .</code
+              >
+              da <strong>0</strong>: ni un DNI del original aparece en el
+              entregado. Cambia el <code>-f2</code> por el número de otra
+              columna para repetirlo con los demás documentos. Los números que
+              salen pasan el control oficial de su país, pero son ficticios: no
+              son de nadie conocido.
+              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai10" /><label for="ai10"
+              >El IBAN conserva su país y su largo:
+              <code
+                >cut -d, -f1 velo-anonimizado-….csv | tail -n +2 | grep -v '^$'
+                | grep -c -v -E '^ES[0-9]{22}$'</code
+              >
+              da <strong>0</strong>. Es un seudónimo que pasa el control general
+              del IBAN (ISO 13616, mod 97-10), no una cuenta real, y no
+              recalcula las claves nacionales que van dentro (el CCC español, la
+              clave RIB francesa): un sistema de destino que las valide lo
+              rechazaría. El ADR-016 y el manual lo declaran; si es tu caso, la
+              salida es un seudónimo hexadecimal o quitar la columna.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="ai11" /><label for="ai11"
+              ><strong
+                >Compruébalo tú: lo que dice el certificado, y lo que NO
+                dice.</strong
+              >
+              Pulsa «Descargar el certificado» y ábrelo
+              (<code>velo-certificado-….html</code>). Tiene una sección con la
+              etiqueta <strong>«RGPD»</strong> y el título
+              <strong>«Seudonimizado, no anónimo»</strong>. Dice, en este orden:
+              <strong>«Seudonimizado (art. 4.5 RGPD)»</strong>, con las 10
+              columnas que pasaron a un seudónimo y que
+              <strong
+                >el archivo sigue siendo dato personal para quien tenga la llave
+                y la bóveda</strong
+              >; <strong>«Generalizado»</strong>, hasta el k pedido, «una
+              reducción de riesgo medida, no una conversión en dato anónimo»;
+              <strong>«Suprimido»</strong>, con las categorías especiales del
+              art. 9 y las condenas del art. 10 fuera del archivo; y
+              <strong>«Qué NO afirma Velo»</strong>:
+              <em>«No declara este archivo anónimo»</em>, no hace el análisis
+              del considerando 26 y tampoco certifica cumplimiento. Cierra con
+              la fuente: el Diario Oficial de la UE, L 119, 4.5.2016,
+              <em>consultado el 2026-11-02</em>. Compruébalo:
+              <code
+                >grep -c "Seudonimizado (art. 4.5 RGPD)"
+                velo-certificado-….html</code
+              >,
+              <code
+                >grep -c "No declara este archivo anónimo"
+                velo-certificado-….html</code
+              >
+              y <code>grep -c "considerando 26" velo-certificado-….html</code>
+              dan cada uno un número mayor que 0. Con Ctrl+F busca «anónimo»:
+              cada vez que aparece es para negarlo. Ninguna frase afirma que el
+              archivo sea anónimo, ni que Velo o el archivo cumplan con la
+              norma. Se abre con el wifi apagado.
+              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="minimo">⭐ mínimo</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai12" /><label for="ai12"
+              ><strong>El mismo tratamiento, comprobado por su huella.</strong>
+              En el panel «Llévate el archivo» anota los ocho caracteres que
+              dice
+              <em
+                >«Los ocho caracteres del nombre — XXXXXXXX — son el principio
+                del SHA-256 de la política»</em
+              >
+              (son los de <code>velo-anonimizado-XXXXXXXX.csv</code>). Sube a la
+              tabla de la política y pulsa <strong>«Exportar»</strong>: se baja
+              <code>velo-politica.json</code>. Recarga la página (no queda nada:
+              la sesión vive en memoria), suelta
+              <code>tmp/europeo.csv</code> otra vez, entra al taller y pulsa
+              <strong>«Importar»</strong> con ese archivo: el aviso vuelve a
+              decir «RGPD · GDPR (UE)» —no «Ya no es…»— y la tabla es la misma.
+              Deriva la llave, transforma y mira los ocho caracteres:
+              <strong>son los mismos</strong>. Mismo tratamiento, mismo hash,
+              aunque haya pasado por un archivo.
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai13" /><label for="ai13"
+              >Cambia la técnica de <code>monto</code> a «Enmascarar
+              (103***89)»: el aviso de origen deja de decir el nombre de la
+              política y dice
+              <strong>«Ya no es RGPD · GDPR (UE).»</strong> —partiste de esa
+              plantilla y la cambiaste, así que el reporte va a decir que la
+              política es tuya—. Transforma y descarga el certificado: sigue
+              diciendo «Seudonimizado (art. 4.5 RGPD)» para las columnas que
+              siguen en seudónimo y agrega
+              <strong
+                >«Partiste de la política RGPD de Velo y la cambiaste: este
+                documento describe lo que se hizo, no la plantilla»</strong
+              >. Los ocho caracteres del nombre del archivo son otros: otro
+              tratamiento, otra huella, también si luego devuelves
+              <code>monto</code> a «Dejar como está», porque el origen ya no es
+              el de fábrica. Para volver a la plantilla, pulsa otra vez «RGPD ·
+              GDPR (UE)».
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="ai14" /><label for="ai14"
+              ><strong
+                >La fuente del DNI y el NIE, leída con honestidad.</strong
+              >
+              En el diagnóstico (la primera prueba de este bloque) el DNI y el
+              NIE salen «Confirmado»; su fuente dice
+              <em>«… — Ministerio del Interior de España»</em> y la insignia
+              explica que
+              <em
+                >el algoritmo oficial del dato (dígito de verificación) se
+                recalculó y cuadra</em
+              >. Ahora abre <code>decisions/016-rgpd.md</code> → «Algorithm
+              sources» → la fila <strong>DNI / NIE</strong>: dice
+              <em>«Official page not opened»</em>. La página del Ministerio
+              devolvió HTTP 403 al verificarla, y el algoritmo (el número módulo
+              23 contra la tabla <code>TRWAGMYFPDXBNJZSQVHLCKE</code>; X, Y, Z =
+              0, 1, 2) salió de los extractos que un buscador cita de esa
+              página, comprobado a mano con <code>12345678Z</code>. El ADR dice
+              que esa es la brecha que se mira primero: la línea «si Velo lo
+              marca, el algoritmo oficial lo confirma» descansa ahí en una
+              página que nadie de este lado abrió. El manual lo repite en su
+              sección 10 («Las fuentes no se verificaron todas igual de a
+              fondo»). Responde tú: ¿la pantalla debería decirlo también, o
+              bastan el manual y el ADR? Anótalo: no hay respuesta correcta
+              aquí, es una decisión tuya. Los demás documentos tienen sus
+              propios límites en la misma tabla (el codice fiscale no trae
+              ningún ejemplo oficial; del Steuer-IdNr no se abrió el § 139b).
+              <span class="origen origen-nuevo">Nuevo · S8</span></label
+            >
+          </li>
+        </ul>
+        <div class="kit">
+          <p>
+            <strong>Kit de prueba:</strong> el perfil <code>europeo</code> trae
+            un documento nacional de cada país, campos con nombre en otra
+            lengua, un dato del art. 9 y uno del art. 10. El generador calcula
+            el control con su propio código —no con el del motor que se prueba—
+            y un 8 % de los números sale con el control mal calculado, a
+            propósito.
+          </p>
+          <pre>
+pnpm kit:generar -- --filas 1500 --seed 42 --perfil europeo --salida tmp/europeo.csv</pre>
+        </div>
+        <div class="diferido">
+          <p>
+            <strong>Lo que esta política no hace, y queda declarado:</strong> no
+            hace el análisis de los «medios razonables» del considerando 26, no
+            decide la base lícita del tratamiento ni hace una evaluación de
+            impacto; no valida otros documentos nacionales, ni teléfonos
+            europeos, ni números de IVA, ni formatos postales (lo que Velo no
+            reconoce, lo marcas tú); los nombres de columna en otras lenguas
+            cubren los campos comunes y solo desde el encabezado; y el k = 5 y
+            las escaleras de generalización son de Velo, no del reglamento.
+            Sigue abierta la verificación del DNI y el NIE contra la página del
+            Ministerio: para cerrarla hay que abrirla desde un cliente que no
+            reciba un 403.
+          </p>
+        </div>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> cualquier frase —en pantalla o
+            en el certificado— que diga que el archivo es anónimo o que Velo
+            cumple con la norma; un certificado de esta política que no diga
+            «seudonimizado»; una columna de los artículos 9 o 10 que siga en el
+            archivo; un documento que salga con una forma distinta a la de su
+            país, o igual al original; un k = 5 presentado como exigencia del
+            reglamento; una línea de cobertura sin su artículo, su fuente y su
+            fecha; y los identificadores reversibles sin la bóveda ofrecida.
           </p>
         </div>
       </section>
@@ -3918,6 +4652,30 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               trabajo del S7 (1.996 pruebas unitarias, contando la omitida, y
               258 e2e, las que lista Playwright).
             </li>
+            <li>
+              <strong>S8 · 2 de noviembre de 2026:</strong> las 179 de los
+              sprints 001–007 pasan a <strong>regresión</strong> y se suman los
+              bloques <strong>AH</strong> (archivos enormes: el modo de alto
+              volumen, el guardado en el archivo que eliges, el regreso de 21
+              millones de celdas idéntico al original, y la medida opcional de 5
+              millones de filas) y <strong>AI</strong> (la política RGPD: ocho
+              documentos confirmados por su algoritmo, seudónimos con el formato
+              de su país, las categorías especiales y las condenas fuera del
+              archivo, y un certificado que dice «seudonimizado»).
+              <strong>Ninguna prueba eliminada.</strong> Las 29 que figuraban
+              como «Nuevo · S7» y la «Corregida · S7» (AB4) pasan a «Heredada ·
+              S7», para que el filtro «Lo que cambió en S8» muestre solo lo de
+              este sprint. El gate ⭐ pasa de 36 a <strong>42 pruebas</strong> y
+              de ~110 a <strong>~125 min</strong>; las seis nuevas son
+              comprobaciones o juicios que ninguna máquina da por ti (el
+              selector de destino del sistema con la red en cero, el restaurado
+              idéntico al original, el aviso de las pasadas y la advertencia del
+              RGPD leídos como un extraño, el archivo seudonimizado y su
+              certificado abiertos con tus herramientas). El gate corto ⭐⭐ no
+              cambia: sigue en 6 paradas. Las cifras de la CI del encabezado
+              (pruebas unitarias y e2e) no se actualizaron aquí: las trae el
+              cierre del S8.
+            </li>
           </ul>
         </details>
       </footer>
@@ -3928,8 +4686,8 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
         // NS VERSIONADO POR SPRINT: al publicar la guía de un sprint nuevo se cambia s001 — así una
         // regresión sin correr jamás aparece marcada como hecha por el sprint anterior.
         // S2: s001 → s002. S3: s002 → s003. S4: s003 → s004. S5: s004 → s005. S6: s005 → s006. S7: s006
-        // → s007. Las heredadas vuelven a estar sin marcar, que es el punto.
-        var NS = "guia-anonimizador:s007:";
+        // → s007. S8: s007 → s008. Las heredadas vuelven a estar sin marcar, que es el punto.
+        var NS = "guia-anonimizador:s008:";
         var casillas = Array.prototype.slice.call(
           document.querySelectorAll('input[type="checkbox"]'),
         );
@@ -3979,9 +4737,9 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               b.getAttribute("data-filtro") === filtro,
             );
           });
-          // MODO RECORRIDO: el gate ⭐ del ciclo son 36 pruebas nacidas en siete sprints distintos y
+          // MODO RECORRIDO: el gate ⭐ del ciclo son 42 pruebas nacidas en ocho sprints distintos y
           // repartidas por sus bloques. Numerarlas de corrido es lo que las convierte en UN camino en vez
-          // de siete listas pegadas — sin mover nada de sitio: el orden del documento YA es el del
+          // de ocho listas pegadas — sin mover nada de sitio: el orden del documento YA es el del
           // recorrido, lo que faltaba era que se viera.
           document.body.classList.toggle("modo-recorrido", esRecorrido(filtro));
           numerarParadas(esRecorrido(filtro));
