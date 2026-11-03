@@ -218,7 +218,7 @@ interface Candidata {
  * tienen que elegirse igual en toda máquina, o la salida deja de ser reproducible.
  */
 function mejorCandidata(
-  columna: ColumnaColumnar,
+  columna: Pick<ColumnaColumnar, "valores">,
   indices: readonly {
     readonly correspondencia: CorrespondenciaDeColumna;
     readonly indice: Map<string, readonly string[]>;
@@ -260,12 +260,30 @@ function mejorCandidata(
 }
 
 /**
- * Restaura el archivo devuelto con la bóveda.
- *
- * No lanza y no deja nada a medias en silencio: lo que no se pudo devolver sale contado en
- * `totales` y explicado columna por columna.
+ * Lo que se decidió para UNA columna del archivo devuelto, mirando SOLO su diccionario. Contar las
+ * celdas y escribirlas es otro paso: en memoria se hace sobre los códigos de la tabla; en alto
+ * volumen (S8), fila a fila mientras se escribe. La decisión es la misma en los dos.
  */
-export function restaurar(tabla: TablaColumnar, boveda: Boveda): Restauracion {
+export interface DecisionDeColumna {
+  readonly nombre: string;
+  readonly candidata: {
+    readonly columna: string;
+    readonly proporcion: number;
+    readonly coincidencias: number;
+    readonly reconocida: boolean;
+  } | null;
+  /** El diccionario nuevo, en paralelo al del devuelto (índice 0 incluido); null = sale intacta. */
+  readonly nuevos: readonly string[] | null;
+  /** 0 restaurada · 1 ambigua · 2 desconocida, por código del diccionario; null = sale intacta. */
+  readonly categoriaPorValor: Uint8Array | null;
+  readonly distintos: number;
+}
+
+/** Decide cada columna del devuelto sobre su diccionario (`valores[0]` es el vacío). */
+export function decidirRestauracion(
+  columnas: readonly Pick<ColumnaColumnar, "nombre" | "valores">[],
+  boveda: Boveda,
+): DecisionDeColumna[] {
   // Un índice por columna de la bóveda, construido UNA vez. Buscar linealmente sobre 446.000
   // entradas por cada valor del archivo sería cuadrático.
   const indices = boveda.columnas.map((correspondencia) => ({
@@ -273,32 +291,25 @@ export function restaurar(tabla: TablaColumnar, boveda: Boveda): Restauracion {
     indice: indiceDeColumna(correspondencia),
   }));
 
-  const columnas: ColumnaColumnar[] = [];
-  const informe: ColumnaRestaurada[] = [];
-  const fueraDeAlcance: string[] = [];
-  const usadas = new Set<string>();
-  let restauradas = 0;
-  let ambiguas = 0;
-  let desconocidas = 0;
-
-  for (const columna of tabla.columnas) {
+  return columnas.map((columna) => {
     const candidata = mejorCandidata(columna, indices);
-
-    if (candidata === null || !candidata.reconocida) {
-      columnas.push(columna);
-      fueraDeAlcance.push(columna.nombre);
-      informe.push({
-        columna: columna.nombre,
-        deLaBoveda: null,
-        coincidencias: candidata?.coincidencias ?? 0,
+    const resumen =
+      candidata === null
+        ? null
+        : {
+            columna: candidata.correspondencia.columna,
+            proporcion: candidata.proporcion,
+            coincidencias: candidata.coincidencias,
+            reconocida: candidata.reconocida,
+          };
+    if (candidata === null || !candidata.reconocida)
+      return {
+        nombre: columna.nombre,
+        candidata: resumen,
+        nuevos: null,
+        categoriaPorValor: null,
         distintos: columna.valores.length - 1,
-        proporcionReconocida: candidata?.proporcion ?? 0,
-        celdas: { restauradas: 0, ambiguas: 0, desconocidas: 0 },
-      });
-      continue;
-    }
-
-    usadas.add(candidata.correspondencia.columna);
+      };
 
     // Se decide sobre el DICCIONARIO y se cuenta sobre las FILAS: dos valores distintos que caen en
     // la misma categoría son una decisión, pero el usuario cuenta celdas, no valores.
@@ -319,33 +330,98 @@ export function restaurar(tabla: TablaColumnar, boveda: Boveda): Restauracion {
         categoriaPorValor[v] = 0;
       }
     }
+    return {
+      nombre: columna.nombre,
+      candidata: resumen,
+      nuevos,
+      categoriaPorValor,
+      distintos: columna.valores.length - 1,
+    };
+  });
+}
 
-    const celdas = { restauradas: 0, ambiguas: 0, desconocidas: 0 };
-    for (let f = 0; f < columna.codigos.length; f++) {
-      const codigo = columna.codigos[f];
-      if (codigo === 0) continue; // la celda vacía no es de nadie: ni restaurada ni desconocida
-      if (categoriaPorValor[codigo] === 0) celdas.restauradas++;
-      else if (categoriaPorValor[codigo] === 1) celdas.ambiguas++;
-      else celdas.desconocidas++;
+/** Suma a `celdas` la categoría de una celda de código `codigo` (el vacío no es de nadie). */
+export function contarCelda(
+  celdas: { restauradas: number; ambiguas: number; desconocidas: number },
+  categoriaPorValor: Uint8Array,
+  codigo: number,
+): void {
+  if (codigo === 0) return; // la celda vacía no es de nadie: ni restaurada ni desconocida
+  if (categoriaPorValor[codigo] === 0) celdas.restauradas++;
+  else if (categoriaPorValor[codigo] === 1) celdas.ambiguas++;
+  else celdas.desconocidas++;
+}
+
+/**
+ * Restaura el archivo devuelto con la bóveda.
+ *
+ * No lanza y no deja nada a medias en silencio: lo que no se pudo devolver sale contado en
+ * `totales` y explicado columna por columna.
+ */
+export function restaurar(tabla: TablaColumnar, boveda: Boveda): Restauracion {
+  const decisiones = decidirRestauracion(tabla.columnas, boveda);
+  const celdas = decisiones.map((decision, c) => {
+    const cuenta = { restauradas: 0, ambiguas: 0, desconocidas: 0 };
+    if (decision.categoriaPorValor === null) return cuenta;
+    const codigos = tabla.columnas[c].codigos;
+    for (let f = 0; f < codigos.length; f++)
+      contarCelda(cuenta, decision.categoriaPorValor, codigos[f]);
+    return cuenta;
+  });
+  // `nuevos` va EN PARALELO al diccionario viejo, índice 0 incluido —la celda vacía sigue
+  // vacía—, que es lo que `reconstruirColumna` espera. Recortarlo desalinearía cada valor con el
+  // código del anterior, y la columna saldría entera con los datos corridos una posición.
+  const columnas = tabla.columnas.map((columna, c) =>
+    decisiones[c].nuevos === null
+      ? columna
+      : reconstruirColumna(columna, decisiones[c].nuevos!),
+  );
+  return {
+    tabla: { columnas, filas: tabla.filas },
+    ...cerrarRestauracion(decisiones, celdas, boveda),
+  };
+}
+
+/** Los totales, el reconocimiento y las salvedades, a partir de las decisiones y las celdas contadas. */
+export function cerrarRestauracion(
+  decisiones: readonly DecisionDeColumna[],
+  celdasPorColumna: readonly CeldasDeColumna[],
+  boveda: Boveda,
+): Omit<Restauracion, "tabla"> {
+  const informe: ColumnaRestaurada[] = [];
+  const fueraDeAlcance: string[] = [];
+  const usadas = new Set<string>();
+  let restauradas = 0;
+  let ambiguas = 0;
+  let desconocidas = 0;
+
+  decisiones.forEach((decision, c) => {
+    if (decision.nuevos === null) {
+      fueraDeAlcance.push(decision.nombre);
+      informe.push({
+        columna: decision.nombre,
+        deLaBoveda: null,
+        coincidencias: decision.candidata?.coincidencias ?? 0,
+        distintos: decision.distintos,
+        proporcionReconocida: decision.candidata?.proporcion ?? 0,
+        celdas: { restauradas: 0, ambiguas: 0, desconocidas: 0 },
+      });
+      return;
     }
-
+    usadas.add(decision.candidata!.columna);
+    const celdas = celdasPorColumna[c];
     restauradas += celdas.restauradas;
     ambiguas += celdas.ambiguas;
     desconocidas += celdas.desconocidas;
-
-    // `nuevos` va EN PARALELO al diccionario viejo, índice 0 incluido —la celda vacía sigue
-    // vacía—, que es lo que `reconstruirColumna` espera. Recortarlo desalinearía cada valor con el
-    // código del anterior, y la columna saldría entera con los datos corridos una posición.
-    columnas.push(reconstruirColumna(columna, nuevos));
     informe.push({
-      columna: columna.nombre,
-      deLaBoveda: candidata.correspondencia.columna,
-      coincidencias: candidata.coincidencias,
-      distintos: columna.valores.length - 1,
-      proporcionReconocida: candidata.proporcion,
+      columna: decision.nombre,
+      deLaBoveda: decision.candidata!.columna,
+      coincidencias: decision.candidata!.coincidencias,
+      distintos: decision.distintos,
+      proporcionReconocida: decision.candidata!.proporcion,
       celdas,
     });
-  }
+  });
 
   const sinAparecer = boveda.columnas
     .map((c) => c.columna)
@@ -410,7 +486,6 @@ export function restaurar(tabla: TablaColumnar, boveda: Boveda): Restauracion {
   salvedades.sort((a, b) => ORDEN[a.tipo] - ORDEN[b.tipo]);
 
   return {
-    tabla: { columnas, filas: tabla.filas },
     columnas: informe,
     reconocimiento,
     sinAparecer,
