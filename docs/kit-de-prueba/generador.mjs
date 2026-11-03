@@ -126,6 +126,115 @@ export function ibanConChecksum(pais, bban) {
   return `${pais}${control}${bban}`;
 }
 
+// ── Europeos (S8, ADR-016): los algoritmos oficiales que validará el motor, aquí para GENERAR ──
+// Cada función emite números SINTÉTICOS con el control bien calculado (y, con `tasaInvalida`, el
+// control errado, que es el caso que separa un validador real de una expresión regular). No son
+// documentos de nadie: se sortean dígitos y se calcula la letra o la cifra final.
+
+const LETRAS_DNI = "TRWAGMYFPDXBNJZSQVHLCKE";
+
+export function dniSintetico(azar, tasaInvalida = 0) {
+  const n = azar.entero(10_000_000, 99_999_999);
+  const desvio = azar.conProbabilidad(tasaInvalida) ? 1 : 0;
+  return `${n}${LETRAS_DNI[(n + desvio) % 23]}`;
+}
+
+export function nieSintetico(azar, tasaInvalida = 0) {
+  const inicial = azar.entero(0, 2);
+  const cuerpo = String(azar.entero(1_000_000, 9_999_999));
+  const desvio = azar.conProbabilidad(tasaInvalida) ? 1 : 0;
+  return `${"XYZ"[inicial]}${cuerpo}${LETRAS_DNI[(Number(`${inicial}${cuerpo}`) + desvio) % 23]}`;
+}
+
+export function nirSintetico(azar, tasaInvalida = 0) {
+  const trece = [
+    azar.entero(1, 2),
+    String(azar.entero(0, 99)).padStart(2, "0"),
+    String(azar.entero(1, 12)).padStart(2, "0"),
+    String(azar.de([...Array.from({ length: 19 }, (_, i) => i + 1), ...Array.from({ length: 75 }, (_, i) => i + 21)])).padStart(2, "0"),
+    String(azar.entero(1, 990)).padStart(3, "0"),
+    String(azar.entero(1, 999)).padStart(3, "0"),
+  ].join("");
+  const clave = 97 - (Number(trece) % 97);
+  const mal = azar.conProbabilidad(tasaInvalida) ? (clave % 97) + 1 : clave;
+  const nir = `${trece}${String(mal).padStart(2, "0")}`;
+  // Como lo escribe la gente: con espacios en 30 % de los casos.
+  return azar.conProbabilidad(0.3)
+    ? `${nir[0]} ${nir.slice(1, 3)} ${nir.slice(3, 5)} ${nir.slice(5, 7)} ${nir.slice(7, 10)} ${nir.slice(10, 13)} ${nir.slice(13)}`
+    : nir;
+}
+
+// Tablas del carácter de control del codice fiscale (DM 23/12/1976): valor de cada carácter según
+// ocupe una posición impar o par.
+const CF_IMPAR = [1, 0, 5, 7, 9, 13, 15, 17, 19, 21, 2, 4, 18, 20, 11, 3, 6, 8, 12, 14, 16, 10, 22, 25, 24, 23];
+const valorCfImpar = (c) => (/\d/.test(c) ? CF_IMPAR[Number(c)] : CF_IMPAR[c.charCodeAt(0) - 65]);
+const valorCfPar = (c) => (/\d/.test(c) ? Number(c) : c.charCodeAt(0) - 65);
+
+export function codiceFiscaleSintetico(azar, tasaInvalida = 0) {
+  const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const seis = Array.from({ length: 6 }, () => azar.de([...letras])).join("");
+  const quince =
+    seis +
+    String(azar.entero(0, 99)).padStart(2, "0") +
+    azar.de([..."ABCDEHLMPRST"]) +
+    String(azar.entero(1, 28) + (azar.conProbabilidad(0.5) ? 40 : 0)).padStart(2, "0") +
+    azar.de([...letras]) +
+    String(azar.entero(0, 999)).padStart(3, "0");
+  let suma = 0;
+  for (let i = 0; i < 15; i++) suma += i % 2 === 0 ? valorCfImpar(quince[i]) : valorCfPar(quince[i]);
+  const desvio = azar.conProbabilidad(tasaInvalida) ? 1 : 0;
+  return `${quince}${letras[(suma + desvio) % 26]}`;
+}
+
+/** Cifra de control sobre las 10 primeras cifras (documento de ELSTER / BayLfSt, cap. 2.2). */
+function cifraSteuer(diez) {
+  let producto = 10;
+  for (const d of diez) {
+    let suma = (d + producto) % 10;
+    if (suma === 0) suma = 10;
+    producto = (suma * 2) % 11;
+  }
+  const c = 11 - producto;
+  return c === 10 ? 0 : c;
+}
+
+export function steuerIdSintetico(azar, tasaInvalida = 0) {
+  // La estructura posible: sin 0 al frente, una cifra repetida (dos veces) y alguna ausente. Se
+  // sortea hasta acertar: ~1,6 % de las cadenas de 10 cifras la cumplen.
+  for (;;) {
+    const diez = Array.from({ length: 10 }, () => azar.entero(0, 9));
+    const cuentas = new Array(10).fill(0);
+    for (const d of diez) cuentas[d]++;
+    const repetidas = cuentas.filter((n) => n >= 2);
+    if (diez[0] === 0 || repetidas.length !== 1 || repetidas[0] !== 2) continue;
+    const desvio = azar.conProbabilidad(tasaInvalida) ? 1 : 0;
+    return `${diez.join("")}${(cifraSteuer(diez) + desvio) % 10}`;
+  }
+}
+
+export function bsnSintetico(azar, tasaInvalida = 0) {
+  for (;;) {
+    const ocho = [azar.entero(1, 9), ...Array.from({ length: 7 }, () => azar.entero(0, 9))];
+    const resto = ocho.reduce((s, d, i) => s + d * (9 - i), 0) % 11;
+    if (resto === 10) continue;
+    return `${ocho.join("")}${azar.conProbabilidad(tasaInvalida) ? (resto + 1) % 10 : resto}`;
+  }
+}
+
+export function peselSintetico(azar, tasaInvalida = 0) {
+  const anio = azar.entero(1930, 2005);
+  const mes = azar.entero(1, 12) + (anio >= 2000 ? 20 : 0);
+  const diez =
+    String(anio % 100).padStart(2, "0") +
+    String(mes).padStart(2, "0") +
+    String(azar.entero(1, 28)).padStart(2, "0") +
+    String(azar.entero(0, 9999)).padStart(4, "0");
+  const pesos = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3];
+  const suma = [...diez].reduce((s, d, i) => s + Number(d) * pesos[i], 0);
+  const control = (10 - (suma % 10)) % 10;
+  return `${diez}${azar.conProbabilidad(tasaInvalida) ? (control + 1) % 10 : control}`;
+}
+
 // ── Léxicos (palabras, no personas) ───────────────────────────────────────────────────────────
 // Nombres y apellidos REALES pero POCO FRECUENTES, elegidos a propósito FUERA del diccionario
 // del motor. Es la regla anti-supuesto-compartido aplicada al léxico: si el fixture solo trajera
@@ -398,11 +507,60 @@ const COLUMNAS_ANCHAS = Object.fromEntries(
   ]),
 );
 
+// Para la política RGPD (S8): un identificador nacional de cada país con control oficial, junto a
+// los campos personales con nombres de otras lenguas (la segunda señal del clasificador), un dato de
+// categoría especial (art. 9) y uno de condenas penales (art. 10). Todo sintético. Fuera de
+// `COLUMNAS`: el perfil `clinico` es `Object.keys(COLUMNAS)` y su archivo no puede cambiar.
+const COLUMNAS_EUROPEAS = {
+  iban_es: {
+    tipo: "iban",
+    categoria: "identificador-directo",
+    gen: (a) => ibanConChecksum("ES", a.digitos(20)),
+  },
+  dni_es: { tipo: "dni", categoria: "identificador-directo", gen: (a, c) => dniSintetico(a, c.tasaInvalida) },
+  nie_es: { tipo: "nie", categoria: "identificador-directo", gen: (a, c) => nieSintetico(a, c.tasaInvalida) },
+  nir_fr: { tipo: "nir", categoria: "identificador-directo", gen: (a, c) => nirSintetico(a, c.tasaInvalida) },
+  codice_fiscale_it: {
+    tipo: "codice-fiscale",
+    categoria: "identificador-directo",
+    gen: (a, c) => codiceFiscaleSintetico(a, c.tasaInvalida),
+  },
+  steuer_id_de: {
+    tipo: "steuer-idnr",
+    categoria: "identificador-directo",
+    gen: (a, c) => steuerIdSintetico(a, c.tasaInvalida),
+  },
+  bsn_nl: { tipo: "bsn", categoria: "identificador-directo", gen: (a, c) => bsnSintetico(a, c.tasaInvalida) },
+  pesel_pl: { tipo: "pesel", categoria: "identificador-directo", gen: (a, c) => peselSintetico(a, c.tasaInvalida) },
+  // Los campos personales, con el nombre en otra lengua: el valor no dice nada, el encabezado sí.
+  geburtsdatum: { tipo: "fecha", categoria: "cuasi-identificador", gen: (a) => fecha(a, 1940, 2010) },
+  code_postal: {
+    tipo: "numero",
+    categoria: "cuasi-identificador",
+    gen: (a) => a.de(["75001", "13001", "69001", "31000", "33000", "44000", "59000", "67000"]),
+  },
+  geschlecht: { tipo: "categoria", categoria: "cuasi-identificador", gen: (a) => a.de(["F", "M", "D"]) },
+  nationalite: {
+    tipo: "categoria",
+    categoria: "cuasi-identificador",
+    gen: (a) => a.de(["française", "espagnole", "italienne", "allemande", "polonaise"]),
+  },
+  // Art. 9: solo el encabezado lo sugiere. Códigos con forma CIE-10 pero inventados.
+  diagnose: { tipo: "categoria", categoria: "dato-sensible", gen: (a) => a.de(DIAGNOSTICOS) },
+  // Art. 10: condenas e infracciones; el valor es una categoría inventada.
+  casier_judiciaire: {
+    tipo: "categoria",
+    categoria: "dato-sensible",
+    gen: (a) => a.de(["aucune", "infraction routière", "délit mineur", "aucune", "aucune"]),
+  },
+};
+
 const TODAS_LAS_COLUMNAS = {
   ...COLUMNAS,
   ...COLUMNAS_SESGADAS,
   ...COLUMNAS_DE_JERARQUIAS,
   ...COLUMNAS_ANCHAS,
+  ...COLUMNAS_EUROPEAS,
 };
 
 const PERFILES = {
@@ -455,6 +613,14 @@ const PERFILES = {
   ],
   // Para el alto volumen (S8): ver `COLUMNAS_ANCHAS`.
   ancho: ["cedula_titular", ...Object.keys(COLUMNAS_ANCHAS)],
+  // Para la política RGPD (S8): ver `COLUMNAS_EUROPEAS`.
+  europeo: [
+    ...Object.keys(COLUMNAS_EUROPEAS),
+    "correo",
+    "nombre_completo",
+    "monto",
+    "fecha_atencion",
+  ],
 };
 
 // ── Escritura CSV ─────────────────────────────────────────────────────────────────────────────

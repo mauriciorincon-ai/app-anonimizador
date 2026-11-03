@@ -84,6 +84,41 @@ export const MOTOR_DIAGNOSTICO = {
     en: "On its own it does not identify anyone; combined with others, it does.",
   },
 
+  // Reglas por nombre en las lenguas del RGPD (S8): alemán, francés, italiano, neerlandés, polaco,
+  // portugués e inglés. Son sospechas por el encabezado, como las del español.
+  "clasificador.nombre.rgpd.especial.patron": {
+    es: "nombre de un dato de categoría especial (salud, origen, convicciones, afiliación, biometría)",
+    en: "name of a special-category data field (health, origin, beliefs, union membership, biometrics)",
+  },
+  "clasificador.nombre.rgpd.especial.nota": {
+    es: "RGPD art. 9 — salud, origen étnico o racial, opiniones políticas, convicciones, afiliación sindical, datos genéticos y biométricos y vida u orientación sexual son categorías especiales.",
+    en: "GDPR art. 9 — health, racial or ethnic origin, political opinions, beliefs, trade union membership, genetic and biometric data and sex life or orientation are special categories.",
+  },
+  "clasificador.nombre.rgpd.penales.patron": {
+    es: "nombre de un dato de condenas o infracciones penales",
+    en: "name of a criminal convictions or offences field",
+  },
+  "clasificador.nombre.rgpd.penales.nota": {
+    es: "RGPD art. 10 — los datos de condenas e infracciones penales solo se tratan bajo control oficial o con garantías previstas por la ley.",
+    en: "GDPR art. 10 — data on criminal convictions and offences is processed only under official authority or with safeguards provided by law.",
+  },
+  "clasificador.nombre.rgpd.directo.patron": {
+    es: "nombre de persona o de dirección, en otra lengua",
+    en: "name of a person or an address, in another language",
+  },
+  "clasificador.nombre.rgpd.directo.nota": {
+    es: "RGPD art. 4.1 — un nombre o una dirección identifica a la persona por sí solo; se trata como identificador directo.",
+    en: "GDPR art. 4(1) — a name or an address identifies the person on its own; it is treated as a direct identifier.",
+  },
+  "clasificador.nombre.rgpd.cuasi.patron": {
+    es: "nombre de nacimiento, código postal, sexo o nacionalidad, en otra lengua",
+    en: "name of a birth, postal code, sex or nationality field, in another language",
+  },
+  "clasificador.nombre.rgpd.cuasi.nota": {
+    es: "RGPD art. 4.1 — se puede identificar a una persona de forma indirecta; estos campos delatan en combinación.",
+    en: "GDPR art. 4(1) — a person can be identified indirectly; these fields give a person away in combination.",
+  },
+
   // ── Validadores: la etiqueta que se enseña y la cita de la fuente oficial ───────────────────
   "validador.nit.etiqueta": {
     es: "NIT con dígito de verificación",
@@ -144,6 +179,53 @@ export const MOTOR_DIAGNOSTICO = {
   "validador.iban.fuente": {
     es: "ISO 13616 con checksum mod 97-10 de ISO 7064",
     en: "ISO 13616 with the mod 97-10 checksum of ISO 7064",
+  },
+  // ── Identificadores nacionales europeos (S8, ADR-016) ───────────────────────────────────────
+  // Las etiquetas son el nombre llano del documento y su país; las fuentes (más abajo en cada
+  // par) citan la norma oficial y se verifican en `tests/unit/validadores-europeos.test.ts`.
+  "validador.dni.etiqueta": { es: "DNI (España)", en: "DNI (Spain)" },
+  "validador.nie.etiqueta": { es: "NIE (España)", en: "NIE (Spain)" },
+  "validador.nir.etiqueta": { es: "NIR (Francia)", en: "NIR (France)" },
+  "validador.codiceFiscale.etiqueta": {
+    es: "Codice fiscale (Italia)",
+    en: "Codice fiscale (Italy)",
+  },
+  "validador.steuerIdnr.etiqueta": {
+    es: "Steuer-IdNr (Alemania)",
+    en: "Steuer-IdNr (Germany)",
+  },
+  "validador.bsn.etiqueta": {
+    es: "BSN (Países Bajos)",
+    en: "BSN (Netherlands)",
+  },
+  "validador.pesel.etiqueta": { es: "PESEL (Polonia)", en: "PESEL (Poland)" },
+  "validador.dni.fuente": {
+    es: "Letra de control: el número módulo 23 indexa la tabla TRWAGMYFPDXBNJZSQVHLCKE — Ministerio del Interior de España",
+    en: "Check letter: the number modulo 23 indexes the table TRWAGMYFPDXBNJZSQVHLCKE — Spain's Ministry of the Interior",
+  },
+  "validador.nie.fuente": {
+    es: "Letra de control del NIE: X, Y y Z valen 0, 1 y 2 y el número módulo 23 indexa la tabla del DNI — Ministerio del Interior de España",
+    en: "NIE check letter: X, Y and Z stand for 0, 1 and 2 and the number modulo 23 indexes the DNI table — Spain's Ministry of the Interior",
+  },
+  "validador.nir.fuente": {
+    es: "Clave del NIR: 97 menos los 13 primeros dígitos módulo 97, con 2A y 2B de Córcega — INSEE",
+    en: "NIR key: 97 minus the first 13 digits modulo 97, with Corsica's 2A and 2B — INSEE",
+  },
+  "validador.codiceFiscale.fuente": {
+    es: "Carácter de control del codice fiscale: tablas de posiciones impares y pares, módulo 26 — decreto ministerial del 23 de diciembre de 1976",
+    en: "Codice fiscale check character: odd- and even-position tables, modulo 26 — ministerial decree of 23 December 1976",
+  },
+  "validador.steuerIdnr.fuente": {
+    es: "Cifra de control de la Steuer-IdNr sobre las 10 primeras cifras — Bayerisches Landesamt für Steuern (ELSTER) y § 1 StIdV",
+    en: "Steuer-IdNr check digit over the first 10 digits — Bayerisches Landesamt für Steuern (ELSTER) and § 1 StIdV",
+  },
+  "validador.bsn.fuente": {
+    es: "Prueba del 11 («elfproef») del número de servicio ciudadano — RvIG",
+    en: "The 11-test (“elfproef”) of the citizen service number — RvIG",
+  },
+  "validador.pesel.fuente": {
+    es: "Dígito de control del PESEL: pesos 1-3-7-9 y una fecha de nacimiento que exista — gov.pl y reglamento del Ministerio del Interior de 2012",
+    en: "PESEL check digit: weights 1-3-7-9 and a birth date that exists — gov.pl and the Interior Ministry regulation of 2012",
   },
   "validador.email.etiqueta": {
     es: "Correo electrónico",
