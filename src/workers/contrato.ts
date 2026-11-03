@@ -458,6 +458,8 @@ export interface LadoDeLaComparacion {
 export interface ComparacionDeGeneralizacion {
   readonly kObjetivo: number;
   readonly lObjetivo: number | null;
+  /** Las columnas sensibles que la política suprime: la ℓ no se exige sobre ellas. */
+  readonly lDescartadas: readonly string[];
   readonly dimensiones: readonly string[];
   readonly mondrian: LadoDeLaComparacion;
   readonly optima: LadoDeLaComparacion;

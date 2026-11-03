@@ -924,6 +924,7 @@ describe("la generalización óptima en el certificado (S7)", () => {
     lObjetivo: 2,
     lAlcanzado: 1,
     columnasSensibles: ["diagnostico"],
+    lDescartadas: [],
     columnas: [
       {
         nombre: "municipio",
@@ -963,6 +964,23 @@ describe("la generalización óptima en el certificado (S7)", () => {
     );
     // La ℓ no alcanzada se dice, no se esconde detrás del k que sí se alcanzó.
     expect(html).toContain("La ℓ pedida no se alcanzó.");
+  });
+
+  it("la ℓ pedida sobre una columna que la política suprime se dice, aunque ya no se exija nada", async () => {
+    const sinL: GeneralizacionAplicada = {
+      ...OPTIMA,
+      lObjetivo: null,
+      lAlcanzado: null,
+      columnasSensibles: [],
+      lDescartadas: ["diagnostico"],
+    };
+    const html = construirReporte(await conOptima(sinL));
+    expect(html).toContain(
+      "La ℓ no se exigió sobre <code>diagnostico</code>: la política suprime esa columna y el archivo no la lleva.",
+    );
+    expect(html).not.toContain("La ℓ pedida no se alcanzó.");
+    const en = construirReporte({ ...(await conOptima(sinL)), idioma: "en" });
+    expect(en).toContain("ℓ was not required over");
   });
 
   it("cita la fuente y la fecha de cada escalera de fábrica usada, y solo de esas", async () => {

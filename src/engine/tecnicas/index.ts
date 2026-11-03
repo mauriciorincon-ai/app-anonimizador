@@ -134,7 +134,9 @@ export async function aplicarPolitica(
   if (requiereLlave(politica) && llave === null) {
     // Invariante del pipeline, no error de usuario: la UI no deja llegar aquí sin llave. Si llega,
     // es un defecto nuestro y tiene que sonar fuerte en vez de producir un archivo a medias.
-    throw new Error("la política pide una técnica con llave y no se dio una llave");
+    throw new Error(
+      "la política pide una técnica con llave y no se dio una llave",
+    );
   }
 
   const columnas: ColumnaColumnar[] = [];
@@ -237,6 +239,8 @@ export async function aplicarPolitica(
           politica.generalizacion!.jerarquias,
           politica.kObjetivo!,
           politica.generalizacion!.diversidad ?? null,
+          // Una sensible que la política suprime ya no está en `transformada`: se dice, no se exige.
+          new Set(suprimidas),
         )
       : null;
   // Una retícula que pasa del tope no se recorre: sus columnas salen intactas, y el balance lo dice

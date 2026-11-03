@@ -604,7 +604,7 @@ function seccionDeLaGeneralizacion(
         )}</li>`,
     )
     .join("");
-  const diversidad =
+  const exigida =
     g.lObjetivo === null
       ? ""
       : `<p>${h(G.l, idioma, {
@@ -616,6 +616,13 @@ function seccionDeLaGeneralizacion(
             ? `<p class="alerta">${h(G.lNoAlcanzada, idioma, { objetivo: g.lObjetivo })}</p>`
             : ""
         }`;
+  // La ℓ pedida sobre una columna que la política suprime no se exigió: se dice, aunque no quede
+  // ninguna otra columna sobre la que exigirla.
+  const descartada =
+    g.lDescartadas.length === 0
+      ? ""
+      : `<p>${h(G.lDescartadas, idioma, { columnas_html: listaDeCodigo(g.lDescartadas) })}</p>`;
+  const diversidad = exigida + descartada;
 
   return `<section>
 <p class="etiqueta">${h(G.etiqueta, idioma)}</p>

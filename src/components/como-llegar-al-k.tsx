@@ -135,10 +135,14 @@ export function ComoLlegarAlK({
 
   // Lo que la pantalla compara AHORA. La comparación que llegue se enseña solo si firma igual: con
   // otro k, otra escalera u otra ℓ, sus cifras describirían otra cosa y se esconden.
-  const pedida = { ...politica, generalizacion: generalizacionCon(jerarquias, l) };
+  const pedida = {
+    ...politica,
+    generalizacion: generalizacionCon(jerarquias, l),
+  };
   const firma = firmaDeComparacion(pedida, jerarquias);
   const vigente =
-    taller.comparacion.fase !== "sin-hacer" && taller.comparacion.firma === firma
+    taller.comparacion.fase !== "sin-hacer" &&
+    taller.comparacion.firma === firma
       ? taller.comparacion
       : null;
 
@@ -333,6 +337,13 @@ function TablaComparada({
       <p className="text-tinta-tenue mt-0.5 text-[0.8125rem] leading-relaxed">
         {t(G.tabla.alcance, { columnas: comparacion.dimensiones.join(" · ") })}
       </p>
+      {comparacion.lDescartadas.length > 0 ? (
+        <p className="text-tinta-suave mt-1 text-[0.8125rem] leading-relaxed">
+          {t(G.tabla.lDescartadas, {
+            columnas: comparacion.lDescartadas.join(" · "),
+          })}
+        </p>
+      ) : null}
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[20rem] border-collapse text-[0.875rem]">
           <thead>

@@ -54,6 +54,7 @@ import {
 import { muestraDeColumna } from "@/engine/muestra";
 import {
   generalizarOptimo,
+  resolverDiversidad,
   TOPE_DE_NODOS,
   type ResultadoOptimo,
 } from "@/engine/optima";
@@ -62,6 +63,7 @@ import { nombresDeNiveles } from "@/engine/jerarquias";
 import {
   columnasDeMondrian,
   hashDePolitica,
+  tecnicaDe,
   type GeneralizacionOptima,
   type JerarquiaDeLaPolitica,
   type Politica,
@@ -686,7 +688,8 @@ function generalizacionAplicada(
     kAlcanzado: optima.kAlcanzado,
     lObjetivo: optima.lObjetivo,
     lAlcanzado: optima.lAlcanzado,
-    columnasSensibles: pedida.diversidad?.columnas ?? [],
+    columnasSensibles: optima.columnasSensibles,
+    lDescartadas: optima.lDescartadas,
     columnas: optima.dimensiones.map((nombre, i) => {
       const jerarquia = pedida.jerarquias[nombre] ?? { tipo: "supresion" };
       return {
@@ -796,8 +799,18 @@ function compararSobre(
   }
   avisar("comparando", tabla.filas, 0, 0);
   const diversidad = politica.generalizacion?.diversidad ?? null;
-  const sensibles = (diversidad?.columnas ?? []).filter(
-    (n) => existentes.has(n) && !dimensiones.includes(n),
+  // La MISMA resolución que la transformación (`aplicarPolitica`): una sensible que la política
+  // suprime no se exige en ninguno de los dos caminos.
+  const suprimidas = new Set(
+    tabla.columnas
+      .map((c) => c.nombre)
+      .filter((n) => tecnicaDe(politica, n).tipo === "suprimir"),
+  );
+  const { columnas: sensibles, descartadas } = resolverDiversidad(
+    diversidad,
+    dimensiones,
+    existentes,
+    suprimidas,
   );
 
   let inicio = performance.now();
@@ -823,9 +836,8 @@ function compararSobre(
     dimensiones,
     jerarquias,
     k,
-    diversidad && sensibles.length > 0
-      ? { l: diversidad.l, columnas: sensibles }
-      : null,
+    diversidad,
+    suprimidas,
   );
   const disponible = optima.motivo !== "excede-tope";
   const ladoOptima = medirLado(
@@ -851,7 +863,8 @@ function compararSobre(
 
   const comparacion: ComparacionDeGeneralizacion = {
     kObjetivo: k,
-    lObjetivo: diversidad && sensibles.length > 0 ? diversidad.l : null,
+    lObjetivo: optima.lObjetivo,
+    lDescartadas: descartadas,
     dimensiones,
     mondrian: ladoMondrian,
     optima: ladoOptima,

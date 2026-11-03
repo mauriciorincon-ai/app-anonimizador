@@ -54,13 +54,47 @@ export interface DiversidadPedida {
   readonly columnas: readonly string[];
 }
 
+/**
+ * Las columnas sobre las que SÍ se exige la ℓ: las que la política pide, que existen, no son del
+ * reparto y no se suprimen. Una columna que la política suprime no viaja en el archivo: exigir su
+ * diversidad no protege nada y, sin ella en la tabla, dejaba la ℓ imposible y subía todo a `*`
+ * (M2 de la auditoría del S7). Se dice (`descartadas`) en vez de callarlo.
+ *
+ * La transformación y la comparación llaman a ESTA función: eran dos resoluciones distintas.
+ */
+export function resolverDiversidad(
+  diversidad: DiversidadPedida | null,
+  reparto: readonly string[],
+  existentes: ReadonlySet<string>,
+  suprimidas: ReadonlySet<string>,
+): {
+  readonly columnas: readonly string[];
+  readonly descartadas: readonly string[];
+} {
+  const delReparto = new Set(reparto);
+  const columnas: string[] = [];
+  const descartadas: string[] = [];
+  for (const nombre of diversidad?.columnas ?? []) {
+    if (delReparto.has(nombre) || columnas.includes(nombre)) continue;
+    if (descartadas.includes(nombre)) continue;
+    if (suprimidas.has(nombre)) descartadas.push(nombre);
+    else if (existentes.has(nombre)) columnas.push(nombre);
+  }
+  return { columnas, descartadas };
+}
+
 export type MotivoDeLaOptima =
   "sin-dimensiones" | "excede-tope" | "no-alcanzable";
 
 export interface ResultadoOptimo {
   readonly tabla: TablaColumnar;
   readonly kObjetivo: number;
+  /** La ℓ que se exigió: null si no se pidió, o si no quedó ninguna columna sobre la que exigirla. */
   readonly lObjetivo: number | null;
+  /** Las columnas sobre las que se exigió la ℓ (`resolverDiversidad`). */
+  readonly columnasSensibles: readonly string[];
+  /** Las que la política pedía y suprime: la ℓ no se exige sobre ellas, y se dice. */
+  readonly lDescartadas: readonly string[];
   /** k REAL de las columnas del reparto en la tabla de salida. */
   readonly kAlcanzado: number;
   /** ℓ distinta REAL (la peor de las columnas sensibles pedidas), o null si no se pidió. */
@@ -90,8 +124,10 @@ export interface GeneralizacionAplicada {
   readonly kAlcanzado: number;
   readonly lObjetivo: number | null;
   readonly lAlcanzado: number | null;
-  /** Las columnas sensibles sobre las que se pidió la ℓ (vacía si no se pidió). */
+  /** Las columnas sensibles sobre las que se exigió la ℓ (vacía si no se pidió). */
   readonly columnasSensibles: readonly string[];
+  /** Las que la política suprime: la ℓ no se exigió sobre ellas. */
+  readonly lDescartadas: readonly string[];
   readonly columnas: readonly {
     readonly nombre: string;
     readonly jerarquia: JerarquiaDeLaPolitica;
@@ -356,6 +392,7 @@ export function generalizarOptimo(
   jerarquias: Readonly<Record<string, Jerarquia>>,
   kObjetivo: number,
   diversidad: DiversidadPedida | null,
+  suprimidas: ReadonlySet<string> = new Set(),
 ): ResultadoOptimo {
   const pedidas = new Set(nombresDeDimension);
   const columnas = tabla.columnas.filter((c) => pedidas.has(c.nombre));
@@ -369,17 +406,25 @@ export function generalizarOptimo(
   const alturas = dimensiones.map((d) => d.niveles.length - 1);
   const nodosEnLaReticula = alturas.reduce((p, h) => p * (h + 1), 1);
   const bitsAntes = dimensiones.reduce((s, d) => s + d.bits[0], 0);
-  const lObjetivo = diversidad?.l ?? null;
-  const sensibles = (diversidad?.columnas ?? [])
-    .map((n) => tabla.columnas.find((c) => c.nombre === n))
-    .filter(
-      (c): c is ColumnaColumnar => c !== undefined && !pedidas.has(c.nombre),
-    );
+  const resueltas = resolverDiversidad(
+    diversidad,
+    nombresDeDimension,
+    new Set(tabla.columnas.map((c) => c.nombre)),
+    suprimidas,
+  );
+  const sensibles = resueltas.columnas.map((n) =>
+    tabla.columnas.find((c) => c.nombre === n)!,
+  );
+  // Sin ninguna columna sobre la que medirla, la ℓ no se exige: exigirla dejaba `cumple` en falso
+  // para todo nodo y subía todo a `*`.
+  const lObjetivo = sensibles.length > 0 ? (diversidad?.l ?? null) : null;
 
   const sinCambio = (motivo: MotivoDeLaOptima): ResultadoOptimo => ({
     tabla,
     kObjetivo,
     lObjetivo,
+    columnasSensibles: resueltas.columnas,
+    lDescartadas: resueltas.descartadas,
     kAlcanzado: 0,
     lAlcanzado: null,
     alcanzado: false,
@@ -486,6 +531,8 @@ export function generalizarOptimo(
     },
     kObjetivo,
     lObjetivo,
+    columnasSensibles: resueltas.columnas,
+    lDescartadas: resueltas.descartadas,
     kAlcanzado: medida.k,
     lAlcanzado: medida.l,
     alcanzado,

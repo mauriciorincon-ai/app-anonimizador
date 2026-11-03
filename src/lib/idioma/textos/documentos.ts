@@ -371,6 +371,10 @@ export const DOCUMENTOS = {
       es: "ℓ distinta pedida sobre {columnas_html}: {objetivo}. La alcanzada: {alcanzado}.",
       en: "Distinct ℓ asked for over {columnas_html}: {objetivo}. Reached: {alcanzado}.",
     },
+    lDescartadas: {
+      es: "La ℓ no se exigió sobre {columnas_html}: la política suprime esa columna y el archivo no la lleva.",
+      en: "ℓ was not required over {columnas_html}: the policy suppresses that column and the file does not carry it.",
+    },
     lNoAlcanzada: {
       es: "**La ℓ pedida no se alcanzó.** Hay grupos donde el dato sensible toma menos de {objetivo} valores distintos: estar en ese grupo puede delatarlo. Velo aplicó lo más que la escalera permite y no borró filas.",
       en: "**The ℓ asked for was not reached.** Some groups hold fewer than {objetivo} distinct values of the sensitive data: being in such a group can give it away. Velo applied as much as the ladder allows and deleted no rows.",
