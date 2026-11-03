@@ -87,6 +87,13 @@ const REFERENCIAS_DE_CONSTRUCCION = new Set(["dimg", "base"]);
 /** Tope de cajas y de elementos. Una foto real trae decenas; esto corta un archivo hostil. */
 const MAXIMO_DE_CAJAS = 100_000;
 
+/**
+ * Tope de tramos (extensiones de `iloc`) en TODO el archivo. Una foto de iPhone trae unas decenas
+ * de elementos de un tramo; una cuadrícula de teselas de 512 px sobre 100 megapíxeles, unos cientos.
+ * El mismo número que `MAXIMO_DE_ENTRADAS` del EXIF.
+ */
+const MAXIMO_DE_TRAMOS = 4_096;
+
 /** Un paquete XMP se lee hasta este tope, como en los otros formatos. */
 const MIME_XMP = "application/rdf+xml";
 
@@ -339,6 +346,9 @@ function leerIloc(
   p += version < 2 ? 2 : 4;
   if (cuenta > MAXIMO_DE_CAJAS) fallar(NO_SOPORTADA);
 
+  // Lo que ocupa UN tramo en la caja. Con los tres tamaños en 0 no ocupa ni un byte.
+  const bytesPorTramo = largoDeIndice + largoDeDesplazamiento + largoDeLargo;
+  let totalDeTramos = 0;
   const ubicaciones: Ubicacion[] = [];
   for (let i = 0; i < cuenta; i++) {
     const id = version < 2 ? u16be(d, p) : u32be(d, p);
@@ -354,6 +364,14 @@ function leerIloc(
     p += largoDeBase;
     const extensiones = u16be(d, p);
     p += 2;
+    // ANTES de reservar nada (M3 de la auditoría del S7). Con los tres tamaños en 0 la lectura de un
+    // tramo no avanza el cursor y `extensiones` (hasta 65 535) llenaba la memoria del worker con un
+    // archivo de 6 KB. Con tamaños de verdad, una cuenta que no cabe en lo que queda de la caja es
+    // un archivo cortado, no algo que haya que reservar para descubrirlo.
+    if (extensiones > 1 && bytesPorTramo === 0) fallar(NO_SOPORTADA);
+    if (extensiones * bytesPorTramo > d.length - p) fallar();
+    totalDeTramos += extensiones;
+    if (totalDeTramos > MAXIMO_DE_TRAMOS) fallar(NO_SOPORTADA);
     const tramos: Tramo[] = [];
     for (let e = 0; e < extensiones; e++) {
       p += largoDeIndice;

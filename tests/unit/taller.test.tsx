@@ -455,6 +455,7 @@ describe("sin worker no hay taller", () => {
       transformacion: { fase: "sin-hacer" },
       etapa: null,
       archivo: null,
+      archivoEnDisco: null,
       huellaDeSalida: null,
       boveda: { fase: "sin-sellar" },
       archivoDeBoveda: null,

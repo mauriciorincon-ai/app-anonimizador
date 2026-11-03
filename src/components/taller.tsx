@@ -4,7 +4,7 @@
 //
 // Vive fuera de `page.tsx` por una razón medida, no por orden: `/transformar` **sin archivo** es un
 // callejón sin salida que dice «no hay nada que transformar», y cargar ahí el editor de política
-// con las dos políticas de fábrica, la llave, la vista previa y el balance son ~140 KB de JavaScript
+// con las políticas de fábrica, la llave, la vista previa y el balance son ~140 KB de JavaScript
 // que nadie va a ejecutar. El gate de Lighthouse del cierre del S2 lo cobró con el único estado que
 // puede medir —el vacío—: LCP simulado de 3,6 s y la categoría en 0,88, por debajo del 0,90.
 //
@@ -48,6 +48,18 @@ import {
   useTaller,
 } from "@/lib/sesion";
 import type { Informe, MotivoDeError } from "@/workers/contrato";
+import { nombreDelArchivoAnonimizado } from "@/engine/csv";
+import { informeDelRgpd } from "@/engine/politicas-de-fabrica";
+
+/**
+ * S8: el selector de archivo del sistema (Chrome, Edge). Se pide DENTRO del clic, que es lo que el
+ * navegador exige, y lo único que se hace con lo que devuelve es pasárselo al worker.
+ */
+type ConSelectorDeArchivo = Window & {
+  showSaveFilePicker?: (opciones: {
+    suggestedName: string;
+  }) => Promise<FileSystemFileHandle>;
+};
 
 /**
  * El certificado se carga cuando hace falta, no al abrir el taller.
@@ -83,6 +95,8 @@ const FALLOS: Partial<Record<MotivoDeError, Texto>> = {
   "sin-tabla": TRANSFORMAR.taller.fallo.sinTabla,
   "sin-llave": TRANSFORMAR.taller.fallo.sinLlave,
   "transformacion-fallida": TRANSFORMAR.taller.fallo.transformacionFallida,
+  "alto-volumen-boveda-no-cabe": TRANSFORMAR.taller.fallo.bovedaNoCabe,
+  "alto-volumen-reparto-no-cabe": TRANSFORMAR.taller.fallo.repartoNoCabe,
 };
 
 export function Taller({ informe }: { informe: Informe }) {
@@ -90,6 +104,25 @@ export function Taller({ informe }: { informe: Informe }) {
   const taller = useTaller();
   const router = useRouter();
   const [politica, setPolitica] = useState<Politica>(POLITICA_VACIA);
+  const [haySelector] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof (window as ConSelectorDeArchivo).showSaveFilePicker === "function",
+  );
+  const altoVolumen = informe.modo === "alto-volumen";
+  const elegirDestino = async (hashDePolitica: string) => {
+    const elegir = (window as ConSelectorDeArchivo).showSaveFilePicker;
+    if (!elegir) return;
+    try {
+      prepararArchivo(
+        await elegir.call(window, {
+          suggestedName: nombreDelArchivoAnonimizado(hashDePolitica),
+        }),
+      );
+    } catch {
+      // Cerró el selector sin elegir: no pasa nada, el botón sigue ahí.
+    }
+  };
   const columnasReversibles = politica.reglas
     .filter((regla) => esReversible(regla.tecnica))
     .map((regla) => regla.columna);
@@ -112,6 +145,8 @@ export function Taller({ informe }: { informe: Informe }) {
     taller.transformacion.fase === "hecha"
       ? taller.transformacion.resultado
       : null;
+  // Editar la política invalida el resultado, así que `politica` es la que se aplicó.
+  const rgpd = hecha ? informeDelRgpd(politica, hecha.suprimidas) : null;
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
@@ -228,7 +263,14 @@ export function Taller({ informe }: { informe: Informe }) {
               suprimidas={hecha.suprimidas}
               hashDePolitica={hecha.hashDePolitica}
               idiomaDelTrabajo={hecha.idioma}
-              onPreparar={prepararArchivo}
+              onPreparar={() => prepararArchivo()}
+              altoVolumen={altoVolumen}
+              enDisco={taller.archivoEnDisco}
+              onElegirDestino={
+                altoVolumen && haySelector
+                  ? () => void elegirDestino(hecha.hashDePolitica)
+                  : undefined
+              }
             />
             {/* El archivo no puede salir solo. Un CSV anonimizado sin un documento que diga qué se
                 le hizo obliga a quien lo recibe a creer; y el reporte del diagnóstico, que describe
@@ -242,7 +284,7 @@ export function Taller({ informe }: { informe: Informe }) {
                 vez de enseñar un botón muerto. */}
             <DescargaDelCertificado
               informe={informe}
-              archivo={taller.archivo}
+              archivo={taller.archivo ?? taller.archivoEnDisco}
               huellaDeSalida={taller.huellaDeSalida}
               tratamiento={{
                 balance: hecha.balance,
@@ -256,6 +298,9 @@ export function Taller({ informe }: { informe: Informe }) {
                 // un campo del resultado que no se pasa aquí no llega al certificado.
                 generalizacion: hecha.generalizacion,
                 privacidad: hecha.privacidad,
+                // S8: con una política del RGPD, el certificado dice «seudonimizado» y explica por
+                // qué no es «anónimo».
+                rgpd,
               }}
             />
             {/* Anotar exige lo mismo que certificar: que el archivo exista, porque una entrada sin
@@ -285,6 +330,15 @@ export function Taller({ informe }: { informe: Informe }) {
                   // S7: el ε del tratamiento viaja con la entrada; sin ruido, el campo no existe.
                   ...(hecha.privacidad
                     ? { privacidad: privacidadDeLaEntrada(hecha.privacidad) }
+                    : {}),
+                  // S8: con una política RGPD, cuántas columnas se seudonimizaron y generalizaron.
+                  ...(rgpd && rgpd.seudonimizadas.length > 0
+                    ? {
+                        rgpd: {
+                          seudonimizadas: rgpd.seudonimizadas.length,
+                          generalizadas: rgpd.generalizadas.length,
+                        },
+                      }
                     : {}),
                 }}
               />

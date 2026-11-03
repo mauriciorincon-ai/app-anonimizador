@@ -100,6 +100,11 @@ export const PRIVACIDAD = {
       es: "no se aplicó: {n} valores distintos, más de {maximo}; la columna salió intacta",
       en: "not applied: {n} distinct values, more than {maximo}; the column came out untouched",
     },
+    // Alto volumen (S8): la columna no cupo entera, y solo se sabe que pasa de {n}.
+    noAplicadaAlMenos: {
+      es: "no se aplicó: más de {n} valores distintos (son más de {maximo}); la columna salió intacta",
+      en: "not applied: more than {n} distinct values (over {maximo}); the column came out untouched",
+    },
   },
   fuente: {
     es:

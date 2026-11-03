@@ -69,7 +69,12 @@ export type MensajeAlWorker =
       jerarquias: Readonly<Record<string, JerarquiaDeLaPolitica>>;
       idioma: Idioma;
     }
-  | { tipo: "construir-archivo" }
+  /**
+   * `destino` (S8, alto volumen): el archivo que el usuario eligió en el selector del sistema. El
+   * worker escribe en él y la página no lee nada: pasa el asa y recibe la huella. Sin `destino`, el
+   * archivo vuelve como `Blob`, como siempre.
+   */
+  | { tipo: "construir-archivo"; destino?: FileSystemFileHandle }
   /**
    * Sella la bóveda del tratamiento que se acaba de hacer. La frase de paso entra y **no vuelve a
    * salir**, igual que la de la llave: se deriva aquí, se usa aquí y muere con el worker.
@@ -85,7 +90,7 @@ export type MensajeAlWorker =
   /** El archivo que devolvió el tercero. Se parsea, **no se diagnostica**: es otro flujo. */
   | { tipo: "analizar-devuelto"; archivo: File }
   | { tipo: "restaurar" }
-  | { tipo: "construir-restaurado" }
+  | { tipo: "construir-restaurado"; destino?: FileSystemFileHandle }
   /**
    * El informe del regreso es un documento que se descarga: se escribe en el idioma de la pantalla
    * donde se pidió. El idioma entra como dato, igual que la fecha, para que el documento siga
@@ -131,6 +136,8 @@ export type MensajeAlWorker =
 export type EtapaDelWorker =
   | "huella"
   | "leyendo"
+  /** S8: un archivo más grande que lo que cabe en memoria se lee otra vez, por pasadas. */
+  | "alto-volumen"
   | "clasificando"
   | "midiendo-riesgo"
   | "derivando-llave"
@@ -251,7 +258,17 @@ export type MotivoDeError =
   /** Los de `MotivoDeMetadatos`: un PDF cifrado o ilegible, una imagen rota, una limpieza incompleta. */
   | MotivoDeMetadatos
   | "pdf-excede-tope"
-  | "imagen-excede-tope";
+  | "imagen-excede-tope"
+  /**
+   * S8: lo que el alto volumen no puede hacer con este archivo, y lo dice en vez de estimar o de
+   * escribir a medias: más combinaciones de cuasi-identificadores que las que el riesgo exacto
+   * cuenta; una columna reversible demasiado grande para su bóveda; más filas que las que el
+   * reparto admite; una columna devuelta con demasiados valores distintos para restaurarla.
+   */
+  | "alto-volumen-histograma-no-cabe"
+  | "alto-volumen-boveda-no-cabe"
+  | "alto-volumen-reparto-no-cabe"
+  | "alto-volumen-devuelto-no-cabe";
 
 export interface Informe {
   archivo: {
@@ -275,6 +292,12 @@ export interface Informe {
    * registros. Ausente en CSV y Excel. La interfaz lo lee en `informe-de-diagnostico.tsx`.
    */
   estructura?: EstructuraJson;
+  /**
+   * S8: `"alto-volumen"` cuando el archivo pasó del tope de celdas en memoria y se leyó por
+   * pasadas. Cambia tres cosas, y la pantalla las dice: se clasifica con las primeras filas, el
+   * advisor solo combina cuasi-identificadores y la utilidad no se mide. Ausente en memoria.
+   */
+  modo?: "alto-volumen";
   /** Lo que costó, medido. Se enseña porque un instrumento honesto muestra su propio trabajo. */
   medicion: {
     msLectura: number;
@@ -402,7 +425,8 @@ export interface ResultadoDeTransformacion {
    */
   readonly idioma: Idioma;
   readonly balance: BalanceDelTratamiento;
-  readonly utilidad: Utilidad;
+  /** `null` en alto volumen (S8): medirla exige las dos tablas enteras, y no se finge. */
+  readonly utilidad: Utilidad | null;
   readonly suprimidas: readonly string[];
   readonly muestras: readonly MuestraDeTransformacion[];
   readonly ms: number;
@@ -418,7 +442,6 @@ export interface ResultadoDeTransformacion {
    */
   readonly privacidad: InformeDePrivacidad | null;
 }
-
 
 /**
  * S7: un lado de la comparación entre Mondrian y la generalización óptima, medido sobre las columnas
@@ -458,6 +481,8 @@ export interface LadoDeLaComparacion {
 export interface ComparacionDeGeneralizacion {
   readonly kObjetivo: number;
   readonly lObjetivo: number | null;
+  /** Las columnas sensibles que la política suprime: la ℓ no se exige sobre ellas. */
+  readonly lDescartadas: readonly string[];
   readonly dimensiones: readonly string[];
   readonly mondrian: LadoDeLaComparacion;
   readonly optima: LadoDeLaComparacion;
@@ -495,7 +520,12 @@ export type MensajeDelWorker =
    */
   | {
       tipo: "archivo";
-      blob: Blob;
+      /**
+       * El asa del archivo. Ausente solo cuando el worker lo escribió en el archivo que el usuario
+       * eligió (`enDisco`, S8): ya está en su equipo y no hay nada que descargar.
+       */
+      blob?: Blob;
+      enDisco?: true;
       nombre: string;
       bytes: number;
       proposito: PropositoDelArchivo;

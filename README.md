@@ -37,8 +37,8 @@ de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
 
 ## Qué hace hoy
 
-**Sprints 001–007 · El diagnóstico, el disfraz, el regreso, el cierre, el idioma, los formatos y la
-protección a la medida.** Velo lee, mide, **transforma, devuelve** y **deja constancia**. El círculo
+**Sprints 001–008 · El diagnóstico, el disfraz, el regreso, el cierre, el idioma, los formatos, la
+protección a la medida, el RGPD y los archivos enormes.** Velo lee, mide, **transforma, devuelve** y **deja constancia**. El círculo
 está cerrado —entregas sin entregar, y recuperas— y además queda por escrito.
 
 Sobre la reversibilidad, dicho con precisión: un seudónimo **sigue siendo irreversible por sí
@@ -55,7 +55,7 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
 - **El regreso**: cargas la bóveda y el archivo que te devolvieron, y los valores originales
   vuelven. Por **valor**, no por posición: sobrevive a que el tercero reordene filas, añada
   columnas, borre otras y corrija valores a mano — y su trabajo se respeta.
-- **Carga** de CSV (sin tope), Excel (hasta 150 MB, medido) y JSON —un arreglo de objetos o JSON
+- **Carga** de CSV (sin tope de peso: más allá de 20 millones de celdas se lee por pasadas, con los topes del manual §9), Excel (hasta 150 MB, medido) y JSON —un arreglo de objetos o JSON
   Lines, hasta 20 millones de celdas—, con arrastre y con teclado. En un JSON, cada ruta anidada
   (`paciente.contacto.correo`) es una columna; las listas se declaran y salen sin tocar. Un JSON
   también **vuelve** (Sprint 007): con su bóveda, el regreso lee el JSON o el JSON Lines que te
@@ -85,8 +85,8 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   riesgo individual de Benedetti–Franconi (1998) y los únicos poblacionales de Zayatz (1991), cada
   uno citando su fuente en el código, con su modelo y su supuesto en la misma línea que la cifra. Si
   la muestra no da para estimar, **lo dice** en vez de devolver un número débil.
-- **Política por columna** —o **Habeas Data** / **HIPAA Safe Harbor** de un clic, cada una citando su
-  fuente— que se exporta e importa como archivo y lleva su propio **hash SHA-256** como identidad.
+- **Política por columna** —o **Habeas Data** / **HIPAA Safe Harbor** / **RGPD** de un clic, cada una
+  citando su fuente— que se exporta e importa como archivo y lleva su propio **hash SHA-256** como identidad.
 - **Cinco familias de técnicas**: enmascarar, seudonimizar (HMAC-SHA256 con llave derivada por
   PBKDF2-600k), seudonimizar **conservando el formato** (con el dígito de verificación oficial
   recalculado — no es FPE, y el código dice por qué), generalizar y suprimir; y, desde el Sprint 007,
@@ -112,6 +112,23 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   mismos datos gasta su propio ε—, y queda en el certificado y en la bitácora. El ruido sale de la
   llave del proyecto: el mismo archivo con la misma llave y la misma técnica da el mismo ruido,
   byte por byte; otro ε u otro rango sobre el mismo archivo da otro ruido, independiente.
+- **Archivos más grandes que la pestaña** (Sprint 008, [ADR-015](decisions/015-alto-volumen.md)): un CSV
+  de más de **20 millones de celdas** se diagnostica, se anonimiza y vuelve **por pasadas**, con el
+  mismo motor y **los mismos bytes** que en memoria (una prueba lo exige). El riesgo sigue siendo
+  exacto; el diagnóstico clasifica sobre las primeras 5.000 filas y lo dice; lo que no cabe en los
+  topes se dice, nunca se estima, y lo que no se mide (la utilidad) queda escrito en el certificado.
+  En Chrome y Edge eliges dónde guardar y el archivo se escribe directo a tu disco, sin armarlo en
+  memoria. Medido con 5 millones de filas × 24 columnas (1,36 GB): diagnóstico 109 s, transformación
+  283 s, escritura 267 s y un pico de 4,9 GB de memoria — una referencia, no una promesa. Excel
+  conserva su tope; un JSON de más de 20 millones de celdas sigue deteniéndose, y lo dice.
+- **La política RGPD** (Sprint 008, [ADR-016](decisions/016-rgpd.md)): **seudonimiza, no anonimiza**.
+  Los identificadores directos pasan a un seudónimo reversible con bóveda —con el formato de su país
+  y su control oficial recalculado en IBAN, DNI, NIE, NIR, codice fiscale, Steuer-IdNr, BSN y PESEL—,
+  las categorías especiales (art. 9) y los datos penales (art. 10) se suprimen, y los
+  cuasi-identificadores se generalizan hasta un k = 5 que es de Velo, no del RGPD, y se puede cambiar.
+  Cada línea cita su artículo y la fecha en que se consultó; el certificado dice «seudonimizado», que
+  sigue siendo dato personal para quien tenga la llave y la bóveda, y qué NO afirma: ni lo declara
+  anónimo ni certifica cumplimiento. Lee nombres de columna en siete lenguas.
 - **Balance antes/después** con una regla dura: si algo quedó sin tratar, **eso se lee antes que
   cualquier porcentaje de reducción**, y la cifra pierde el tratamiento de titular.
 - **Archivo anonimizado** (un CSV, o un JSON en la forma en que entró) escrito por el navegador
@@ -136,7 +153,7 @@ de ~2 s con 4 campos a entre 12 y 32 s con 6.
 
 ```bash
 pnpm install
-pnpm dev            # http://localhost:3000
+pnpm dev            # http://127.0.0.1:3300
 ```
 
 Necesitas Node 22+ y pnpm (la versión la fija `packageManager` en el `package.json`).
@@ -149,7 +166,8 @@ pnpm kit:generar -- --filas 3000 --seed 42 --perfil clinico --salida tmp/clinico
 
 Perfiles: `clinico` (24 columnas, con columnas-trampa), `limpio`, `trampas`, `sin-personales`,
 `mediana-repetida`, `colisiones-de-formato`, `jerarquias` (una columna por escalera de fábrica, para
-la generalización óptima) y los de JSON (`anidado`, `con-listas`, `heterogeneo`). También genera
+la generalización óptima), `ancho` (210 columnas, para el alto volumen), `europeo` (un documento
+nacional de cada país con su control, para el RGPD) y los de JSON (`anidado`, `con-listas`, `heterogeneo`). También genera
 JSON (`--formato json|jsonl`), Excel y archivos con metadatos falsos para la limpieza
 (`--formato pdf|jpeg|png|webp|heic`). Misma semilla ⇒ mismo archivo, byte por byte.
 

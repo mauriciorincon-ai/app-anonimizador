@@ -202,6 +202,7 @@ describe("la comparación", () => {
       comparacion: {
         kObjetivo: 5,
         lObjetivo: null,
+        lDescartadas: [],
         dimensiones: ["edad", "municipio"],
         mondrian: lado({}),
         optima: lado({
@@ -246,6 +247,7 @@ describe("la comparación", () => {
       comparacion: {
         kObjetivo: 5,
         lObjetivo: null,
+        lDescartadas: [],
         dimensiones: ["edad", "municipio"],
         mondrian: lado({}),
         optima: lado({ disponible: false, motivo: "excede-tope" }),
@@ -264,6 +266,7 @@ describe("la comparación", () => {
       comparacion: {
         kObjetivo: 5,
         lObjetivo: null,
+        lDescartadas: [],
         dimensiones: ["edad", "municipio"],
         mondrian: lado({}),
         optima: lado({}),
@@ -280,6 +283,7 @@ describe("la comparación", () => {
       comparacion: {
         kObjetivo: 5,
         lObjetivo: null,
+        lDescartadas: [],
         dimensiones: ["edad", "municipio"],
         mondrian: lado({}),
         optima: lado({}),
@@ -287,6 +291,27 @@ describe("la comparación", () => {
     };
     pintar({ ...CON_REPARTO, kObjetivo: 10 });
     expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("si la ℓ pedida recae en una columna que la política suprime, la tabla lo dice", () => {
+    sesion.comparacion = {
+      fase: "hecha",
+      firma: FIRMA,
+      comparacion: {
+        kObjetivo: 5,
+        lObjetivo: null,
+        lDescartadas: ["diagnostico"],
+        dimensiones: ["edad", "municipio"],
+        mondrian: lado({}),
+        optima: lado({}),
+      },
+    };
+    pintar(CON_REPARTO);
+    expect(
+      screen.getByText(
+        "La ℓ no se exige sobre diagnostico: la política suprime esa columna y el archivo no la lleva.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("un fallo se dice, no se queda en blanco", () => {

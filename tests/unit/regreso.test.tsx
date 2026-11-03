@@ -358,6 +358,7 @@ describe("las órdenes del regreso antes de tener worker", () => {
       restauracion: { fase: "sin-hacer" },
       etapa: null,
       archivo: null,
+      archivoEnDisco: null,
       informe: null,
     });
   });

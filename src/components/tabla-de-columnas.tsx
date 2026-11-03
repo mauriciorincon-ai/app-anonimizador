@@ -102,11 +102,13 @@ export function TablaDeColumnas({
                   {columna.nombre}
                   <span className="cifra text-tinta-tenue mt-1 block font-sans text-[0.75rem]">
                     {t(
-                      plural(
-                        columna.cardinalidad,
-                        DIAGNOSTICO.tabla.valorDistinto,
-                        DIAGNOSTICO.tabla.valoresDistintos,
-                      ),
+                      columna.cardinalidadAlMenos
+                        ? DIAGNOSTICO.tabla.masDeValoresDistintos
+                        : plural(
+                            columna.cardinalidad,
+                            DIAGNOSTICO.tabla.valorDistinto,
+                            DIAGNOSTICO.tabla.valoresDistintos,
+                          ),
                       { n: columna.cardinalidad },
                     )}
                     {columna.filasNoVacias < columna.filas ? (

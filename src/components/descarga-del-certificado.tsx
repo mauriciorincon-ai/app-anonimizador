@@ -53,7 +53,8 @@ export function DescargaDelCertificado({
   informe: Informe;
   tratamiento?: TratamientoSinSalida;
   /** El asa del archivo tratado. Solo su NOMBRE se usa aquí — los bytes no se tocan (ADR-005). */
-  archivo?: AsaDeArchivo | null;
+  archivo?:
+    (Pick<AsaDeArchivo, "nombre" | "bytes"> & Partial<AsaDeArchivo>) | null;
   huellaDeSalida?: string | null;
 }) {
   const { t, idioma } = useT();

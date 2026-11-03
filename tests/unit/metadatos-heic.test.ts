@@ -524,6 +524,102 @@ function resultadoOError(bytes: Uint8Array): boolean {
   }
 }
 
+/**
+ * Un HEIC con el esqueleto de una foto y el `iloc` que se le pase. La auditoría del S7 halló que un
+ * `iloc` con los tamaños en 0 y 65 535 extensiones por elemento agotaba la memoria con ~6 KB.
+ */
+function conIloc(iloc: Uint8Array): Uint8Array {
+  return unir(
+    caja("ftyp", texto("heic"), be32(0), texto("mif1heic")),
+    caja(
+      "meta",
+      completa(0),
+      caja(
+        "hdlr",
+        completa(0),
+        be32(0),
+        texto("pict"),
+        new Uint8Array(12),
+        [0],
+      ),
+      caja("pitm", completa(0), be16(1)),
+      caja(
+        "iinf",
+        completa(0),
+        be16(1),
+        caja("infe", completa(2), be16(1), be16(0), texto("hvc1"), nulo("")),
+      ),
+      caja(
+        "iprp",
+        caja("ipco", HVCC, ISPE),
+        caja("ipma", completa(0), be32(1), be16(1), [2, 0x81, 0x02]),
+      ),
+      iloc,
+    ),
+    caja("mdat", HEVC),
+  );
+}
+
+describe("un `iloc` hostil se rechaza antes de reservar memoria", () => {
+  const motivoDe = (bytes: Uint8Array) => {
+    try {
+      limpiarImagen(bytes, "heic");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ErrorDeMetadatos);
+      return (error as ErrorDeMetadatos).motivo;
+    }
+    return null;
+  };
+
+  it("mil elementos con los tamaños en 0 y 65 535 extensiones cada uno (el de la auditoría)", () => {
+    // v0, tamaños 0/0/0: por elemento, id (2) + data_reference_index (2) + extension_count (2).
+    const iloc = caja(
+      "iloc",
+      completa(0),
+      be16(0x0000),
+      be16(1_000),
+      ...Array.from({ length: 1_000 }, (_, i) =>
+        unir(be16(i + 1), be16(0), be16(0xffff)),
+      ),
+    );
+    const bytes = conIloc(iloc);
+    expect(bytes.length).toBeLessThan(16_000);
+    const inicio = performance.now();
+    expect(motivoDe(bytes)).toBe("imagen-no-soportada");
+    // No se reservó nada: la prueba no se queda sin memoria ni espera. (Holgado a propósito.)
+    expect(performance.now() - inicio).toBeLessThan(2_000);
+  });
+
+  it("más tramos que el tope en todo el archivo, aunque cada elemento sea decente", () => {
+    // Tamaños 4/4/0 en v0 (desplazamiento y largo de 4 bytes): 8 bytes por tramo. Cinco elementos
+    // de 1 000 tramos son 5 000 > 4 096.
+    const tramos = unir(
+      ...Array.from({ length: 1_000 }, () => unir(be32(0), be32(1))),
+    );
+    const iloc = caja(
+      "iloc",
+      completa(0),
+      be16(0x4400),
+      be16(5),
+      ...Array.from({ length: 5 }, (_, i) =>
+        unir(be16(i + 1), be16(0), be16(1_000), tramos),
+      ),
+    );
+    expect(motivoDe(conIloc(iloc))).toBe("imagen-no-soportada");
+  });
+
+  it("una cuenta de extensiones que no cabe en la caja es un archivo cortado", () => {
+    const iloc = caja(
+      "iloc",
+      completa(0),
+      be16(0x4400),
+      be16(1),
+      unir(be16(1), be16(0), be16(500), be32(0), be32(1)),
+    );
+    expect(motivoDe(conIloc(iloc))).toBe("imagen-ilegible");
+  });
+});
+
 describe("una foto HEIC hostil", () => {
   it(`cortada en cada uno de sus ${FOTO.length} bytes: o un resultado o ErrorDeMetadatos`, () => {
     let resultados = 0;
@@ -532,7 +628,9 @@ describe("una foto HEIC hostil", () => {
     // Solo deja la foto entera un corte que cae DESPUÉS de los bytes del último elemento: en los
     // datos sin uso del final de `mdat` o en la cola. Lo demás corta algo que hace falta.
     const finDeLosDatos = Math.max(
-      ...[...ilocDe(FOTO).values()].flatMap((u) => u.tramos.map(([d, l]) => d + l)),
+      ...[...ilocDe(FOTO).values()].flatMap((u) =>
+        u.tramos.map(([d, l]) => d + l),
+      ),
     );
     expect(resultados).toBe(FOTO.length - finDeLosDatos + 1);
   });

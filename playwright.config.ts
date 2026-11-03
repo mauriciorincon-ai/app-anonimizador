@@ -37,7 +37,7 @@ export default defineConfig({
   // timeout de 90 s de abajo en una alarma legible en vez de un job que muere sin decir dónde.
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://127.0.0.1:3300",
     trace: "on-first-retry",
     // Las pruebas corren en UN idioma por sprint (regla 20): el español. Playwright lanza Chromium
     // en `en-US` por omisión, y Velo ahora sigue el idioma del navegador — sin esto, los e2e que
@@ -63,8 +63,8 @@ export default defineConfig({
     // que no estaba mirando la aplicación que se despliega. Un suite que sale rojo cuando no pasa
     // nada acaba ignorado, y este suite es el que sostiene la promesa central del producto.
     command: "pnpm build && pnpm start",
-    url: "http://localhost:3000",
-    // Sin reutilizar: si hay algo escuchando en el 3000 —un `next dev` olvidado— Playwright falla
+    url: "http://127.0.0.1:3300",
+    // Sin reutilizar: si hay algo escuchando en el 3300 —un `next dev` olvidado— Playwright falla
     // con "port in use", que se entiende de una. Reutilizarlo probaría otro servidor en silencio.
     reuseExistingServer: false,
     timeout: 180_000,

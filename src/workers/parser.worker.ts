@@ -11,10 +11,8 @@
 // mandar la tabla a la página para clasificarla habría tirado la frontera por la ventana. Lo que
 // cruza es el informe; la tabla se queda, y muere cuando el worker se termina.
 //
-// El archivo se lee por chunks (PapaParse en modo streaming): nunca existe una copia completa del
-// CSV en memoria, solo la tabla columnar que se va construyendo.
-import Papa from "papaparse";
-
+// El archivo se lee por trozos (`./csv.ts`, el lector compartido): nunca existe una copia completa
+// del CSV en memoria, solo la tabla columnar que se va construyendo.
 import { balanceDelTratamiento } from "@/engine/balance";
 import {
   anadirEntrada,
@@ -51,9 +49,10 @@ import {
   ErrorDeMetadatos,
   type FormatoBinario,
 } from "@/engine/metadatos/tipos";
-import { muestraDeColumna } from "@/engine/muestra";
+import { FILAS_DE_MUESTRA, muestraDeColumna } from "@/engine/muestra";
 import {
   generalizarOptimo,
+  resolverDiversidad,
   TOPE_DE_NODOS,
   type ResultadoOptimo,
 } from "@/engine/optima";
@@ -62,6 +61,7 @@ import { nombresDeNiveles } from "@/engine/jerarquias";
 import {
   columnasDeMondrian,
   hashDePolitica,
+  tecnicaDe,
   type GeneralizacionOptima,
   type JerarquiaDeLaPolitica,
   type Politica,
@@ -107,6 +107,23 @@ import type {
   MensajeAlWorker,
   MensajeDelWorker,
 } from "./contrato";
+import {
+  balanceDelAltoVolumen,
+  escribirCsv,
+  leerColumnas,
+  NoCabeEnAltoVolumen,
+  pasadaDeDiagnostico,
+  pasadaDeMedida,
+  pasadaDelDevuelto,
+  prepararTransformacion,
+  restaurarPorTrozos,
+  TOPE_DE_CELDAS_EN_MEMORIA,
+  type Destino,
+  type PasadaDeDiagnostico,
+  type PasadaDelDevuelto,
+  type PlanDeTransformacion,
+} from "./alto-volumen";
+import { lotesDeCsv } from "./csv";
 import { ArchivoCambio, fuenteDeArchivo } from "./json";
 import { FormatoNoCoincide, leerBinario, limpiarBinario } from "./metadatos";
 
@@ -128,6 +145,17 @@ let archivoDeEntrada: File | null = null;
 
 /** El diagnóstico se guarda porque la transformación lo necesita: qué es cada columna. */
 let diagnosticoActual: Diagnostico | null = null;
+
+/**
+ * S8: un CSV que no cupo en memoria. No hay `tabla`: hay el archivo (que se vuelve a leer por
+ * pasadas, ver `./alto-volumen.ts`), lo que dejó la pasada del diagnóstico y, tras transformar, el
+ * plan con que se escribe.
+ */
+let altoVolumen: {
+  readonly archivo: File;
+  readonly pasada: PasadaDeDiagnostico;
+  plan: PlanDeTransformacion | null;
+} | null = null;
 
 /** Cada cuántas filas se avisa del avance. Suficiente para una barra fluida, sin inundar. */
 const FILAS_POR_AVISO = 25_000;
@@ -163,6 +191,7 @@ async function tomarHuella(archivo: File): Promise<string> {
 }
 
 async function analizar(archivo: File): Promise<void> {
+  altoVolumen = null;
   try {
     huella = await tomarHuella(archivo);
   } catch {
@@ -183,7 +212,7 @@ async function analizar(archivo: File): Promise<void> {
     void leerJsonDelArchivo(archivo);
     return;
   }
-  leerCsv(archivo);
+  void leerCsv(archivo);
 }
 
 /**
@@ -383,49 +412,107 @@ async function leerExcel(archivo: File): Promise<void> {
   }
 }
 
-function leerCsv(archivo: File): void {
+async function leerCsv(archivo: File): Promise<void> {
   const inicio = performance.now();
   let constructor: ConstructorColumnar | null = null;
   let filas = 0;
+  let leidos = 0;
   let proximoAviso = FILAS_POR_AVISO;
 
-  Papa.parse<string[]>(archivo, {
-    // header: false a propósito. Con `header: true` PapaParse construye un objeto por fila —
-    // 500.000 objetos de 24 propiedades que nacen para morir. Leemos el encabezado nosotros.
-    header: false,
-    skipEmptyLines: "greedy",
-    worker: false, // ya estamos DENTRO de un worker; anidar otro no aporta nada
-    chunk(resultados) {
-      const datos = resultados.data;
+  try {
+    for await (const lote of lotesDeCsv(archivo, {
+      alAvanzar: (bytes) => (leidos = bytes),
+    })) {
       let desde = 0;
       if (!constructor) {
-        const encabezado = datos[0] ?? [];
-        constructor = new ConstructorColumnar(encabezado, 1 << 16);
+        constructor = new ConstructorColumnar(lote[0] ?? [], 1 << 16);
         desde = 1;
       }
-      for (let i = desde; i < datos.length; i++)
-        constructor.agregarFila(datos[i]);
-      filas += datos.length - desde;
+      for (let i = desde; i < lote.length; i++)
+        constructor.agregarFila(lote[i]);
+      filas += lote.length - desde;
+
+      // S8: más celdas que las que caben en memoria. La tabla a medias se suelta y el archivo se
+      // vuelve a leer por pasadas. El tope es una constante de build: el mismo archivo entra por el
+      // mismo camino en cualquier equipo.
+      if (filas * (lote[0]?.length ?? 0) > TOPE_DE_CELDAS_EN_MEMORIA) {
+        constructor = null;
+        await leerCsvAltoVolumen(archivo, inicio);
+        return;
+      }
 
       if (filas >= proximoAviso) {
         proximoAviso = filas + FILAS_POR_AVISO;
-        avisar("leyendo", filas, resultados.meta.cursor, archivo.size);
+        avisar("leyendo", filas, leidos, archivo.size);
       }
-    },
-    complete() {
-      if (!constructor) {
-        enviar({ tipo: "error", motivo: "archivo-vacio" });
-        return;
-      }
-      tabla = constructor.finalizar();
-      formatoOriginal = "csv";
-      diagnosticar(archivo, "csv", performance.now() - inicio);
-    },
-    error() {
-      // El motivo del parser NUNCA se reenvía: puede citar el contenido de la línea que falló.
-      enviar({ tipo: "error", motivo: "lectura-fallida" });
-    },
-  });
+    }
+  } catch {
+    // El motivo del parser NUNCA se reenvía: puede citar el contenido de la línea que falló.
+    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+  if (!constructor) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+  tabla = (constructor as ConstructorColumnar).finalizar();
+  formatoOriginal = "csv";
+  diagnosticar(archivo, "csv", performance.now() - inicio);
+}
+
+/** La clave de error de lo que falló en el alto volumen. El mensaje de la excepción no cruza. */
+function motivoDelAltoVolumen(error: unknown) {
+  return error instanceof NoCabeEnAltoVolumen
+    ? error.motivo
+    : "lectura-fallida";
+}
+
+/**
+ * S8: el diagnóstico por pasadas. Lo que cruza es el mismo `Informe`, con `modo` y las cifras del
+ * archivo entero; la tabla no existe.
+ */
+async function leerCsvAltoVolumen(
+  archivo: File,
+  inicio: number,
+): Promise<void> {
+  tabla = null;
+  try {
+    const pasada = await pasadaDeDiagnostico(archivo, {
+      huella,
+      alAvanzar: (filas, bytes, total) =>
+        avisar("alto-volumen", filas, bytes, total),
+    });
+    if (pasada.filas === 0) {
+      enviar({ tipo: "error", motivo: "archivo-vacio" });
+      return;
+    }
+    altoVolumen = { archivo, pasada, plan: null };
+    diagnosticoActual = pasada.diagnostico;
+    formatoOriginal = "csv";
+    const msLectura = performance.now() - inicio;
+    enviar({
+      tipo: "listo",
+      informe: {
+        archivo: {
+          nombre: archivo.name,
+          bytes: archivo.size,
+          formato: "csv",
+          sha256: huella,
+        },
+        diagnostico: pasada.diagnostico,
+        riesgo: pasada.riesgo,
+        advisor: pasada.advisor,
+        modo: "alto-volumen",
+        medicion: {
+          msLectura: Math.round(msLectura),
+          msDiagnostico: 0,
+          heapMb: heapUsadoMb(),
+        },
+      },
+    });
+  } catch (error) {
+    enviar({ tipo: "error", motivo: motivoDelAltoVolumen(error) });
+  }
 }
 
 /**
@@ -526,6 +613,10 @@ async function derivar(frase: string, sal: string): Promise<void> {
 }
 
 async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
+  if (altoVolumen) {
+    await transformarAltoVolumen(politica, idioma);
+    return;
+  }
   if (!tabla || !diagnosticoActual) {
     enviar({ tipo: "error", motivo: "sin-tabla" });
     return;
@@ -673,6 +764,119 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
   }
 }
 
+/** Una columna de pocas filas (las de la vista previa), para las mismas funciones de la muestra. */
+function columnaDeMuestra(nombre: string, valores: readonly string[]) {
+  const constructor = new ConstructorColumnar([nombre], valores.length || 1);
+  for (const valor of valores) constructor.agregarFila([valor]);
+  return constructor.finalizar().columnas[0];
+}
+
+/**
+ * S8: transformar por pasadas. El plan (las técnicas por valor sobre su diccionario y, con reparto,
+ * la pasada B), la pasada M que mide y el MISMO balance; la escritura es otra pasada, al guardar.
+ */
+async function transformarAltoVolumen(
+  politica: Politica,
+  idioma: Idioma,
+): Promise<void> {
+  const estado = altoVolumen!;
+  const { archivo, pasada } = estado;
+  const inicio = performance.now();
+  try {
+    avisar("transformando", pasada.filas, 0, archivo.size);
+    const plan = await prepararTransformacion(
+      archivo,
+      pasada,
+      politica,
+      llave,
+      idioma,
+      huella,
+      {
+        alAvanzar: (filas, bytes, total) =>
+          avisar("transformando", filas, bytes, total),
+      },
+    );
+    avisar("midiendo-el-despues", pasada.filas, 0, archivo.size);
+    const medida = await pasadaDeMedida(archivo, pasada, plan, {
+      alAvanzar: (filas, bytes, total) =>
+        avisar("midiendo-el-despues", filas, bytes, total),
+    });
+    const optima = plan.reparto?.optima ?? null;
+    const optimaAplicada = optima?.motivo === "excede-tope" ? null : optima;
+    const balance = balanceDelAltoVolumen(pasada, plan, medida, politica, {
+      mondrian:
+        plan.reparto?.mondrian ??
+        (optimaAplicada
+          ? {
+              ...optimaAplicada,
+              alcanzado: optimaAplicada.kAlcanzado >= optimaAplicada.kObjetivo,
+            }
+          : null),
+      ruidoNoAplicado: {
+        columnas: medida.ruido.filter((r) => !r.aplicado).map((r) => r.columna),
+        maximo: DOMINIO_MAXIMO,
+      },
+      reticulaExcedida:
+        optima?.motivo === "excede-tope"
+          ? {
+              dimensiones: optima.dimensiones,
+              nodos: optima.nodosEnLaReticula,
+              tope: TOPE_DE_NODOS,
+            }
+          : null,
+    });
+    const categorias = new Map(
+      pasada.diagnostico.columnas.map((c) => [c.nombre, c.categoria as string]),
+    );
+    const muestras = plan.nombres.map((nombre, c) =>
+      muestraDeColumna(
+        columnaDeMuestra(nombre, medida.muestras[c].antes),
+        plan.planes[c].tipo === "suprimida"
+          ? undefined
+          : columnaDeMuestra(nombre, medida.muestras[c].despues),
+        politica,
+        categorias.get(nombre) ?? "no-personal",
+        Math.min(pasada.filas, FILAS_DE_MUESTRA),
+        medida.cambio[c],
+      ),
+    );
+
+    estado.plan = plan;
+    transformada = null;
+    clasesDespues = medida.clasesDespues;
+    hashDeLaPolitica = hashDePolitica(politica);
+    correspondencias = plan.correspondencias;
+    enviar({
+      tipo: "transformado",
+      resultado: {
+        hashDePolitica: hashDeLaPolitica,
+        idioma,
+        balance,
+        // Medirla exige las dos tablas enteras, que en alto volumen no existen: no se finge.
+        utilidad: null,
+        suprimidas: plan.suprimidas,
+        muestras,
+        ms: Math.round(performance.now() - inicio),
+        generalizacion:
+          optimaAplicada && politica.generalizacion
+            ? generalizacionAplicada(optimaAplicada, politica.generalizacion)
+            : null,
+        privacidad: informeDePrivacidad(medida.ruido),
+      },
+    });
+  } catch (error) {
+    enviar({
+      tipo: "error",
+      motivo:
+        error instanceof NoCabeEnAltoVolumen
+          ? error.motivo
+          : llave === null
+            ? "sin-llave"
+            : "transformacion-fallida",
+    });
+  }
+}
+
 /**
  * La óptima tal como se aplicó, para el certificado: cada columna con su escalera y el nivel
  * elegido. Las columnas sin escalera en la política subieron por la de solo supresión.
@@ -686,7 +890,8 @@ function generalizacionAplicada(
     kAlcanzado: optima.kAlcanzado,
     lObjetivo: optima.lObjetivo,
     lAlcanzado: optima.lAlcanzado,
-    columnasSensibles: pedida.diversidad?.columnas ?? [],
+    columnasSensibles: optima.columnasSensibles,
+    lDescartadas: optima.lDescartadas,
     columnas: optima.dimensiones.map((nombre, i) => {
       const jerarquia = pedida.jerarquias[nombre] ?? { tipo: "supresion" };
       return {
@@ -703,6 +908,7 @@ function generalizacionAplicada(
 /** Un lado de la comparación, medido sobre las columnas del reparto de la tabla ya generalizada. */
 function medirLado(
   generalizada: TablaColumnar,
+  original: TablaColumnar,
   dimensiones: readonly string[],
   sensibles: readonly string[],
   niveles: readonly (string | null)[],
@@ -717,7 +923,7 @@ function medirLado(
   >,
 ): LadoDeLaComparacion {
   const porNombre = new Map(generalizada.columnas.map((c) => [c.nombre, c]));
-  const originales = new Map((tabla?.columnas ?? []).map((c) => [c.nombre, c]));
+  const originales = new Map(original.columnas.map((c) => [c.nombre, c]));
   const columnas = dimensiones.map((n) => porNombre.get(n)!);
   const riesgo = riesgoProsecutor(
     clasesDeEquivalencia(columnas, generalizada.filas),
@@ -768,12 +974,45 @@ function compararGeneralizacion(
 ): void {
   // Un fallo aquí NO es un error de la sesión (eso tumbaría el diagnóstico en pantalla): la
   // comparación vuelve vacía y la pantalla dice que no se pudo hacer.
+  if (altoVolumen) {
+    void compararAltoVolumen(politica, jerarquias, idioma);
+    return;
+  }
   if (!tabla || !diagnosticoActual) {
     enviar({ tipo: "comparacion", comparacion: null });
     return;
   }
   try {
     compararSobre(tabla, politica, jerarquias, idioma);
+  } catch {
+    enviar({ tipo: "comparacion", comparacion: null });
+  }
+}
+
+/**
+ * S8: la comparación en alto volumen. Se leen, por una pasada, solo las columnas del reparto y las
+ * sensibles de la ℓ, a una tabla normal, y se compara sobre ella con el MISMO código: es justo lo que
+ * los dos caminos miran.
+ */
+async function compararAltoVolumen(
+  politica: Politica,
+  jerarquias: Readonly<Record<string, JerarquiaDeLaPolitica>>,
+  idioma: Idioma,
+): Promise<void> {
+  const { archivo, pasada } = altoVolumen!;
+  try {
+    const pedidas = new Set([
+      ...columnasDeMondrian(politica),
+      ...(politica.generalizacion?.diversidad?.columnas ?? []),
+    ]);
+    avisar("comparando", pasada.filas, 0, archivo.size);
+    const parcial = await leerColumnas(
+      archivo,
+      pasada,
+      pasada.nombres.filter((n) => pedidas.has(n)),
+      { huella },
+    );
+    compararSobre(parcial, politica, jerarquias, idioma);
   } catch {
     enviar({ tipo: "comparacion", comparacion: null });
   }
@@ -796,14 +1035,25 @@ function compararSobre(
   }
   avisar("comparando", tabla.filas, 0, 0);
   const diversidad = politica.generalizacion?.diversidad ?? null;
-  const sensibles = (diversidad?.columnas ?? []).filter(
-    (n) => existentes.has(n) && !dimensiones.includes(n),
+  // La MISMA resolución que la transformación (`aplicarPolitica`): una sensible que la política
+  // suprime no se exige en ninguno de los dos caminos.
+  const suprimidas = new Set(
+    tabla.columnas
+      .map((c) => c.nombre)
+      .filter((n) => tecnicaDe(politica, n).tipo === "suprimir"),
+  );
+  const { columnas: sensibles, descartadas } = resolverDiversidad(
+    diversidad,
+    dimensiones,
+    existentes,
+    suprimidas,
   );
 
   let inicio = performance.now();
   const mondrian = anonimizarConMondrian(tabla, dimensiones, k, idioma);
   const ladoMondrian = medirLado(
     mondrian.tabla,
+    tabla,
     dimensiones,
     sensibles,
     dimensiones.map(() => null),
@@ -823,13 +1073,13 @@ function compararSobre(
     dimensiones,
     jerarquias,
     k,
-    diversidad && sensibles.length > 0
-      ? { l: diversidad.l, columnas: sensibles }
-      : null,
+    diversidad,
+    suprimidas,
   );
   const disponible = optima.motivo !== "excede-tope";
   const ladoOptima = medirLado(
     optima.tabla,
+    tabla,
     dimensiones,
     sensibles,
     optima.dimensiones.map((n, i) =>
@@ -851,7 +1101,8 @@ function compararSobre(
 
   const comparacion: ComparacionDeGeneralizacion = {
     kObjetivo: k,
-    lObjetivo: diversidad && sensibles.length > 0 ? diversidad.l : null,
+    lObjetivo: optima.lObjetivo,
+    lDescartadas: descartadas,
     dimensiones,
     mondrian: ladoMondrian,
     optima: ladoOptima,
@@ -862,7 +1113,55 @@ function compararSobre(
 /** Cuántas filas se juntan antes de cerrar un trozo del Blob. */
 const FILAS_POR_TROZO = 20_000;
 
-async function construirArchivo(): Promise<void> {
+/**
+ * S8: adonde va el archivo que se escribe por trozos. Los MISMOS bytes que se hashean son los que se
+ * escriben: al archivo que el usuario eligió (`createWritable`, que no confirma nada hasta `close`)
+ * o a un `Blob` hecho de `Blob`s, sin juntar las cadenas en memoria.
+ */
+async function destinoDe(asa: FileSystemFileHandle | undefined) {
+  const huellaDeSalida = new Sha256();
+  const codificador = new TextEncoder();
+  const escritor = asa ? await asa.createWritable() : null;
+  const partes: Blob[] = [];
+  let bytes = 0;
+  const destino: Destino = {
+    async escribir(texto) {
+      const trozo = codificador.encode(texto);
+      huellaDeSalida.actualizar(trozo);
+      bytes += trozo.length;
+      if (escritor) await escritor.write(trozo);
+      else partes.push(new Blob([trozo]));
+    },
+  };
+  return {
+    destino,
+    /** Confirma el archivo (o arma el `Blob`) y devuelve lo que cruza a la página. */
+    async cerrar(tipo: string) {
+      if (escritor) await escritor.close();
+      return {
+        ...(escritor
+          ? { enDisco: true as const }
+          : { blob: new Blob(partes, { type: tipo }) }),
+        bytes,
+        sha256: huellaDeSalida.terminar(),
+      };
+    },
+    /** Deshace lo escrito: con `createWritable`, nada llega al archivo del usuario. */
+    async abortar() {
+      if (escritor) await escritor.abort().catch(() => {});
+    },
+  };
+}
+
+async function construirArchivo(asa?: FileSystemFileHandle): Promise<void> {
+  if (altoVolumen?.plan) {
+    await construirArchivoAltoVolumen(
+      altoVolumen.archivo,
+      altoVolumen.plan,
+      asa,
+    );
+    return;
+  }
   if (!transformada) {
     enviar({ tipo: "error", motivo: "sin-tabla" });
     return;
@@ -916,6 +1215,33 @@ async function construirArchivo(): Promise<void> {
     proposito: "anonimizado",
     sha256: huellaDeSalida.terminar(),
   });
+}
+
+/** S8: la pasada C, al destino. Si algo falla, no queda un archivo a medias en el equipo. */
+async function construirArchivoAltoVolumen(
+  archivo: File,
+  plan: PlanDeTransformacion,
+  asa?: FileSystemFileHandle,
+): Promise<void> {
+  avisar("escribiendo", altoVolumen?.pasada.filas ?? 0, 0, archivo.size);
+  let salida: Awaited<ReturnType<typeof destinoDe>> | null = null;
+  try {
+    salida = await destinoDe(asa);
+    await escribirCsv(archivo, plan, salida.destino, {
+      alAvanzar: (filas, bytes, total) =>
+        avisar("escribiendo", filas, bytes, total),
+    });
+    const cerrado = await salida.cerrar("text/csv;charset=utf-8");
+    enviar({
+      tipo: "archivo",
+      ...cerrado,
+      nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica),
+      proposito: "anonimizado",
+    });
+  } catch {
+    await salida?.abortar();
+    enviar({ tipo: "error", motivo: "lectura-fallida" });
+  }
 }
 
 /**
@@ -1000,6 +1326,11 @@ let datosDelDevuelto = { nombre: "", bytes: 0, sha256: "" };
  */
 let lecturaDevuelta: LecturaJson | null = null;
 let archivoDevuelto: File | null = null;
+/** S8: un CSV devuelto que no cupo en memoria. Se restaura por pasadas, sin tabla. */
+let devueltoAltoVolumen: {
+  readonly archivo: File;
+  readonly pasada: PasadaDelDevuelto;
+} | null = null;
 
 /** En un JSON, las columnas reversibles que eran todas números vuelven sin comillas (ADR-011). */
 function conNumericas(
@@ -1088,7 +1419,9 @@ async function abrir(archivo: File, frase: string): Promise<void> {
  * `engine/riesgo-estimado.ts` existe para no cometer.
  */
 function estimar(poblacion: number | null): void {
-  if (!transformada || !clasesDespues) {
+  // El estimador solo lee los tamaños de clase: también en alto volumen (S8).
+  const filas = transformada?.filas ?? altoVolumen?.pasada.filas ?? null;
+  if (filas === null || !clasesDespues) {
     enviar({ tipo: "error", motivo: "sin-tabla" });
     return;
   }
@@ -1096,7 +1429,7 @@ function estimar(poblacion: number | null): void {
     tipo: "riesgo-estimado",
     estimacion: estimarRiesgo({
       clases: clasesDespues,
-      filas: transformada.filas,
+      filas,
       poblacion,
     }),
   });
@@ -1185,7 +1518,11 @@ async function sellarLaBitacora(
 }
 
 /** El devuelto está listo: lo que la página puede saber de él son conteos. */
-function anunciarDevuelto(tabla: TablaColumnar): void {
+function anunciarDevuelto(
+  tabla: Pick<TablaColumnar, "filas"> & {
+    readonly columnas: { readonly length: number };
+  },
+): void {
   enviar({
     tipo: "devuelto-listo",
     nombre: datosDelDevuelto.nombre,
@@ -1194,6 +1531,25 @@ function anunciarDevuelto(tabla: TablaColumnar): void {
     columnas: tabla.columnas.length,
     sha256: datosDelDevuelto.sha256,
   });
+}
+
+/** S8: el devuelto por pasadas: sus diccionarios, que es lo que la restauración decide. */
+async function analizarDevueltoAltoVolumen(archivo: File): Promise<void> {
+  try {
+    const pasada = await pasadaDelDevuelto(archivo, {
+      huella: datosDelDevuelto.sha256,
+      alAvanzar: (filas, bytes, total) =>
+        avisar("alto-volumen", filas, bytes, total),
+    });
+    if (pasada.filas === 0) {
+      enviar({ tipo: "error", motivo: "archivo-vacio" });
+      return;
+    }
+    devueltoAltoVolumen = { archivo, pasada };
+    anunciarDevuelto({ filas: pasada.filas, columnas: pasada.nombres });
+  } catch (error) {
+    enviar({ tipo: "error", motivo: motivoDelAltoVolumen(error) });
+  }
 }
 
 /** Un JSON devuelto: el mismo lector propio de la ida, con la misma regla de no citar nada. */
@@ -1236,6 +1592,7 @@ async function analizarDevuelto(archivo: File): Promise<void> {
   restaurada = null;
   lecturaDevuelta = null;
   archivoDevuelto = null;
+  devueltoAltoVolumen = null;
 
   // El regreso lee CSV y JSON. Un Excel, un PDF o una imagen se vetan aquí y no se leen «como
   // texto»: la página filtra por extensión, pero la frontera no se fía de lo que diga el otro lado.
@@ -1251,46 +1608,85 @@ async function analizarDevuelto(archivo: File): Promise<void> {
 
   let constructor: ConstructorColumnar | null = null;
   let filas = 0;
+  let leidos = 0;
   let proximoAviso = FILAS_POR_AVISO;
 
-  Papa.parse<string[]>(archivo, {
-    header: false,
-    skipEmptyLines: "greedy",
-    worker: false,
-    chunk(resultados) {
-      const datos = resultados.data;
+  try {
+    for await (const lote of lotesDeCsv(archivo, {
+      alAvanzar: (bytes) => (leidos = bytes),
+    })) {
       let desde = 0;
       if (!constructor) {
-        constructor = new ConstructorColumnar(datos[0] ?? [], 1 << 16);
+        constructor = new ConstructorColumnar(lote[0] ?? [], 1 << 16);
         desde = 1;
       }
-      for (let i = desde; i < datos.length; i++)
-        constructor.agregarFila(datos[i]);
-      filas += datos.length - desde;
+      for (let i = desde; i < lote.length; i++)
+        constructor.agregarFila(lote[i]);
+      filas += lote.length - desde;
+      // S8: el mismo tope que a la ida; por encima, el devuelto se restaura por pasadas.
+      if (filas * (lote[0]?.length ?? 0) > TOPE_DE_CELDAS_EN_MEMORIA) {
+        constructor = null;
+        await analizarDevueltoAltoVolumen(archivo);
+        return;
+      }
       if (filas >= proximoAviso) {
         proximoAviso = filas + FILAS_POR_AVISO;
-        avisar("leyendo", filas, resultados.meta.cursor, archivo.size);
+        avisar("leyendo", filas, leidos, archivo.size);
       }
-    },
-    complete() {
-      if (!constructor) {
-        enviar({ tipo: "error", motivo: "archivo-vacio" });
-        return;
-      }
-      devuelta = (constructor as ConstructorColumnar).finalizar();
-      if (devuelta.filas === 0) {
-        enviar({ tipo: "error", motivo: "archivo-vacio" });
-        return;
-      }
-      anunciarDevuelto(devuelta);
-    },
-    error() {
-      enviar({ tipo: "error", motivo: "lectura-fallida" });
-    },
-  });
+    }
+  } catch {
+    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+  if (!constructor) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+  devuelta = (constructor as ConstructorColumnar).finalizar();
+  if (devuelta.filas === 0) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+  anunciarDevuelto(devuelta);
 }
 
-function restaurarDevuelto(): void {
+/** Un destino que no guarda nada: la pasada que solo CUENTA, para el resumen antes de escribir. */
+const SIN_DESTINO: Destino = { escribir: async () => {} };
+
+async function restaurarDevuelto(): Promise<void> {
+  if (devueltoAltoVolumen && bovedaActual) {
+    const { archivo, pasada } = devueltoAltoVolumen;
+    avisar("restaurando", pasada.filas, 0, archivo.size);
+    try {
+      const resultado = await restaurarPorTrozos(
+        archivo,
+        pasada,
+        bovedaActual,
+        datosDelDevuelto.sha256,
+        SIN_DESTINO,
+      );
+      // El informe del regreso lee `tabla.filas`; la tabla no existe, las filas sí.
+      restaurada = {
+        ...resultado,
+        tabla: { columnas: [], filas: resultado.filas },
+      };
+      enviar({
+        tipo: "restaurado",
+        resumen: {
+          columnas: resultado.columnas,
+          reconocimiento: resultado.reconocimiento,
+          totales: resultado.totales,
+          proporcionRestaurada: resultado.proporcionRestaurada,
+          salvedades: resultado.salvedades,
+          esTitular: resultado.esTitular,
+          filas: resultado.filas,
+        },
+      });
+    } catch {
+      enviar({ tipo: "error", motivo: "restauracion-fallida" });
+    }
+    return;
+  }
   if (!devuelta || !bovedaActual) {
     enviar({ tipo: "error", motivo: devuelta ? "sin-boveda" : "sin-devuelto" });
     return;
@@ -1368,9 +1764,38 @@ async function construirRestauradoJson(
   });
 }
 
-async function construirRestaurado(): Promise<void> {
+async function construirRestaurado(asa?: FileSystemFileHandle): Promise<void> {
   if (!restaurada) {
     enviar({ tipo: "error", motivo: "sin-devuelto" });
+    return;
+  }
+  if (devueltoAltoVolumen && bovedaActual) {
+    const { archivo, pasada } = devueltoAltoVolumen;
+    avisar("escribiendo", pasada.filas, 0, archivo.size);
+    let salida: Awaited<ReturnType<typeof destinoDe>> | null = null;
+    try {
+      salida = await destinoDe(asa);
+      await restaurarPorTrozos(
+        archivo,
+        pasada,
+        bovedaActual,
+        datosDelDevuelto.sha256,
+        salida.destino,
+      );
+      const { sha256: _huella, ...cerrado } = await salida.cerrar(
+        "text/csv;charset=utf-8",
+      );
+      void _huella;
+      enviar({
+        tipo: "archivo",
+        ...cerrado,
+        nombre: `velo-restaurado-${datosDelDevuelto.sha256.slice(0, 8)}.csv`,
+        proposito: "restaurado",
+      });
+    } catch {
+      await salida?.abortar();
+      enviar({ tipo: "error", motivo: "lectura-fallida" });
+    }
     return;
   }
   avisar("escribiendo", restaurada.tabla.filas, 0, 0);
@@ -1440,14 +1865,16 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
       mensaje.jerarquias,
       mensaje.idioma,
     );
-  if (mensaje?.tipo === "construir-archivo") void construirArchivo();
+  if (mensaje?.tipo === "construir-archivo")
+    void construirArchivo(mensaje.destino);
   if (mensaje?.tipo === "sellar-boveda") void sellar(mensaje.frase);
   if (mensaje?.tipo === "abrir-boveda")
     void abrir(mensaje.archivo, mensaje.frase);
   if (mensaje?.tipo === "analizar-devuelto")
     void analizarDevuelto(mensaje.archivo);
-  if (mensaje?.tipo === "restaurar") restaurarDevuelto();
-  if (mensaje?.tipo === "construir-restaurado") void construirRestaurado();
+  if (mensaje?.tipo === "restaurar") void restaurarDevuelto();
+  if (mensaje?.tipo === "construir-restaurado")
+    void construirRestaurado(mensaje.destino);
   if (mensaje?.tipo === "construir-informe-del-regreso")
     construirInformeDelRegreso(mensaje.fecha, mensaje.idioma);
   if (mensaje?.tipo === "estimar-riesgo") estimar(mensaje.poblacion);

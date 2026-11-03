@@ -14,7 +14,18 @@
 // cédula para que el sistema del destino no rechace el archivo, pero no se puede revertir por
 // algoritmo: la vuelta la da la bóveda (S3), no el cifrado del formato.
 
+import type { FormatoDeSeudonimo } from "../politica";
 import { digitoVerificacionNit } from "../validadores/colombianos";
+import { sinSeparadores } from "../validadores/europeos";
+import {
+  BLOQUES,
+  construirEuropeo,
+  esEuropeo,
+  Simbolos,
+  type FormatoEuropeo,
+} from "./formato-europeo";
+
+export type { FormatoDeSeudonimo };
 
 /** Lo que sale de seudonimizar una lista de valores distintos. */
 export interface ResultadoDeSeudonimo {
@@ -100,14 +111,14 @@ export async function seudonimizar(
  * Así que Velo **las cuenta y las reporta**. Si el número no te sirve, el camino sin colisiones es
  * el seudónimo hexadecimal: se conserva el cruce, se pierde el parecido.
  */
-const FORMATOS = {
+const FORMATOS_COLOMBIANOS = {
   /** NUIP de 10 dígitos desde 1.000.000.000 (Registraduría). 10⁹ combinaciones. */
   cedula: { minimo: 1_000_000_000, rango: 1_000_000_000 },
   /** Base de 9 dígitos en el rango de las empresas (8xx–9xx). 2×10⁸ combinaciones. */
   nit: { minimo: 800_000_000, rango: 200_000_000 },
 } as const;
 
-export type FormatoDeSeudonimo = keyof typeof FORMATOS;
+type FormatoColombiano = keyof typeof FORMATOS_COLOMBIANOS;
 
 /** 13 caracteres hexadecimales = 52 bits, que es lo que un `number` de JS representa sin perder. */
 const HEX_SEGUROS = 13;
@@ -120,8 +131,8 @@ const HEX_SEGUROS = 13;
  * del orden de rango/2⁵² ≈ 4×10⁻⁸, irrelevante para un seudónimo, y se declara en vez de omitirse.
  * Lo que sí compra es que el motor siga sin depender de literales `BigInt`.
  */
-function numeroEnRango(hex: string, formato: FormatoDeSeudonimo): number {
-  const { minimo, rango } = FORMATOS[formato];
+function numeroEnRango(hex: string, formato: FormatoColombiano): number {
+  const { minimo, rango } = FORMATOS_COLOMBIANOS[formato];
   return minimo + (Number.parseInt(hex.slice(0, HEX_SEGUROS), 16) % rango);
 }
 
@@ -145,6 +156,10 @@ export async function seudonimizarConFormato(
       salida.push("");
       continue;
     }
+    if (esEuropeo(formato)) {
+      salida.push(await seudonimoEuropeo(clave, valor, formato));
+      continue;
+    }
     const base = numeroEnRango(await hmacHex(clave, valor), formato).toString();
     if (formato === "nit") {
       // El DV se recomputa con el algoritmo oficial sobre la base nueva: el seudónimo no hereda el
@@ -155,4 +170,51 @@ export async function seudonimizarConFormato(
     }
   }
   return { valores: salida, colisiones: contarColisiones(valores, salida) };
+}
+
+// ── Formatos europeos (S8) ────────────────────────────────────────────────────────────────────
+
+/**
+ * Los `bloques` HMAC de un intento. El primer bloque del primer intento es el HMAC del valor a
+ * secas, igual que en los demás seudónimos; los demás llevan un contador. Todos dependen solo del
+ * valor y la llave.
+ */
+async function hmacBloques(
+  clave: CryptoKey,
+  valor: string,
+  bloques: number,
+  intento: number,
+): Promise<string> {
+  let hex = "";
+  for (let bloque = 0; bloque < bloques; bloque++) {
+    hex += await hmacHex(
+      clave,
+      intento === 0 && bloque === 0
+        ? valor
+        : `${valor}\u0000${intento}\u0000${bloque}`,
+    );
+  }
+  return hex;
+}
+
+/** Cuántos sorteos se prueban antes de rendirse; con 10⁻⁸ de coincidir, el primero basta. */
+const INTENTOS_MAXIMOS = 8;
+
+/**
+ * El seudónimo europeo de un valor, **distinto de la entrada**: si el candidato fuera el propio
+ * dato (sin contar separadores ni mayúsculas) se sortea de nuevo con el siguiente intento del
+ * mismo valor, de modo que sigue dependiendo solo del valor y la llave.
+ */
+async function seudonimoEuropeo(
+  clave: CryptoKey,
+  valor: string,
+  formato: FormatoEuropeo,
+): Promise<string> {
+  const original = sinSeparadores(valor);
+  for (let intento = 0; intento < INTENTOS_MAXIMOS; intento++) {
+    const hex = await hmacBloques(clave, valor, BLOQUES[formato], intento);
+    const candidato = construirEuropeo(formato, valor, new Simbolos(hex));
+    if (sinSeparadores(candidato) !== original) return candidato;
+  }
+  throw new Error("el seudónimo con formato coincidió con la entrada en cada intento");
 }

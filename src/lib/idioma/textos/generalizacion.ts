@@ -126,6 +126,16 @@ export const GENERALIZACION = {
         "Measured over the columns of the partition ({columnas}), not over the whole file: the " +
         "full balance arrives when you transform.",
     },
+    // La ℓ pedida sobre una sensible que la política suprime: el archivo no la lleva, así que no hay
+    // diversidad que exigir sobre ella. Se dice, para que nadie crea que la ℓ se cumplió.
+    lDescartadas: {
+      es:
+        "La ℓ no se exige sobre {columnas}: la política suprime esa columna y el archivo no la " +
+        "lleva.",
+      en:
+        "ℓ is not required over {columnas}: the policy suppresses that column and the file " +
+        "does not carry it.",
+    },
     encabezados: {
       medida: { es: "Medida", en: "Measure" },
       mondrian: { es: "Mondrian", en: "Mondrian" },

@@ -1,7 +1,7 @@
 # Manual de uso — Velo
 
 > _Velo para entregar. Desvelo para recuperar._
-> Actualizado en el Sprint 007 · 2 de noviembre de 2026
+> Actualizado en el Sprint 008 · 2 de noviembre de 2026
 >
 > English version: [MANUAL-DE-USO.en.md](MANUAL-DE-USO.en.md)
 
@@ -50,9 +50,10 @@ recargar vuelve al idioma de tu navegador (o al de la dirección).
 
 Hay cosas que el idioma **no** cambia, y conviene saberlo: lo que viene de tus archivos (los
 nombres de columna, los valores, las muestras) se muestra tal como está; los reconocedores propios
-de un país siguen siendo los colombianos —cédula, NIT, celular, placa, y la Ley 1581 como marco—
-porque el inglés es el de la interfaz, no el de la detección; y la bóveda y la bitácora son el mismo archivo sin importar en qué
-idioma las guardaste. Una anotación de la bitácora conserva la fecha tal como se escribió cuando la
+de un país son los mismos en los dos idiomas —los colombianos (cédula, NIT, celular, placa, y la
+Ley 1581 como marco) y los ocho documentos europeos de [la sección 10](#10-la-política-rgpd), con
+el RGPD como marco— porque el inglés es el de la interfaz, no el de la detección; y la bóveda y la
+bitácora son el mismo archivo sin importar en qué idioma las guardaste. Una anotación de la bitácora conserva la fecha tal como se escribió cuando la
 anotaste. Lo que Velo escribe **dentro del archivo tratado** sí sigue el idioma con que pediste la
 transformación: las dos palabras que usa al generalizar (el « a » entre los extremos de un rango y el
 « (o vacío)» de un grupo con celdas vacías) salen como « to » y « (or empty)» si estabas en inglés, y
@@ -82,7 +83,7 @@ Velo lee:
 
 | Formato                                                                                    | Tope                                 | Por qué                                                                                                                                                            |
 | ------------------------------------------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **CSV** (`.csv`)                                                                           | sin tope                             | Se lee por partes; nunca existe entero en memoria.                                                                                                                 |
+| **CSV** (`.csv`)                                                                           | sin tope de peso                     | Se lee por partes; nunca existe entero en memoria. Por encima de 20.000.000 de celdas, Velo lo lee [por pasadas](#9-archivos-enormes-el-modo-de-alto-volumen).     |
 | **Excel** (`.xlsx`, `.xls`)                                                                | **150 MB**                           | Un Excel hay que abrirlo completo para leerlo. Por encima de ese tamaño el navegador se queda sin memoria, así que Velo lo rechaza **antes** de abrirlo.           |
 | **JSON** (`.json`) y **JSON Lines** (`.jsonl`, `.ndjson`)                                  | **20.000.000 de celdas**, no un peso | El archivo se lee por partes, pero la tabla que Velo arma con él vive en memoria: lo que ocupa es el número de celdas (registros × rutas distintas), no los bytes. |
 | **PDF** (`.pdf`)                                                                           | **50 MB**                            | Un PDF no se puede reescribir por partes: se abre entero en memoria, y lo que pesa es la cantidad de piezas que trae dentro. Velo lo rechaza **antes** de abrirlo. |
@@ -113,7 +114,8 @@ Dos cosas más sobre lo que Velo lee:
 Mientras trabaja verás en qué va: **tomando la huella** del archivo, **leyendo**, **reconociendo
 las columnas** y **midiendo el riesgo**. La barra solo aparece cuando hay algo real que medir; en
 las etapas que no tienen una fracción que mostrar, Velo te dice la etapa y no te dibuja una barra
-falsa. Con un PDF o una imagen no hay filas ni columnas: Velo dice «Leyendo lo que el archivo dice
+falsa. Con un CSV enorme verás además «Modo alto volumen: el archivo se lee por pasadas», que
+explica [la sección 9](#9-archivos-enormes-el-modo-de-alto-volumen). Con un PDF o una imagen no hay filas ni columnas: Velo dice «Leyendo lo que el archivo dice
 de sí mismo» y no dibuja barra, porque abre el archivo entero de una vez.
 
 #### Si tu archivo es un JSON
@@ -214,11 +216,11 @@ y el único que se puede calcular exacto.
 Cada fila de la tabla te dice qué encontró Velo y, sobre todo, **por qué**. Ese «por qué» tiene
 tres niveles de certeza, y la diferencia entre ellos es la diferencia entre saber y sospechar:
 
-| Nivel             | Qué quiere decir                                                                                                                                                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Confirmado**    | Existe un dígito de verificación oficial y Velo lo recalculó y cuadra. Es el caso del NIT (mod 11 de la DIAN), las tarjetas (Luhn) y el IBAN.                                         |
-| **Por su forma**  | No existe checksum público para ese dato, así que solo se pudo comprobar la forma. Es el caso de la cédula colombiana: la Registraduría no publica un dígito de verificación.         |
-| **Sin confirmar** | La conclusión se apoya en el **nombre de la columna**, no en los valores. Ningún cálculo puede mirar «J45.9» y afirmar que es un diagnóstico de salud; solo el encabezado lo sugiere. |
+| Nivel             | Qué quiere decir                                                                                                                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Confirmado**    | Existe un dígito de verificación oficial y Velo lo recalculó y cuadra. Es el caso del NIT (mod 11 de la DIAN), las tarjetas (Luhn), el IBAN y los documentos europeos de la [sección 10](#10-la-política-rgpd). |
+| **Por su forma**  | No existe checksum público para ese dato, así que solo se pudo comprobar la forma. Es el caso de la cédula colombiana: la Registraduría no publica un dígito de verificación.                                   |
+| **Sin confirmar** | La conclusión se apoya en el **nombre de la columna**, no en los valores. Ningún cálculo puede mirar «J45.9» y afirmar que es un diagnóstico de salud; solo el encabezado lo sugiere.                           |
 
 Y cada columna cae en una de las **cuatro categorías de la Ley 1581 de 2012**:
 
@@ -306,12 +308,15 @@ Una fila por columna, con un desplegable. Puedes elegir columna por columna o pa
   de anonimización AGN + SIC. Declara un objetivo de grupo mínimo (k = 5).
 - **HIPAA · Safe Harbor** — los 18 identificadores de 45 CFR §164.514(b)(2). Ojo: Safe Harbor manda
   **borrar**, no seudonimizar, porque §164.514(c) prohíbe un código derivado de la información.
+- **RGPD · GDPR (UE)** — el Reglamento (UE) 2016/679. **Seudonimiza, no anonimiza**: lo cuenta la
+  [sección 10](#10-la-política-rgpd). Declara un objetivo de grupo mínimo (k = 5) que es elección
+  de Velo, no del reglamento.
 
-Las dos dicen, ahí mismo, cuántos de sus puntos reconoce Velo por el contenido de la columna,
+Las tres dicen, ahí mismo, cuántos de sus puntos reconoce Velo por el contenido de la columna,
 cuántos solo por el nombre y **cuántos tienes que marcar tú**. Ninguna es una certificación.
 
-En cuanto tocas una regla de una política de fábrica, Velo lo dice: _«ya no es Habeas Data»_. La
-guía oficial no respalda una decisión que no tomó.
+En cuanto tocas una regla de una política de fábrica, Velo lo dice: _«ya no es Habeas Data»_ (o la
+que fuera). La guía oficial no respalda una decisión que no tomó.
 
 La política **no se guarda en ningún lado**. Si la quieres para el mes que viene, **expórtala** —
 es un archivo JSON que puedes volver a importar. Lleva los nombres de tus columnas, que son datos
@@ -373,7 +378,7 @@ Lo que puede aparecer ahí:
 | El k pedido no se alcanzó             | Pediste grupos de N y el reparto llegó a menos. Velo **no borra filas** para lograrlo.                                              |
 | El k del reparto no es el del archivo | Las columnas generalizadas alcanzaron su k, pero otras columnas que no entraron parten esos grupos. **Vale el número del archivo.** |
 | Grupos homogéneos                     | Hay grupos donde todos comparten el mismo dato sensible: dar con el grupo basta para saberlo.                                       |
-| Colisiones de seudónimo               | Conservar el formato (cédula, NIT) reduce el espacio disponible y dos valores distintos pueden chocar.                              |
+| Colisiones de seudónimo               | Conservar el formato (cédula, NIT, un documento europeo) reduce el espacio disponible y dos valores distintos pueden chocar.        |
 
 #### El archivo
 
@@ -668,7 +673,7 @@ principio del SHA-256 del archivo que te devolvieron.
 | **La cambió el tercero** | el valor no está en la bóveda                          | tal como él la dejó        |
 | **Fuera de alcance**     | su columna no estaba en la bóveda                      | la columna entera, intacta |
 
-> **Sobre las ambiguas.** Un seudónimo con formato —cédula, NIT— tiene que caber en muchos menos
+> **Sobre las ambiguas.** Un seudónimo con formato —cédula, NIT, un PESEL o un Steuer-IdNr— tiene que caber en muchos menos
 > valores que un hash completo, así que a veces dos valores distintos reciben el mismo. Velo **no
 > elige por ti**: deja el seudónimo puesto, te dice cuántas celdas son y las declara en el informe.
 > Escribir uno de los dos candidatos te devolvería el dato de otra persona sin que nada lo indicara.
@@ -880,6 +885,238 @@ segunda opinión, pásale a la copia limpia otra herramienta de metadatos.
 
 ---
 
+### 9. Archivos enormes: el modo de alto volumen
+
+Una tabla de millones de filas no cabe entera en la memoria de una pestaña. Cuando un CSV pasa de
+**20.000.000 de celdas** —filas × columnas—, Velo no intenta cargarlo: **lo lee por pasadas**. Una
+para el diagnóstico, otra para medir lo que va a salir, otra para escribirlo, y en cada una vuelve a
+calcular la huella del archivo para comprobar que sigue siendo el mismo. Es el mismo motor de
+siempre; lo que cambia es de dónde saca las cuentas. Y todo ocurre, como siempre, dentro de tu
+navegador.
+
+El tope no depende de tu equipo ni de la hora: **el mismo archivo toma el mismo camino** en
+cualquier computador.
+
+**Qué verás.** Mientras lee, la etapa dice «Modo alto volumen: el archivo se lee por pasadas». Al
+terminar, el diagnóstico abre con un panel, **«Este archivo se leyó por pasadas»**, antes de
+cualquier cifra: _«Pasa de 20.000.000 celdas, lo que Velo guarda en memoria, así que lo leyó por
+pasadas, sin tenerlo entero en la pestaña. El riesgo de abajo es exacto: sale de todas las filas.»_ Y
+sigue con lo que cambia.
+
+**Lo que no cambia**
+
+- **El riesgo sigue siendo exacto.** Se cuenta sobre todas las filas, no sobre una muestra.
+- **El archivo que sale es el mismo, byte por byte,** que saldría si cupiera en memoria (mismo
+  archivo, misma política, misma llave, mismo idioma). Una prueba automática los compara en cada
+  cambio del programa.
+- **La bóveda y el regreso funcionan igual** ([sección 5](#5-la-bóveda-para-poder-deshacerlo) y
+  [sección 6](#6-el-regreso-recuperar-lo-que-entregaste)). Si el archivo que te devuelven también
+  pasa de 20.000.000 de celdas, se restaura por pasadas.
+- **Nada sale de tu computador.**
+
+**Lo que cambia, y Velo lo dice**
+
+- **La clasificación mira las primeras 5.000 filas.** En un archivo más chico, Velo clasifica sobre
+  una muestra repartida por todo el archivo; aquí mira el principio, en orden. Por eso lo que
+  encuentre puede diferir de lo que daría el mismo archivo si cupiera en memoria.
+- **Una columna con demasiados valores distintos dice «más de N valores distintos»** en la tabla,
+  en vez de una cifra que no sería cierta.
+- **El consejero de cruces combina solo los cuasi-identificadores.** Las columnas que habría mirado
+  quedan listadas con su motivo.
+- **No se mide lo que el archivo perdió** (la utilidad): medirlo exige comparar las dos tablas
+  enteras. El certificado lo dice con todas sus letras —«En este archivo no se midió»— y no estima
+  la cifra.
+- **Las colisiones de seudónimo se cuentan solo donde el diccionario de la columna cabe.** Es el
+  aviso del balance de la [sección 4](#4-transforma-el-taller): dos valores distintos pueden recibir
+  el mismo seudónimo. En una columna que se trata valor por valor (más de 1.048.576 valores
+  distintos) Velo no las cuenta y el balance no avisa de ellas: que no diga nada no significa que no
+  haya. Si ocurre, el regreso las declara como ambiguas.
+
+**Los topes, y lo que no cabe se dice.** Cada tope es una constante del programa, no una medida de
+tu equipo. Cuando algo no cabe, Velo lo dice y se detiene o lo deja intacto; **jamás lo estima**:
+
+| Qué                                                     | Tope                           | Qué pasa si se pasa                                                                                                                                                                                                      |
+| ------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Valores distintos en una columna                        | 1.048.576 (2²⁰)                | La columna se trata valor por valor, con la misma salida, y el diagnóstico dice «más de N valores distintos». Si era reversible, no hay bóveda para ella: Velo se detiene y pide quitar la casilla o dividir el archivo. |
+| Valores distintos en todas las columnas juntas          | 4.194.304 (2²²)                | Lo mismo.                                                                                                                                                                                                                |
+| Filas del reparto (Mondrian o la generalización óptima) | 16.000.000                     | Velo se detiene: generaliza esas columnas con una técnica por columna, o divide el archivo.                                                                                                                              |
+| Combinaciones distintas de cuasi-identificadores        | 16.777.215 (2²⁴ − 1)           | Velo dice «Demasiadas combinaciones para medir el riesgo exacto» y no estima: generaliza antes alguna de esas columnas (la fecha a año, el municipio a departamento) y suéltalo otra vez.                                |
+| Valores distintos de una columna del archivo devuelto   | 1.048.576 (2²⁰), como a la ida | El regreso se detiene: divide el archivo en partes y restaura cada una con la misma bóveda.                                                                                                                              |
+
+La respuesta aleatorizada, que ya no se aplica con más de 64 valores distintos, dice «más de N» en
+vez de una cifra falsa, y la columna sale intacta.
+
+**Dónde se guarda.** Aquí hay una diferencia entre navegadores, y la pantalla te dice cuál te toca:
+
+- **En Chrome, Edge y similares**, el botón **«Elegir dónde guardarlo»** abre el selector de
+  archivos del sistema. Velo escribe el archivo **por trozos, directo en el que elijas**, sin
+  armarlo entero en la memoria de la pestaña, y al terminar dice «Guardado en tu equipo: …». Es una
+  descarga por tu acción explícita: los bytes van a tu disco y a ningún otro lado. Si algo falla a
+  la mitad, no queda un archivo a medias.
+- **En Firefox y Safari** no hay selector de destino. Velo lo dice —«este navegador no deja elegir
+  un archivo de destino»— y arma el archivo en la memoria de la pestaña antes de guardarlo
+  (**«Preparar el archivo»** y luego **«Guardar»**). **Con un archivo muy grande puede no caber.**
+  Si es tu caso, usa Chrome o Edge.
+- **El archivo restaurado del regreso siempre va por este segundo camino,** también en Chrome y
+  Edge: se arma en la memoria y se baja.
+
+**Un defecto que se corrigió.** Un CSV de más de 10 MB con una letra con tilde justo en el borde de
+uno de los trozos en que se lee salía con «�» en lugar de la letra. Pasaba también en el camino en
+memoria, no solo en este modo, y ya no pasa en ninguno. Tu original nunca se tocó; el defecto
+estaba en lo que Velo escribía.
+
+**Lo medido: una referencia, no una promesa.** Un CSV de **5.000.000 de filas × 24 columnas
+(1,36 GB)**, con la política Habeas Data y una llave, en Chromium con la versión de producción y en
+un Mac del autor. Guardado por el camino de la memoria, sin el selector de destino:
+
+| Pasada              | Tiempo | Pico de memoria de la pestaña |
+| ------------------- | ------ | ----------------------------- |
+| Diagnóstico         | 109 s  | 3,6 GB                        |
+| Transformar y medir | 283 s  | 4,9 GB                        |
+| Escribir            | 267 s  | 4,9 GB                        |
+
+Son unos 11 minutos en total, y **hacen falta varios GB de memoria libre**: cierra otras pestañas y
+programas pesados antes. El pico es el de todo el proceso de la pestaña, medido cada medio segundo;
+cuenta memoria que el navegador aún no había liberado, así que es un techo y no lo que se usa de
+verdad. El trabajo ocurre en un hilo aparte, como siempre. El regreso de ese
+archivo no se midió a 5.000.000 de filas; sí se probó, ida y vuelta, con uno de 21.000.000 de celdas,
+comparando el restaurado con el original por su huella SHA-256. Bajar el pico de memoria está
+pendiente.
+
+**Lo que sigue con su tope**
+
+- **Excel conserva su tope de 150 MB:** el lector de Excel del navegador no puede leer por partes.
+- **Un JSON de más de 20.000.000 de celdas sigue deteniéndose** con su tope, y lo dice. El alto
+  volumen para JSON no está hecho; es una de las cosas pendientes de decisión del dueño (ver «Lo que
+  viene»).
+- **El archivo restaurado no se escribe directo a disco,** como se explicó arriba.
+
+---
+
+### 10. La política RGPD
+
+Es la **tercera política de fábrica**, junto a Habeas Data y HIPAA. En el taller se elige con el
+botón **«RGPD · GDPR (UE)»**. Se apoya en el Reglamento (UE) 2016/679: el artículo 4 (qué es un
+dato personal y qué es seudonimizar), el 9 (categorías especiales), el 10 (condenas e infracciones
+penales) y el considerando 26.
+
+> **La idea central: Velo seudonimiza, no anonimiza.** El artículo 4.5 llama _seudonimización_ a
+> tratar los datos de modo que no puedan atribuirse a una persona sin información adicional, que se
+> guarda aparte. Aquí esa información adicional es tu llave y tu bóveda. Y el considerando 26 dice
+> que un dato seudonimizado que podría atribuirse a una persona con esa información adicional debe
+> considerarse información sobre una persona identificable. Por eso **el archivo que sale sigue
+> siendo dato personal para quien tenga la llave y la bóveda**, y por eso el certificado dice
+> «Seudonimizado», nunca «anónimo».
+
+Si para otra persona —una que no tiene ni la llave ni la bóveda— ese archivo deja de ser un dato
+personal, depende de los medios razonablemente utilizables para identificar a alguien y del
+contexto (considerando 26). Ese análisis lo hace quien trata los datos; un programa que solo ve una
+tabla no puede hacerlo, y Velo no lo hace.
+
+**Qué hace con cada cosa**
+
+| Qué hay en la columna                                                                           | Qué hace Velo                                                                                                                                                             |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Identificadores directos** (art. 4.1): nombres, correo, tarjeta de pago, documentos           | Un **seudónimo** con tu llave, **reversible con la bóveda**. Si Velo reconoce el documento, el seudónimo lleva el formato de su país; si no, es un seudónimo hexadecimal. |
+| **Categorías especiales** (art. 9) y **condenas e infracciones penales** (art. 10)              | Se **suprimen**: la columna no sale. Una política general no puede saber si hay una base lícita (art. 9.2) para tratarlas.                                                |
+| **Cuasi-identificadores**: fecha de nacimiento, código postal, sexo, nacionalidad, dirección IP | Se **generalizan hasta k = 5**. Ese 5 es una elección de Velo, no del RGPD —el reglamento no fija ningún k—, y se puede cambiar.                                          |
+| Otras fechas, que por sí solas no identifican                                                   | Se recortan al **mes**.                                                                                                                                                   |
+| Lo que no es personal                                                                           | Se deja como está.                                                                                                                                                        |
+
+Con esta política la reversibilidad la marca la política, no tú: todos los identificadores directos
+salen reversibles, y el paso de la bóveda lo dice así —«Hay N columnas reversibles»—. Si no quieres
+la bóveda para alguna, la quitas columna por columna. Lo que Velo no puede reconocer por el
+contenido de la columna —un diagnóstico como «J45.9»— lo sospecha, si acaso, por el nombre del
+encabezado, con la certeza «sin confirmar». Y un código propio de tu organización (historia
+clínica, afiliado, contrato) no tiene forma reconocible: ese lo marcas tú.
+
+**Los ocho documentos que reconoce por su algoritmo.** Como las cédulas y los NIT colombianos, cada
+uno se comprueba con su dígito o letra de control oficial, y se ignoran los espacios, puntos y
+guiones, y las mayúsculas:
+
+| Documento                   | Qué comprueba Velo                                                                                                          |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **IBAN**                    | ISO 13616, con el control mod 97-10                                                                                         |
+| **DNI** (España)            | La letra de control: el número módulo 23 indexa una tabla de letras                                                         |
+| **NIE** (España)            | Lo mismo, con X, Y y Z valiendo 0, 1 y 2; no admite otro prefijo                                                            |
+| **NIR** (Francia)           | La clave: 97 menos los 13 primeros dígitos módulo 97 (con 2A y 2B de Córcega); sexo 1 o 2 y mes entre 01 y 12               |
+| **Codice fiscale** (Italia) | El carácter de control (tablas de posiciones impares y pares, módulo 26); una letra de mes y un día posibles                |
+| **Steuer-IdNr** (Alemania)  | La cifra de control sobre las 10 primeras cifras; sin 0 al inicio y con la estructura de cifras repetidas que fija la norma |
+| **BSN** (Países Bajos)      | La prueba del 11; no admite todo ceros                                                                                      |
+| **PESEL** (Polonia)         | El dígito de control (pesos 1-3-7-9) y que la fecha de nacimiento que lleva exista                                          |
+
+**«Confirmado por el algoritmo»** quiere decir dos cosas: el control cuadra y la estructura es
+posible (un mes que existe, un prefijo que el documento admite). **No** quiere decir que el número
+exista ni que sea de alguien: un número inventado también puede cuadrar. Velo los marca
+«Confirmado» en la tabla del diagnóstico, con el nombre del documento, su país y la fuente de su
+algoritmo. Por ejemplo, `12345678Z` es un DNI de ejemplo —la letra que corresponde a 12345678 es la
+Z—; sirve para explicar el algoritmo y no es de nadie.
+
+**Cómo quedan los seudónimos de esos documentos**
+
+- **Pasan el control oficial de su país.** Un seudónimo de DNI es un DNI con la letra que cuadra; uno de
+  NIR, un NIR con su clave. Así, un sistema que revise el formato no tiene por qué rechazarlo.
+- **Nunca es el dato original.** Si por casualidad el seudónimo saliera igual al original, Velo lo
+  calcula de nuevo (sigue dependiendo solo del valor y de la llave), y si no lo consigue, se detiene
+  en vez de entregarte el dato.
+- **No conserva nada del original,** ni el departamento, ni el año, ni el sexo: esos campos son
+  cuasi-identificadores, y heredarlos sería dejar la mitad del dato a la vista.
+- **El IBAN es la excepción parcial:** conserva el país, el largo, qué posiciones son dígitos y cuáles
+  letras, y el agrupado de a cuatro si venía agrupado. Pasa el control ISO 13616, pero **no
+  recalcula las claves nacionales que van dentro** (el CCC español, la clave RIB francesa), así que
+  un destino que las valide puede rechazarlo.
+- **Los números que salen son sintéticos, pero Velo no comprueba que no existan.** Pasan el control
+  de su documento y no conservan nada del original, pero Velo no puede saber qué números están
+  asignados a personas reales: un seudónimo puede ser, por casualidad, el número real de otra
+  persona, y en los documentos con pocos valores posibles frente a la población (el DNI, el PESEL,
+  el BSN, el Steuer-IdNr) esa casualidad no es rara. No lo trates como inocuo.
+- **Pueden repetirse.** Velo sortea cada PESEL entre unos 250 millones de valores y cada Steuer-IdNr entre unos
+  150 millones; en un archivo grande dos originales distintos pueden recibir el mismo seudónimo. El
+  balance cuenta cuántos, no lo esconde (salvo en una columna de [alto
+  volumen](#9-archivos-enormes-el-modo-de-alto-volumen) que no cabe en su diccionario), y el regreso los declara
+  como ambiguos ([sección 6](#6-el-regreso-recuperar-lo-que-entregaste)).
+- **Una celda que no se parece al formato** igual sale con él: una columna marcada como IBAN con un
+  texto libre recibe un IBAN sintético con forma española, porque pediste IBAN y Velo no puede
+  inventar un país a partir de un texto cualquiera.
+
+**Nombres de columna en otras lenguas.** Velo también lee encabezados en alemán, francés, italiano,
+neerlandés, polaco, portugués e inglés —nombres, direcciones, fecha de nacimiento, código postal,
+sexo, nacionalidad, salud, creencias, condenas—, además del español. Busca **palabras completas**,
+no pedazos de palabra, y se apoya **solo en el encabezado**: es una sospecha, y la certeza queda
+«sin confirmar», igual que con los nombres en español.
+
+**Lo que muestra la pantalla.** Al elegir la política verás su advertencia —_«Es la interpretación
+de Velo del texto, aplicada a las columnas que Velo reconoció. No es una certificación de
+cumplimiento…»_— y la lista **«Qué cubre, artículo por artículo»**. Cada línea trae el artículo,
+cómo lo ve Velo (por el contenido de la columna, solo por su nombre, o «Velo no lo reconoce»), la
+fuente —el Reglamento (UE) 2016/679 en el Diario Oficial de la UE, L 119, 4.5.2016— y la fecha en
+que se consultó: el 2 de noviembre de 2026. Si tocas una regla, Velo dice que ya no es la política de
+fábrica, y el certificado describe lo que se hizo, no la plantilla.
+
+**Lo que dice el certificado.** Abre con **«Seudonimizado (art. 4.5 RGPD)»**: cuántas columnas pasaron
+a un seudónimo, que el archivo sigue siendo dato personal para quien tenga la llave y la bóveda, qué
+se generalizó y qué se quitó. Y cierra con su **«Qué NO afirma Velo»**: que no declara el archivo
+anónimo, que no hace el análisis del considerando 26 y que no certifica cumplimiento.
+
+**Lo que esta política no hace**
+
+- **No hace el análisis de «medios razonables»** del considerando 26, no decide la base lícita del
+  tratamiento (art. 6 y art. 9.2), no hace una evaluación de impacto y **no certifica
+  cumplimiento**: ninguna autoridad emite esa certificación y la política es la lectura que Velo
+  hace del texto.
+- **No valida otros documentos:** ni los de otros países, ni teléfonos europeos, ni números de IVA, ni
+  formatos postales. Lo que Velo no reconoce, lo marcas tú, como en las otras políticas.
+- **Los nombres en otras lenguas** cubren los campos comunes, solo desde el encabezado.
+- **El k = 5 y las escaleras de generalización son de Velo,** no del reglamento.
+- **Las fuentes no se verificaron todas igual de a fondo.** El DNI y el NIE se validan con el
+  algoritmo del módulo 23, el de uso universal. Pero la página del Ministerio del Interior de
+  España que describe el cálculo no pudo abrirse al verificarlo: el algoritmo se tomó de los
+  extractos que de ella cita un buscador y se comprobó a mano. Los otros documentos se
+  reprodujeron con ejemplos oficiales, salvo el codice fiscale, cuyo decreto no trae ninguno. El
+  detalle, documento por documento, está en el ADR-016 (`decisions/016-rgpd.md`).
+
+---
+
 ## Lo que Velo NO afirma
 
 Esta sección es tan parte del producto como las otras.
@@ -892,8 +1129,9 @@ Esta sección es tan parte del producto como las otras.
   interno de tu organización, un número de historia clínica o una combinación propia de tu dominio
   pueden seguir señalando a una persona sin que ningún algoritmo público lo note.
 - La detección de tipos se hace sobre una **muestra de hasta 5.000 valores por columna**,
-  repartidos a lo largo de todo el archivo. Las cifras de riesgo, en cambio, se calculan sobre el
-  archivo completo.
+  repartidos a lo largo de todo el archivo (en un archivo de
+  [alto volumen](#9-archivos-enormes-el-modo-de-alto-volumen), sobre sus primeras 5.000 filas). Las
+  cifras de riesgo, en cambio, se calculan sobre el archivo completo.
 - El consejero de cruces evalúa un **subconjunto acotado** de combinaciones y lo declara en
   pantalla. No es el universo entero de cruces posibles.
 - **Limpiar los metadatos de un PDF o una imagen no los vuelve anónimos.** Velo limpia lo que el
@@ -926,6 +1164,19 @@ Esta sección es tan parte del producto como las otras.
   hablan solo de las columnas que marcaste con «Generalizar hasta alcanzar el k»; otras columnas
   pueden partir esos grupos, y el balance completo llega al transformar. «Óptima» es la mejor
   combinación de las escaleras que le diste, no la mejor generalización posible.
+- **Seudonimizado no es anónimo.** Con la política RGPD, y con cualquier seudónimo reversible, el
+  archivo sigue siendo dato personal para quien tenga la llave y la bóveda (art. 4.5). Velo no
+  hace el análisis de los «medios razonables» del considerando 26, no decide la base lícita del
+  tratamiento y **no certifica cumplimiento**: la política de fábrica es su lectura del texto,
+  aplicada a las columnas que reconoció, y el k = 5 es una elección suya, no del reglamento. Un
+  documento «confirmado» por su algoritmo tiene el control bien calculado y una estructura
+  posible; no quiere decir que el número exista ni que sea de alguien. Y en el DNI y el NIE, la
+  página oficial del Ministerio del Interior no pudo abrirse al verificar el algoritmo
+  ([sección 10](#10-la-política-rgpd), ADR-016).
+- **En un archivo de alto volumen, no todo se mide.** El riesgo sigue siendo exacto, pero no se mide
+  lo que el archivo perdió, el consejero de cruces combina solo los cuasi-identificadores y las
+  colisiones de seudónimo no se cuentan en las columnas que no caben en su diccionario. Lo que no cabe en los topes se dice; no se estima
+  ([sección 9](#9-archivos-enormes-el-modo-de-alto-volumen)).
 
 ---
 
@@ -961,11 +1212,29 @@ traducido palabra por palabra, y dice lo mismo con la misma cautela: lo estimado
 estimado en los dos idiomas.
 
 **Si uso Velo en inglés, ¿reconoce datos personales de otros países?**
-No más que antes. Los reconocedores propios de un país siguen siendo los colombianos: una cédula, un
-NIT, un celular o una placa colombianos se detectan igual en las dos pantallas, y un número de
-seguridad social de otro país, no. Los universales —correo, tarjeta de pago, IBAN, dirección IP,
-coordenadas, fechas— funcionan igual en los dos idiomas. El idioma cambia lo que lees, no lo que
-Velo sabe detectar.
+Depende del país, no del idioma. Los reconocedores propios de un país son los colombianos —una
+cédula, un NIT, un celular o una placa— y los ocho documentos europeos de
+[la sección 10](#10-la-política-rgpd) (IBAN, DNI y NIE de España, NIR de Francia, codice fiscale de
+Italia, Steuer-IdNr de Alemania, BSN de los Países Bajos y PESEL de Polonia). Todos se detectan
+igual en las dos pantallas, y los universales —correo, tarjeta de pago, dirección IP, coordenadas,
+fechas— también. Un documento de otro país que no esté en esa lista no se reconoce, y lo marcas tú.
+El idioma cambia lo que lees, no lo que Velo sabe detectar.
+
+**¿Por qué Velo dice «seudonimizado» y no «anónimo»?**
+Porque son cosas distintas, y el RGPD las distingue. Un seudónimo se puede volver a atar a la
+persona con información adicional —aquí, tu llave y tu bóveda—, y mientras ese camino exista el
+archivo sigue siendo dato personal para quien lo tenga (art. 4.5 y considerando 26). Que un archivo
+deje de serlo para otra persona depende de los medios razonablemente utilizables para
+identificarla, y esa evaluación la hace quien trata los datos, con su contexto. Velo no la hace, así
+que no declara anónimo ningún archivo. Está explicado en
+[la sección 10](#10-la-política-rgpd).
+
+**¿Por qué mi IBAN seudonimizado lo rechaza mi banco o mi sistema?**
+Porque el IBAN que sale pasa el control general (ISO 13616, mod 97-10) y conserva el país, el largo
+y el agrupado, pero Velo **no recalcula las claves nacionales que van dentro**, como el CCC español
+o la clave RIB francesa. Un destino que las valide lo rechaza. Si es tu caso, ese seudónimo no le
+servirá: entrega esa columna de otra forma (un seudónimo hexadecimal, que no finge ser un IBAN, o
+sin la columna).
 
 **Tengo una foto en HEIC, la de mi iPhone. ¿Puedo limpiarla?**
 Sí. Suéltala como cualquier otra imagen. Velo le quita el EXIF (ubicación, cámara, fechas, autor), el
@@ -996,6 +1265,15 @@ El reporte descargado se abre sin conexión, siempre.
 Funciona. Está medido: 500.000 filas × 24 columnas (unos 130 MB) se procesan en unos pocos
 segundos sin que la pestaña se congele, porque el trabajo pesado ocurre en un hilo aparte.
 
+**¿Por qué mi archivo de 5 millones de filas tarda minutos?**
+Porque pasa de 20.000.000 de celdas y Velo lo lee por pasadas en vez de cargarlo entero: una para
+el diagnóstico, otra para medir y otra para escribir
+([sección 9](#9-archivos-enormes-el-modo-de-alto-volumen)). En el archivo que se midió —5.000.000 de
+filas × 24 columnas, 1,36 GB, en un Mac del autor— fueron 109 s, 283 s y 267 s (unos 11 minutos), y la
+pestaña llegó a pedir hasta 4,9 GB de memoria. Es una referencia, no una promesa: depende de tu
+equipo, y conviene cerrar otras pestañas. A cambio, el riesgo sigue siendo exacto y el archivo que
+sale es el mismo, byte por byte, que saldría si cupiera en memoria.
+
 ---
 
 ## Lo que viene
@@ -1008,7 +1286,7 @@ de datos, no genera `.xlsx` de salida, no trata las listas que van dentro de un 
 anotaciones, los adjuntos ni los formularios de un PDF, y no usa —ni usará— inteligencia artificial
 generativa en ninguna parte del producto.
 
-Y hay cuatro cosas que **están pendientes de decisión del dueño**: ni se prometen ni se descartan.
+Y hay seis cosas que **están pendientes de decisión del dueño**: ni se prometen ni se descartan.
 
 - **AVIF**, el otro formato de foto que se parece a HEIC: hoy Velo no lo lee.
 - **Las secuencias HEIC y las Live Photos:** hoy Velo las rechaza en vez de arriesgarse a romperlas.
@@ -1016,3 +1294,9 @@ Y hay cuatro cosas que **están pendientes de decisión del dueño**: ni se prom
   registro por su cuenta, y el resultado «óptimo» se limita a lo que las escaleras permiten.
 - **La CIIU Rev. 5 A.C.**, que el DANE adoptó en agosto de 2026 con dos años de transición: hoy la
   escalera de actividad económica usa la Rev. 4 A.C.
+- **El alto volumen para JSON:** hoy un JSON de más de 20.000.000 de celdas se detiene con su tope y
+  lo dice. Leerlo por pasadas exige reescribir el escritor de JSON; no se ha hecho ni se ha
+  descartado.
+- **Un selector de destino para Firefox y Safari:** hoy esos navegadores no dejan elegir un archivo
+  de destino, así que un archivo de alto volumen se arma en la memoria de la pestaña y, si es muy
+  grande, puede no caber.

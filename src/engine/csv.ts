@@ -34,6 +34,14 @@ export function escaparCampo(valor: string): string {
 }
 
 /**
+ * UNA fila del CSV, con su fin de línea: la misma regla que `filasDeCsv`, para quien escribe fila a
+ * fila sin la tabla entera (el alto volumen, S8). El vacío sale vacío, igual que `CODIGO_VACIO`.
+ */
+export function filaDeCsv(campos: readonly string[]): string {
+  return `${campos.map(escaparCampo).join(",")}\n`;
+}
+
+/**
  * Las filas del CSV, de a una, para que un archivo de 130 MB no tenga que existir como una sola
  * cadena en memoria. El worker las va acumulando en trozos y arma el `Blob` al final.
  */

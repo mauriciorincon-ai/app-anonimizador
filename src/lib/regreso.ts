@@ -18,7 +18,7 @@ import { useSyncExternalStore } from "react";
 
 import { idiomaActual } from "@/lib/idioma/estado";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
-import { asaDeArchivo, type AsaDeArchivo } from "@/lib/sesion";
+import { asaDelMensaje, type AsaDeArchivo } from "@/lib/sesion";
 import type {
   EtapaDelWorker,
   MensajeDelWorker,
@@ -60,6 +60,11 @@ export interface EstadoDelRegreso {
   readonly etapa: EtapaDelWorker | null;
   /** El CSV restaurado, como asa opaca (ADR-005). */
   readonly archivo: AsaDeArchivo | null;
+  /** S8: el restaurado que el worker escribió en el archivo que el usuario eligió (alto volumen). */
+  readonly archivoEnDisco: {
+    readonly nombre: string;
+    readonly bytes: number;
+  } | null;
   /** El informe HTML del regreso, también como asa. */
   readonly informe: AsaDeArchivo | null;
 }
@@ -70,6 +75,7 @@ const VACIO: EstadoDelRegreso = {
   restauracion: { fase: "sin-hacer" },
   etapa: null,
   archivo: null,
+  archivoEnDisco: null,
   informe: null,
 };
 
@@ -179,10 +185,15 @@ export function restaurarAhora(): void {
   worker.postMessage({ tipo: "restaurar" });
 }
 
-export function prepararRestaurado(): void {
+/** `destino` (S8): el archivo que el usuario eligió, en alto volumen. Ver `prepararArchivo`. */
+export function prepararRestaurado(destino?: FileSystemFileHandle): void {
   if (!worker) return;
   publicar({ etapa: "escribiendo" });
-  worker.postMessage({ tipo: "construir-restaurado" });
+  worker.postMessage(
+    destino
+      ? { tipo: "construir-restaurado", destino }
+      : { tipo: "construir-restaurado" },
+  );
 }
 
 export function prepararInformeDelRegreso(fecha: string): void {
@@ -238,16 +249,15 @@ function recibir(mensaje: MensajeDelWorker): void {
     case "archivo":
       // El `Blob` se envuelve AQUÍ y no se guarda en ningún sitio: a partir de esta línea la única
       // forma de llegar a él es pedirle una URL.
-      if (mensaje.proposito === "restaurado") {
+      if (mensaje.proposito === "restaurado" && mensaje.enDisco) {
         publicar({
-          archivo: asaDeArchivo(mensaje.blob, mensaje.nombre),
+          archivoEnDisco: { nombre: mensaje.nombre, bytes: mensaje.bytes },
           etapa: null,
         });
+      } else if (mensaje.proposito === "restaurado") {
+        publicar({ archivo: asaDelMensaje(mensaje), etapa: null });
       } else if (mensaje.proposito === "informe-del-regreso") {
-        publicar({
-          informe: asaDeArchivo(mensaje.blob, mensaje.nombre),
-          etapa: null,
-        });
+        publicar({ informe: asaDelMensaje(mensaje), etapa: null });
       }
       return;
     case "progreso":

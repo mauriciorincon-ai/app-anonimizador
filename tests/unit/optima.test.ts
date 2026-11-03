@@ -11,9 +11,12 @@ import { nivelesDe, SUPRIMIDO, type Jerarquia } from "@/engine/jerarquias";
 import {
   compararNodos,
   generalizarOptimo,
+  resolverDiversidad,
   TOPE_DE_NODOS,
   type DiversidadPedida,
 } from "@/engine/optima";
+import type { Politica } from "@/engine/politica";
+import { aplicarPolitica } from "@/engine/tecnicas";
 
 function tablaDe(
   encabezado: readonly string[],
@@ -415,5 +418,108 @@ describe("determinismo (regla dura 3)", () => {
     expect(
       compararNodos(a, { perdida: 1 + 1e-12, nodo: [0, 1] }),
     ).toBeGreaterThan(0);
+  });
+});
+
+// M2 de la auditoría del S7: con la ℓ pedida sobre una columna sensible que la política SUPRIME, la
+// transformación la buscaba en una tabla donde ya no estaba, no encontraba con qué medir la ℓ, y
+// subía todo a `*` («no alcanzable») mientras la comparación —que sí la veía— mostraba un nodo
+// normal. Ahora las dos pasan por `resolverDiversidad`: lo suprimido se descarta y se dice.
+describe("la ℓ y las columnas sensibles que la política suprime", () => {
+  // 20 edades distintas, una vez cada una: el k = 3 se cumple en el nivel de 5 años, sin subir a `*`.
+  const filas = Array.from({ length: 20 }, (_, i) => [
+    String(20 + i),
+    ["gripe", "asma", "diabetes"][i % 3],
+  ]);
+  const original = tablaDe(["edad", "dx"], filas);
+  const escaleras: Record<string, Jerarquia> = {
+    edad: { tipo: "rango", amplitudes: [5, 10, 20] },
+  };
+  const politica: Politica = {
+    version: 1,
+    origen: "manual",
+    kObjetivo: 3,
+    reglas: [
+      { columna: "edad", tecnica: { tipo: "generalizar-automatico" } },
+      { columna: "dx", tecnica: { tipo: "suprimir" } },
+    ],
+    generalizacion: {
+      algoritmo: "optima",
+      jerarquias: { edad: { tipo: "rango", amplitudes: [5, 10, 20] } },
+      diversidad: { l: 2, columnas: ["dx"] },
+    },
+  };
+
+  it("resolverDiversidad: lo suprimido se descarta, lo del reparto y lo que no existe se ignoran", () => {
+    const pedida = { l: 2, columnas: ["dx", "edad", "fantasma", "sexo", "dx"] };
+    const existentes = new Set(["edad", "dx", "sexo"]);
+    expect(
+      resolverDiversidad(pedida, ["edad"], existentes, new Set(["dx"])),
+    ).toEqual({
+      columnas: ["sexo"],
+      descartadas: ["dx"],
+    });
+    expect(resolverDiversidad(pedida, ["edad"], existentes, new Set())).toEqual(
+      {
+        columnas: ["dx", "sexo"],
+        descartadas: [],
+      },
+    );
+    expect(resolverDiversidad(null, ["edad"], existentes, new Set())).toEqual({
+      columnas: [],
+      descartadas: [],
+    });
+  });
+
+  it("sin ninguna sensible sobre la que medirla, la ℓ no se exige y no sube todo a `*`", () => {
+    const sinL = generalizarOptimo(original, ["edad"], escaleras, 3, null);
+    const conL = generalizarOptimo(
+      original,
+      ["edad"],
+      escaleras,
+      3,
+      { l: 2, columnas: ["dx"] },
+      new Set(["dx"]),
+    );
+    expect(conL.lObjetivo).toBeNull();
+    expect(conL.lDescartadas).toEqual(["dx"]);
+    expect(conL.columnasSensibles).toEqual([]);
+    expect(conL.alcanzado).toBe(true);
+    expect(conL.niveles).toEqual(sinL.niveles);
+    // Nivel de 5 años, no la cima: la cima habría sido el síntoma.
+    expect(conL.niveles[0]).toBeLessThan(conL.alturas[0]);
+  });
+
+  it("la transformación y la comparación eligen el mismo nodo", async () => {
+    const transformada = await aplicarPolitica(original, politica, null, "es");
+    // Lo que hace la comparación del worker: la tabla ORIGINAL (con `dx`) y el mismo conjunto de
+    // suprimidas que sale de la política.
+    const comparada = generalizarOptimo(
+      original,
+      ["edad"],
+      escaleras,
+      3,
+      politica.generalizacion!.diversidad!,
+      new Set(["dx"]),
+    );
+    expect(transformada.optima).not.toBeNull();
+    expect(transformada.optima!.niveles).toEqual(comparada.niveles);
+    expect(transformada.optima!.alcanzado).toBe(true);
+    expect(transformada.optima!.lDescartadas).toEqual(["dx"]);
+    expect(transformada.optima!.niveles[0]).toBeLessThan(
+      transformada.optima!.alturas[0],
+    );
+    expect(transformada.suprimidas).toEqual(["dx"]);
+  });
+
+  it("si la sensible NO se suprime, la ℓ se sigue exigiendo", () => {
+    const conservada = generalizarOptimo(original, ["edad"], escaleras, 3, {
+      l: 2,
+      columnas: ["dx"],
+    });
+    expect(conservada.lObjetivo).toBe(2);
+    expect(conservada.columnasSensibles).toEqual(["dx"]);
+    expect(conservada.lDescartadas).toEqual([]);
+    expect(conservada.lAlcanzado).toBeGreaterThanOrEqual(2);
   });
 });

@@ -117,6 +117,28 @@ export const DIAGNOSTICO = {
       es: "Leído en {lectura} y analizado en {analisis}, dentro de esta pestaña.",
       en: "Read in {lectura} and analyzed in {analisis}, inside this tab.",
     },
+    // S8: el archivo pasó del tope de celdas en memoria y se leyó por pasadas. Lo que cambia se dice.
+    altoVolumen: {
+      etiqueta: { es: "Alto volumen", en: "High volume" },
+      titulo: {
+        es: "Este archivo se leyó por pasadas",
+        en: "This file was read in passes",
+      },
+      texto: {
+        es:
+          "Pasa de **{celdas} celdas**, lo que Velo guarda en memoria, así que lo leyó por pasadas, " +
+          "sin tenerlo entero en la pestaña. El riesgo de abajo es **exacto**: sale de todas las " +
+          "filas. Tres cosas cambian: la clasificación mira las **primeras {filas} filas** (en un " +
+          "archivo más chico, una muestra repartida por todo el archivo); el consejero combina solo " +
+          "los cuasi-identificadores; y lo que el archivo pierde al tratarlo **no se mide**.",
+        en:
+          "It has more than **{celdas} cells**, what Velo keeps in memory, so it was read in passes, " +
+          "without holding it whole in the tab. The risk below is **exact**: it comes from every " +
+          "row. Three things change: the classification looks at the **first {filas} rows** (in a " +
+          "smaller file, a sample spread across the whole file); the advisor combines only the " +
+          "quasi-identifiers; and what the file loses when treated **is not measured**.",
+      },
+    },
     sinHallazgos: {
       etiqueta: { es: "Sin hallazgos", en: "No findings" },
       titulo: {
@@ -185,6 +207,11 @@ export const DIAGNOSTICO = {
     valoresDistintos: {
       es: "{n} valores distintos",
       en: "{n} distinct values",
+    },
+    // S8: en alto volumen, una columna que no cupo entera: se sabe un mínimo, no la cifra.
+    masDeValoresDistintos: {
+      es: "más de {n} valores distintos",
+      en: "more than {n} distinct values",
     },
     conDato: { es: "{pct} con dato", en: "{pct} with data" },
     cumplen: {

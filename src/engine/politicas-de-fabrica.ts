@@ -18,7 +18,7 @@ import { mensaje } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 
 import type { CategoriaLey1581, TipoDetectado } from "./validadores/tipos";
-import type { Politica, Tecnica } from "./politica";
+import type { FormatoDeSeudonimo, Politica, Tecnica } from "./politica";
 
 /** Cómo Velo alcanza (o no) a reconocer un identificador de la fuente. */
 export type Deteccion =
@@ -31,10 +31,19 @@ export interface CoberturaDeIdentificador {
   readonly referencia: string;
   readonly identificador: MensajeDeMotor;
   readonly deteccion: Deteccion;
+  /**
+   * Solo las políticas que citan artículo por artículo (el RGPD, S8): el artículo de la norma que
+   * respalda la línea, la fuente consultada y la fecha en que se consultó. Opcionales, para no mover
+   * las dos políticas anteriores, que citan su fuente una vez, entera.
+   */
+  readonly articulo?: string;
+  readonly fuente?: MensajeDeMotor;
+  /** AAAA-MM-DD. Es un dato de la línea, no el reloj: la fecha de consulta no cambia sola. */
+  readonly consultada?: string;
 }
 
 export interface PoliticaDeFabrica {
-  readonly id: "habeas-data" | "hipaa";
+  readonly id: "habeas-data" | "hipaa" | "rgpd";
   /** Nombre propio: se escribe igual en los dos idiomas, así que no es un mensaje. */
   readonly nombre: string;
   /**
@@ -290,9 +299,143 @@ export const HIPAA: PoliticaDeFabrica = {
   ],
 };
 
+// ── RGPD (Unión Europea) ──────────────────────────────────────────────────────────────────────
+
+/** Fecha en que se consultó cada artículo en el Diario Oficial de la UE (ADR-016). Un dato, no el reloj. */
+export const CONSULTA_RGPD = "2026-11-02";
+
+const SEUDONIMO_REVERSIBLE: Tecnica = {
+  tipo: "seudonimizar",
+  longitud: 16,
+  reversible: true,
+};
+
+const conFormato = (formato: FormatoDeSeudonimo): Tecnica => ({
+  tipo: "seudonimizar-con-formato",
+  formato,
+  reversible: true,
+});
+
+/**
+ * **El RGPD distingue seudonimizar de anonimizar, y esta política hace lo primero.** El art. 4.5
+ * define la seudonimización como tratar los datos de modo que no puedan atribuirse a una persona sin
+ * información adicional, que se mantiene aparte (aquí: la llave y la bóveda). El considerando 26 dice
+ * que un dato seudonimizado sigue siendo información sobre una persona identificable, y que solo es
+ * anónimo el que ya no la identifica con los medios razonablemente utilizables. Ese análisis lo hace
+ * quien trata los datos, con su contexto; Velo no lo hace, y por eso el certificado dice
+ * «seudonimizado» y jamás «anónimo».
+ *
+ * Lo que hace: los identificadores directos (art. 4.1) pasan a un seudónimo con la llave —con el
+ * formato del país si el validador lo reconoce— y reversible con bóveda; las categorías especiales
+ * (art. 9) y los datos penales (art. 10) se SUPRIMEN, porque una política general no puede saber si
+ * hay base lícita para tratarlos; y los cuasi-identificadores se generalizan hasta un k. **El k = 5
+ * es de Velo, no del RGPD**: el reglamento no fija ninguno, y por eso es editable.
+ */
+export const RGPD: PoliticaDeFabrica = {
+  id: "rgpd",
+  nombre: "RGPD · GDPR (UE)",
+  fuente: mensaje("fabrica.rgpd.fuente"),
+  advertencia: mensaje("fabrica.rgpd.advertencia"),
+  porTipo: {
+    iban: conFormato("iban"),
+    dni: conFormato("dni"),
+    nie: conFormato("nie"),
+    nir: conFormato("nir"),
+    "codice-fiscale": conFormato("codice-fiscale"),
+    "steuer-idnr": conFormato("steuer-idnr"),
+    bsn: conFormato("bsn"),
+    pesel: conFormato("pesel"),
+    fecha: { tipo: "generalizar-fecha", precision: "mes" },
+  },
+  porCategoria: {
+    "identificador-directo": SEUDONIMO_REVERSIBLE,
+    "cuasi-identificador": { tipo: "generalizar-automatico" },
+    // Art. 9 y 10: se suprimen. Conservarlos seudonimizados sería tratar categorías especiales sin
+    // que Velo pueda saber si hay una base lícita (art. 9.2) para hacerlo.
+    "dato-sensible": { tipo: "suprimir" },
+    "no-personal": { tipo: "conservar" },
+  },
+  kObjetivo: 5,
+  cobertura: [
+    {
+      referencia: "art. 4.1",
+      articulo: "art. 4.1",
+      fuente: mensaje("fabrica.rgpd.cob.directos.fuente"),
+      consultada: CONSULTA_RGPD,
+      identificador: mensaje("fabrica.rgpd.cob.directos.id"),
+      deteccion: {
+        via: "validador",
+        tipos: [
+          "iban",
+          "dni",
+          "nie",
+          "nir",
+          "codice-fiscale",
+          "steuer-idnr",
+          "bsn",
+          "pesel",
+          "email",
+          "tarjeta",
+          "nombre",
+        ],
+      },
+    },
+    {
+      referencia: "art. 4.1",
+      articulo: "art. 4.1",
+      fuente: mensaje("fabrica.rgpd.cob.enLinea.fuente"),
+      consultada: CONSULTA_RGPD,
+      identificador: mensaje("fabrica.rgpd.cob.enLinea.id"),
+      deteccion: { via: "validador", tipos: ["ip"] },
+    },
+    {
+      referencia: "art. 4.1",
+      articulo: "art. 4.1",
+      fuente: mensaje("fabrica.rgpd.cob.indirectos.fuente"),
+      consultada: CONSULTA_RGPD,
+      identificador: mensaje("fabrica.rgpd.cob.indirectos.id"),
+      deteccion: {
+        via: "nombre-de-columna",
+        nota: mensaje("fabrica.rgpd.cob.indirectos.nota"),
+      },
+    },
+    {
+      referencia: "art. 9",
+      articulo: "art. 9",
+      fuente: mensaje("fabrica.rgpd.cob.especiales.fuente"),
+      consultada: CONSULTA_RGPD,
+      identificador: mensaje("fabrica.rgpd.cob.especiales.id"),
+      deteccion: {
+        via: "nombre-de-columna",
+        nota: mensaje("fabrica.rgpd.cob.especiales.nota"),
+      },
+    },
+    {
+      referencia: "art. 10",
+      articulo: "art. 10",
+      fuente: mensaje("fabrica.rgpd.cob.penales.fuente"),
+      consultada: CONSULTA_RGPD,
+      identificador: mensaje("fabrica.rgpd.cob.penales.id"),
+      deteccion: {
+        via: "nombre-de-columna",
+        nota: mensaje("fabrica.rgpd.cob.penales.nota"),
+      },
+    },
+    {
+      referencia: "—",
+      identificador: mensaje("fabrica.rgpd.cob.internos.id"),
+      deteccion: {
+        via: "ninguna",
+        porque: mensaje("fabrica.rgpd.cob.internos.porque"),
+      },
+    },
+  ],
+};
+
 export const POLITICAS_DE_FABRICA: readonly PoliticaDeFabrica[] = [
   HABEAS_DATA,
   HIPAA,
+  RGPD,
 ];
 
 // ── De criterio a política concreta ───────────────────────────────────────────────────────────
@@ -357,5 +500,43 @@ export function resumenDeCobertura(fabrica: PoliticaDeFabrica): {
     porNombre: cuenta("nombre-de-columna"),
     manuales: cuenta("ninguna"),
     total: fabrica.cobertura.length,
+  };
+}
+
+// ── Lo que el certificado dice de una política RGPD ──────────────────────────────────────────
+
+/**
+ * Qué columnas quedaron seudonimizadas y cuáles generalizadas, para el certificado (S8). Es una
+ * función de la política APLICADA —no de la plantilla—: si el usuario la editó y quitó los
+ * seudónimos, el certificado no dice «seudonimizado». `null` si la política no viene del RGPD.
+ */
+export interface InformeDelRgpd {
+  /** Partió de la política de fábrica y la cambió. */
+  readonly editada: boolean;
+  readonly seudonimizadas: readonly string[];
+  readonly generalizadas: readonly string[];
+  /** AAAA-MM-DD: cuándo se consultaron los artículos que cita el certificado. */
+  readonly consultada: string;
+}
+
+export function informeDelRgpd(
+  politica: Politica,
+  suprimidas: readonly string[],
+): InformeDelRgpd | null {
+  if (politica.origen !== "rgpd" && politica.origen !== "rgpd-editada") {
+    return null;
+  }
+  const fuera = new Set(suprimidas);
+  const nombresDe = (cumple: (t: Tecnica) => boolean) =>
+    politica.reglas
+      .filter((r) => !fuera.has(r.columna) && cumple(r.tecnica))
+      .map((r) => r.columna);
+  return {
+    editada: politica.origen === "rgpd-editada",
+    seudonimizadas: nombresDe(
+      (t) => t.tipo === "seudonimizar" || t.tipo === "seudonimizar-con-formato",
+    ),
+    generalizadas: nombresDe((t) => t.tipo.startsWith("generalizar-")),
+    consultada: CONSULTA_RGPD,
   };
 }

@@ -599,7 +599,7 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
           <Boton
             type="button"
             disabled={preparando}
-            onClick={prepararRestaurado}
+            onClick={() => prepararRestaurado()}
           >
             <IconoDocumento />
             {preparando

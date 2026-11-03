@@ -49,6 +49,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   transformacion: { fase: "sin-hacer" },
   etapa: null,
   archivo: null,
+  archivoEnDisco: null,
   huellaDeSalida: null,
   boveda: { fase: "sin-sellar" },
   archivoDeBoveda: null,
@@ -246,7 +247,7 @@ describe("la bóveda del tratamiento", () => {
       /At least 12 characters\. Write it in your password manager before continuing: it cannot be recovered\./,
     );
     expect(
-      screen.getByText(/You marked 2 reversible columns/),
+      screen.getByText(/There are 2 reversible columns/),
     ).toBeInTheDocument();
   });
 

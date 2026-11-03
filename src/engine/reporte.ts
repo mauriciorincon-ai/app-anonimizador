@@ -48,6 +48,7 @@ import type { BalanceDelTratamiento, Salvedad } from "./balance";
 import type { JerarquiaDeFabrica } from "./jerarquias/fabrica";
 import { FUENTES, FUENTES_DE_LA_ESCALERA } from "./jerarquias/fuentes";
 import type { GeneralizacionAplicada } from "./optima";
+import type { InformeDelRgpd } from "./politicas-de-fabrica";
 import type { InformeDePrivacidad } from "./ruido";
 import { DOMINIO_MAXIMO } from "./ruido/limites";
 import type { Diagnostico, HallazgoDeColumna } from "./clasificador";
@@ -62,7 +63,8 @@ import type { CategoriaLey1581 } from "./validadores/tipos";
 
 export interface DatosDelTratamiento {
   balance: BalanceDelTratamiento;
-  utilidad: Utilidad;
+  /** `null` en alto volumen (S8): no se mide, y la sección lo dice. */
+  utilidad: Utilidad | null;
   /** Identidad de la política aplicada: mismo hash ⇒ mismo tratamiento. */
   hashDePolitica: string;
   /**
@@ -90,6 +92,8 @@ export interface DatosDelTratamiento {
   generalizacion?: GeneralizacionAplicada | null;
   /** S7: el ruido con garantía de cada columna y el ε por fila; ausente o `null` sin ruido. */
   privacidad?: InformeDePrivacidad | null;
+  /** S8: lo que el certificado dice de una política RGPD; ausente o `null` con cualquier otra. */
+  rgpd?: InformeDelRgpd | null;
 }
 
 export interface DatosDelReporte {
@@ -278,7 +282,9 @@ function filaDeColumna(columna: HallazgoDeColumna, idioma: Idioma): string {
 
   return `<tr>
 <td class="col">${escapar(columna.nombre)}<br><small style="color:var(--tinta-tenue)">${h(
-    D.columnas.valoresDistintos,
+    columna.cardinalidadAlMenos
+      ? D.columnas.masDeValoresDistintos
+      : D.columnas.valoresDistintos,
     idioma,
     { n: columna.cardinalidad },
   )}</small></td>
@@ -604,7 +610,7 @@ function seccionDeLaGeneralizacion(
         )}</li>`,
     )
     .join("");
-  const diversidad =
+  const exigida =
     g.lObjetivo === null
       ? ""
       : `<p>${h(G.l, idioma, {
@@ -616,6 +622,13 @@ function seccionDeLaGeneralizacion(
             ? `<p class="alerta">${h(G.lNoAlcanzada, idioma, { objetivo: g.lObjetivo })}</p>`
             : ""
         }`;
+  // La ℓ pedida sobre una columna que la política suprime no se exigió: se dice, aunque no quede
+  // ninguna otra columna sobre la que exigirla.
+  const descartada =
+    g.lDescartadas.length === 0
+      ? ""
+      : `<p>${h(G.lDescartadas, idioma, { columnas_html: listaDeCodigo(g.lDescartadas) })}</p>`;
+  const diversidad = exigida + descartada;
 
   return `<section>
 <p class="etiqueta">${h(G.etiqueta, idioma)}</p>
@@ -654,10 +667,14 @@ function seccionDePrivacidad(
       const notas: string[] = [];
       if (!c.aplicado)
         notas.push(
-          h(P.notas.noAplicada, idioma, {
-            n: numero(c.dominio ?? 0, idioma),
-            maximo: numero(DOMINIO_MAXIMO, idioma),
-          }),
+          h(
+            c.dominioAlMenos ? P.notas.noAplicadaAlMenos : P.notas.noAplicada,
+            idioma,
+            {
+              n: numero(c.dominio ?? 0, idioma),
+              maximo: numero(DOMINIO_MAXIMO, idioma),
+            },
+          ),
         );
       else {
         if (c.dominio !== null)
@@ -713,8 +730,52 @@ ${
 </section>`;
 }
 
-function seccionDeUtilidad(utilidad: Utilidad, idioma: Idioma): string {
+/**
+ * La política del RGPD (S8, ADR-016). Dice **seudonimizado** cuando lo es —la información adicional
+ * (la llave y la bóveda) sigue existiendo, así que el dato sigue siendo personal para quien la tiene—
+ * y nunca «anónimo»: el análisis de medios razonables del considerando 26 no lo hace Velo, y el
+ * certificado lo dice con todas sus letras.
+ */
+function seccionDelRgpd(rgpd: InformeDelRgpd, idioma: Idioma): string {
+  const R = D.rgpd;
+  const palabra = (n: number) =>
+    h(n === 1 ? R.columnasUna : R.columnasVarias, idioma);
+  const bloques: string[] = [];
+  if (rgpd.seudonimizadas.length > 0) {
+    bloques.push(
+      `<p>${h(R.seudonimizado, idioma, {
+        n: numero(rgpd.seudonimizadas.length, idioma),
+        columnas: palabra(rgpd.seudonimizadas.length),
+        lista_html: listaDeCodigo(rgpd.seudonimizadas),
+      })}</p>`,
+    );
+  }
+  if (rgpd.generalizadas.length > 0) {
+    bloques.push(
+      `<p>${h(R.generalizado, idioma, {
+        lista_html: listaDeCodigo(rgpd.generalizadas),
+      })}</p>`,
+    );
+  }
+  bloques.push(`<p>${h(R.suprimido, idioma)}</p>`);
+  if (rgpd.editada) bloques.push(`<p class="por-que">${h(R.editada, idioma)}</p>`);
+  return `<section>
+<p class="etiqueta">${h(R.etiqueta, idioma)}</p>
+<h2>${h(R.titulo, idioma)}</h2>
+${bloques.join("\n")}
+<p>${h(R.noAfirma, idioma)}</p>
+<p class="por-que">${h(R.fuente, idioma, { fecha: rgpd.consultada })}</p>
+</section>`;
+}
+
+function seccionDeUtilidad(utilidad: Utilidad | null, idioma: Idioma): string {
   const U = D.utilidad;
+  if (utilidad === null)
+    return `<section>
+<p class="etiqueta">${h(U.etiqueta, idioma)}</p>
+<h2>${h(U.titulo, idioma)}</h2>
+<p>${h(U.noMedida, idioma)}</p>
+</section>`;
   const perdidas = utilidad.columnas.filter((c) => c.estado !== "intacta");
   const filas = perdidas
     .map(
@@ -941,6 +1002,7 @@ ${
 ${tratamiento ? seccionDelTratamiento(tratamiento, idioma) : ""}
 ${tratamiento?.generalizacion ? seccionDeLaGeneralizacion(tratamiento.generalizacion, idioma) : ""}
 ${tratamiento?.privacidad ? seccionDePrivacidad(tratamiento.privacidad, idioma) : ""}
+${tratamiento?.rgpd ? seccionDelRgpd(tratamiento.rgpd, idioma) : ""}
 
 ${seccionDeRiesgo(riesgo, resumen["identificador-directo"], hayTratamiento, idioma)}
 

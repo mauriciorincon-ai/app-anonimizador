@@ -9,7 +9,7 @@
 // El inglés se redacta al lado: no se traduce frase a frase si una construcción natural pide otra.
 //
 // Áreas de este archivo:
-//   · `fabrica.*`  — las dos políticas de fábrica: su fuente, su advertencia y la tabla de cobertura
+//   · `fabrica.*`  — las tres políticas de fábrica: su fuente, su advertencia y la tabla de cobertura
 //                    (cómo ve Velo cada identificador de la norma, o por qué no lo ve). Ninguna de
 //                    estas frases entra al JSON que el usuario exporta ni a su hash: la identidad de
 //                    una política es su `origen` ("habeas-data", "hipaa") y sus reglas, no su prosa.
@@ -26,7 +26,7 @@
 //                    son ASCII a propósito: un guion choca con negativos y fechas ISO, una coma con
 //                    las comillas del CSV, y un guion largo con el CSV sin BOM.
 //
-// Los nombres propios (Habeas Data, HIPAA, Safe Harbor, SIC, AGN, HHS, CFR) se escriben igual en los
+// Los nombres propios (Habeas Data, HIPAA, Safe Harbor, SIC, AGN, HHS, CFR, DO) se escriben igual en los
 // dos idiomas.
 
 import type { Texto } from "../index";
@@ -217,6 +217,108 @@ export const MOTOR_TRANSFORMAR = {
     en:
       "It is a catch-all clause: by definition it has no shape. It is what keeps Safe Harbor " +
       "from being fully automatable, and that is why this list exists.",
+  },
+
+  // ── RGPD (Unión Europea) ───────────────────────────────────────────────────────────────────
+  // Cada línea de la cobertura cita su artículo; la fecha de consulta vive en el dato
+  // (`politicas-de-fabrica.ts`) y se pinta junto a la cita. «Seudonimizado» nunca se escribe como
+  // «anónimo»: ver ADR-016 y el copy prohibido de `tests/unit/copy.test.ts`.
+  "fabrica.rgpd.fuente": {
+    es:
+      "Reglamento (UE) 2016/679 (RGPD): art. 4.1 datos personales, art. 4.5 seudonimización, " +
+      "art. 9 categorías especiales, art. 10 condenas e infracciones penales y considerando 26",
+    en:
+      "Regulation (EU) 2016/679 (GDPR): art. 4(1) personal data, art. 4(5) pseudonymisation, " +
+      "art. 9 special categories, art. 10 criminal convictions and offences, and recital 26",
+  },
+  "fabrica.rgpd.advertencia": {
+    es:
+      "Es la interpretación de Velo del texto, aplicada a las columnas que Velo reconoció. No es " +
+      "una certificación de cumplimiento: ninguna autoridad la emite y un programa que solo ve una " +
+      "tabla no puede decidir si un tratamiento es lícito. Seudonimizar no es anonimizar: el " +
+      "archivo sigue siendo dato personal para quien tenga la llave y la bóveda (art. 4.5), y el " +
+      "análisis de los medios razonables del considerando 26 no lo hace Velo. El k = 5 lo eligió " +
+      "Velo y se puede cambiar: el RGPD no fija ningún k. Revisa columna por columna antes de " +
+      "entregar.",
+    en:
+      "This is Velo's reading of the text, applied to the columns Velo recognized. It is not a " +
+      "certification of compliance: no authority issues it, and a program that only sees a table " +
+      "cannot decide whether processing is lawful. Pseudonymising is not anonymising: the file is " +
+      "still personal data for whoever holds the key and the vault (art. 4(5)), and Velo does not " +
+      "run the means-reasonably-likely analysis of recital 26. The k = 5 is Velo's choice and can " +
+      "be changed: the GDPR sets no k. Review it column by column before handing the file over.",
+  },
+  "fabrica.rgpd.cob.directos.id": {
+    es: "Identificadores directos: IBAN, DNI, NIE, NIR, codice fiscale, Steuer-IdNr, BSN, PESEL, correo, tarjeta, nombres",
+    en: "Direct identifiers: IBAN, DNI, NIE, NIR, codice fiscale, Steuer-IdNr, BSN, PESEL, email, card, names",
+  },
+  "fabrica.rgpd.cob.directos.fuente": {
+    es: "Reglamento (UE) 2016/679, art. 4, punto 1 — DO L 119, 4.5.2016",
+    en: "Regulation (EU) 2016/679, art. 4(1) — DO L 119, 4.5.2016",
+  },
+  "fabrica.rgpd.cob.enLinea.id": {
+    es: "Identificadores en línea (dirección IP)",
+    en: "Online identifiers (IP address)",
+  },
+  "fabrica.rgpd.cob.enLinea.fuente": {
+    es: "Reglamento (UE) 2016/679, art. 4, punto 1 — DO L 119, 4.5.2016",
+    en: "Regulation (EU) 2016/679, art. 4(1) — DO L 119, 4.5.2016",
+  },
+  "fabrica.rgpd.cob.indirectos.id": {
+    es: "Identificación indirecta: fecha de nacimiento, código postal, sexo, nacionalidad",
+    en: "Indirect identification: date of birth, postal code, sex, nationality",
+  },
+  "fabrica.rgpd.cob.indirectos.fuente": {
+    es: "Reglamento (UE) 2016/679, art. 4, punto 1 — DO L 119, 4.5.2016",
+    en: "Regulation (EU) 2016/679, art. 4(1) — DO L 119, 4.5.2016",
+  },
+  "fabrica.rgpd.cob.indirectos.nota": {
+    es:
+      "Solo por el nombre de la columna, en alemán, francés, italiano, neerlandés, polaco, " +
+      "portugués, inglés o español. Velo las generaliza hasta el k que fijes.",
+    en:
+      "Only by the column name, in German, French, Italian, Dutch, Polish, Portuguese, English " +
+      "or Spanish. Velo generalizes them up to the k you set.",
+  },
+  "fabrica.rgpd.cob.especiales.id": {
+    es: "Categorías especiales: salud, origen étnico o racial, opiniones políticas, convicciones, afiliación sindical, datos genéticos y biométricos, vida u orientación sexual",
+    en: "Special categories: health, racial or ethnic origin, political opinions, beliefs, trade union membership, genetic and biometric data, sex life or orientation",
+  },
+  "fabrica.rgpd.cob.especiales.fuente": {
+    es: "Reglamento (UE) 2016/679, art. 9, apartado 1 — DO L 119, 4.5.2016",
+    en: "Regulation (EU) 2016/679, art. 9(1) — DO L 119, 4.5.2016",
+  },
+  "fabrica.rgpd.cob.especiales.nota": {
+    es:
+      "No existe algoritmo que mire «J45.9» y sepa que es un diagnóstico: solo el encabezado lo " +
+      "sugiere, y Velo lo marca con certeza «sin confirmar». Estas columnas se suprimen.",
+    en:
+      "No algorithm can look at “J45.9” and know it is a diagnosis: only the header suggests it, " +
+      "and Velo marks it with “unconfirmed” certainty. These columns are removed.",
+  },
+  "fabrica.rgpd.cob.penales.id": {
+    es: "Condenas e infracciones penales",
+    en: "Criminal convictions and offences",
+  },
+  "fabrica.rgpd.cob.penales.fuente": {
+    es: "Reglamento (UE) 2016/679, art. 10 — DO L 119, 4.5.2016",
+    en: "Regulation (EU) 2016/679, art. 10 — DO L 119, 4.5.2016",
+  },
+  "fabrica.rgpd.cob.penales.nota": {
+    es: "Solo por el nombre de la columna. Estas columnas se suprimen.",
+    en: "Only by the column name. These columns are removed.",
+  },
+  "fabrica.rgpd.cob.internos.id": {
+    es: "Códigos internos de la organización (historia clínica, afiliado, contrato)",
+    en: "Internal organization codes (medical record, member, contract)",
+  },
+  "fabrica.rgpd.cob.internos.porque": {
+    es:
+      "Un consecutivo propio no tiene forma reconocible ni checksum público. Si tu tabla lleva " +
+      "uno, márcalo tú: Velo no puede saberlo.",
+    en:
+      "A custom sequence number has no recognizable shape or public checksum. If your table has " +
+      "one, mark it yourself: Velo can't know.",
   },
 
   // ── El archivo de política: lo que se exporta y lo que se rechaza al importar ───────────────

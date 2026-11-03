@@ -15,6 +15,7 @@
 //
 // Confundir las dos sería exactamente la exageración que la regla de honestidad medida prohíbe.
 
+import { MUESTRA_MAXIMA } from "@/lib/archivo";
 import { mensaje } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 
@@ -25,6 +26,7 @@ import {
   valorEn,
 } from "./columnar";
 import { muestraParaColumna } from "./mascara";
+import { buscarReglaMultilingue } from "./nombres-multilingues";
 import { VALIDADORES } from "./validadores";
 import type {
   CategoriaLey1581,
@@ -32,8 +34,8 @@ import type {
   TipoDetectado,
 } from "./validadores/tipos";
 
-/** Filas que se muestrean por columna. Suficiente para una proporción estable, barato a 500k. */
-export const MUESTRA_MAXIMA = 5_000;
+/** Filas que se muestrean por columna; el número vive en `lib/archivo.ts` (lo cita la pantalla). */
+export { MUESTRA_MAXIMA };
 
 /** Proporción mínima de la muestra que un validador debe cubrir para adjudicarse la columna. */
 export const UMBRAL_DE_ADJUDICACION = 0.85;
@@ -72,6 +74,11 @@ export interface HallazgoDeColumna {
   filas: number;
   filasNoVacias: number;
   cardinalidad: number;
+  /**
+   * Solo en alto volumen (S8): la columna tiene MÁS valores distintos que `cardinalidad`, que es el
+   * tope de lo que se guardó de ella. Ausente en memoria, donde la cifra es siempre exacta.
+   */
+  cardinalidadAlMenos?: true;
   muestra: { texto: string; omitida: boolean } | null;
 }
 
@@ -142,8 +149,22 @@ const REGLAS_DE_NOMBRE: readonly ReglaDeNombre[] = [
   },
 ];
 
-function buscarReglaDeNombre(nombre: string): ReglaDeNombre | null {
-  return REGLAS_DE_NOMBRE.find((regla) => regla.patron.test(nombre)) ?? null;
+/** Lo que el clasificador necesita de una regla de nombre, sea cual sea su lengua. */
+interface ReglaEncontrada {
+  descripcion: MensajeDeMotor;
+  categoria: CategoriaLey1581;
+  nota: MensajeDeMotor;
+}
+
+/**
+ * Primero las reglas en español, intactas, como nacieron; después las de las lenguas del RGPD
+ * (S8), por palabras completas. Un nombre que las viejas ya reconocen no cambia de categoría.
+ */
+function buscarReglaDeNombre(nombre: string): ReglaEncontrada | null {
+  return (
+    REGLAS_DE_NOMBRE.find((regla) => regla.patron.test(nombre)) ??
+    buscarReglaMultilingue(nombre)
+  );
 }
 
 // ── Qué parte del nombre se lee ───────────────────────────────────────────────────────────────

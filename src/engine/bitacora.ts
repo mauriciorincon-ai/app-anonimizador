@@ -80,6 +80,18 @@ export interface EntradaDeBitacora {
    * que `metadatos`: una entrada sin el bloque se serializa igual que antes.
    */
   readonly privacidad?: PrivacidadDeLaEntrada;
+  /**
+   * S8: el tratamiento vino de la política RGPD (ADR-016). Solo CUÁNTAS columnas quedaron
+   * seudonimizadas y cuántas generalizadas, sin nombres de columna: qué se hizo, no a qué. Opcional y
+   * sin subir la versión, por la misma razón que `privacidad`: una entrada sin el bloque se
+   * serializa igual que antes y la huella de una bitácora vieja no se mueve.
+   */
+  readonly rgpd?: RgpdDeLaEntrada;
+}
+
+export interface RgpdDeLaEntrada {
+  readonly seudonimizadas: number;
+  readonly generalizadas: number;
 }
 
 export interface PrivacidadDeLaEntrada {
@@ -174,6 +186,12 @@ const entradaSchema = z.object({
       epsilonPorFila: z.number().nonnegative(),
       mecanismos: z.array(z.enum(["laplace", "respuesta-aleatorizada"])),
       perturbadas: z.number().int().nonnegative(),
+    })
+    .optional(),
+  rgpd: z
+    .object({
+      seudonimizadas: z.number().int().nonnegative(),
+      generalizadas: z.number().int().nonnegative(),
     })
     .optional(),
 });

@@ -124,6 +124,61 @@ function transformarSincrono(
  * `huella` es el SHA-256 del archivo de entrada. Solo la usa el ruido (S7): entra a la semilla de
  * cada celda para que dos archivos distintos reciban ruido independiente (`ruido/azar.ts`).
  */
+/** Lo que una técnica por valor hace con el diccionario de una columna. */
+export interface DiccionarioTransformado {
+  /** El diccionario nuevo, en paralelo al viejo (índice 0 incluido), o null si no cambia nada. */
+  readonly valores: readonly string[] | null;
+  readonly colisiones: number;
+  /** Solo en una columna reversible: el material de la bóveda. */
+  readonly correspondencia: EntradaDeBoveda | null;
+}
+
+/**
+ * Una técnica POR VALOR (enmascarar, generalizar, seudonimizar) sobre el diccionario de una columna:
+ * `valores[0]` es el vacío y el resto, los valores distintos en orden de primera aparición. Cada
+ * valor de salida depende SOLO de su valor de entrada (y de la llave); el diccionario entero hace
+ * falta para contar colisiones y para la bóveda, no para el resultado.
+ *
+ * Existe aparte (S8) para que el alto volumen la llame con el mismo diccionario que vería
+ * `aplicarPolitica`, o con un solo valor (`["", valor]`) cuando la columna no cabe entera: el mismo
+ * código, y por tanto los mismos bytes.
+ */
+export async function transformarDiccionario(
+  nombre: string,
+  valores: readonly string[],
+  tecnica: Tecnica,
+  llave: CryptoKey | null,
+): Promise<DiccionarioTransformado> {
+  // Las dos que necesitan llave se despachan por su `tipo`, no por descarte: descartar deja a
+  // TypeScript sin forma de saber qué variante quedó viva, y con él al lector.
+  if (
+    tecnica.tipo !== "seudonimizar" &&
+    tecnica.tipo !== "seudonimizar-con-formato"
+  )
+    return {
+      valores: transformarSincrono(valores, tecnica),
+      colisiones: 0,
+      correspondencia: null,
+    };
+
+  if (llave === null)
+    throw new Error(
+      "la política pide una técnica con llave y no se dio una llave",
+    );
+  const resultado =
+    tecnica.tipo === "seudonimizar"
+      ? await seudonimizar(valores, llave, tecnica.longitud)
+      : await seudonimizarConFormato(valores, llave, tecnica.formato);
+  return {
+    valores: resultado.valores,
+    colisiones: resultado.colisiones,
+    // `valores` es el diccionario original: la mitad izquierda de la correspondencia.
+    correspondencia: esReversible(tecnica)
+      ? { columna: nombre, originales: valores, seudonimos: resultado.valores }
+      : null,
+  };
+}
+
 export async function aplicarPolitica(
   tabla: TablaColumnar,
   politica: Politica,
@@ -134,7 +189,9 @@ export async function aplicarPolitica(
   if (requiereLlave(politica) && llave === null) {
     // Invariante del pipeline, no error de usuario: la UI no deja llegar aquí sin llave. Si llega,
     // es un defecto nuestro y tiene que sonar fuerte en vez de producir un archivo a medias.
-    throw new Error("la política pide una técnica con llave y no se dio una llave");
+    throw new Error(
+      "la política pide una técnica con llave y no se dio una llave",
+    );
   }
 
   const columnas: ColumnaColumnar[] = [];
@@ -167,45 +224,25 @@ export async function aplicarPolitica(
       continue;
     }
 
-    // Las dos que necesitan llave se despachan por su `tipo`, no por descarte: descartar deja a
-    // TypeScript sin forma de saber qué variante quedó viva, y con él al lector.
-    if (
-      tecnica.tipo !== "seudonimizar" &&
-      tecnica.tipo !== "seudonimizar-con-formato"
-    ) {
-      const sincrono = transformarSincrono(columna.valores, tecnica);
-      columnas.push(
-        sincrono === null ? columna : reconstruirColumna(columna, sincrono),
-      );
-      continue;
-    }
-
-    // `llave` no es null aquí: lo garantiza la guarda del principio.
-    const resultado =
-      tecnica.tipo === "seudonimizar"
-        ? await seudonimizar(columna.valores, llave!, tecnica.longitud)
-        : await seudonimizarConFormato(
-            columna.valores,
-            llave!,
-            tecnica.formato,
-          );
-
+    const resultado = await transformarDiccionario(
+      columna.nombre,
+      columna.valores,
+      tecnica,
+      llave,
+    );
     if (resultado.colisiones > 0) {
       colisiones.push({
         columna: columna.nombre,
         cuantas: resultado.colisiones,
       });
     }
-    // ANTES de reconstruir: `columna.valores` es todavía el diccionario original, que es la mitad
-    // izquierda de la correspondencia. Después de reconstruir ya no existe.
-    if (esReversible(tecnica)) {
-      correspondencias.push({
-        columna: columna.nombre,
-        originales: columna.valores,
-        seudonimos: resultado.valores,
-      });
-    }
-    columnas.push(reconstruirColumna(columna, resultado.valores));
+    if (resultado.correspondencia)
+      correspondencias.push(resultado.correspondencia);
+    columnas.push(
+      resultado.valores === null
+        ? columna
+        : reconstruirColumna(columna, resultado.valores),
+    );
   }
 
   // Solo las que sobrevivieron: una columna marcada para Mondrian y suprimida a la vez no existe.
@@ -237,6 +274,8 @@ export async function aplicarPolitica(
           politica.generalizacion!.jerarquias,
           politica.kObjetivo!,
           politica.generalizacion!.diversidad ?? null,
+          // Una sensible que la política suprime ya no está en `transformada`: se dice, no se exige.
+          new Set(suprimidas),
         )
       : null;
   // Una retícula que pasa del tope no se recorre: sus columnas salen intactas, y el balance lo dice

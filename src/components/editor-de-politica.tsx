@@ -31,6 +31,7 @@ import type { HallazgoDeColumna } from "@/engine/clasificador";
 import {
   esReversible,
   exportarPolitica,
+  FORMATOS_DE_SEUDONIMO,
   importarPolitica,
   requiereBoveda,
   tecnicaDe,
@@ -77,16 +78,13 @@ const OPCIONES: readonly { valor: string; texto: Texto; tecnica: Tecnica }[] = [
     texto: E.opcion.seudonimizar,
     tecnica: { tipo: "seudonimizar", longitud: 16 },
   },
-  {
-    valor: "seudonimizar-cedula",
-    texto: E.opcion.seudonimizarCedula,
-    tecnica: { tipo: "seudonimizar-con-formato", formato: "cedula" },
-  },
-  {
-    valor: "seudonimizar-nit",
-    texto: E.opcion.seudonimizarNit,
-    tecnica: { tipo: "seudonimizar-con-formato", formato: "nit" },
-  },
+  // Una opción por formato, de la única lista (`FORMATOS_DE_SEUDONIMO`): un formato nuevo no puede
+  // existir en el esquema y faltar aquí.
+  ...FORMATOS_DE_SEUDONIMO.map((formato) => ({
+    valor: `seudonimizar-${formato}`,
+    texto: E.opcion.seudonimizarFormato[formato],
+    tecnica: { tipo: "seudonimizar-con-formato", formato } as const,
+  })),
   {
     valor: "generalizar-anio",
     texto: E.opcion.generalizarAnio,
@@ -136,7 +134,7 @@ const OPCIONES: readonly { valor: string; texto: Texto; tecnica: Tecnica }[] = [
   },
 ];
 
-/** El k que se fija solo al pedir generalización automática. 5 es el mínimo de las dos de fábrica. */
+/** El k que se fija solo al pedir generalización automática. 5 es el mínimo de las de fábrica. */
 const K_POR_DEFECTO = 5;
 
 /** De técnica a valor del desplegable. Los parámetros distinguen dos opciones del mismo tipo. */
@@ -463,6 +461,8 @@ export function EditorDePolitica({
             onChange={(evento) =>
               onCambio({
                 ...politica,
+                // Un k distinto ya no es el de la política de fábrica: lo dice, como cualquier otra regla tocada.
+                origen: origenTrasEditar(politica.origen),
                 kObjetivo: Math.max(2, Number(evento.target.value) || 2),
               })
             }
@@ -533,11 +533,12 @@ function CasillaDeVuelta({
 function origenTrasEditar(origen: Politica["origen"]): Politica["origen"] {
   if (origen === "habeas-data") return "habeas-data-editada";
   if (origen === "hipaa") return "hipaa-editada";
+  if (origen === "rgpd") return "rgpd-editada";
   return origen;
 }
 
 function AvisoDeOrigen({ origen }: { origen: Politica["origen"] }) {
-  const { m } = useT();
+  const { m, t } = useT();
   const deFabrica = POLITICAS_DE_FABRICA.find((f) => origen.startsWith(f.id));
   if (!deFabrica) return null;
   const editada = origen.endsWith("-editada");
@@ -566,6 +567,35 @@ function AvisoDeOrigen({ origen }: { origen: Politica["origen"] }) {
           no enumera identificadores — esos puntos son el resumen que hace Velo. HIPAA sí enumera
           18, y una frase escrita para ese caso se volvía mentira en el otro. Encontrado leyendo la
           captura, que es el único sitio donde las dos se ven con el mismo texto encima. */}
+      {deFabrica.cobertura.some((c) => c.articulo) ? (
+        <div className="text-tinta-tenue mt-2">
+          <p className="font-medium">{t(E.origen.citas.titulo)}</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {deFabrica.cobertura
+              .filter((c) => c.articulo && c.fuente && c.consultada)
+              .map((c) => (
+                <li key={`${c.articulo}-${m(c.identificador)}`}>
+                  <Rico
+                    texto={E.origen.citas.linea}
+                    datos={{
+                      articulo: c.articulo ?? "",
+                      identificador: m(c.identificador),
+                      como: t(
+                        c.deteccion.via === "validador"
+                          ? E.origen.citas.porContenido
+                          : c.deteccion.via === "nombre-de-columna"
+                            ? E.origen.citas.porNombre
+                            : E.origen.citas.sinReconocer,
+                      ),
+                      fuente: c.fuente ? m(c.fuente) : "",
+                      fecha: c.consultada ?? "",
+                    }}
+                  />
+                </li>
+              ))}
+          </ul>
+        </div>
+      ) : null}
       <p className="text-tinta-tenue mt-2">
         <Rico
           texto={E.origen.cobertura}

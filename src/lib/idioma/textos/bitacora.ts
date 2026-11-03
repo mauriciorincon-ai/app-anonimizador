@@ -266,6 +266,12 @@ export const BITACORA = {
       es: "ε = {epsilon} por fila ({mecanismos})",
       en: "ε = {epsilon} per row ({mecanismos})",
     },
+    // S8: una política RGPD seudonimiza, y la bitácora lo dice con esas palabras (y no «anónimo»).
+    rgpd: { es: "RGPD", en: "GDPR" },
+    rgpdValor: {
+      es: "Seudonimizado (art. 4.5 RGPD): {seudonimizadas} columnas con seudónimo, {generalizadas} generalizadas. Sigue siendo dato personal para quien tenga la llave y la bóveda.",
+      en: "Pseudonymised (GDPR art. 4(5)): {seudonimizadas} columns with a pseudonym, {generalizadas} generalized. Still personal data for whoever holds the key and the vault.",
+    },
     // La perturbación va en su propia línea y con su propio nombre: no es privacidad diferencial.
     perturbacion: { es: "Perturbación", en: "Perturbation" },
     perturbadas: {

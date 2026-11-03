@@ -103,6 +103,36 @@ const PROHIBIDAS: readonly { patron: RegExp; porque: string }[] = [
     patron: /privacy\s+(is\s+|are\s+)?guaranteed|guarantee[sd]?\s+(the\s+|your\s+|full\s+)?privacy/i,
     porque: "every privacy figure carries its ε and its scope; plain «guaranteed» is false",
   },
+
+  // ── El RGPD (S8) ──
+  // Seudonimizar no es anonimizar (art. 4.5 y considerando 26): un dato seudonimizado sigue siendo
+  // dato personal para quien tiene la información adicional. Velo no hace el análisis de «medios
+  // razonables» del considerando 26, así que jamás dice que un archivo es anónimo «según el RGPD»
+  // ni que lo cumple. Tampoco lo niega con estas mismas palabras: se escribe de otro modo.
+  {
+    patron: /an[oó]nim\w*\s+(seg[uú]n|conforme\s+(a|al|con)|bajo|de\s+acuerdo\s+con)\s+(el\s+)?(RGPD|GDPR)/i,
+    porque: "solo quien hace el análisis del considerando 26 puede decir «anónimo»; Velo no lo hace",
+  },
+  {
+    patron: /cumpl\w*\s+(con\s+)?(el\s+)?(RGPD|GDPR)/i,
+    porque: "una política de fábrica es una interpretación de Velo, no una certificación de cumplimiento",
+  },
+  {
+    patron: /(conforme\s+(a|al|con)|apto\s+(para|con))\s+(el\s+)?(RGPD|GDPR)/i,
+    porque: "una política de fábrica es una interpretación de Velo, no una certificación de cumplimiento",
+  },
+  {
+    patron: /(GDPR|RGPD)[-\s]+(compliant|compliance)\b/i,
+    porque: "a factory policy is Velo's reading of the text, not a compliance certification",
+  },
+  {
+    patron: /complies\s+with\s+(the\s+)?GDPR|compliant\s+with\s+(the\s+)?GDPR/i,
+    porque: "a factory policy is Velo's reading of the text, not a compliance certification",
+  },
+  {
+    patron: /anonymous\s+(under|according\s+to|per|as\s+defined\s+by)\s+(the\s+)?GDPR/i,
+    porque: "only the recital 26 means-reasonably-likely analysis can say «anonymous»; Velo does not run it",
+  },
 ];
 
 function archivos(ruta: string): string[] {
@@ -174,6 +204,16 @@ describe("los patrones prohibidos ven lo que deben ver", () => {
     "guaranteed privacy",
     "Privacy is guaranteed.",
     "Velo guarantees your privacy",
+    "los datos quedan anónimos según el RGPD",
+    "anónimo conforme al RGPD",
+    "este archivo cumple el RGPD",
+    "Velo cumple con el RGPD",
+    "conforme al RGPD",
+    "a GDPR compliant export",
+    "GDPR-compliant output",
+    "Velo complies with the GDPR",
+    "the file is anonymous under GDPR",
+    "anonymous according to the GDPR",
   ])("atrapa «%s»", (frase) => {
     expect(cae(frase)).toBe(true);
   });
@@ -193,6 +233,13 @@ describe("los patrones prohibidos ven lo que deben ver", () => {
     "Perturbación, sin garantía formal.",
     "Local differential privacy, ε = 1 per value of this field.",
     "Privacidad diferencial local, ε = 1 por valor de este campo.",
+    "Seudonimizado (art. 4.5 RGPD): sigue siendo dato personal para quien tiene la llave y la bóveda.",
+    "Pseudonymised (GDPR art. 4(5)): still personal data for whoever holds the key and the vault.",
+    "Velo no hace el análisis de medios razonables del considerando 26.",
+    "Velo does not run the means-reasonably-likely analysis of recital 26.",
+    "RGPD art. 9: la salud y los datos biométricos son categorías especiales.",
+    "GDPR art. 9: health and biometric data are special categories.",
+    "Una política de fábrica no es una certificación de cumplimiento.",
   ])("deja pasar «%s»", (frase) => {
     expect(cae(frase)).toBe(false);
   });

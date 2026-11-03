@@ -61,6 +61,12 @@ export function muestraDeColumna(
   politica: Politica,
   categoria: string,
   filas: number,
+  /**
+   * ¿Cambió alguna celda del ARCHIVO ENTERO? En memoria se calcula aquí (`columnaCambio`); en alto
+   * volumen (S8) las columnas que llegan son solo las filas de la vista previa, y la respuesta la
+   * trae la pasada que recorrió el archivo.
+   */
+  cambioDelArchivo?: boolean,
 ): MuestraDeTransformacion {
   const tecnica = tecnicaDe(politica, original.nombre).tipo;
 
@@ -77,7 +83,7 @@ export function muestraDeColumna(
     };
   }
 
-  const cambio = columnaCambio(original, nueva);
+  const cambio = cambioDelArchivo ?? columnaCambio(original, nueva);
 
   if (categoria === "dato-sensible" && !cambio) {
     return {

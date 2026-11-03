@@ -204,6 +204,10 @@ export const DOCUMENTOS = {
       es: "{n} valores distintos",
       en: "{n} distinct values",
     },
+    masDeValoresDistintos: {
+      es: "más de {n} valores distintos",
+      en: "more than {n} distinct values",
+    },
     cumplen: {
       es: "{pct} de los {n} valores revisados cumplen.",
       en: "{pct} of the {n} values checked comply.",
@@ -371,6 +375,10 @@ export const DOCUMENTOS = {
       es: "ℓ distinta pedida sobre {columnas_html}: {objetivo}. La alcanzada: {alcanzado}.",
       en: "Distinct ℓ asked for over {columnas_html}: {objetivo}. Reached: {alcanzado}.",
     },
+    lDescartadas: {
+      es: "La ℓ no se exigió sobre {columnas_html}: la política suprime esa columna y el archivo no la lleva.",
+      en: "ℓ was not required over {columnas_html}: the policy suppresses that column and the file does not carry it.",
+    },
     lNoAlcanzada: {
       es: "**La ℓ pedida no se alcanzó.** Hay grupos donde el dato sensible toma menos de {objetivo} valores distintos: estar en ese grupo puede delatarlo. Velo aplicó lo más que la escalera permite y no borró filas.",
       en: "**The ℓ asked for was not reached.** Some groups hold fewer than {objetivo} distinct values of the sensitive data: being in such a group can give it away. Velo applied as much as the ladder allows and deleted no rows.",
@@ -418,6 +426,11 @@ export const DOCUMENTOS = {
     intro: {
       es: "Cada bit de riesgo que se quita sale de un bit de información que alguien iba a usar. Estas son las cifras del intercambio; qué tanto duele cada una lo sabe quien conoce para qué era el archivo.",
       en: "Every bit of risk removed comes out of a bit of information that someone was going to use. These are the figures of the trade-off; how much each one hurts is something only whoever knows what the file was for can tell.",
+    },
+    // S8: en alto volumen no se mide, y el certificado lo dice en vez de omitir la sección.
+    noMedida: {
+      es: "**En este archivo no se midió.** Es un archivo de alto volumen, que Velo leyó por pasadas sin tenerlo entero en memoria, y medir lo que perdió exige comparar las dos tablas enteras. El riesgo de arriba sí es exacto; esta cifra no se estima.",
+      en: "**It was not measured for this file.** It is a high-volume file, which Velo read in passes without holding it whole in memory, and measuring what it lost requires comparing both whole tables. The risk above is exact; this figure is not estimated.",
     },
     informacionAntes: {
       es: "Información total, antes",
@@ -499,6 +512,43 @@ export const DOCUMENTOS = {
     sobreElTratamiento: {
       es: "**Sobre el tratamiento.** Las cifras de reducción se calculan sobre las columnas que Velo reconoció como cuasi-identificadores, y solo sobre ellas. Una columna que Velo no supo leer no entra a ninguna de estas cuentas — ni a la de antes ni a la de después—, así que la reducción no describe el archivo entero sino el cruce medido. Las salvedades del balance no son advertencias de cortesía: cada una nombra algo que la cifra no cubre.",
       en: "**About the treatment.** The reduction figures are computed over the columns Velo recognized as quasi-identifiers, and only over them. A column Velo could not read enters none of these counts — neither the before nor the after — so the reduction does not describe the whole file but the combination that was measured. The balance's caveats are not courtesy warnings: each one names something the figure does not cover.",
+    },
+  },
+
+  // ── El RGPD (S8, ADR-016) ──
+  // El certificado de una política `rgpd` dice «seudonimizado» y lo explica; jamás «anónimo». Lo
+  // vigila `tests/unit/copy.test.ts` (frases prohibidas) y `tests/unit/politica-rgpd.test.ts`.
+  rgpd: {
+    etiqueta: { es: "RGPD", en: "GDPR" },
+    titulo: {
+      es: "Seudonimizado, no anónimo",
+      en: "Pseudonymised, not anonymous",
+    },
+    seudonimizado: {
+      es: "**Seudonimizado (art. 4.5 RGPD).** {n} {columnas} pasaron a un seudónimo con tu llave: {lista_html}. El archivo sigue siendo dato personal para quien tenga la llave y la bóveda — la información adicional que el art. 4.5 pide mantener por separado.",
+      en: "**Pseudonymised (GDPR art. 4(5)).** {n} {columnas} became a pseudonym under your key: {lista_html}. The file is still personal data for whoever holds the key and the vault — the additional information that art. 4(5) requires to be kept separately.",
+    },
+    columnasUna: { es: "columna", en: "column" },
+    columnasVarias: { es: "columnas", en: "columns" },
+    generalizado: {
+      es: "**Generalizado.** {lista_html} se agruparon hasta el k pedido. Es una reducción de riesgo medida, no una conversión en dato anónimo.",
+      en: "**Generalized.** {lista_html} were grouped up to the k requested. It is a measured risk reduction, not a conversion into anonymous data.",
+    },
+    suprimido: {
+      es: "**Suprimido.** Las columnas quitadas (categorías especiales del art. 9, condenas del art. 10 o las que tú marcaste) no están en el archivo: la lista va en la sección del tratamiento.",
+      en: "**Removed.** The columns taken out (special categories of art. 9, convictions of art. 10, or the ones you marked) are not in the file: the list is in the treatment section.",
+    },
+    editada: {
+      es: "Partiste de la política RGPD de Velo y la cambiaste: este documento describe lo que se hizo, no la plantilla.",
+      en: "You started from Velo's GDPR policy and changed it: this document describes what was done, not the template.",
+    },
+    noAfirma: {
+      es: "**Qué NO afirma Velo.** No declara este archivo anónimo. Que un dato deje de ser personal depende de los medios razonablemente utilizables para identificar a la persona (considerando 26), y ese análisis lo hace quien trata los datos, con su contexto: Velo no lo hace. Tampoco certifica cumplimiento: la política de fábrica es su lectura del texto. Y un IBAN seudonimizado pasa el control general (ISO 13616), no las claves nacionales que lleva dentro (el CCC español, la clave RIB francesa): un destino que las valide puede rechazarlo. Y los números que sustituyen a un documento pasan su control, pero Velo no comprueba que no existan: uno puede ser, por casualidad, el número real de otra persona.",
+      en: "**What Velo does NOT claim.** It does not declare this file anonymous. Whether data stops being personal depends on the means reasonably likely to be used to identify the person (recital 26), and that analysis is for whoever processes the data, with their own context: Velo does not run it. Nor does it certify compliance: the factory policy is its reading of the text. And a pseudonymised IBAN passes the general check (ISO 13616), not the national keys inside it (the Spanish CCC, the French RIB key): a destination that validates them may refuse it. And the numbers that replace a document pass its check, but Velo does not verify that they do not exist: one can be, by chance, another person's real number.",
+    },
+    fuente: {
+      es: "Fuente: Reglamento (UE) 2016/679, art. 4, puntos 1 y 5, art. 9, art. 10 y considerando 26 — Diario Oficial de la UE, L 119, 4.5.2016; consultado el {fecha}.",
+      en: "Source: Regulation (EU) 2016/679, art. 4(1) and 4(5), art. 9, art. 10 and recital 26 — Official Journal of the EU, L 119, 4.5.2016; consulted on {fecha}.",
     },
   },
 

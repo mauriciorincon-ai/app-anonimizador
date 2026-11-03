@@ -62,6 +62,23 @@ describe("la anotación pendiente", () => {
     expect(document.body.textContent).not.toMatch(/cedula|nombre_completo/);
   });
 
+  it("una política RGPD se anota como «seudonimizado», con el conteo y sin nombres de columna", () => {
+    act(() =>
+      anotarTratamiento({
+        ...ENTRADA,
+        rgpd: { seudonimizadas: 10, generalizadas: 4 },
+      }),
+    );
+    render(<Bitacora />);
+    expect(
+      screen.getAllByText(
+        /Seudonimizado \(art\. 4\.5 RGPD\): 10 columnas con seudónimo, 4 generalizadas\. Sigue siendo dato personal para quien tenga la llave y la bóveda\./,
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toMatch(/an[oó]nim\w*\s+(seg[uú]n|conforme)\s+(el\s+)?RGPD/i);
+    expect(document.body.textContent).not.toMatch(/cedula|nombre_completo/);
+  });
+
   it("la perturbación va con su nombre, no bajo «privacidad diferencial»", () => {
     act(() =>
       anotarTratamiento({
