@@ -461,6 +461,8 @@ export function EditorDePolitica({
             onChange={(evento) =>
               onCambio({
                 ...politica,
+                // Un k distinto ya no es el de la política de fábrica: lo dice, como cualquier otra regla tocada.
+                origen: origenTrasEditar(politica.origen),
                 kObjetivo: Math.max(2, Number(evento.target.value) || 2),
               })
             }

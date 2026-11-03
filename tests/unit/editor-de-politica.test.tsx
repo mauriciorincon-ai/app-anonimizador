@@ -118,6 +118,31 @@ describe("una política importada que pide reparto y no trae k", () => {
   });
 });
 
+describe("cambiar el k de una política de fábrica la marca como editada", () => {
+  // Hallazgo del S8: el k de «rgpd» es una elección de Velo, editable; si cambiarlo dejaba el origen
+  // intacto, el certificado seguía diciendo «partiste de la política RGPD» con otro k.
+  it.each([
+    ["habeas-data", "habeas-data-editada"],
+    ["hipaa", "hipaa-editada"],
+    ["rgpd", "rgpd-editada"],
+  ] as const)("%s pasa a %s", (origen, editada) => {
+    const onCambio = vi.fn();
+    render(
+      <EditorDePolitica
+        columnas={COLUMNAS}
+        politica={{ ...SIN_REGLAS, origen, reglas: [AUTOMATICO], kObjetivo: 5 }}
+        onCambio={onCambio}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/Grupo mínimo \(k\)/), {
+      target: { value: "10" },
+    });
+    const siguiente = onCambio.mock.calls[0][0] as Politica;
+    expect(siguiente.kObjetivo).toBe(10);
+    expect(siguiente.origen).toBe(editada);
+  });
+});
+
 describe("el editor en inglés", () => {
   // Mismo componente, otro idioma: lo que cambia es el texto y la convención de los números, no
   // el comportamiento ni lo que se manda a la política.
