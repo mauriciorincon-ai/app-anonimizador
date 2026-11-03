@@ -1,7 +1,7 @@
 # User manual — Velo
 
 > _Veil it to hand it over. Unveil it to get it back._
-> Updated in Sprint 007 · November 2, 2026
+> Updated in Sprint 008 · November 2, 2026
 >
 > Spanish version: [MANUAL-DE-USO.md](MANUAL-DE-USO.md)
 
@@ -50,8 +50,10 @@ browser's language (or the one in the address).
 
 There are things the language does **not** change, and it is worth knowing which: what comes from
 your files (column names, values, samples) is shown exactly as it is; the country-specific
-recognizers are still the Colombian ones —cédula, NIT, mobile number, license plate, and Law 1581
-as the framework— because English is the language of the interface, not of detection; and the
+recognizers are the same in both languages —the Colombian ones (cédula, NIT, mobile number,
+license plate, with Law 1581 as the framework) and the eight European documents of
+[section 10](#10-the-gdpr-policy), with the GDPR as the framework— because English is the language
+of the interface, not of detection; and the
 vault and the log are the same file whatever language you saved them in. A log entry keeps the date
 exactly as it was written when you logged it. What Velo writes **inside the treated file** does follow the language you were using when you
 asked for the transformation: the two words it uses when it generalizes (the " a " between the two
@@ -82,7 +84,7 @@ Velo reads:
 
 | Format                                                                                      | Limit                              | Why                                                                                                                                                                 |
 | ------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CSV** (`.csv`)                                                                            | no limit                           | It is read in parts; it never exists whole in memory.                                                                                                               |
+| **CSV** (`.csv`)                                                                            | no limit on weight                 | It is read in parts; it never exists whole in memory. Above 20,000,000 cells, Velo reads it [in passes](#9-huge-files-high-volume-mode).                            |
 | **Excel** (`.xlsx`, `.xls`)                                                                 | **150 MB**                         | An Excel file has to be opened whole to be read. Above that size the browser runs out of memory, so Velo rejects it **before** opening it.                          |
 | **JSON** (`.json`) and **JSON Lines** (`.jsonl`, `.ndjson`)                                 | **20,000,000 cells**, not a weight | The file is read in parts, but the table Velo builds from it lives in memory: what takes up space is the number of cells (records × distinct paths), not the bytes. |
 | **PDF** (`.pdf`)                                                                            | **50 MB**                          | A PDF cannot be rewritten in parts: it is opened whole in memory, and what weighs is how many pieces it holds. Velo rejects it **before** opening it.               |
@@ -113,7 +115,8 @@ Two more things about what Velo reads:
 While it works you will see where it is: **taking the file's fingerprint**, **reading the file**,
 **recognizing what is in each column** and **measuring the re-identification risk**. The bar only
 appears when there is something real to measure; in the stages that have no fraction to show, Velo
-tells you the stage and does not draw a fake bar. With a PDF or an image there are no rows or
+tells you the stage and does not draw a fake bar. With a huge CSV you will also see “High-volume
+mode: the file is read in passes”, which [section 9](#9-huge-files-high-volume-mode) explains. With a PDF or an image there are no rows or
 columns: Velo says “Reading what the file says about itself” and draws no bar, because it opens the
 whole file in one go.
 
@@ -217,11 +220,11 @@ Each row of the table tells you what Velo found and, above all, **why**. That �
 levels of certainty, and the difference between them is the difference between knowing and
 suspecting:
 
-| Level            | What it means                                                                                                                                                                    |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Confirmed**    | An official check digit exists, and Velo recomputed it and it matches. This is the case for the NIT (the DIAN's mod 11), payment cards (Luhn) and the IBAN.                      |
-| **By its shape** | There is no public checksum for this data type, so only its shape could be checked. This is the case for the Colombian cédula: the Registraduría does not publish a check digit. |
-| **Unconfirmed**  | The conclusion rests on the **column name**, not on the values. No calculation can look at “J45.9” and state that it is a health diagnosis; only the header suggests it.         |
+| Level            | What it means                                                                                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Confirmed**    | An official check digit exists, and Velo recomputed it and it matches. This is the case for the NIT (the DIAN's mod 11), payment cards (Luhn), the IBAN and the European documents in [section 10](#10-the-gdpr-policy). |
+| **By its shape** | There is no public checksum for this data type, so only its shape could be checked. This is the case for the Colombian cédula: the Registraduría does not publish a check digit.                                         |
+| **Unconfirmed**  | The conclusion rests on the **column name**, not on the values. No calculation can look at “J45.9” and state that it is a health diagnosis; only the header suggests it.                                                 |
 
 And each column falls into one of the **four categories of Colombia's Law 1581 of 2012**:
 
@@ -309,13 +312,16 @@ policy**:
 - **HIPAA · Safe Harbor** — the 18 identifiers of 45 CFR §164.514(b)(2). Note: Safe Harbor requires
   **removing**, not pseudonymizing, because §164.514(c) rules out a code derived from the
   information.
+- **RGPD · GDPR (UE)** — Regulation (EU) 2016/679. **It pseudonymizes, it does not anonymize**:
+  [section 10](#10-the-gdpr-policy) tells the story. It declares a minimum-group target (k = 5)
+  that is Velo's choice, not the regulation's.
 
-Both say, right there, how many of their points Velo recognizes from the contents of the column,
-how many only from the name, and **how many you have to mark yourself**. Neither is a
+All three say, right there, how many of their points Velo recognizes from the contents of the
+column, how many only from the name, and **how many you have to mark yourself**. None is a
 certification.
 
-As soon as you touch a rule in a built-in policy, Velo says so: _“It's no longer Habeas Data”_. The
-official guidance does not back a decision it did not make.
+As soon as you touch a rule in a built-in policy, Velo says so: _“It's no longer Habeas Data”_ (or
+whichever one it was). The official guidance does not back a decision it did not make.
 
 The policy **is not saved anywhere**. If you want it for next month, **export it** — it is a JSON
 file you can import again. It carries your column names, which are your data, and that is why it
@@ -379,7 +385,7 @@ What can show up there:
 | The requested k was not reached        | You asked for groups of N and the partitioning reached less. Velo **does not delete rows** to get there.                                      |
 | The partitioning's k is not the file's | The generalized columns reached their k, but other columns that were not part of it split those groups. **The file's number is what counts.** |
 | Homogeneous groups                     | There are groups where everyone shares the same sensitive value: finding the group is enough to know it.                                      |
-| Pseudonym collisions                   | Preserving the format (cédula, NIT) shrinks the available space and two different values can collide.                                         |
+| Pseudonym collisions                   | Preserving the format (cédula, NIT, a European document) shrinks the available space and two different values can collide.                    |
 
 #### The file
 
@@ -680,7 +686,7 @@ characters are the start of the SHA-256 of the file that was returned to you.
 | **Changed by the third party** | the value is not in the vault                         | exactly as they left it    |
 | **Out of scope**               | its column was not in the vault                       | the whole column, intact   |
 
-> **About the ambiguous ones.** A format-preserving pseudonym —cédula, NIT— has to fit into many
+> **About the ambiguous ones.** A format-preserving pseudonym —cédula, NIT, a PESEL or a Steuer-IdNr— has to fit into many
 > fewer values than a full hash, so sometimes two different values receive the same one. Velo
 > **does not choose for you**: it leaves the pseudonym in place, tells you how many cells that is
 > and states them in the report. Writing one of the two candidates would hand you back another
@@ -894,6 +900,237 @@ run another metadata tool on the clean copy.
 
 ---
 
+### 9. Huge files: high-volume mode
+
+A table of millions of rows does not fit whole in a tab's memory. When a CSV goes past
+**20,000,000 cells** —rows × columns—, Velo does not try to load it: **it reads the file in
+passes**. One for the diagnosis, one to measure what is going to come out, one to write it, and in
+each one it computes the file's fingerprint again to check it is still the same file. It is the same
+engine as always; what changes is where it gets its counts from. And everything still happens inside
+your browser.
+
+The limit does not depend on your machine or on the time of day: **the same file takes the same
+road** on any computer.
+
+**What you will see.** While it reads, the stage says “High-volume mode: the file is read in
+passes”. When it finishes, the diagnosis opens with a panel, **“This file was read in passes”**,
+ahead of any figure: _“It has more than 20,000,000 cells, what Velo keeps in memory, so it was read
+in passes, without holding it whole in the tab. The risk below is exact: it comes from every row.”_
+It then goes on to say what changes.
+
+**What does not change**
+
+- **The risk is still exact.** It is counted over every row, not over a sample.
+- **The file that comes out is the same, byte for byte,** as the one that would come out if it fit
+  in memory (same file, same policy, same key, same language). An automated test compares them on
+  every change to the program.
+- **The vault and the return work the same** ([section 5](#5-the-vault-so-you-can-undo-it) and
+  [section 6](#6-the-return-getting-back-what-you-handed-over)). If the file that comes back to you
+  is also over 20,000,000 cells, it is restored in passes too.
+- **Nothing leaves your computer.**
+
+**What changes, and Velo says so**
+
+- **The classification looks at the first 5,000 rows.** In a smaller file, Velo classifies over a
+  sample spread across the whole file; here it looks at the beginning, in order. So what it finds
+  can differ from what the same file would give if it fit in memory.
+- **A column with too many distinct values says “more than N distinct values”** in the table,
+  instead of a figure that would not be true.
+- **The crossing advisor combines only the quasi-identifiers.** The columns it would have looked at
+  are listed with the reason.
+- **What the file lost (its utility) is not measured:** measuring it requires comparing both whole
+  tables. The certificate says so plainly —“It was not measured for this file”— and does not
+  estimate the figure.
+- **Pseudonym collisions are not counted.** That is the balance caveat from
+  [section 4](#4-transform-the-workshop): two different values can receive the same pseudonym and,
+  in this mode, Velo does not tell you how many times. If it happens, the return reports those cells
+  as ambiguous.
+
+**The limits, and what does not fit is said.** Every limit is a constant of the program, not a
+measurement of your machine. When something does not fit, Velo says so and either stops or leaves it
+untouched; **it never estimates**:
+
+| What                                               | Limit                              | What happens if it is exceeded                                                                                                                                                                                            |
+| -------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Distinct values in one column                      | 1,048,576 (2²⁰)                    | The column is treated value by value, with the same output, and the diagnosis says “more than N distinct values”. If it was reversible, there is no vault for it: Velo stops and asks you to untick it or split the file. |
+| Distinct values across all columns together        | 4,194,304 (2²²)                    | The same.                                                                                                                                                                                                                 |
+| Rows in the partition (Mondrian or optimal)        | 16,000,000                         | Velo stops: generalize those columns with a per-column technique, or split the file.                                                                                                                                      |
+| Distinct combinations of quasi-identifiers         | 16,777,215 (2²⁴ − 1)               | Velo says “Too many combinations to measure the exact risk” and does not estimate: generalize one of those columns first (the date to the year, the town to the region) and drop the file in again.                       |
+| Distinct values in one column of the returned file | 1,048,576 (2²⁰), as on the way out | The return stops: split the file into parts and restore each one with the same vault.                                                                                                                                     |
+
+Randomized response, which is already not applied with more than 64 distinct values, says “more than
+N” instead of a false figure, and the column comes out untouched.
+
+**Where it is saved.** Here browsers differ, and the screen tells you which case you are in:
+
+- **In Chrome, Edge and similar browsers,** the **“Choose where to save it”** button opens the
+  system's file picker. Velo writes the file **in chunks, straight into the one you pick**, without
+  building it whole in the tab's memory, and when it finishes it says “Saved on your computer: …”.
+  It is a download by your explicit action: the bytes go to your disk and nowhere else. If
+  something fails halfway, no half-written file is left behind.
+- **In Firefox and Safari** there is no destination picker. Velo says so —“this browser does not
+  let you choose a destination file”— and builds the file in the tab's memory before saving it
+  (**“Prepare the file”** and then **“Save”**). **A very large file may not fit.** If that is your
+  case, use Chrome or Edge.
+- **The restored file from the return always goes the second way,** in Chrome and Edge too: it is
+  built in memory and downloaded.
+
+**A defect that was fixed.** A CSV over 10 MB with an accented letter right at the edge of one of
+the chunks it is read in came out with “�” in place of the letter. It happened on the in-memory road
+too, not only in this mode, and it no longer happens on either. Your original was never touched; the
+defect was in what Velo wrote.
+
+**What was measured: a reference, not a promise.** A CSV of **5,000,000 rows × 24 columns
+(1.36 GB)**, with the Habeas Data policy and a key, in Chromium with the production build, on the
+author's Mac. Saved the in-memory way, without the destination picker:
+
+| Pass                  | Time  | Peak memory of the tab |
+| --------------------- | ----- | ---------------------- |
+| Diagnosis             | 109 s | 3.6 GB                 |
+| Transform and measure | 283 s | 4.9 GB                 |
+| Write                 | 267 s | 4.9 GB                 |
+
+That is about 11 minutes in all, and **you need several GB of free memory**: close other tabs and
+heavy programs first. The peak is that of the whole tab process, sampled every half second; it
+counts memory the browser had not yet freed, so it is a ceiling and not what is really in use. The
+work happens on a separate thread, as always. The return of that file was not measured at
+5,000,000 rows; it was tested, there and back, with a 21,000,000-cell one, comparing the restored
+file with the original by its SHA-256 fingerprint. Lowering the memory peak is pending.
+
+**What keeps its limit**
+
+- **Excel keeps its 150 MB limit:** the browser's Excel reader cannot read in parts.
+- **A JSON of more than 20,000,000 cells still stops** at its limit, and says so. High volume for
+  JSON is not built; it is one of the things pending the owner's decision (see “What comes next”).
+- **The restored file is not written straight to disk,** as explained above.
+
+---
+
+### 10. The GDPR policy
+
+It is the **third built-in policy**, next to Habeas Data and HIPAA. In the workshop you pick it with
+the **“RGPD · GDPR (UE)”** button. It rests on Regulation (EU) 2016/679: article 4 (what personal
+data is and what pseudonymisation is), article 9 (special categories), article 10 (criminal
+convictions and offences) and recital 26.
+
+> **The central idea: Velo pseudonymizes, it does not anonymize.** Article 4(5) calls
+> _pseudonymisation_ processing data so that it can no longer be attributed to a person without
+> additional information, kept separately. Here that additional information is your key and your
+> vault. And recital 26 says pseudonymised data that could be attributed to a person by using
+> additional information should be considered information on an identifiable person. That is why
+> **the file that comes out is still personal data for whoever holds the key and the vault**, and
+> why the certificate says “Pseudonymised”, never “anonymous”.
+
+Whether the file stops being personal data for someone else —a person with neither the key nor the
+vault— depends on the means reasonably likely to be used to identify anyone, and on the context
+(recital 26). That analysis belongs to whoever processes the data; a program that only sees a table
+cannot do it, and Velo does not.
+
+**What it does with each thing**
+
+| What is in the column                                                               | What Velo does                                                                                                                                                                   |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Direct identifiers** (art. 4(1)): names, email, payment card, documents           | A **pseudonym** under your key, **reversible with the vault**. If Velo recognizes the document, the pseudonym takes its country's format; if not, it is a hexadecimal pseudonym. |
+| **Special categories** (art. 9) and **criminal convictions and offences** (art. 10) | They are **removed**: the column does not come out. A general policy cannot know whether there is a lawful basis (art. 9(2)) to process them.                                    |
+| **Quasi-identifiers**: date of birth, postal code, sex, nationality, IP address     | **Generalized up to k = 5**. That 5 is Velo's choice, not the GDPR's —the regulation sets no k— and it can be changed.                                                           |
+| Other dates, which do not identify anyone on their own                              | Trimmed to the **month**.                                                                                                                                                        |
+| What is not personal                                                                | Left as it is.                                                                                                                                                                   |
+
+With this policy it is the policy, not you, that marks what is reversible: every direct identifier
+comes out reversible, and the vault step says so —“There are N reversible columns”—. If you do not
+want the vault for one of them, you untick it column by column. What Velo cannot recognize from the contents
+of a column —a diagnosis such as “J45.9”— it suspects, at most, from the header, with “unconfirmed”
+certainty. And an organization's own code (medical record, member, contract) has no recognizable
+shape: you mark that one yourself.
+
+**The eight documents it recognizes by their algorithm.** Like the Colombian cédula and NIT, each is
+checked with its official check digit or letter; spaces, dots, hyphens and letter case are
+ignored:
+
+| Document                   | What Velo checks                                                                                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **IBAN**                   | ISO 13616, with the mod 97-10 check                                                                              |
+| **DNI** (Spain)            | The check letter: the number modulo 23 indexes a table of letters                                                |
+| **NIE** (Spain)            | The same, with X, Y and Z standing for 0, 1 and 2; no other prefix is accepted                                   |
+| **NIR** (France)           | The key: 97 minus the first 13 digits modulo 97 (with Corsica's 2A and 2B); sex 1 or 2 and a month from 01 to 12 |
+| **Codice fiscale** (Italy) | The check character (odd- and even-position tables, modulo 26); a possible month letter and day                  |
+| **Steuer-IdNr** (Germany)  | The check digit over the first 10 digits; no leading 0 and the repeated-digit structure the rule sets            |
+| **BSN** (Netherlands)      | The 11-test; all zeros are refused                                                                               |
+| **PESEL** (Poland)         | The check digit (weights 1-3-7-9) and that the birth date it carries exists                                      |
+
+**“Confirmed by the algorithm”** means two things: the check adds up and the structure is possible
+(a month that exists, a prefix the document allows). It does **not** mean the number exists or
+belongs to anyone: an invented number can add up too. Velo marks them “Confirmed” in the diagnosis
+table, with the document's name, its country and the source of its algorithm. For example,
+`12345678Z` is an example DNI —the letter that goes with 12345678 is Z—; it serves to explain the
+algorithm and belongs to nobody.
+
+**What the pseudonyms of those documents look like**
+
+- **They pass their country's official check.** A DNI pseudonym is a DNI with a letter that adds
+  up; an NIR pseudonym, an NIR with its key. So a system that checks the format has no reason to
+  refuse it.
+- **It is never the original value.** If by chance the pseudonym came out equal to the original,
+  Velo computes it again (it still depends only on the value and the key), and if it cannot get a
+  different one it stops instead of handing the value back to you.
+- **It keeps nothing of the original:** not the department, not the year, not the sex. Those fields
+  are quasi-identifiers, and inheriting them would leave half the value in plain sight.
+- **The IBAN is the partial exception:** it keeps the country, the length, which positions are
+  digits and which are letters, and the grouping in fours if it came grouped. It passes the ISO 13616
+  check, but **it does not recompute the national keys inside it** (the Spanish CCC, the French RIB
+  key), so a destination that validates them may refuse it.
+- **The numbers that come out are synthetic:** plausible and fictitious. They pass the check, but
+  they are nobody's known number, although, like any number that adds up, one could coincide by
+  chance with one that exists.
+- **They can repeat.** Velo draws each PESEL from about 250 million values and each Steuer-IdNr from about 150
+  million; in a large file two different originals can receive the same pseudonym. The balance counts
+  how many and does not hide it (except in [high-volume mode](#9-huge-files-high-volume-mode),
+  which does not count them), and the return reports them as ambiguous
+  ([section 6](#6-the-return-getting-back-what-you-handed-over)).
+- **A cell that does not look like the format** still comes out in it: a column marked as IBAN
+  holding free text gets a synthetic Spanish-shaped IBAN, because you asked for IBANs and Velo
+  cannot invent a country from arbitrary text.
+
+**Column names in other languages.** Velo also reads headers in German, French, Italian, Dutch,
+Polish, Portuguese and English —names, addresses, date of birth, postal code, sex, nationality,
+health, beliefs, convictions—, besides Spanish. It looks for **whole words**, not pieces of words,
+and relies **on the header alone**: it is a suspicion, and the certainty stays “unconfirmed”, just
+as with Spanish names.
+
+**What the screen shows.** When you pick the policy you will see its warning —_“This is Velo's
+reading of the text, applied to the columns Velo recognized. It is not a certification of
+compliance…”_— and the list **“What it covers, article by article”**. Each line carries the article,
+how Velo sees it (by the contents of the column, only by its name, or “Velo does not recognize
+it”), the source —Regulation (EU) 2016/679 in the Official Journal of the EU, L 119, 4.5.2016— and
+the date it was consulted: November 2, 2026. If you touch a rule, Velo says it is no longer the
+built-in policy, and the certificate describes what was done, not the template.
+
+**What the certificate says.** It opens with **“Pseudonymised (GDPR art. 4(5))”**: how many columns
+became a pseudonym, that the file is still personal data for whoever holds the key and the vault,
+what was generalized and what was removed. And it closes with its **“What Velo does NOT claim”**:
+that it does not declare the file anonymous, that it does not run the recital 26 analysis and that
+it does not certify compliance.
+
+**What this policy does not do**
+
+- **It does not run the “means reasonably likely” analysis** of recital 26, does not decide the
+  lawful basis for processing (art. 6 and art. 9(2)), does not do a data protection impact
+  assessment and **does not certify compliance**: no authority issues that certification, and the
+  policy is Velo's reading of the text.
+- **It does not validate other documents:** not those of other countries, not European phone
+  numbers, not VAT numbers, not postal formats. What Velo does not recognize, you mark, as in the
+  other policies.
+- **Names in other languages** cover the common fields, from the header alone.
+- **The k = 5 and the generalization ladders are Velo's,** not the regulation's.
+- **Not every source was verified equally deeply.** The DNI and the NIE are validated with the
+  modulo-23 algorithm, the one in universal use. But the page of Spain's Ministry of the Interior
+  that describes the calculation could not be opened when it was checked: the algorithm was taken
+  from the excerpts a search engine quotes from it and verified by hand. The other documents were
+  reproduced with official examples, except the codice fiscale, whose decree carries none. The
+  detail, document by document, is in ADR-016 (`decisions/016-rgpd.md`).
+
+---
+
 ## What Velo does NOT claim
 
 This section is as much a part of the product as the others.
@@ -906,7 +1143,8 @@ This section is as much a part of the product as the others.
   attributes. An internal code of your organization, a medical-record number or a combination
   specific to your field can still point to a person without any public algorithm noticing.
 - Type detection is done on a **sample of up to 5,000 values per column**, spread across the whole
-  file. The risk figures, in contrast, are calculated over the complete file.
+  file (in a [high-volume](#9-huge-files-high-volume-mode) file, over its first 5,000 rows). The
+  risk figures, in contrast, are calculated over the complete file.
 - The crossing advisor evaluates a **bounded subset** of combinations and says so on screen. It is
   not the whole universe of possible crossings.
 - **Cleaning the metadata of a PDF or an image does not make it anonymous.** Velo cleans what the file
@@ -940,6 +1178,19 @@ This section is as much a part of the product as the others.
   about the columns you marked “Generalize until k is reached”; other columns can split those
   groups, and the full balance arrives when you transform. “Optimal” is the best combination of the
   ladders you gave it, not the best generalization possible.
+- **Pseudonymised is not anonymous.** With the GDPR policy, and with any reversible pseudonym, the
+  file is still personal data for whoever holds the key and the vault (art. 4(5)). Velo does not
+  run the “means reasonably likely” analysis of recital 26, does not decide the lawful basis for
+  processing and **does not certify compliance**: the built-in policy is its reading of the text,
+  applied to the columns it recognized, and the k = 5 is its own choice, not the regulation's. A
+  document “confirmed” by its algorithm has a check that adds up and a possible structure; it does
+  not mean the number exists or belongs to anyone. And for the DNI and the NIE, the Ministry of the
+  Interior's official page could not be opened when the algorithm was verified
+  ([section 10](#10-the-gdpr-policy), ADR-016).
+- **In a high-volume file, not everything is measured.** The risk is still exact, but what the file
+  lost is not measured, the crossing advisor combines only the quasi-identifiers and pseudonym
+  collisions are not counted. What does not fit within the limits is said, not estimated
+  ([section 9](#9-huge-files-high-volume-mode)).
 
 ---
 
@@ -974,11 +1225,29 @@ translated word for word, and says the same thing with the same caution: what is
 marked as estimated in both languages.
 
 **If I use Velo in English, does it recognize personal data from other countries?**
-No more than before. The country-specific recognizers are still the Colombian ones: a Colombian
-cédula, NIT, mobile number or license plate is detected the same way on both screens, and another
-country's social security number is not. The universal ones —email, payment card, IBAN, IP address,
-coordinates, dates— work the same in both languages. The language changes what you read, not what
-Velo can detect.
+It depends on the country, not the language. The country-specific recognizers are the Colombian
+ones —a cédula, NIT, mobile number or license plate— and the eight European documents of
+[section 10](#10-the-gdpr-policy) (IBAN, Spain's DNI and NIE, France's NIR, Italy's codice fiscale,
+Germany's Steuer-IdNr, the Netherlands' BSN and Poland's PESEL). All of them are detected the same
+way on both screens, and so are the universal ones —email, payment card, IP address, coordinates,
+dates—. A document from another country that is not on that list is not recognized, and you mark it
+yourself. The language changes what you read, not what Velo can detect.
+
+**Why does Velo say “pseudonymised” and not “anonymous”?**
+Because they are different things, and the GDPR tells them apart. A pseudonym can be tied back to the
+person with additional information —here, your key and your vault—, and as long as that road exists
+the file is still personal data for whoever holds it (art. 4(5) and recital 26). Whether a file
+stops being personal data for someone else depends on the means reasonably likely to be used to
+identify the person, and that assessment belongs to whoever processes the data, with their own
+context. Velo does not run it, so it does not declare any file anonymous. It is explained in
+[section 10](#10-the-gdpr-policy).
+
+**Why does my bank or my system refuse the pseudonymised IBAN?**
+Because the IBAN that comes out passes the general check (ISO 13616, mod 97-10) and keeps the
+country, the length and the grouping, but Velo **does not recompute the national keys inside it**,
+such as the Spanish CCC or the French RIB key. A destination that validates them will refuse it. If
+that is your case, the pseudonym will not serve it: hand that column over another way (a hexadecimal
+pseudonym, which does not pretend to be an IBAN, or without the column).
 
 **I have a photo in HEIC, from my iPhone. Can I clean it?**
 Yes. Drop it in like any other image. Velo removes the EXIF (location, camera, dates, author), the
@@ -1011,6 +1280,15 @@ computer. The downloaded report opens offline, always.
 It works. It is measured: 500,000 rows × 24 columns (about 130 MB) are processed in a few seconds
 without the tab freezing, because the heavy work happens on a separate thread.
 
+**Why does my 5-million-row file take minutes?**
+Because it goes past 20,000,000 cells and Velo reads it in passes instead of loading it whole: one
+for the diagnosis, one to measure and one to write
+([section 9](#9-huge-files-high-volume-mode)). On the file that was measured —5,000,000 rows × 24
+columns, 1.36 GB, on the author's Mac— it took 109 s, 283 s and 267 s (about 11 minutes), and the tab
+asked for up to 4.9 GB of memory. It is a reference, not a promise: it depends on your machine, and
+it helps to close other tabs. In exchange, the risk is still exact and the file that comes out is
+the same, byte for byte, as the one that would come out if it fit in memory.
+
 ---
 
 ## What comes next
@@ -1023,7 +1301,7 @@ not read databases, it does not generate `.xlsx` output, it does not treat the l
 it does not clean the annotations, attachments or forms of a PDF, and it does not use —and will not
 use— generative artificial intelligence anywhere in the product.
 
-And there are four things that are **pending the owner's decision**: they are neither promised nor
+And there are six things that are **pending the owner's decision**: they are neither promised nor
 discarded.
 
 - **AVIF**, the other photo format that resembles HEIC: today Velo does not read it.
@@ -1032,3 +1310,8 @@ discarded.
   own, and the “optimal” result is limited to what the ladders allow.
 - **CIIU Rev. 5 A.C.**, which DANE adopted in August 2026 with a two-year transition: today the
   economic-activity ladder uses Rev. 4 A.C.
+- **High volume for JSON:** today a JSON of more than 20,000,000 cells stops at its limit and says
+  so. Reading it in passes means rewriting the JSON writer; it has neither been done nor discarded.
+- **A destination picker for Firefox and Safari:** today those browsers do not let you choose a
+  destination file, so a high-volume file is built in the tab's memory and, if it is very large, may
+  not fit.
