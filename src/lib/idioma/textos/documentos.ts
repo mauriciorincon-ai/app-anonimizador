@@ -517,7 +517,7 @@ export const DOCUMENTOS = {
 
   // ── El RGPD (S8, ADR-016) ──
   // El certificado de una política `rgpd` dice «seudonimizado» y lo explica; jamás «anónimo». Lo
-  // vigila `tests/unit/copy.test.ts` (frases prohibidas) y `tests/unit/reporte-rgpd.test.ts`.
+  // vigila `tests/unit/copy.test.ts` (frases prohibidas) y `tests/unit/politica-rgpd.test.ts`.
   rgpd: {
     etiqueta: { es: "RGPD", en: "GDPR" },
     titulo: {
@@ -543,8 +543,8 @@ export const DOCUMENTOS = {
       en: "You started from Velo's GDPR policy and changed it: this document describes what was done, not the template.",
     },
     noAfirma: {
-      es: "**Qué NO afirma Velo.** No declara este archivo anónimo. Que un dato deje de ser personal depende de los medios razonablemente utilizables para identificar a la persona (considerando 26), y ese análisis lo hace quien trata los datos, con su contexto: Velo no lo hace. Tampoco certifica cumplimiento: la política de fábrica es su lectura del texto. Y un IBAN seudonimizado pasa el control general (ISO 13616), no las claves nacionales que lleva dentro (el CCC español, la clave RIB francesa): un destino que las valide puede rechazarlo.",
-      en: "**What Velo does NOT claim.** It does not declare this file anonymous. Whether data stops being personal depends on the means reasonably likely to be used to identify the person (recital 26), and that analysis is for whoever processes the data, with their own context: Velo does not run it. Nor does it certify compliance: the factory policy is its reading of the text. And a pseudonymised IBAN passes the general check (ISO 13616), not the national keys inside it (the Spanish CCC, the French RIB key): a destination that validates them may refuse it.",
+      es: "**Qué NO afirma Velo.** No declara este archivo anónimo. Que un dato deje de ser personal depende de los medios razonablemente utilizables para identificar a la persona (considerando 26), y ese análisis lo hace quien trata los datos, con su contexto: Velo no lo hace. Tampoco certifica cumplimiento: la política de fábrica es su lectura del texto. Y un IBAN seudonimizado pasa el control general (ISO 13616), no las claves nacionales que lleva dentro (el CCC español, la clave RIB francesa): un destino que las valide puede rechazarlo. Y los números que sustituyen a un documento pasan su control, pero Velo no comprueba que no existan: uno puede ser, por casualidad, el número real de otra persona.",
+      en: "**What Velo does NOT claim.** It does not declare this file anonymous. Whether data stops being personal depends on the means reasonably likely to be used to identify the person (recital 26), and that analysis is for whoever processes the data, with their own context: Velo does not run it. Nor does it certify compliance: the factory policy is its reading of the text. And a pseudonymised IBAN passes the general check (ISO 13616), not the national keys inside it (the Spanish CCC, the French RIB key): a destination that validates them may refuse it. And the numbers that replace a document pass its check, but Velo does not verify that they do not exist: one can be, by chance, another person's real number.",
     },
     fuente: {
       es: "Fuente: Reglamento (UE) 2016/679, art. 4, puntos 1 y 5, art. 9, art. 10 y considerando 26 — Diario Oficial de la UE, L 119, 4.5.2016; consultado el {fecha}.",

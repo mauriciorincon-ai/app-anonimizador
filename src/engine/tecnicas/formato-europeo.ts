@@ -8,8 +8,10 @@
 // **Todo se sintetiza, nada se hereda** salvo lo que el IBAN necesita para seguir siendo de su país:
 // el DNI, el NIR o el codice fiscale que salen no conservan ni un dato del original (ni el
 // departamento, ni el año, ni el sexo), porque esos campos son cuasi-identificadores y heredarlos
-// sería dejar la mitad del dato a la vista. Por eso los números que salen son plausibles y
-// ficticios: pasan el control, no pertenecen a nadie conocido.
+// sería dejar la mitad del dato a la vista. Por eso los números que salen son sintéticos:
+// pasan el control, pero NADA comprueba que no existan, y en los documentos de espacio pequeño frente
+// a la población (DNI, PESEL, BSN, Steuer-IdNr) un seudónimo puede ser el número real de otra
+// persona. El manual y el certificado lo dicen.
 //
 // **Los símbolos.** Cada uno sale de 8 caracteres hexadecimales (32 bits) del HMAC, módulo el número
 // de opciones: el sesgo del módulo es de n/2³², del orden de 10⁻⁹ para un dígito y 10⁻⁸ para una

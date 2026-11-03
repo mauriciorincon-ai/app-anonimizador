@@ -926,9 +926,11 @@ sigue con lo que cambia.
 - **No se mide lo que el archivo perdió** (la utilidad): medirlo exige comparar las dos tablas
   enteras. El certificado lo dice con todas sus letras —«En este archivo no se midió»— y no estima
   la cifra.
-- **Las colisiones de seudónimo no se cuentan.** Es el aviso del balance de la
-  [sección 4](#4-transforma-el-taller): dos valores distintos pueden recibir el mismo seudónimo y,
-  en este modo, Velo no te dice cuántas veces. Si ocurre, el regreso las declara como ambiguas.
+- **Las colisiones de seudónimo se cuentan solo donde el diccionario de la columna cabe.** Es el
+  aviso del balance de la [sección 4](#4-transforma-el-taller): dos valores distintos pueden recibir
+  el mismo seudónimo. En una columna que se trata valor por valor (más de 1.048.576 valores
+  distintos) Velo no las cuenta y el balance no avisa de ellas: que no diga nada no significa que no
+  haya. Si ocurre, el regreso las declara como ambiguas.
 
 **Los topes, y lo que no cabe se dice.** Cada tope es una constante del programa, no una medida de
 tu equipo. Cuando algo no cabe, Velo lo dice y se detiene o lo deja intacto; **jamás lo estima**:
@@ -1063,13 +1065,15 @@ Z—; sirve para explicar el algoritmo y no es de nadie.
   letras, y el agrupado de a cuatro si venía agrupado. Pasa el control ISO 13616, pero **no
   recalcula las claves nacionales que van dentro** (el CCC español, la clave RIB francesa), así que
   un destino que las valide puede rechazarlo.
-- **Los números que salen son sintéticos:** plausibles y ficticios. Pasan el control, pero no son los
-  de ninguna persona conocida, aunque, como cualquier número que cuadra, uno podría coincidir por
-  azar con uno que exista.
+- **Los números que salen son sintéticos, pero Velo no comprueba que no existan.** Pasan el control
+  de su documento y no conservan nada del original, pero Velo no puede saber qué números están
+  asignados a personas reales: un seudónimo puede ser, por casualidad, el número real de otra
+  persona, y en los documentos con pocos valores posibles frente a la población (el DNI, el PESEL,
+  el BSN, el Steuer-IdNr) esa casualidad no es rara. No lo trates como inocuo.
 - **Pueden repetirse.** Velo sortea cada PESEL entre unos 250 millones de valores y cada Steuer-IdNr entre unos
   150 millones; en un archivo grande dos originales distintos pueden recibir el mismo seudónimo. El
-  balance cuenta cuántos, no lo esconde (salvo en el [modo de alto
-  volumen](#9-archivos-enormes-el-modo-de-alto-volumen), que no los cuenta), y el regreso los declara
+  balance cuenta cuántos, no lo esconde (salvo en una columna de [alto
+  volumen](#9-archivos-enormes-el-modo-de-alto-volumen) que no cabe en su diccionario), y el regreso los declara
   como ambiguos ([sección 6](#6-el-regreso-recuperar-lo-que-entregaste)).
 - **Una celda que no se parece al formato** igual sale con él: una columna marcada como IBAN con un
   texto libre recibe un IBAN sintético con forma española, porque pediste IBAN y Velo no puede
@@ -1171,7 +1175,7 @@ Esta sección es tan parte del producto como las otras.
   ([sección 10](#10-la-política-rgpd), ADR-016).
 - **En un archivo de alto volumen, no todo se mide.** El riesgo sigue siendo exacto, pero no se mide
   lo que el archivo perdió, el consejero de cruces combina solo los cuasi-identificadores y las
-  colisiones de seudónimo no se cuentan. Lo que no cabe en los topes se dice; no se estima
+  colisiones de seudónimo no se cuentan en las columnas que no caben en su diccionario. Lo que no cabe en los topes se dice; no se estima
   ([sección 9](#9-archivos-enormes-el-modo-de-alto-volumen)).
 
 ---

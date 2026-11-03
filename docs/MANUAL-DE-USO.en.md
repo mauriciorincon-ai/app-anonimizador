@@ -941,10 +941,11 @@ It then goes on to say what changes.
 - **What the file lost (its utility) is not measured:** measuring it requires comparing both whole
   tables. The certificate says so plainly —“It was not measured for this file”— and does not
   estimate the figure.
-- **Pseudonym collisions are not counted.** That is the balance caveat from
-  [section 4](#4-transform-the-workshop): two different values can receive the same pseudonym and,
-  in this mode, Velo does not tell you how many times. If it happens, the return reports those cells
-  as ambiguous.
+- **Pseudonym collisions are counted only where the column's dictionary fits.** That is the balance
+  caveat from [section 4](#4-transform-the-workshop): two different values can receive the same
+  pseudonym. In a column handled value by value (more than 1,048,576 distinct values) Velo does not
+  count them and the balance does not warn about them: it saying nothing does not mean there are
+  none. If it happens, the return reports those cells as ambiguous.
 
 **The limits, and what does not fit is said.** Every limit is a constant of the program, not a
 measurement of your machine. When something does not fit, Velo says so and either stops or leaves it
@@ -1079,13 +1080,15 @@ algorithm and belongs to nobody.
   digits and which are letters, and the grouping in fours if it came grouped. It passes the ISO 13616
   check, but **it does not recompute the national keys inside it** (the Spanish CCC, the French RIB
   key), so a destination that validates them may refuse it.
-- **The numbers that come out are synthetic:** plausible and fictitious. They pass the check, but
-  they are nobody's known number, although, like any number that adds up, one could coincide by
-  chance with one that exists.
+- **The numbers that come out are synthetic, but Velo does not check that they do not exist.** They
+  pass their document's check and keep nothing of the original, but Velo cannot know which numbers
+  are assigned to real people: a pseudonym can be, by chance, another person's real number, and in
+  the documents with few possible values compared with the population (the DNI, the PESEL, the BSN,
+  the Steuer-IdNr) that chance is not rare. Do not treat it as harmless.
 - **They can repeat.** Velo draws each PESEL from about 250 million values and each Steuer-IdNr from about 150
   million; in a large file two different originals can receive the same pseudonym. The balance counts
-  how many and does not hide it (except in [high-volume mode](#9-huge-files-high-volume-mode),
-  which does not count them), and the return reports them as ambiguous
+  how many and does not hide it (except in a [high-volume](#9-huge-files-high-volume-mode) column
+  that does not fit in its dictionary), and the return reports them as ambiguous
   ([section 6](#6-the-return-getting-back-what-you-handed-over)).
 - **A cell that does not look like the format** still comes out in it: a column marked as IBAN
   holding free text gets a synthetic Spanish-shaped IBAN, because you asked for IBANs and Velo
@@ -1189,7 +1192,7 @@ This section is as much a part of the product as the others.
   ([section 10](#10-the-gdpr-policy), ADR-016).
 - **In a high-volume file, not everything is measured.** The risk is still exact, but what the file
   lost is not measured, the crossing advisor combines only the quasi-identifiers and pseudonym
-  collisions are not counted. What does not fit within the limits is said, not estimated
+  collisions are not counted in the columns that do not fit in their dictionary. What does not fit within the limits is said, not estimated
   ([section 9](#9-huge-files-high-volume-mode)).
 
 ---
