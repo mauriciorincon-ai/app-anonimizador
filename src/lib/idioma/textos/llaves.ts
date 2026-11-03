@@ -158,20 +158,22 @@ export const LLAVES = {
         es: "La correspondencia para poder deshacerlo",
         en: "The mapping that lets you undo it",
       },
+      // «Hay», no «Marcaste»: con una política de fábrica (RGPD) la reversibilidad la marca la política,
+      // no la persona, y la frase no puede atribuirle una decisión que no tomó.
       notaUna: {
         es:
-          "Marcaste una columna reversible. La bóveda es un archivo cifrado con la " +
+          "Hay una columna reversible. La bóveda es un archivo cifrado con la " +
           "correspondencia entre cada seudónimo y su valor original.",
         en:
-          "You marked one reversible column. The vault is an encrypted file with the mapping " +
+          "There is one reversible column. The vault is an encrypted file with the mapping " +
           "between each pseudonym and its original value.",
       },
       notaVarias: {
         es:
-          "Marcaste {n} columnas reversibles. La bóveda es un archivo cifrado con la " +
+          "Hay {n} columnas reversibles. La bóveda es un archivo cifrado con la " +
           "correspondencia entre cada seudónimo y su valor original.",
         en:
-          "You marked {n} reversible columns. The vault is an encrypted file with the mapping " +
+          "There are {n} reversible columns. The vault is an encrypted file with the mapping " +
           "between each pseudonym and its original value.",
       },
       // Lo que esta pantalla tiene que dejar dicho ANTES de que el usuario elija una frase.
