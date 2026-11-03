@@ -364,6 +364,36 @@ describe("una limpieza de metadatos en la bitácora (S6)", () => {
   });
 });
 
+describe("la política RGPD en la bitácora (S8)", () => {
+  const conRgpd: EntradaDeBitacora = {
+    ...entrada(8),
+    tecnicas: ["seudonimizar-con-formato", "seudonimizar", "suprimir"],
+    rgpd: { seudonimizadas: 10, generalizadas: 4 },
+  };
+
+  it("una entrada sin el bloque se serializa igual que antes: la huella vieja no se mueve", () => {
+    expect(serializarBitacora(conEntradas(2))).not.toContain("rgpd");
+  });
+
+  it("cuántas columnas se seudonimizaron y generalizaron van y vuelven, sin nombres de columna", () => {
+    const bitacora = anadirEntrada(conEntradas(1), conRgpd);
+    const leida = deserializarBitacora(serializarBitacora(bitacora));
+    expect(leida.ok).toBe(true);
+    if (!leida.ok) return;
+    expect(leida.bitacora.entradas[1].rgpd).toEqual({
+      seudonimizadas: 10,
+      generalizadas: 4,
+    });
+    expect(huellaDeBitacora(leida.bitacora)).toBe(huellaDeBitacora(bitacora));
+  });
+
+  it("un conteo negativo o fraccionario invalida el archivo", () => {
+    const texto = serializarBitacora(anadirEntrada(bitacoraVacia(), conRgpd));
+    expect(deserializarBitacora(texto.replace('"seudonimizadas":10', '"seudonimizadas":-1')).ok).toBe(false);
+    expect(deserializarBitacora(texto.replace('"generalizadas":4', '"generalizadas":1.5')).ok).toBe(false);
+  });
+});
+
 describe("el ruido con garantía en la bitácora (S7)", () => {
   const conRuido: EntradaDeBitacora = {
     ...entrada(7),

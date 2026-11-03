@@ -490,6 +490,15 @@ function ResumenDeEntrada({ entrada }: { entrada: EntradaDeBitacora }) {
           })}
         />
       ) : null}
+      {entrada.rgpd && entrada.rgpd.seudonimizadas > 0 ? (
+        <Dato
+          termino={t(BITACORA.detalle.rgpd)}
+          valor={t(BITACORA.detalle.rgpdValor, {
+            seudonimizadas: numero(entrada.rgpd.seudonimizadas, idioma),
+            generalizadas: numero(entrada.rgpd.generalizadas, idioma),
+          })}
+        />
+      ) : null}
       {entrada.privacidad && entrada.privacidad.perturbadas > 0 ? (
         <Dato
           termino={t(BITACORA.detalle.perturbacion)}

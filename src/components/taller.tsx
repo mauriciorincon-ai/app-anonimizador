@@ -145,6 +145,8 @@ export function Taller({ informe }: { informe: Informe }) {
     taller.transformacion.fase === "hecha"
       ? taller.transformacion.resultado
       : null;
+  // Editar la política invalida el resultado, así que `politica` es la que se aplicó.
+  const rgpd = hecha ? informeDelRgpd(politica, hecha.suprimidas) : null;
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
@@ -297,9 +299,8 @@ export function Taller({ informe }: { informe: Informe }) {
                 generalizacion: hecha.generalizacion,
                 privacidad: hecha.privacidad,
                 // S8: con una política del RGPD, el certificado dice «seudonimizado» y explica por
-                // qué no es «anónimo». Editar la política invalida el resultado, así que `politica`
-                // es la que se aplicó.
-                rgpd: informeDelRgpd(politica, hecha.suprimidas),
+                // qué no es «anónimo».
+                rgpd,
               }}
             />
             {/* Anotar exige lo mismo que certificar: que el archivo exista, porque una entrada sin
@@ -329,6 +330,15 @@ export function Taller({ informe }: { informe: Informe }) {
                   // S7: el ε del tratamiento viaja con la entrada; sin ruido, el campo no existe.
                   ...(hecha.privacidad
                     ? { privacidad: privacidadDeLaEntrada(hecha.privacidad) }
+                    : {}),
+                  // S8: con una política RGPD, cuántas columnas se seudonimizaron y generalizaron.
+                  ...(rgpd && rgpd.seudonimizadas.length > 0
+                    ? {
+                        rgpd: {
+                          seudonimizadas: rgpd.seudonimizadas.length,
+                          generalizadas: rgpd.generalizadas.length,
+                        },
+                      }
                     : {}),
                 }}
               />
