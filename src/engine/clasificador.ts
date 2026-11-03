@@ -25,6 +25,7 @@ import {
   valorEn,
 } from "./columnar";
 import { muestraParaColumna } from "./mascara";
+import { buscarReglaMultilingue } from "./nombres-multilingues";
 import { VALIDADORES } from "./validadores";
 import type {
   CategoriaLey1581,
@@ -147,8 +148,22 @@ const REGLAS_DE_NOMBRE: readonly ReglaDeNombre[] = [
   },
 ];
 
-function buscarReglaDeNombre(nombre: string): ReglaDeNombre | null {
-  return REGLAS_DE_NOMBRE.find((regla) => regla.patron.test(nombre)) ?? null;
+/** Lo que el clasificador necesita de una regla de nombre, sea cual sea su lengua. */
+interface ReglaEncontrada {
+  descripcion: MensajeDeMotor;
+  categoria: CategoriaLey1581;
+  nota: MensajeDeMotor;
+}
+
+/**
+ * Primero las reglas en español, intactas, como nacieron; después las de las lenguas del RGPD
+ * (S8), por palabras completas. Un nombre que las viejas ya reconocen no cambia de categoría.
+ */
+function buscarReglaDeNombre(nombre: string): ReglaEncontrada | null {
+  return (
+    REGLAS_DE_NOMBRE.find((regla) => regla.patron.test(nombre)) ??
+    buscarReglaMultilingue(nombre)
+  );
 }
 
 // ── Qué parte del nombre se lee ───────────────────────────────────────────────────────────────

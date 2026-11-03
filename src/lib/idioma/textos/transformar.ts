@@ -198,11 +198,28 @@ export const TRANSFORMAR = {
       conservar: { es: "Dejar como está", en: "Leave as is" },
       enmascarar: { es: "Enmascarar (103***89)", en: "Mask (103***89)" },
       seudonimizar: { es: "Seudónimo (hex)", en: "Pseudonym (hex)" },
-      seudonimizarCedula: {
-        es: "Seudónimo de cédula",
-        en: "Cédula pseudonym",
+      // Un texto por formato de seudónimo, indexado por la misma lista que el esquema de la política
+      // (`FORMATOS_DE_SEUDONIMO`). Los europeos (S8) empiezan por el documento y no por «seudónimo»:
+      // en 412 px el desplegable cerrado deja ~19 caracteres, y lo que distingue una opción de otra
+      // tiene que caber en ellos.
+      seudonimizarFormato: {
+        cedula: { es: "Seudónimo de cédula", en: "Cédula pseudonym" },
+        nit: { es: "Seudónimo de NIT", en: "NIT pseudonym" },
+        iban: { es: "IBAN · seudónimo", en: "IBAN · pseudonym" },
+        dni: { es: "DNI · seudónimo", en: "DNI · pseudonym" },
+        nie: { es: "NIE · seudónimo", en: "NIE · pseudonym" },
+        nir: { es: "NIR · seudónimo", en: "NIR · pseudonym" },
+        "codice-fiscale": {
+          es: "Cod. fiscale · seudón.",
+          en: "Codice fiscale · pseud.",
+        },
+        "steuer-idnr": {
+          es: "Steuer-IdNr · seudón.",
+          en: "Steuer-IdNr · pseud.",
+        },
+        bsn: { es: "BSN · seudónimo", en: "BSN · pseudonym" },
+        pesel: { es: "PESEL · seudónimo", en: "PESEL · pseudonym" },
       },
-      seudonimizarNit: { es: "Seudónimo de NIT", en: "NIT pseudonym" },
       generalizarAnio: {
         es: "Fecha: dejar solo el año",
         en: "Date: keep only the year",
@@ -379,6 +396,30 @@ export const TRANSFORMAR = {
           "**It's no longer {nombre}.** You started from that template and changed it, so the " +
           "report will say the policy is yours. That's as it should be: the official guidance " +
           "doesn't back a decision it didn't make.",
+      },
+      // Las políticas que citan artículo por artículo (el RGPD): una línea por punto, con cómo lo
+      // ve Velo, la fuente y la fecha en que se consultó.
+      citas: {
+        titulo: {
+          es: "Qué cubre, artículo por artículo",
+          en: "What it covers, article by article",
+        },
+        linea: {
+          es: "**{articulo}** · {identificador} — {como}. Fuente: {fuente}; consultada el {fecha}.",
+          en: "**{articulo}** · {identificador} — {como}. Source: {fuente}; consulted on {fecha}.",
+        },
+        porContenido: {
+          es: "Velo lo reconoce por el contenido de la columna",
+          en: "Velo recognizes it by the contents of the column",
+        },
+        porNombre: {
+          es: "Velo lo reconoce solo por el nombre de la columna",
+          en: "Velo recognizes it only by the column name",
+        },
+        sinReconocer: {
+          es: "Velo no lo reconoce",
+          en: "Velo does not recognize it",
+        },
       },
       cobertura: {
         es:

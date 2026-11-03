@@ -49,6 +49,7 @@ import {
 } from "@/lib/sesion";
 import type { Informe, MotivoDeError } from "@/workers/contrato";
 import { nombreDelArchivoAnonimizado } from "@/engine/csv";
+import { informeDelRgpd } from "@/engine/politicas-de-fabrica";
 
 /**
  * S8: el selector de archivo del sistema (Chrome, Edge). Se pide DENTRO del clic, que es lo que el
@@ -295,6 +296,10 @@ export function Taller({ informe }: { informe: Informe }) {
                 // un campo del resultado que no se pasa aquí no llega al certificado.
                 generalizacion: hecha.generalizacion,
                 privacidad: hecha.privacidad,
+                // S8: con una política del RGPD, el certificado dice «seudonimizado» y explica por
+                // qué no es «anónimo». Editar la política invalida el resultado, así que `politica`
+                // es la que se aplicó.
+                rgpd: informeDelRgpd(politica, hecha.suprimidas),
               }}
             />
             {/* Anotar exige lo mismo que certificar: que el archivo exista, porque una entrada sin

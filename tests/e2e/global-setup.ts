@@ -55,6 +55,9 @@ const FIXTURES: readonly Fixture[] = [
   // El de alto volumen (S8): 210 columnas × 100.000 filas = 21 millones de celdas, apenas sobre el
   // tope de 20 millones que Velo guarda en memoria. ~42 MB, en un segundo.
   { perfil: "ancho", filas: 100_000, seed: 42, formato: "csv" },
+  // El europeo (S8): un identificador nacional de cada país con control oficial, campos personales
+  // con nombres en otras lenguas, un dato del art. 9 y uno del art. 10. Todo sintético.
+  { perfil: "europeo", filas: 1_500, seed: 42, formato: "csv" },
   // JSON, el tercer formato. Un objeto anidado en las dos formas (arreglo y JSON Lines, el mismo
   // dato), uno con listas que Velo debe declarar «no tratadas» y uno heterogéneo (claves que
   // faltan, tipos mezclados, `__proto__`, un número mayor que 2⁵³). Solo existen en json/jsonl.

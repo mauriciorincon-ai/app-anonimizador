@@ -515,6 +515,43 @@ export const DOCUMENTOS = {
     },
   },
 
+  // ── El RGPD (S8, ADR-016) ──
+  // El certificado de una política `rgpd` dice «seudonimizado» y lo explica; jamás «anónimo». Lo
+  // vigila `tests/unit/copy.test.ts` (frases prohibidas) y `tests/unit/reporte-rgpd.test.ts`.
+  rgpd: {
+    etiqueta: { es: "RGPD", en: "GDPR" },
+    titulo: {
+      es: "Seudonimizado, no anónimo",
+      en: "Pseudonymised, not anonymous",
+    },
+    seudonimizado: {
+      es: "**Seudonimizado (art. 4.5 RGPD).** {n} {columnas} pasaron a un seudónimo con tu llave: {lista_html}. El archivo sigue siendo dato personal para quien tenga la llave y la bóveda — la información adicional que el art. 4.5 pide mantener por separado.",
+      en: "**Pseudonymised (GDPR art. 4(5)).** {n} {columnas} became a pseudonym under your key: {lista_html}. The file is still personal data for whoever holds the key and the vault — the additional information that art. 4(5) requires to be kept separately.",
+    },
+    columnasUna: { es: "columna", en: "column" },
+    columnasVarias: { es: "columnas", en: "columns" },
+    generalizado: {
+      es: "**Generalizado.** {lista_html} se agruparon hasta el k pedido. Es una reducción de riesgo medida, no una conversión en dato anónimo.",
+      en: "**Generalized.** {lista_html} were grouped up to the k requested. It is a measured risk reduction, not a conversion into anonymous data.",
+    },
+    suprimido: {
+      es: "**Suprimido.** Las columnas quitadas (categorías especiales del art. 9, condenas del art. 10 o las que tú marcaste) no están en el archivo: la lista va en la sección del tratamiento.",
+      en: "**Removed.** The columns taken out (special categories of art. 9, convictions of art. 10, or the ones you marked) are not in the file: the list is in the treatment section.",
+    },
+    editada: {
+      es: "Partiste de la política RGPD de Velo y la cambiaste: este documento describe lo que se hizo, no la plantilla.",
+      en: "You started from Velo's GDPR policy and changed it: this document describes what was done, not the template.",
+    },
+    noAfirma: {
+      es: "**Qué NO afirma Velo.** No declara este archivo anónimo. Que un dato deje de ser personal depende de los medios razonablemente utilizables para identificar a la persona (considerando 26), y ese análisis lo hace quien trata los datos, con su contexto: Velo no lo hace. Tampoco certifica cumplimiento: la política de fábrica es su lectura del texto.",
+      en: "**What Velo does NOT claim.** It does not declare this file anonymous. Whether data stops being personal depends on the means reasonably likely to be used to identify the person (recital 26), and that analysis is for whoever processes the data, with their own context: Velo does not run it. Nor does it certify compliance: the factory policy is its reading of the text.",
+    },
+    fuente: {
+      es: "Fuente: Reglamento (UE) 2016/679, art. 4, puntos 1 y 5, art. 9, art. 10 y considerando 26 — Diario Oficial de la UE, L 119, 4.5.2016; consultado el {fecha}.",
+      en: "Source: Regulation (EU) 2016/679, art. 4(1) and 4(5), art. 9, art. 10 and recital 26 — Official Journal of the EU, L 119, 4.5.2016; consulted on {fecha}.",
+    },
+  },
+
   regreso: {
     etiqueta: { es: "Informe de restauración", en: "Restoration report" },
     antesDeLaCifra: {
