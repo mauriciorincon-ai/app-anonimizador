@@ -11,10 +11,8 @@
 // mandar la tabla a la página para clasificarla habría tirado la frontera por la ventana. Lo que
 // cruza es el informe; la tabla se queda, y muere cuando el worker se termina.
 //
-// El archivo se lee por chunks (PapaParse en modo streaming): nunca existe una copia completa del
-// CSV en memoria, solo la tabla columnar que se va construyendo.
-import Papa from "papaparse";
-
+// El archivo se lee por trozos (`./csv.ts`, el lector compartido): nunca existe una copia completa
+// del CSV en memoria, solo la tabla columnar que se va construyendo.
 import { balanceDelTratamiento } from "@/engine/balance";
 import {
   anadirEntrada,
@@ -109,6 +107,7 @@ import type {
   MensajeAlWorker,
   MensajeDelWorker,
 } from "./contrato";
+import { lotesDeCsv } from "./csv";
 import { ArchivoCambio, fuenteDeArchivo } from "./json";
 import { FormatoNoCoincide, leerBinario, limpiarBinario } from "./metadatos";
 
@@ -185,7 +184,7 @@ async function analizar(archivo: File): Promise<void> {
     void leerJsonDelArchivo(archivo);
     return;
   }
-  leerCsv(archivo);
+  void leerCsv(archivo);
 }
 
 /**
@@ -385,49 +384,43 @@ async function leerExcel(archivo: File): Promise<void> {
   }
 }
 
-function leerCsv(archivo: File): void {
+async function leerCsv(archivo: File): Promise<void> {
   const inicio = performance.now();
   let constructor: ConstructorColumnar | null = null;
   let filas = 0;
+  let leidos = 0;
   let proximoAviso = FILAS_POR_AVISO;
 
-  Papa.parse<string[]>(archivo, {
-    // header: false a propósito. Con `header: true` PapaParse construye un objeto por fila —
-    // 500.000 objetos de 24 propiedades que nacen para morir. Leemos el encabezado nosotros.
-    header: false,
-    skipEmptyLines: "greedy",
-    worker: false, // ya estamos DENTRO de un worker; anidar otro no aporta nada
-    chunk(resultados) {
-      const datos = resultados.data;
+  try {
+    for await (const lote of lotesDeCsv(archivo, {
+      alAvanzar: (bytes) => (leidos = bytes),
+    })) {
       let desde = 0;
       if (!constructor) {
-        const encabezado = datos[0] ?? [];
-        constructor = new ConstructorColumnar(encabezado, 1 << 16);
+        constructor = new ConstructorColumnar(lote[0] ?? [], 1 << 16);
         desde = 1;
       }
-      for (let i = desde; i < datos.length; i++)
-        constructor.agregarFila(datos[i]);
-      filas += datos.length - desde;
+      for (let i = desde; i < lote.length; i++)
+        constructor.agregarFila(lote[i]);
+      filas += lote.length - desde;
 
       if (filas >= proximoAviso) {
         proximoAviso = filas + FILAS_POR_AVISO;
-        avisar("leyendo", filas, resultados.meta.cursor, archivo.size);
+        avisar("leyendo", filas, leidos, archivo.size);
       }
-    },
-    complete() {
-      if (!constructor) {
-        enviar({ tipo: "error", motivo: "archivo-vacio" });
-        return;
-      }
-      tabla = constructor.finalizar();
-      formatoOriginal = "csv";
-      diagnosticar(archivo, "csv", performance.now() - inicio);
-    },
-    error() {
-      // El motivo del parser NUNCA se reenvía: puede citar el contenido de la línea que falló.
-      enviar({ tipo: "error", motivo: "lectura-fallida" });
-    },
-  });
+    }
+  } catch {
+    // El motivo del parser NUNCA se reenvía: puede citar el contenido de la línea que falló.
+    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+  if (!constructor) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+  tabla = (constructor as ConstructorColumnar).finalizar();
+  formatoOriginal = "csv";
+  diagnosticar(archivo, "csv", performance.now() - inicio);
 }
 
 /**
@@ -1264,43 +1257,40 @@ async function analizarDevuelto(archivo: File): Promise<void> {
 
   let constructor: ConstructorColumnar | null = null;
   let filas = 0;
+  let leidos = 0;
   let proximoAviso = FILAS_POR_AVISO;
 
-  Papa.parse<string[]>(archivo, {
-    header: false,
-    skipEmptyLines: "greedy",
-    worker: false,
-    chunk(resultados) {
-      const datos = resultados.data;
+  try {
+    for await (const lote of lotesDeCsv(archivo, {
+      alAvanzar: (bytes) => (leidos = bytes),
+    })) {
       let desde = 0;
       if (!constructor) {
-        constructor = new ConstructorColumnar(datos[0] ?? [], 1 << 16);
+        constructor = new ConstructorColumnar(lote[0] ?? [], 1 << 16);
         desde = 1;
       }
-      for (let i = desde; i < datos.length; i++)
-        constructor.agregarFila(datos[i]);
-      filas += datos.length - desde;
+      for (let i = desde; i < lote.length; i++)
+        constructor.agregarFila(lote[i]);
+      filas += lote.length - desde;
       if (filas >= proximoAviso) {
         proximoAviso = filas + FILAS_POR_AVISO;
-        avisar("leyendo", filas, resultados.meta.cursor, archivo.size);
+        avisar("leyendo", filas, leidos, archivo.size);
       }
-    },
-    complete() {
-      if (!constructor) {
-        enviar({ tipo: "error", motivo: "archivo-vacio" });
-        return;
-      }
-      devuelta = (constructor as ConstructorColumnar).finalizar();
-      if (devuelta.filas === 0) {
-        enviar({ tipo: "error", motivo: "archivo-vacio" });
-        return;
-      }
-      anunciarDevuelto(devuelta);
-    },
-    error() {
-      enviar({ tipo: "error", motivo: "lectura-fallida" });
-    },
-  });
+    }
+  } catch {
+    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    return;
+  }
+  if (!constructor) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+  devuelta = (constructor as ConstructorColumnar).finalizar();
+  if (devuelta.filas === 0) {
+    enviar({ tipo: "error", motivo: "archivo-vacio" });
+    return;
+  }
+  anunciarDevuelto(devuelta);
 }
 
 function restaurarDevuelto(): void {
