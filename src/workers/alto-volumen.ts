@@ -592,8 +592,10 @@ export async function leerColumnas(
   let constructor: ConstructorColumnar | null = null;
   for await (const parte of filasDelArchivo(archivo, opciones)) {
     if ("encabezado" in parte) {
+      // Los nombres de la pasada de diagnóstico, no el encabezado crudo: una columna sin nombre es
+      // `columna_{su posición en el ARCHIVO}`, no la de su posición entre las que se piden.
       constructor = new ConstructorColumnar(
-        indices.map((i) => parte.encabezado[i]),
+        indices.map((i) => pasada.nombres[i]),
         1 << 16,
       );
       continue;

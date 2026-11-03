@@ -32,6 +32,7 @@ import { sha256 } from "@/lib/sha256";
 import {
   balanceDelAltoVolumen,
   escribirCsv,
+  leerColumnas,
   NoCabeEnAltoVolumen,
   pasadaDeDiagnostico,
   pasadaDeMedida,
@@ -457,6 +458,20 @@ describe("el regreso por trozos = en memoria", () => {
       filas: undefined,
     });
     expect(porTrozos.totales.restauradas).toBeGreaterThan(0);
+  });
+});
+
+describe("las columnas que se releen conservan el nombre que les dio el diagnóstico", () => {
+  // Auditoría del S8 (M1): una columna sin nombre del encabezado se releía como `columna_{posición
+  // entre las pedidas}` y no como `columna_{posición en el archivo}`; el reparto la buscaba por el
+  // nombre del diagnóstico y no la encontraba.
+  it("una columna de encabezado vacío sigue llamándose columna_{posición en el archivo}", async () => {
+    const archivo = blobDe("a,,c\n1,x,3\n4,y,6\n");
+    const pasada = await pasadaDeDiagnostico(archivo);
+    expect(pasada.nombres).toEqual(["a", "columna_2", "c"]);
+    // Pedida PRIMERO: su posición entre las pedidas (0) y en el archivo (1) no coinciden.
+    const tabla = await leerColumnas(archivo, pasada, ["columna_2", "c"]);
+    expect(tabla.columnas.map((c) => c.nombre)).toEqual(["columna_2", "c"]);
   });
 });
 
