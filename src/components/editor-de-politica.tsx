@@ -134,7 +134,7 @@ const OPCIONES: readonly { valor: string; texto: Texto; tecnica: Tecnica }[] = [
   },
 ];
 
-/** El k que se fija solo al pedir generalización automática. 5 es el mínimo de las dos de fábrica. */
+/** El k que se fija solo al pedir generalización automática. 5 es el mínimo de las de fábrica. */
 const K_POR_DEFECTO = 5;
 
 /** De técnica a valor del desplegable. Los parámetros distinguen dos opciones del mismo tipo. */

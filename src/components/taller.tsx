@@ -4,7 +4,7 @@
 //
 // Vive fuera de `page.tsx` por una razón medida, no por orden: `/transformar` **sin archivo** es un
 // callejón sin salida que dice «no hay nada que transformar», y cargar ahí el editor de política
-// con las dos políticas de fábrica, la llave, la vista previa y el balance son ~140 KB de JavaScript
+// con las políticas de fábrica, la llave, la vista previa y el balance son ~140 KB de JavaScript
 // que nadie va a ejecutar. El gate de Lighthouse del cierre del S2 lo cobró con el único estado que
 // puede medir —el vacío—: LCP simulado de 3,6 s y la categoría en 0,88, por debajo del 0,90.
 //

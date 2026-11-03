@@ -38,7 +38,7 @@ de prueba salen del generador sintético con semilla (`docs/kit-de-prueba/`).
 ## Qué hace hoy
 
 **Sprints 001–008 · El diagnóstico, el disfraz, el regreso, el cierre, el idioma, los formatos, la
-protección a la medida y el tamaño sin tope.** Velo lee, mide, **transforma, devuelve** y **deja constancia**. El círculo
+protección a la medida, el RGPD y los archivos enormes.** Velo lee, mide, **transforma, devuelve** y **deja constancia**. El círculo
 está cerrado —entregas sin entregar, y recuperas— y además queda por escrito.
 
 Sobre la reversibilidad, dicho con precisión: un seudónimo **sigue siendo irreversible por sí
@@ -55,7 +55,7 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
 - **El regreso**: cargas la bóveda y el archivo que te devolvieron, y los valores originales
   vuelven. Por **valor**, no por posición: sobrevive a que el tercero reordene filas, añada
   columnas, borre otras y corrija valores a mano — y su trabajo se respeta.
-- **Carga** de CSV (sin tope: más allá de 20 millones de celdas se lee por pasadas, ver más abajo), Excel (hasta 150 MB, medido) y JSON —un arreglo de objetos o JSON
+- **Carga** de CSV (sin tope de peso: más allá de 20 millones de celdas se lee por pasadas, con los topes del manual §9), Excel (hasta 150 MB, medido) y JSON —un arreglo de objetos o JSON
   Lines, hasta 20 millones de celdas—, con arrastre y con teclado. En un JSON, cada ruta anidada
   (`paciente.contacto.correo`) es una columna; las listas se declaran y salen sin tocar. Un JSON
   también **vuelve** (Sprint 007): con su bóveda, el regreso lee el JSON o el JSON Lines que te

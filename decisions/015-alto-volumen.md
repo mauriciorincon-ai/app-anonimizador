@@ -112,7 +112,7 @@ as its baseline.
 
 ## Consequences
 
-- A CSV of any size goes forward and back; the e2e takes a 21-million-cell file there and back and
+- A CSV of any weight goes forward and back, within the declared caps (the manual's section 9 lists them); the e2e takes a 21-million-cell file there and back and
   compares the restored file with the original by SHA-256.
 - **JSON in high volume is not built** (the plan's third cut): reading it in passes means rewriting
   the synchronous per-leaf JSON writer around asynchronous per-cell work (noise, per-value
