@@ -23,6 +23,7 @@ import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { escaparCampo, serializarCsv } from "@/engine/csv";
 import { medirDiversidad } from "@/engine/diversidad";
 import type { Politica } from "@/engine/politica";
+import { construirPolitica, RGPD } from "@/engine/politicas-de-fabrica";
 import { restaurar } from "@/engine/restaurar";
 import { evaluarRiesgo } from "@/engine/riesgo";
 import { serializarCanonico } from "@/engine/serializacion";
@@ -292,6 +293,69 @@ describe("por trozos = en memoria, byte a byte (CSV)", () => {
         r.enMemoria.optima?.niveles ?? null,
       );
     });
+
+  // S8 (ADR-016): los seudónimos con formato europeo salen del mismo `transformarDiccionario`, así que
+  // son los mismos bytes por los dos caminos; el gate lo comprueba con la política RGPD entera sobre
+  // el perfil europeo, con ocho formatos, el k de Mondrian y la supresión del art. 9 y del art. 10.
+  describe("con la política RGPD sobre el perfil europeo", () => {
+    const KIT_EUROPEO = [
+      ...generarFilas({
+        filas: 900,
+        seed: 42,
+        perfil: "europeo",
+        tasaInvalida: 0.02,
+        tasaVacia: 0.02,
+      }),
+    ]
+      .map((fila) => `${fila.map(escaparCampo).join(",")}\n`)
+      .join("");
+
+    async function politicaRgpd(reversible: boolean): Promise<Politica> {
+      const diagnostico = clasificar(await tablaEnMemoria(KIT_EUROPEO));
+      const politica = construirPolitica(
+        RGPD,
+        diagnostico.columnas.map((c) => ({
+          nombre: c.nombre,
+          tipo: c.tipo,
+          categoria: c.categoria,
+        })),
+      );
+      return reversible
+        ? politica
+        : {
+            ...politica,
+            reglas: politica.reglas.map((r) =>
+              r.tecnica.tipo === "seudonimizar" ||
+              r.tecnica.tipo === "seudonimizar-con-formato"
+                ? { ...r, tecnica: { ...r.tecnica, reversible: undefined } }
+                : r,
+            ),
+          };
+    }
+
+    it.each([
+      ["todo en su diccionario, con bóveda", HOLGADOS, true],
+      ["columnas casi únicas tratadas por valor, sin bóveda", BAJOS, false],
+    ] as const)("%s", async (_nombre, topes, reversible) => {
+      const politica = await politicaRgpd(reversible);
+      const r = await porLosDosCaminos(KIT_EUROPEO, politica, topes);
+      expect(sha256(codificar(r.salida))).toBe(
+        sha256(codificar(serializarCsv(r.enMemoria.tabla))),
+      );
+      expect(r.plan.suprimidas).toEqual(["diagnose", "casier_judiciaire"]);
+      expect(r.plan.suprimidas).toEqual(r.enMemoria.suprimidas);
+      if (reversible) {
+        expect(r.plan.colisiones).toEqual(r.enMemoria.colisiones);
+        expect(
+          serializarCanonico(construirBoveda(IDENTIDAD, r.plan.correspondencias)),
+        ).toBe(
+          serializarCanonico(
+            construirBoveda(IDENTIDAD, r.enMemoria.correspondencias),
+          ),
+        );
+      }
+    });
+  });
 
   it("lo que el alto volumen mide es lo que mide la memoria: diagnóstico (con menos filas que la muestra), riesgo y balance", async () => {
     const r = await porLosDosCaminos(KIT, MONDRIAN, BAJOS);
