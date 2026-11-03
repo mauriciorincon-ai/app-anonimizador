@@ -72,6 +72,11 @@ export interface HallazgoDeColumna {
   filas: number;
   filasNoVacias: number;
   cardinalidad: number;
+  /**
+   * Solo en alto volumen (S8): la columna tiene MÁS valores distintos que `cardinalidad`, que es el
+   * tope de lo que se guardó de ella. Ausente en memoria, donde la cifra es siempre exacta.
+   */
+  cardinalidadAlMenos?: true;
   muestra: { texto: string; omitida: boolean } | null;
 }
 

@@ -217,6 +217,12 @@ export const MOTOR_DIAGNOSTICO = {
     es: "un solo valor distinto: no distingue a nadie",
     en: "a single distinct value: it tells no one apart",
   },
+  // S8: en alto volumen solo los cuasi-identificadores se guardan enteros, y el advisor no puede
+  // combinar lo que no tiene. Se dice por columna, en vez de dejarla fuera sin explicación.
+  "riesgo.excluida.altoVolumen": {
+    es: "archivo de alto volumen: el advisor solo combina las columnas que Velo clasificó como cuasi-identificadores",
+    en: "high-volume file: the advisor only combines the columns Velo classified as quasi-identifiers",
+  },
   "riesgo.excluida.fueraDelTope": {
     es: "fuera de las {n} candidatas con más valores distintos",
     en: "outside the {n} candidates with the most distinct values",

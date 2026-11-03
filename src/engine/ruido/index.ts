@@ -52,6 +52,11 @@ export interface InformeDeRuido {
   readonly noNumericas: number;
   /** Respuesta aleatorizada: el número de valores del dominio. */
   readonly dominio: number | null;
+  /**
+   * Solo en alto volumen (S8), cuando la columna no cupo entera: `dominio` es un MÍNIMO (hay más),
+   * y lo único que se sabe es que pasa de 64. Ausente en memoria, donde la cifra es exacta.
+   */
+  readonly dominioAlMenos?: true;
   /** false cuando NO se aplicó (un dominio de más de 64 valores): la columna salió intacta. */
   readonly aplicado: boolean;
 }
@@ -126,6 +131,10 @@ export interface RuidoDeColumna {
   readonly huella: string;
   readonly firma: string;
   readonly dominio: readonly string[];
+  /** Cuántos valores distintos tiene la columna: `dominio.length`, salvo que no quepa entera (S8). */
+  readonly distintos: number;
+  /** ¿`distintos` es solo un mínimo? (alto volumen, columna que no cupo entera). */
+  readonly alMenos: boolean;
   readonly peso: number;
   readonly escala: ReturnType<typeof escalaDelLaplace>;
   /** Falso solo para una respuesta aleatorizada con más de `DOMINIO_MAXIMO` valores. */
@@ -135,15 +144,21 @@ export interface RuidoDeColumna {
   noNumericas: number;
 }
 
-/** `dominio` son los valores distintos de la columna, sin el vacío, en orden de primera aparición. */
+/**
+ * `dominio` son los valores distintos de la columna, sin el vacío, en orden de primera aparición.
+ * `distintos` es cuántos son: lo mismo que `dominio.length`, salvo en alto volumen cuando la columna
+ * no cupo entera (S8) y se sabe solo que tiene más de los que cabían, que ya es más de 64.
+ */
 export function prepararRuido(
   nombre: string,
   dominio: readonly string[],
   tecnica: TecnicaDeRuido,
   huella: string,
+  distintos = dominio.length,
+  alMenos = false,
 ): RuidoDeColumna {
   const aplicable = !(
-    tecnica.tipo === "respuesta-aleatorizada" && dominio.length > DOMINIO_MAXIMO
+    tecnica.tipo === "respuesta-aleatorizada" && distintos > DOMINIO_MAXIMO
   );
   const peso =
     aplicable && tecnica.tipo === "respuesta-aleatorizada"
@@ -160,6 +175,8 @@ export function prepararRuido(
     // Los parámetros entran a la semilla: otra técnica, otro azar (ver `azar.ts`).
     firma: serializarCanonico(tecnica),
     dominio,
+    distintos,
+    alMenos,
     peso,
     escala,
     aplicable,
@@ -235,7 +252,8 @@ export function informeDelRuido(ruido: RuidoDeColumna): InformeDeRuido {
       tratadas: 0,
       recortes: 0,
       noNumericas: 0,
-      dominio: ruido.dominio.length,
+      dominio: ruido.distintos,
+      ...(ruido.alMenos ? { dominioAlMenos: true as const } : {}),
       aplicado: false,
     };
   return {

@@ -661,10 +661,14 @@ function seccionDePrivacidad(
       const notas: string[] = [];
       if (!c.aplicado)
         notas.push(
-          h(P.notas.noAplicada, idioma, {
-            n: numero(c.dominio ?? 0, idioma),
-            maximo: numero(DOMINIO_MAXIMO, idioma),
-          }),
+          h(
+            c.dominioAlMenos ? P.notas.noAplicadaAlMenos : P.notas.noAplicada,
+            idioma,
+            {
+              n: numero(c.dominio ?? 0, idioma),
+              maximo: numero(DOMINIO_MAXIMO, idioma),
+            },
+          ),
         );
       else {
         if (c.dominio !== null)

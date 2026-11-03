@@ -74,10 +74,15 @@ export function PrivacidadEnPantalla({
               const notas: string[] = [];
               if (!c.aplicado)
                 notas.push(
-                  t(P.notas.noAplicada, {
-                    n: numero(c.dominio ?? 0, idioma),
-                    maximo: numero(DOMINIO_MAXIMO, idioma),
-                  }),
+                  t(
+                    c.dominioAlMenos
+                      ? P.notas.noAplicadaAlMenos
+                      : P.notas.noAplicada,
+                    {
+                      n: numero(c.dominio ?? 0, idioma),
+                      maximo: numero(DOMINIO_MAXIMO, idioma),
+                    },
+                  ),
                 );
               else {
                 if (c.dominio !== null)
