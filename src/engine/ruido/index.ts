@@ -112,6 +112,150 @@ const recortar = (x: number, minimo: number, maximo: number) =>
 // ── Las tres técnicas ───────────────────────────────────────────────────────────────────────────
 
 /**
+ * Lo que una columna con ruido necesita ANTES de tocar una celda: el dominio de la respuesta
+ * aleatorizada (sus valores distintos, en orden de primera aparición), su peso, la escala del
+ * Laplace y la firma de la técnica para la semilla. Y los contadores, que suben celda a celda.
+ *
+ * Existe aparte (S8) para que el alto volumen aplique el ruido fila a fila, sin la columna entera en
+ * memoria, con EXACTAMENTE el mismo código que `aplicarRuido`: la columna, celda por celda, y el
+ * informe, del mismo sitio.
+ */
+export interface RuidoDeColumna {
+  readonly nombre: string;
+  readonly tecnica: TecnicaDeRuido;
+  readonly huella: string;
+  readonly firma: string;
+  readonly dominio: readonly string[];
+  readonly peso: number;
+  readonly escala: ReturnType<typeof escalaDelLaplace>;
+  /** Falso solo para una respuesta aleatorizada con más de `DOMINIO_MAXIMO` valores. */
+  readonly aplicable: boolean;
+  tratadas: number;
+  recortes: number;
+  noNumericas: number;
+}
+
+/** `dominio` son los valores distintos de la columna, sin el vacío, en orden de primera aparición. */
+export function prepararRuido(
+  nombre: string,
+  dominio: readonly string[],
+  tecnica: TecnicaDeRuido,
+  huella: string,
+): RuidoDeColumna {
+  const aplicable = !(
+    tecnica.tipo === "respuesta-aleatorizada" && dominio.length > DOMINIO_MAXIMO
+  );
+  const peso =
+    aplicable && tecnica.tipo === "respuesta-aleatorizada"
+      ? pesoDelAzar(dominio.length, clave(tecnica.epsilon))
+      : 0;
+  const escala = tecnica.tipo === "laplace" ? escalaDelLaplace(tecnica) : null;
+  if (tecnica.tipo === "laplace" && escala === null)
+    // El esquema de la política ya lo impide; si llega, es un defecto nuestro y suena.
+    throw new Error("laplace: rango que no cabe exacto");
+  return {
+    nombre,
+    tecnica,
+    huella,
+    // Los parámetros entran a la semilla: otra técnica, otro azar (ver `azar.ts`).
+    firma: serializarCanonico(tecnica),
+    dominio,
+    peso,
+    escala,
+    aplicable,
+    tratadas: 0,
+    recortes: 0,
+    noNumericas: 0,
+  };
+}
+
+/**
+ * El valor con ruido de UNA celda no vacía, en la fila `f` (absoluta: la del archivo entero). La
+ * semilla sale de la llave, la huella del archivo, la técnica, la columna y la fila.
+ */
+export async function ruidoDeCelda(
+  ruido: RuidoDeColumna,
+  llave: CryptoKey,
+  valor: string,
+  f: number,
+): Promise<string> {
+  const { tecnica } = ruido;
+  const azar = new AzarSembrado(
+    await semillaDeCelda(llave, ruido.huella, ruido.firma, ruido.nombre, f),
+  );
+
+  if (tecnica.tipo === "respuesta-aleatorizada") {
+    ruido.tratadas++;
+    const alAzar = azar.uniforme(DOS_A_LA_32) < ruido.peso;
+    return alAzar ? ruido.dominio[azar.uniforme(ruido.dominio.length)] : valor;
+  }
+
+  if (tecnica.tipo === "laplace") {
+    const x = aUnidades(valor, tecnica.decimales);
+    if (x === null) {
+      ruido.noNumericas++;
+      return valor;
+    }
+    const { minimo, maximo, s, t } = ruido.escala!;
+    const dentro = recortar(x, minimo, maximo);
+    if (dentro !== x) ruido.recortes++;
+    ruido.tratadas++;
+    const y = recortar(dentro + laplaceDiscreto(azar, s, t), minimo, maximo);
+    return deUnidades(y, tecnica.decimales);
+  }
+
+  // perturbar: x · (1 + r), con r uniforme en [−p %, +p %] a pasos de 0,01 %, en los decimales
+  // con que vino escrito el valor. BigInt para que el producto no pierda dígitos.
+  const decimales = decimalesDe(valor);
+  const x = aUnidades(valor, decimales);
+  if (x === null) {
+    ruido.noNumericas++;
+    return valor;
+  }
+  ruido.tratadas++;
+  const pasos = tecnica.porcentaje * 100;
+  const r = azar.uniforme(2 * pasos + 1) - pasos;
+  const producto = BigInt(x) * BigInt(10_000 + r);
+  const y = Number(redondear(producto, BigInt(10_000)));
+  return deUnidades(y, decimales);
+}
+
+/** Lo que se aplicó, con los contadores que dejaron las celdas. */
+export function informeDelRuido(ruido: RuidoDeColumna): InformeDeRuido {
+  const { tecnica } = ruido;
+  const base = {
+    columna: ruido.nombre,
+    mecanismo: tecnica.tipo,
+    epsilon: tecnica.tipo === "perturbar" ? null : tecnica.epsilon,
+  };
+  if (!ruido.aplicable)
+    return {
+      ...base,
+      epsilonEfectivo: null,
+      tratadas: 0,
+      recortes: 0,
+      noNumericas: 0,
+      dominio: ruido.dominio.length,
+      aplicado: false,
+    };
+  return {
+    ...base,
+    epsilonEfectivo:
+      tecnica.tipo === "laplace"
+        ? tecnica.epsilon
+        : tecnica.tipo === "respuesta-aleatorizada"
+          ? epsilonEfectivo(ruido.dominio.length, ruido.peso)
+          : null,
+    tratadas: ruido.tratadas,
+    recortes: ruido.recortes,
+    noNumericas: ruido.noNumericas,
+    dominio:
+      tecnica.tipo === "respuesta-aleatorizada" ? ruido.dominio.length : null,
+    aplicado: true,
+  };
+}
+
+/**
  * Aplica una técnica de ruido a una columna, celda por celda. `huella` es el SHA-256 del archivo de
  * entrada (ver `azar.ts`: hace independiente el ruido de dos archivos distintos).
  */
@@ -121,118 +265,29 @@ export async function aplicarRuido(
   llave: CryptoKey,
   huella: string,
 ): Promise<{ columna: ColumnaColumnar; informe: InformeDeRuido }> {
-  const filas = columna.codigos.length;
-  const base = {
-    columna: columna.nombre,
-    mecanismo: tecnica.tipo,
-    epsilon: tecnica.tipo === "perturbar" ? null : tecnica.epsilon,
-  };
-
   // La respuesta aleatorizada necesita su dominio ANTES de tocar una celda.
-  const dominio = columna.valores.slice(1);
-  if (
-    tecnica.tipo === "respuesta-aleatorizada" &&
-    dominio.length > DOMINIO_MAXIMO
-  )
-    return {
-      columna,
-      informe: {
-        ...base,
-        epsilonEfectivo: null,
-        tratadas: 0,
-        recortes: 0,
-        noNumericas: 0,
-        dominio: dominio.length,
-        aplicado: false,
-      },
-    };
-  const peso =
-    tecnica.tipo === "respuesta-aleatorizada"
-      ? pesoDelAzar(dominio.length, clave(tecnica.epsilon))
-      : 0;
-  const escala = tecnica.tipo === "laplace" ? escalaDelLaplace(tecnica) : null;
-  if (tecnica.tipo === "laplace" && escala === null)
-    // El esquema de la política ya lo impide; si llega, es un defecto nuestro y suena.
-    throw new Error("laplace: rango que no cabe exacto");
+  const ruido = prepararRuido(
+    columna.nombre,
+    columna.valores.slice(1),
+    tecnica,
+    huella,
+  );
+  if (!ruido.aplicable) return { columna, informe: informeDelRuido(ruido) };
 
-  let tratadas = 0;
-  let recortes = 0;
-  let noNumericas = 0;
+  const filas = columna.codigos.length;
   const salida = new ConstructorColumnar([columna.nombre], filas || 1);
-  // Los parámetros entran a la semilla: otra técnica, otro azar (ver `azar.ts`).
-  const firmaDeLaTecnica = serializarCanonico(tecnica);
-
   for (let f = 0; f < filas; f++) {
     const valor = columna.valores[columna.codigos[f]];
-    if (valor === "") {
-      salida.agregarFila([""]);
-      continue;
-    }
-    const azar = new AzarSembrado(
-      await semillaDeCelda(llave, huella, firmaDeLaTecnica, columna.nombre, f),
-    );
-
-    if (tecnica.tipo === "respuesta-aleatorizada") {
-      tratadas++;
-      const alAzar = azar.uniforme(DOS_A_LA_32) < peso;
-      salida.agregarFila([
-        alAzar ? dominio[azar.uniforme(dominio.length)] : valor,
-      ]);
-      continue;
-    }
-
-    if (tecnica.tipo === "laplace") {
-      const x = aUnidades(valor, tecnica.decimales);
-      if (x === null) {
-        noNumericas++;
-        salida.agregarFila([valor]);
-        continue;
-      }
-      const { minimo, maximo, s, t } = escala!;
-      const dentro = recortar(x, minimo, maximo);
-      if (dentro !== x) recortes++;
-      tratadas++;
-      const y = recortar(dentro + laplaceDiscreto(azar, s, t), minimo, maximo);
-      salida.agregarFila([deUnidades(y, tecnica.decimales)]);
-      continue;
-    }
-
-    // perturbar: x · (1 + r), con r uniforme en [−p %, +p %] a pasos de 0,01 %, en los decimales
-    // con que vino escrito el valor. BigInt para que el producto no pierda dígitos.
-    const decimales = decimalesDe(valor);
-    const x = aUnidades(valor, decimales);
-    if (x === null) {
-      noNumericas++;
-      salida.agregarFila([valor]);
-      continue;
-    }
-    tratadas++;
-    const pasos = tecnica.porcentaje * 100;
-    const r = azar.uniforme(2 * pasos + 1) - pasos;
-    const producto = BigInt(x) * BigInt(10_000 + r);
-    const y = Number(redondear(producto, BigInt(10_000)));
-    salida.agregarFila([deUnidades(y, decimales)]);
+    salida.agregarFila([
+      valor === "" ? "" : await ruidoDeCelda(ruido, llave, valor, f),
+    ]);
   }
 
   const nueva = salida.finalizar().columnas[0];
   return {
     columna:
       columna.ruta === undefined ? nueva : { ...nueva, ruta: columna.ruta },
-    informe: {
-      ...base,
-      epsilonEfectivo:
-        tecnica.tipo === "laplace"
-          ? tecnica.epsilon
-          : tecnica.tipo === "respuesta-aleatorizada"
-            ? epsilonEfectivo(dominio.length, peso)
-            : null,
-      tratadas,
-      recortes,
-      noNumericas,
-      dominio:
-        tecnica.tipo === "respuesta-aleatorizada" ? dominio.length : null,
-      aplicado: true,
-    },
+    informe: informeDelRuido(ruido),
   };
 }
 
