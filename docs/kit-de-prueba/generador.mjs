@@ -386,7 +386,24 @@ const COLUMNAS_DE_JERARQUIAS = {
   },
 };
 
-const TODAS_LAS_COLUMNAS = { ...COLUMNAS, ...COLUMNAS_SESGADAS, ...COLUMNAS_DE_JERARQUIAS };
+// Para el ALTO VOLUMEN (S8): un archivo que pasa del tope de celdas en memoria (20 millones) con
+// pocas filas. Muchas columnas cortas y una cédula que se seudonimiza con bóveda: 210 columnas ×
+// 100.000 filas son 21 millones de celdas en ~45 MB, que la CI genera y lee en segundos. Lo que se
+// prueba con él es el camino por pasadas, no un archivo realista; el realista es la medida de 5 M
+// de filas del perfil `clinico` (ADR-015).
+const COLUMNAS_ANCHAS = Object.fromEntries(
+  Array.from({ length: 209 }, (_, i) => [
+    `dato_${String(i + 1).padStart(3, "0")}`,
+    { tipo: "categoria", categoria: "no-personal", gen: (a) => String(a.entero(0, 9)) },
+  ]),
+);
+
+const TODAS_LAS_COLUMNAS = {
+  ...COLUMNAS,
+  ...COLUMNAS_SESGADAS,
+  ...COLUMNAS_DE_JERARQUIAS,
+  ...COLUMNAS_ANCHAS,
+};
 
 const PERFILES = {
   clinico: Object.keys(COLUMNAS),
@@ -436,6 +453,8 @@ const PERFILES = {
     "sexo",
     "diagnostico",
   ],
+  // Para el alto volumen (S8): ver `COLUMNAS_ANCHAS`.
+  ancho: ["cedula_titular", ...Object.keys(COLUMNAS_ANCHAS)],
 };
 
 // ── Escritura CSV ─────────────────────────────────────────────────────────────────────────────

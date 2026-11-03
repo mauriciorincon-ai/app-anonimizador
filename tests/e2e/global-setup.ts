@@ -52,6 +52,9 @@ const FIXTURES: readonly Fixture[] = [
   // El grande: 500.000 × 24 ≈ 130 MB. No se commitea (el repo es público y clonarlo no puede
   // costar eso); se regenera con su semilla en cada corrida, en unos dos segundos.
   { perfil: "clinico", filas: 500_000, seed: 42, formato: "csv" },
+  // El de alto volumen (S8): 210 columnas × 100.000 filas = 21 millones de celdas, apenas sobre el
+  // tope de 20 millones que Velo guarda en memoria. ~42 MB, en un segundo.
+  { perfil: "ancho", filas: 100_000, seed: 42, formato: "csv" },
   // JSON, el tercer formato. Un objeto anidado en las dos formas (arreglo y JSON Lines, el mismo
   // dato), uno con listas que Velo debe declarar «no tratadas» y uno heterogéneo (claves que
   // faltan, tipos mezclados, `__proto__`, un número mayor que 2⁵³). Solo existen en json/jsonl.
