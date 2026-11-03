@@ -5,7 +5,7 @@ hito: H-2
 opened: 2026-11-02
 closed: 2026-11-02
 branch: sprint-008/alto-volumen-y-rgpd
-pr: pendiente
+pr: 18
 ---
 
 | Campo                                  | Contenido                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
