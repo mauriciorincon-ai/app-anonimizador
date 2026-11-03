@@ -18,10 +18,10 @@ import { Panel } from "@/components/panel";
 import { PanelDeRiesgo } from "@/components/panel-de-riesgo";
 import { TablaDeColumnas } from "@/components/tabla-de-columnas";
 import { Rico, useT } from "@/components/texto";
-import { MUESTRA_MAXIMA } from "@/engine/clasificador";
 import type { CategoriaLey1581 } from "@/engine/validadores/tipos";
 import {
   FILAS_PARA_CLASIFICAR_EN_ALTO_VOLUMEN,
+  MUESTRA_MAXIMA,
   TOPE_DE_CELDAS_EN_MEMORIA,
 } from "@/lib/archivo";
 import { bytes, milisegundos, numero } from "@/lib/formato";

@@ -42,6 +42,15 @@ export const TOPE_PDF_BYTES = 50 * 1024 * 1024;
  */
 export const TOPE_DE_CELDAS_EN_MEMORIA = 20_000_000;
 
+/**
+ * Filas que se muestrean por columna al clasificar en memoria. Suficiente para una proporción
+ * estable, barato a 500k. Vive aquí, y no en `engine/clasificador.ts`, porque la pantalla del
+ * diagnóstico la cita y importar el clasificador por una constante le arrastraba al paquete de la
+ * página todos los validadores y sus diccionarios: el presupuesto de 350 KB de `/diagnostico` se
+ * pasó por eso en el S8 (ADR-016).
+ */
+export const MUESTRA_MAXIMA = 5_000;
+
 /** S8: con cuántas filas se clasifica un archivo de alto volumen (las primeras, en su orden). */
 export const FILAS_PARA_CLASIFICAR_EN_ALTO_VOLUMEN = 5_000;
 

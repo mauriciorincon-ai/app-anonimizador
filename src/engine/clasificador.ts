@@ -15,6 +15,7 @@
 //
 // Confundir las dos sería exactamente la exageración que la regla de honestidad medida prohíbe.
 
+import { MUESTRA_MAXIMA } from "@/lib/archivo";
 import { mensaje } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 
@@ -33,8 +34,8 @@ import type {
   TipoDetectado,
 } from "./validadores/tipos";
 
-/** Filas que se muestrean por columna. Suficiente para una proporción estable, barato a 500k. */
-export const MUESTRA_MAXIMA = 5_000;
+/** Filas que se muestrean por columna; el número vive en `lib/archivo.ts` (lo cita la pantalla). */
+export { MUESTRA_MAXIMA };
 
 /** Proporción mínima de la muestra que un validador debe cubrir para adjudicarse la columna. */
 export const UMBRAL_DE_ADJUDICACION = 0.85;
