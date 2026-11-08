@@ -38,7 +38,8 @@
 // heterogeneo (claves que faltan, tipos mezclados, null vs ausente vs "", un número mayor que
 // 2⁵³, la clave `__proto__` y claves enteras fuera de orden).
 //
-// Binarios con metadatos falsos (`--formato pdf|jpeg|png|webp`, carpeta `binarios/`): archivos VÁLIDOS
+// Binarios con metadatos falsos (`--formato pdf|jpeg|png|webp|heic|avif|heic-secuencia|avif-secuencia|mov`,
+// carpeta `binarios/`; las secuencias y el `.mov` de una Live Photo desde el S11): archivos VÁLIDOS
 // (un visor los abre, un navegador muestra la imagen) cargados de metadatos inventados, para probar
 // la limpieza. Misma semilla ⇒ mismos bytes. `--centinelas <ruta>` escribe un JSON con las cadenas
 // que quedaron escondidas en los metadatos (todas ≥ 6 caracteres, ninguna en el contenido visible):
@@ -63,7 +64,8 @@ import {
   cedula,
   crearAzar,
 } from "./binarios/azar.mjs";
-import { generarHeic } from "./binarios/heic.mjs";
+import { generarAvif, generarHeic } from "./binarios/heic.mjs";
+import { generarSecuencia } from "./binarios/secuencia.mjs";
 import { generarJpeg } from "./binarios/jpeg.mjs";
 import { PERFILES_PDF, generarPdf } from "./binarios/pdf.mjs";
 import { generarPng } from "./binarios/png.mjs";
@@ -1066,12 +1068,40 @@ export const generarJson = (opciones) => escribirRegistros(opciones, "json");
 export const generarJsonl = (opciones) => escribirRegistros(opciones, "jsonl");
 
 // ── Binarios con metadatos falsos ─────────────────────────────────────────────────────────────
-export const FORMATOS_BINARIOS = ["pdf", "jpeg", "png", "webp", "heic"];
+export const FORMATOS_BINARIOS = [
+  "pdf",
+  "jpeg",
+  "png",
+  "webp",
+  "heic",
+  "avif",
+  "heic-secuencia",
+  "avif-secuencia",
+  "mov",
+];
 export { PERFILES_PDF };
-const EXTENSIONES_BINARIAS = { pdf: "pdf", jpeg: "jpg", png: "png", webp: "webp", heic: "heic" };
+const EXTENSIONES_BINARIAS = {
+  pdf: "pdf",
+  jpeg: "jpg",
+  png: "png",
+  webp: "webp",
+  heic: "heic",
+  avif: "avif",
+  "heic-secuencia": "heic",
+  "avif-secuencia": "avif",
+  mov: "mov",
+};
+
+/** El nombre del archivo por omisión, cuando no es «foto». */
+const NOMBRE_BINARIO = {
+  pdf: (opciones) => `documento-${opciones.perfil}`,
+  "heic-secuencia": () => "secuencia",
+  "avif-secuencia": () => "secuencia",
+  mov: () => "live-photo",
+};
 
 /**
- * Escribe un binario (PDF, JPEG, PNG, WebP o HEIC) y, si se pide, el JSON de sus centinelas. El perfil solo
+ * Escribe un binario (PDF, JPEG, PNG, WebP, HEIC, AVIF, sus secuencias o un `.mov`) y, si se pide, el JSON de sus centinelas. El perfil solo
  * existe para el PDF (por omisión `con-revisiones`); pedirlo para una imagen es un error, no algo
  * que se ignore en silencio. Devuelve `columnas: []` para que el contrato sea el de los demás.
  */
@@ -1088,6 +1118,14 @@ export async function generarBinario(opciones) {
     resultado = generarPng({ semilla: seed });
   } else if (formato === "heic") {
     resultado = generarHeic({ semilla: seed });
+  } else if (formato === "avif") {
+    resultado = generarAvif({ semilla: seed });
+  } else if (formato === "heic-secuencia" || formato === "avif-secuencia") {
+    // La secuencia AVIF lleva además su foto fija arriba, como la escribe ffmpeg.
+    const deFormato = formato === "avif-secuencia" ? "avif" : "heic";
+    resultado = generarSecuencia({ semilla: seed, formato: deFormato, conFoto: deFormato === "avif" });
+  } else if (formato === "mov") {
+    resultado = generarSecuencia({ semilla: seed, formato: "mov" });
   } else {
     resultado = generarWebp({ semilla: seed });
   }
@@ -1227,7 +1265,7 @@ function leerArgumentos(entrada) {
   }
   if (!opciones.salida) {
     opciones.salida = esBinario
-      ? `tmp/kit-de-prueba/${opciones.formato === "pdf" ? `documento-${opciones.perfil}` : "foto"}-s${opciones.seed}.${EXTENSIONES_BINARIAS[opciones.formato]}`
+      ? `tmp/kit-de-prueba/${NOMBRE_BINARIO[opciones.formato]?.(opciones) ?? "foto"}-s${opciones.seed}.${EXTENSIONES_BINARIAS[opciones.formato]}`
       : `tmp/kit-de-prueba/${opciones.perfil}-${opciones.filas}-s${opciones.seed}.${opciones.formato}`;
   }
   return opciones;
