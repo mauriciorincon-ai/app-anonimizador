@@ -120,6 +120,12 @@ export async function ordenPuente(
           filas: numero.format(r.filas),
         }),
       );
+      // S10 (regla 17-bis): la tabla restaurada es tan sensible como la original, y no sale cifrada.
+      consola.aviso(
+        texto(V.puente.restauradaEnClaro, idioma, {
+          tabla: `${esquema}.${r.nombreDeLaNueva}`,
+        }),
+      );
       return;
     }
 

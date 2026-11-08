@@ -123,6 +123,10 @@ export const VELO_LOCAL = {
       es: "Tabla nueva: {tabla} ({filas} filas). La original no se tocó: su huella antes y después es {huella}.",
       en: "New table: {tabla} ({filas} rows). The original was not touched: its fingerprint before and after is {huella}.",
     },
+    restauradaEnClaro: {
+      es: "{tabla} lleva los valores originales, en claro, y cualquiera con permiso de leer el esquema puede verla. Dásela solo a quien podía ver la original, y bórrala cuando ya no la necesites.",
+      en: "{tabla} holds the original values in clear text, and anyone allowed to read the schema can see it. Give it only to people who could see the original, and drop it once you no longer need it.",
+    },
     nota: {
       es: "La huella de la tabla es la de su CSV canónico (encabezado y filas en el orden de la llave primaria, celdas como texto). El vacío y el NULL son lo mismo para Velo; la tabla nueva guarda el vacío como NULL y agrega la columna __velo_fila.",
       en: "The table's fingerprint is that of its canonical CSV (header and rows in primary-key order, cells as text). Velo treats empty and NULL as the same; the new table stores empty as NULL and adds the __velo_fila column.",

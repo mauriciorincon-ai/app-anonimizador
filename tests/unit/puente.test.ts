@@ -539,6 +539,35 @@ describe("pnpm velo puente, de punta a punta", () => {
       FRASE_DE_BOVEDA,
     );
     expect(abierta.ok).toBe(true);
+
+    // S10 (regla 17-bis): el regreso a una tabla avisa que esa tabla lleva los originales en claro.
+    await admin.query(`DROP TABLE IF EXISTS public.clientes__restaurada`);
+    await admin.end().catch(() => {});
+    const delRegreso: string[] = [];
+    process.env.VELO_DB_URL = kit.url;
+    process.env.VELO_FRASE_BOVEDA = FRASE_DE_BOVEDA;
+    try {
+      const codigo = await principal(
+        ["puente", "--restaurar", "--tabla", "public.clientes__velo"].concat([
+          "--boveda",
+          join(salida, boveda!),
+        ]),
+        {
+          salida: (l) => void delRegreso.push(l),
+          aviso: (l) => void delRegreso.push(l),
+        },
+        () => new Date("2026-11-07T12:00:00Z"),
+      );
+      expect(codigo, delRegreso.join("\n")).toBe(0);
+    } finally {
+      delete process.env.VELO_DB_URL;
+      delete process.env.VELO_FRASE_BOVEDA;
+    }
+    admin = new pg.Client({ connectionString: kit.url });
+    await admin.connect();
+    expect(delRegreso.join("\n")).toContain(
+      "public.clientes__restaurada lleva los valores originales, en claro",
+    );
   }, 60_000);
 
   it("S10: si la bóveda no se puede escribir, ni tabla nueva ni certificado huérfano, y lo ajeno intacto", async () => {

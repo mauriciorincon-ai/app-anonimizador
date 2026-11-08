@@ -1179,10 +1179,13 @@ Server** (el motor sale de la conexión: `postgres://` o `mssql://`) y escribe e
   una columna, `__velo_fila`, que numera las filas para poder restaurarlas.
 - **No reemplaza una tabla que ya existe** salvo que lo pidas con `--reemplazar`.
 - **El certificado, la bóveda y la bitácora se escriben antes de confirmar la transacción:** si no
-  se pueden escribir, la tabla nueva tampoco aparece.
+  se pueden escribir, la tabla nueva tampoco aparece, y lo que alcanzó a escribirse se borra. Las
+  frases de paso se piden antes de escribir nada, así que una que falta no deja archivos a medias.
 
 Para volver: `pnpm velo puente --restaurar --tabla esquema.tabla__velo --boveda archivo.velo` escribe
-`<tabla>__restaurada`. Sin una base propia donde ensayar, `pnpm kit:base` levanta en tu equipo, en
+`<tabla>__restaurada`. **Esa tabla lleva los valores originales, en claro**, y la puede leer cualquiera
+con permiso sobre el esquema: Velo te lo recuerda al terminar. Dásela solo a quien podía ver la
+original, y bórrala cuando ya no la necesites. Sin una base propia donde ensayar, `pnpm kit:base` levanta en tu equipo, en
 `127.0.0.1:5433`, un PostgreSQL embebido con una tabla sintética (`public.clientes`); se cierra con
 Ctrl-C. No instala nada.
 
