@@ -1,8 +1,8 @@
 // Medición del alto volumen EN CHROMIUM: el pico de memoria y los tiempos de la ida y del regreso.
 //
 // Se corre a mano, contra el build: `pnpm build && node tests/medicion/pico-alto-volumen.mjs`. No entra
-// a la CI porque tarda unos veinte minutos y no verifica nada salvo que el regreso devuelva el
-// original byte a byte: MIDE. Es la prueba del S8 (ADR-015, `tmp/medir-5m.mjs`, que no se versionó),
+// a la CI porque tarda unos veinte minutos y no verifica nada salvo el regreso (la columna con
+// bóveda vuelve a la original y las demás quedan como en el anonimizado, celda a celda): MIDE. Es la prueba del S8 (ADR-015, `tmp/medir-5m.mjs`, que no se versionó),
 // ahora en el repo para que la cifra del pico sea repetible antes y después de cada cambio.
 //
 // El archivo: el CSV `clinico` del generador sembrado, 5 000 000 de filas × 24 columnas (1,36 GB), en
@@ -28,6 +28,7 @@ import { connect } from "node:net";
 import { join } from "node:path";
 
 import { chromium } from "@playwright/test";
+import Papa from "papaparse";
 
 const RAIZ = new URL("../..", import.meta.url).pathname;
 const TMP = join(RAIZ, "tmp");
@@ -53,6 +54,33 @@ async function huella(ruta) {
   const hash = createHash("sha256");
   for await (const trozo of createReadStream(ruta)) hash.update(trozo);
   return hash.digest("hex");
+}
+
+/**
+ * Una huella por columna, sobre los VALORES y no sobre los bytes: el regreso vuelve a escribir el
+ * CSV y lo que se compara es qué dice cada celda, no cómo se citó.
+ */
+async function huellasPorColumna(ruta) {
+  let nombres = null;
+  let hashes = [];
+  // Como texto, no como bytes: PapaParse decodifica cada trozo del stream por su cuenta y una
+  // letra con tilde partida entre dos trozos se vuelve otra cosa.
+  await new Promise((resuelto, fallo) =>
+    Papa.parse(createReadStream(ruta, { encoding: "utf8" }), {
+      skipEmptyLines: true,
+      step: ({ data }) => {
+        if (nombres === null) {
+          nombres = data;
+          hashes = data.map(() => createHash("sha256"));
+          return;
+        }
+        hashes.forEach((hash, c) => hash.update(`${data[c] ?? ""}\u0000`));
+      },
+      complete: resuelto,
+      error: fallo,
+    }),
+  );
+  return { nombres, huellas: hashes.map((hash) => hash.digest("hex")) };
 }
 
 if (!existsSync(ARCHIVO)) {
@@ -232,9 +260,24 @@ try {
   await descargaB.saveAs(restaurado);
   await paginaB.close();
 
-  const igual = (await huella(restaurado)) === huellaOriginal;
-  console.log(`regreso byte a byte igual al original: ${igual ? "sí" : "NO"}`);
-  if (!igual) codigo = 1;
+  // Habeas Data deja casi todo anonimizado a propósito: lo único que vuelve es `nombre_completo`.
+  // El regreso está bien si esa columna es la original y todas las demás son las del anonimizado.
+  const [original, ida, vuelta] = [
+    await huellasPorColumna(ARCHIVO),
+    await huellasPorColumna(anonimizado),
+    await huellasPorColumna(restaurado),
+  ];
+  const nombre = vuelta.nombres.indexOf("nombre_completo");
+  const enOrden = vuelta.nombres.join() === ida.nombres.join();
+  const volvio =
+    vuelta.huellas[nombre] === original.huellas[original.nombres.indexOf("nombre_completo")] &&
+    vuelta.huellas[nombre] !== ida.huellas[nombre];
+  const intactas = vuelta.huellas.every((h, c) => c === nombre || h === ida.huellas[c]);
+  console.log(`nombre_completo vuelve al original: ${volvio ? "sí" : "NO"}`);
+  console.log(
+    `las otras ${vuelta.nombres.length - 1} columnas, iguales al anonimizado: ${enOrden && intactas ? "sí" : "NO"}`,
+  );
+  if (!(volvio && enOrden && intactas)) codigo = 1;
 } catch (error) {
   console.error("FALLO:", error.message);
   codigo = 1;
@@ -244,6 +287,8 @@ try {
   console.log(JSON.stringify({ filas: FILAS, pasos: filas, picoMb: Math.round(picoTotal / 1024) }));
   await nav.close();
   if (servidorPropio) process.kill(-servidorPropio.pid);
-  rmSync(SALIDA, { recursive: true, force: true });
+  // `CONSERVAR=1` deja las descargas en `tmp/` para mirarlas cuando el regreso no cuadra.
+  if (process.env.CONSERVAR) rmSync(PERFIL, { recursive: true, force: true });
+  else rmSync(SALIDA, { recursive: true, force: true });
 }
 process.exit(codigo);
