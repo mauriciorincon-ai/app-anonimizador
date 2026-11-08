@@ -23,6 +23,8 @@ export const NOMBRE_DEL_FORMATO: Readonly<Record<FormatoBinario, string>> = {
   png: "PNG",
   webp: "WebP",
   heic: "HEIC",
+  avif: "AVIF",
+  mov: "MOV",
 };
 
 export function numero(valor: number, idioma: Idioma): string {

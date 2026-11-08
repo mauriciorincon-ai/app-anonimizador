@@ -838,6 +838,11 @@ export const DOCUMENTOS = {
       png: { es: "Imagen PNG", en: "PNG image" },
       webp: { es: "Imagen WebP", en: "WebP image" },
       heic: { es: "Imagen HEIC", en: "HEIC image" },
+      avif: { es: "Imagen AVIF", en: "AVIF image" },
+      mov: {
+        es: "Video QuickTime (el de una Live Photo)",
+        en: "QuickTime video (a Live Photo's)",
+      },
     },
     revela: {
       autoria: { es: "Autoría", en: "Authorship" },
@@ -862,6 +867,7 @@ export const DOCUMENTOS = {
         es: "Versión anterior del PDF",
         en: "Earlier PDF version",
       },
+      quicktime: { es: "Etiquetas QuickTime", en: "QuickTime tags" },
     },
     clases: {
       exif: {
@@ -902,6 +908,22 @@ export const DOCUMENTOS = {
       datosSinUso: {
         es: "Datos dentro de la imagen que ningún elemento usaba",
         en: "Data inside the image that no item used",
+      },
+      fechaDeCreacion: {
+        es: "Fechas de creación del video y de sus pistas, puestas en cero",
+        en: "Creation dates of the video and its tracks, set to zero",
+      },
+      metadatosDeVideo: {
+        es: "Etiquetas del video (ubicación, equipo, programa, fecha)",
+        en: "Video tags (location, device, software, date)",
+      },
+      pistaDeMetadatos: {
+        es: "Muestras de una pista de metadatos, puestas en cero",
+        en: "Samples of a metadata track, set to zero",
+      },
+      identificadorDePareja: {
+        es: "UUID que empareja el video de la Live Photo con su foto",
+        en: "UUID pairing the Live Photo's video with its still",
       },
       perfilDeColor: {
         es: "Perfil de color (ICC)",
@@ -964,6 +986,10 @@ export const DOCUMENTOS = {
       heicAuxiliares: {
         es: "La foto traía imágenes auxiliares (profundidad o realce HDR): se conservaron, porque son píxeles, pero los datos que las describían se quitaron con lo demás, así que en una pantalla HDR puede verse con menos rango.",
         en: "The photo carried auxiliary images (depth or HDR boost): they were kept, because they are pixels, but the data describing them went with the rest, so on an HDR screen it may show less range.",
+      },
+      livePhotoIdentificador: {
+        es: "El video conserva el UUID que lo empareja con su foto (un número al azar, no un dato personal). En la foto ese número vive en la nota del fabricante del EXIF, que se quitó: Fotos ya no los muestra juntos.",
+        en: "The video keeps the UUID that pairs it with its still (a random number, not personal data). In the still, that number lives inside the EXIF maker note, which was removed: Photos no longer shows them together.",
       },
       textoComprimido: {
         es: "Había texto comprimido que Velo no leyó. Se quitó igual.",

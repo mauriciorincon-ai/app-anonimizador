@@ -175,6 +175,10 @@ export const METADATOS = {
       es: "Versión anterior del PDF",
       en: "Earlier version of the PDF",
     },
+    quicktime: {
+      es: "Etiquetas del video (QuickTime)",
+      en: "Video tags (QuickTime)",
+    },
   },
 
   // ── Qué se quita y qué se conserva ──────────────────────────────────────────────────────────
@@ -273,6 +277,22 @@ export const METADATOS = {
         es: "Datos dentro de la imagen que ningún elemento usa",
         en: "Data inside the image that no item uses",
       },
+      "fecha-de-creacion": {
+        es: "Fechas de creación del video y de cada pista",
+        en: "Creation dates of the video and of each track",
+      },
+      "metadatos-de-video": {
+        es: "Etiquetas del video (ubicación, equipo, programa, fecha)",
+        en: "Video tags (location, device, software, date)",
+      },
+      "pista-de-metadatos": {
+        es: "Pista de metadatos que corre con el video (por ejemplo, la ubicación cuadro a cuadro)",
+        en: "Metadata track running alongside the video (the frame-by-frame location, for instance)",
+      },
+      "identificador-de-pareja": {
+        es: "Identificador que empareja el video de una Live Photo con su foto",
+        en: "Identifier pairing a Live Photo's video with its still",
+      },
       // lo que se conserva en una imagen
       "perfil-de-color": { es: "Perfil de color", en: "Color profile" },
       orientacion: {
@@ -368,6 +388,17 @@ export const METADATOS = {
           "The photo carries auxiliary images (a depth map or an HDR boost map). They are pixels " +
           "and are kept; the data describing them is removed, so on an HDR screen the photo may " +
           "show less range.",
+      },
+      "live-photo-identificador": {
+        es:
+          "El video de una Live Photo conserva el número que lo empareja con su foto: un UUID al " +
+          "azar, no un dato tuyo. En la foto ese número viaja en la nota del fabricante del EXIF, " +
+          "que se quita con lo demás, así que la foto y el video limpios ya no aparecen juntos en " +
+          "Fotos.",
+        en:
+          "A Live Photo's video keeps the number that pairs it with its still: a random UUID, not " +
+          "anything about you. In the still, that number travels inside the EXIF maker note, which " +
+          "goes with the rest, so the cleaned still and video no longer show up together in Photos.",
       },
       "texto-comprimido": {
         es:
