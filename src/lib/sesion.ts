@@ -309,6 +309,7 @@ export function useTaller(): EstadoDelTaller {
  * queda ni una `CryptoKey` viva en ninguna parte del navegador.
  */
 export function descartar(): void {
+  soltarVigilante();
   worker?.terminate();
   worker = null;
   soltarArchivo();
@@ -446,6 +447,20 @@ export function prepararArchivo(destino?: FileSystemFileHandle): void {
   );
 }
 
+/**
+ * Lo más que se espera a una limpieza. Un lector de PDF no se puede interrumpir desde dentro del
+ * worker (un archivo hostil lo ocupó 25–40 s en la medición del S6), así que el reloj vive aquí, en
+ * la página: al vencer se termina el worker —con él, lo que estaba haciendo— y se dice por qué.
+ */
+export const LIMITE_DE_LIMPIEZA_MS = 60_000;
+
+let vigilante: ReturnType<typeof setTimeout> | null = null;
+
+function soltarVigilante(): void {
+  if (vigilante !== null) clearTimeout(vigilante);
+  vigilante = null;
+}
+
 /** Limpia los metadatos del PDF o la imagen cargados. Sin opciones: ver el mensaje `limpiar`. */
 export function limpiar(): void {
   if (!worker) return;
@@ -453,6 +468,17 @@ export function limpiar(): void {
     URL.revokeObjectURL(tallerActual.limpieza.archivo.url);
   publicarTaller({ limpieza: { fase: "limpiando" }, etapa: "limpiando" });
   worker.postMessage({ tipo: "limpiar" });
+  soltarVigilante();
+  vigilante = setTimeout(() => {
+    vigilante = null;
+    if (tallerActual.limpieza.fase !== "limpiando") return;
+    worker?.terminate();
+    worker = null;
+    publicarTaller({
+      limpieza: { fase: "fallo", motivo: "tiempo-agotado" },
+      etapa: null,
+    });
+  }, LIMITE_DE_LIMPIEZA_MS);
 }
 
 /**
@@ -514,6 +540,7 @@ export function analizar(archivo: File): void {
     return;
   }
 
+  soltarVigilante();
   worker?.terminate();
   worker = new Worker(new URL("../workers/parser.worker.ts", import.meta.url));
   worker.addEventListener("message", (evento: MessageEvent<MensajeDelWorker>) =>
@@ -546,6 +573,8 @@ export function analizar(archivo: File): void {
 }
 
 function recibir(mensaje: MensajeDelWorker, nombre: string): void {
+  if (mensaje.tipo === "limpiado" || mensaje.tipo === "error")
+    soltarVigilante();
   if (mensaje.tipo === "limpiado") {
     publicarTaller({
       limpieza: {

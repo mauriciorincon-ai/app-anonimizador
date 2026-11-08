@@ -259,6 +259,8 @@ export type MotivoDeError =
   | MotivoDeMetadatos
   | "pdf-excede-tope"
   | "imagen-excede-tope"
+  /** La página cortó una limpieza que pasó de su límite de reloj: terminó el worker, no el archivo. */
+  | "tiempo-agotado"
   /**
    * S8: lo que el alto volumen no puede hacer con este archivo, y lo dice en vez de estimar o de
    * escribir a medias: más combinaciones de cuasi-identificadores que las que el riesgo exacto

@@ -19,6 +19,7 @@ import {
 import {
   analizar,
   descartar,
+  LIMITE_DE_LIMPIEZA_MS,
   limpiar,
   siguienteEstado,
   useSesion,
@@ -273,6 +274,45 @@ describe("analizar un PDF", () => {
       motivo: "imagen-excede-tope",
     });
     expect(WorkerDeMentira.ultimo).toBeNull();
+  });
+});
+
+describe("el vigilante de la limpieza", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("pasado el límite sin respuesta, termina el worker y dice «tiempo-agotado»", () => {
+    const worker = pdfLeido();
+    act(() => limpiar());
+    act(() => vi.advanceTimersByTime(LIMITE_DE_LIMPIEZA_MS - 1));
+    expect(taller.limpieza).toEqual({ fase: "limpiando" });
+    expect(worker.terminado).toBe(false);
+    act(() => vi.advanceTimersByTime(1));
+    expect(worker.terminado).toBe(true);
+    expect(taller.limpieza).toEqual({
+      fase: "fallo",
+      motivo: "tiempo-agotado",
+    });
+    expect(taller.etapa).toBeNull();
+  });
+
+  it("si el worker responde a tiempo, el reloj se apaga y no corta nada", () => {
+    const worker = pdfLeido();
+    act(() => limpiar());
+    worker.responde({ tipo: "error", motivo: "pdf-fuera-de-topes" });
+    act(() => vi.advanceTimersByTime(LIMITE_DE_LIMPIEZA_MS * 2));
+    expect(worker.terminado).toBe(false);
+    expect(taller.limpieza).toEqual({
+      fase: "fallo",
+      motivo: "pdf-fuera-de-topes",
+    });
+  });
+
+  it("descartar apaga el reloj: no queda nada que dispare después", () => {
+    pdfLeido();
+    act(() => limpiar());
+    act(() => descartar());
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 

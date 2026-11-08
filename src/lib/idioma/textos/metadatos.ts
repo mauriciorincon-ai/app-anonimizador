@@ -599,6 +599,26 @@ export const METADATOS = {
           "read. Go back to the customs checkpoint, make a fresh copy from its source and drop " +
           "it in.",
       },
+      fueraDeTopes: {
+        es:
+          "El PDF tiene más objetos, o más contenido comprimido, de los que Velo puede abrir sin " +
+          "agotar la memoria de tu navegador; no está dañado. Vuelve a la aduana, imprímelo a " +
+          "PDF desde un visor para tener una copia más liviana y suéltala.",
+        en:
+          "The PDF has more objects, or more compressed content, than Velo can open without " +
+          "running your browser out of memory; it is not damaged. Go back to the customs " +
+          "checkpoint, print it to PDF from a viewer to get a lighter copy and drop it in.",
+      },
+      tiempoAgotado: {
+        es:
+          "La limpieza pasó de un minuto y Velo la cortó antes de dejar tu navegador colgado; " +
+          "no entregó nada y el original no se tocó. Vuelve a la aduana, genera una copia nueva " +
+          "desde su origen y suéltala.",
+        en:
+          "The cleaning went over a minute and Velo cut it off before leaving your browser " +
+          "hanging; it handed over nothing and the original was not touched. Go back to the " +
+          "customs checkpoint, make a fresh copy from its source and drop it in.",
+      },
       perdido: {
         es:
           "Velo ya no tiene el archivo en memoria. Vuelve a la aduana y suéltalo otra vez: " +

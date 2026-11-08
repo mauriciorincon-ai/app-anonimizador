@@ -470,6 +470,39 @@ export const INICIO = {
             "that copy in.",
         },
       },
+      pdfFueraDeTopes: {
+        titulo: {
+          es: "Ese PDF es más grande por dentro de lo que Velo abre",
+          en: "That PDF is bigger inside than Velo opens",
+        },
+        salida: {
+          es:
+            "Tiene más objetos, o más contenido comprimido, de los que Velo puede abrir sin " +
+            "agotar la memoria de tu navegador; no es un PDF dañado. Ábrelo en un visor e " +
+            "imprímelo a PDF para generar una copia más liviana, y suelta esa copia.",
+          en:
+            "It has more objects, or more compressed content, than Velo can open without " +
+            "running your browser out of memory; it is not a damaged PDF. Open it in a viewer " +
+            "and print it to PDF to make a lighter copy, and drop that copy in.",
+        },
+      },
+      tiempoAgotado: {
+        titulo: {
+          es: "Velo cortó el trabajo: tardaba demasiado",
+          en: "Velo stopped the job: it was taking too long",
+        },
+        salida: {
+          es:
+            "Pasó de un minuto sin terminar y Velo prefirió cerrarlo antes de dejar tu navegador " +
+            "colgado. El archivo original no se tocó. Genera una copia nueva desde su origen — " +
+            "imprime el PDF a PDF, o exporta la imagen otra vez— y suelta esa copia.",
+          en:
+            "It went over a minute without finishing, and Velo chose to close it rather than " +
+            "leave your browser hanging. The original file was not touched. Make a fresh copy " +
+            "from its source —print the PDF to PDF, or export the image again— and drop that " +
+            "copy in.",
+        },
+      },
       imagenIlegible: {
         titulo: {
           es: "No se pudo leer esa imagen",

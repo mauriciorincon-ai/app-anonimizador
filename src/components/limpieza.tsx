@@ -76,6 +76,8 @@ const AnotarEnBitacora = dynamic(
 const FALLOS: Partial<Record<MotivoDeError, Texto>> = {
   "limpieza-incompleta": M.limpieza.fallo.limpiezaIncompleta,
   "pdf-ilegible": M.limpieza.fallo.ilegible,
+  "pdf-fuera-de-topes": M.limpieza.fallo.fueraDeTopes,
+  "tiempo-agotado": M.limpieza.fallo.tiempoAgotado,
   "imagen-ilegible": M.limpieza.fallo.ilegible,
   "imagen-no-soportada": M.limpieza.fallo.ilegible,
   "lectura-fallida": M.limpieza.fallo.perdido,
