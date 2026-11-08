@@ -99,6 +99,12 @@ const FALLOS: Partial<Record<MotivoDeError, Texto>> = {
   "alto-volumen-reparto-no-cabe": TRANSFORMAR.taller.fallo.repartoNoCabe,
 };
 
+/** S9: un JSON de alto volumen sale como JSON (arreglo o líneas); todo lo demás, como CSV. */
+function extensionDeSalida(informe: Informe): "csv" | "json" | "jsonl" {
+  if (informe.archivo.formato !== "json") return "csv";
+  return informe.estructura?.forma === "lineas" ? "jsonl" : "json";
+}
+
 export function Taller({ informe }: { informe: Informe }) {
   const { t } = useT();
   const taller = useTaller();
@@ -116,7 +122,10 @@ export function Taller({ informe }: { informe: Informe }) {
     try {
       prepararArchivo(
         await elegir.call(window, {
-          suggestedName: nombreDelArchivoAnonimizado(hashDePolitica),
+          suggestedName: nombreDelArchivoAnonimizado(
+            hashDePolitica,
+            extensionDeSalida(informe),
+          ),
         }),
       );
     } catch {

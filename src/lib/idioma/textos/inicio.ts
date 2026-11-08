@@ -406,15 +406,15 @@ export const INICIO = {
         },
         salida: {
           es:
-            "Superó alguno de los límites: {celdas} celdas en total (registros por campos " +
-            "distintos), claves de hasta {largoClave} caracteres o textos de hasta " +
-            "{largoTexto} caracteres. Divide el archivo en partes y trata cada una; en JSON Lines basta " +
+            "Superó alguno de los límites: claves de hasta {largoClave} caracteres o textos de " +
+            "hasta {largoTexto} caracteres. El número de registros no cuenta: un JSON grande se " +
+            "trata por pasadas. Divide el archivo en partes y trata cada una; en JSON Lines basta " +
             "con cortar entre líneas.",
           en:
-            "It went past one of the limits: {celdas} cells in total (records times distinct " +
-            "fields), keys up to {largoClave} characters or strings up to {largoTexto} characters. Split " +
-            "the file into parts and treat each one; with JSON Lines you only need to cut " +
-            "between lines.",
+            "It went past one of the limits: keys up to {largoClave} characters or strings up to " +
+            "{largoTexto} characters. The number of records does not count: a big JSON is " +
+            "processed in passes. Split the file into parts and treat each one; with JSON Lines " +
+            "you only need to cut between lines.",
         },
       },
       formatoNoCoincide: {

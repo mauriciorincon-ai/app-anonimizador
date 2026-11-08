@@ -41,7 +41,7 @@ export interface OpcionesDeFuente {
  * es lo que pide el motor (una pasada para leer, otra para escribir).
  */
 export function fuenteDeArchivo(
-  archivo: File,
+  archivo: Blob,
   opciones: OpcionesDeFuente = {},
 ): FuenteDeTexto {
   return async function* () {

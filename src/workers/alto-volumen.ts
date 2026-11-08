@@ -189,6 +189,8 @@ function normalizar(fila: readonly string[], ancho: number): string[] {
 export interface OpcionesDeLaPasada {
   readonly topes?: TopesDelAltoVolumen;
   readonly huella?: string;
+  /** Cómo se escribe la salida de la pasada C o del regreso. Por omisión, CSV. */
+  readonly formato?: FormatoDeSalida;
   readonly alAvanzar?: (filas: number, bytes: number, total: number) => void;
 }
 
@@ -927,6 +929,36 @@ export interface Destino {
 /** Cuántas filas se juntan antes de entregar un trozo al destino. Las mismas que en memoria. */
 const FILAS_POR_TROZO = 20_000;
 
+/** Lo que el formato de salida necesita saber antes de la primera fila. */
+export interface ContextoDeSalida {
+  /** Los nombres de las columnas que se escriben, en orden. */
+  readonly nombres: readonly string[];
+  /** La posición en el archivo de entrada de cada una (las suprimidas no están). */
+  readonly vivas: readonly number[];
+  /** Posiciones de entrada cuyas celdas cambiadas vuelven a escribirse como números (el regreso). */
+  readonly numericas: ReadonlySet<number>;
+}
+
+/**
+ * S9: cómo se vuelve texto lo que sale de la pasada C o del regreso. CSV es el de siempre; un JSON
+ * por pasadas escribe cada fila dentro de la estructura de su registro original (ver
+ * `./json-por-trozos.ts`). El alto volumen no sabe cuál es: entrega filas ya transformadas.
+ */
+export interface FormatoDeSalida {
+  /** Lo que va antes de las filas. */
+  iniciar(contexto: ContextoDeSalida): Promise<string>;
+  /** Un lote de filas ya transformadas, en el mismo orden y ancho de `contexto.nombres`. */
+  lote(filas: readonly (readonly string[])[]): Promise<string>;
+  /** Lo que cierra el archivo; aquí se comprueba que no quedó nada sin escribir. */
+  terminar(): Promise<string>;
+}
+
+export const FORMATO_CSV: FormatoDeSalida = {
+  iniciar: async ({ nombres }) => filaDeCsv(nombres),
+  lote: async (filas) => filas.map(filaDeCsv).join(""),
+  terminar: async () => "",
+};
+
 /** La pasada C: el CSV de salida, fila a fila, con la misma regla de `filasDeCsv`. */
 export async function escribirCsv(
   archivo: Fuente,
@@ -938,7 +970,14 @@ export async function escribirCsv(
     .map((p, c) => (p.tipo === "suprimida" ? -1 : c))
     .filter((c) => c >= 0);
   const ruidos = contextosDeRuido(plan);
-  await destino.escribir(filaDeCsv(vivas.map((c) => plan.nombres[c])));
+  const formato = opciones.formato ?? FORMATO_CSV;
+  await destino.escribir(
+    await formato.iniciar({
+      nombres: vivas.map((c) => plan.nombres[c]),
+      vivas,
+      numericas: new Set(),
+    }),
+  );
   let acumulado = "";
   let enElTrozo = 0;
   for await (const parte of filasDelArchivo(archivo, {
@@ -952,15 +991,17 @@ export async function escribirCsv(
       parte.filas,
       parte.desde,
     );
-    for (const fila of salida) {
-      acumulado += filaDeCsv(vivas.map((c) => fila[c]));
-      if (++enElTrozo === FILAS_POR_TROZO) {
-        await destino.escribir(acumulado);
-        acumulado = "";
-        enElTrozo = 0;
-      }
+    acumulado += await formato.lote(
+      salida.map((fila) => vivas.map((c) => fila[c])),
+    );
+    enElTrozo += salida.length;
+    if (enElTrozo >= FILAS_POR_TROZO) {
+      await destino.escribir(acumulado);
+      acumulado = "";
+      enElTrozo = 0;
     }
   }
+  acumulado += await formato.terminar();
   if (acumulado) await destino.escribir(acumulado);
 }
 
@@ -1044,27 +1085,45 @@ export async function restaurarPorTrozos(
     ambiguas: 0,
     desconocidas: 0,
   }));
-  await destino.escribir(filaDeCsv(devuelto.nombres));
+  const formato = opciones.formato ?? FORMATO_CSV;
+  // Las columnas que en el original eran todas números (la bóveda lo dice) vuelven a ser números.
+  const numericas = new Set<number>();
+  decisiones.forEach((decision, c) => {
+    if (decision.nuevos === null) return;
+    const deLaBoveda = boveda.columnas.find(
+      (b) => b.columna === decision.candidata!.columna,
+    );
+    if (deLaBoveda?.numerica === true) numericas.add(c);
+  });
+  await destino.escribir(
+    await formato.iniciar({
+      nombres: devuelto.nombres,
+      vivas: devuelto.nombres.map((_, c) => c),
+      numericas,
+    }),
+  );
   let acumulado = "";
   let enElTrozo = 0;
   for await (const parte of filasDelArchivo(archivo, { ...opciones, huella })) {
     if ("encabezado" in parte) continue;
-    for (const fila of parte.filas) {
-      const campos = fila.map((valor, c) => {
+    const restauradas = parte.filas.map((fila) =>
+      fila.map((valor, c) => {
         const decision = decisiones[c];
         if (decision.nuevos === null) return valor;
         const codigo = devuelto.diccionarios[c].indice.get(valor)!;
         contarCelda(celdas[c], decision.categoriaPorValor!, codigo);
         return decision.nuevos[codigo];
-      });
-      acumulado += filaDeCsv(campos);
-      if (++enElTrozo === FILAS_POR_TROZO) {
-        await destino.escribir(acumulado);
-        acumulado = "";
-        enElTrozo = 0;
-      }
+      }),
+    );
+    acumulado += await formato.lote(restauradas);
+    enElTrozo += restauradas.length;
+    if (enElTrozo >= FILAS_POR_TROZO) {
+      await destino.escribir(acumulado);
+      acumulado = "";
+      enElTrozo = 0;
     }
   }
+  acumulado += await formato.terminar();
   if (acumulado) await destino.escribir(acumulado);
   return {
     ...cerrarRestauracion(decisiones, celdas, boveda),

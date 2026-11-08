@@ -55,6 +55,10 @@ const FIXTURES: readonly Fixture[] = [
   // El de alto volumen (S8): 210 columnas × 100.000 filas = 21 millones de celdas, apenas sobre el
   // tope de 20 millones que Velo guarda en memoria. ~42 MB, en un segundo.
   { perfil: "ancho", filas: 100_000, seed: 42, formato: "csv" },
+  // El de alto volumen en JSON Lines (S9): los mismos 21 millones de celdas, que en JSON pesan ~316 MB
+  // (cada celda lleva su clave). Se regenera con su semilla; es el único camino para que el worker
+  // pase del tope de celdas con un archivo de verdad.
+  { perfil: "ancho", filas: 100_000, seed: 42, formato: "jsonl" },
   // El europeo (S8): un identificador nacional de cada país con control oficial, campos personales
   // con nombres en otras lenguas, un dato del art. 9 y uno del art. 10. Todo sintético.
   { perfil: "europeo", filas: 1_500, seed: 42, formato: "csv" },

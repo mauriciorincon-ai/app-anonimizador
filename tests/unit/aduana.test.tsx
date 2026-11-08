@@ -325,11 +325,11 @@ describe("JSON en la zona de carga (S6)", () => {
       motivo: "json-excede-tope",
       es: [
         "Ese JSON es más grande de lo que Velo puede tratar",
-        /20\.000\.000 celdas.*Divide el archivo en partes/,
+        /claves de hasta 256 caracteres.*1\.048\.576 caracteres.*Divide el archivo en partes/,
       ],
       en: [
         "That JSON is bigger than Velo can handle",
-        /20,000,000 cells.*Split the file into parts/,
+        /keys up to 256 characters.*1,048,576 characters.*Split the file into parts/,
       ],
     },
     {

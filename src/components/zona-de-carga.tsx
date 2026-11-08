@@ -317,7 +317,6 @@ function Fallo({
     ...topes(idioma),
     profundidad: TOPES_JSON.profundidad,
     rutas: TOPES_JSON.rutas,
-    celdas: TOPES_JSON.celdas,
     largoClave: TOPES_JSON.largoDeClave,
     largoTexto: TOPES_JSON.largoDeTexto,
     combinaciones: numero(COMBINACIONES_DEL_RIESGO, idioma),
