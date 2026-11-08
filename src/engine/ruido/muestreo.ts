@@ -13,17 +13,10 @@
 
 import type { AzarSembrado } from "./azar";
 
-/** Los ε que la política admite, como racionales (numerador, denominador). */
-export const EPSILONES = {
-  "0.1": [1, 10],
-  "0.5": [1, 2],
-  "1": [1, 1],
-  "2": [2, 1],
-  "4": [4, 1],
-  "8": [8, 1],
-} as const satisfies Record<string, readonly [number, number]>;
+import { EPSILONES, type ClaveDeEpsilon } from "./limites";
 
-export type ClaveDeEpsilon = keyof typeof EPSILONES;
+/** Los ε que la política admite, como racionales: viven en `limites.ts`, con la escala del Laplace. */
+export { EPSILONES, type ClaveDeEpsilon };
 
 /**
  * Bernoulli(exp(−n/d)), exacto, con n ≥ 0 y d ≥ 1 enteros (algoritmo 1).

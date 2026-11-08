@@ -22,6 +22,7 @@ import { mensaje } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { MOTOR_TRANSFORMAR } from "@/lib/idioma/textos/motor-transformar";
 import { sha256 } from "@/lib/sha256";
+import { escalaDelLaplace } from "./ruido/limites";
 import { serializarCanonico } from "./serializacion";
 
 /**
@@ -75,16 +76,6 @@ const epsilonSchema = z.union([
   z.literal(4),
   z.literal(8),
 ]);
-
-/** El denominador de cada ε como racional: 0,1 = 1/10 y 0,5 = 1/2; los demás son enteros. */
-const DENOMINADOR_DE_EPSILON: Record<z.infer<typeof epsilonSchema>, number> = {
-  0.1: 10,
-  0.5: 2,
-  1: 1,
-  2: 1,
-  4: 1,
-  8: 1,
-};
 
 /** El rango declarado de un Laplace no pasa de ±10¹²: lo que un número cuenta exacto con decimales. */
 const LIMITE_DEL_RANGO = 1e12;
@@ -178,12 +169,9 @@ const tecnicaSchema = z.discriminatedUnion("tipo", [
         enLaRejilla(t.maximo, t.decimales),
       "minimo and maximo must have at most `decimales` decimals",
     )
+    // S10: la misma cuenta que hace el motor del ruido, no una parecida: lo que aquí pasa, allá cabe.
     .refine(
-      (t) =>
-        (Math.round(t.maximo * 10 ** t.decimales) -
-          Math.round(t.minimo * 10 ** t.decimales)) *
-          DENOMINADOR_DE_EPSILON[t.epsilon] <=
-        2 ** 40,
+      (t) => escalaDelLaplace(t) !== null,
       "the range is too wide for exact sampling at these decimals and epsilon",
     ),
   /**
