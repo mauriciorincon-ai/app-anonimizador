@@ -24,7 +24,7 @@ import { Rico, useT } from "@/components/texto";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
 import { anotarTratamiento } from "@/lib/bitacora";
 import { LOCALE } from "@/lib/idioma";
-import { METADATOS } from "@/lib/idioma/textos/metadatos";
+import { ANOTAR_LIMPIEZA } from "@/lib/idioma/textos/anotar-limpieza";
 import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import { nombreDeTecnica } from "@/lib/tecnicas-en-palabras";
 
@@ -48,12 +48,12 @@ export function AnotarEnBitacora({ entrada }: { entrada: EntradaSinFecha }) {
 
   return (
     <Panel
-      etiqueta={t(esLimpieza ? METADATOS.anotar.etiqueta : A.etiqueta)}
+      etiqueta={t(esLimpieza ? ANOTAR_LIMPIEZA.etiqueta : A.etiqueta)}
       titulo={t(A.titulo)}
       nota={<Rico texto={A.nota} />}
     >
       <p className="text-tinta-suave text-[0.9375rem] leading-relaxed">
-        <Rico texto={esLimpieza ? METADATOS.anotar.cuerpo : A.cuerpo} />{" "}
+        <Rico texto={esLimpieza ? ANOTAR_LIMPIEZA.cuerpo : A.cuerpo} />{" "}
         {entrada.tecnicas.length > 0 ? (
           <>
             {t(A.aqui)}{" "}

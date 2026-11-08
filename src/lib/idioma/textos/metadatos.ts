@@ -801,12 +801,13 @@ export const METADATOS = {
       etiqueta: { es: "Lleva:", en: "Carries:" },
       cuerpo: {
         es:
-          "los campos que tenía el archivo con sus valores enmascarados, qué se quitó y qué se " +
-          "conservó, lo que Velo no toca, la comprobación posterior, las dos huellas y la fecha.",
+          "el nombre del archivo original —también en el título del documento—, los campos que " +
+          "tenía con sus valores enmascarados, qué se quitó y qué se conservó, lo que Velo no " +
+          "toca, la comprobación posterior, las dos huellas y la fecha.",
         en:
-          "the fields the file had, with their values masked, what was removed and what was " +
-          "kept, what Velo does not touch, the check made afterwards, both fingerprints and " +
-          "the date.",
+          "the original file's name —also in the document's title—, the fields it had, with " +
+          "their values masked, what was removed and what was kept, what Velo does not touch, " +
+          "the check made afterwards, both fingerprints and the date.",
       },
     },
     noLleva: {
@@ -815,21 +816,6 @@ export const METADATOS = {
         es: "ningún valor completo de los metadatos, ni nada del contenido del archivo.",
         en: "any full metadata value, or anything from the file's contents.",
       },
-    },
-  },
-
-  // ── La anotación en la bitácora ─────────────────────────────────────────────────────────────
-  anotar: {
-    etiqueta: { es: "La bitácora", en: "The log" },
-    cuerpo: {
-      es:
-        "Se anotan el nombre del archivo, la fecha, el formato, cuántos campos con nombre tenía, " +
-        "cuántos bloques se quitaron y las dos huellas. Los valores de los metadatos no se " +
-        "anotan.",
-      en:
-        "What gets logged: the file name, the date, the format, how many named fields it had, " +
-        "how many blocks were removed and both fingerprints. The metadata values are not " +
-        "logged.",
     },
   },
 } as const satisfies Catalogo;
