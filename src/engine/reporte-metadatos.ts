@@ -77,6 +77,7 @@ const ORIGEN: Record<OrigenDeCampo, Texto> = {
   "pdf-info": L.origen.pdfInfo,
   "pdf-xmp": L.origen.pdfXmp,
   "pdf-revision-anterior": L.origen.pdfRevisionAnterior,
+  quicktime: L.origen.quicktime,
 };
 
 const CLASE: Record<ClaseDeElemento, Texto> = {
@@ -95,6 +96,10 @@ const CLASE: Record<ClaseDeElemento, Texto> = {
   auxiliar: L.clases.auxiliar,
   "bytes-sobrantes": L.clases.bytesSobrantes,
   "datos-sin-uso": L.clases.datosSinUso,
+  "fecha-de-creacion": L.clases.fechaDeCreacion,
+  "metadatos-de-video": L.clases.metadatosDeVideo,
+  "pista-de-metadatos": L.clases.pistaDeMetadatos,
+  "identificador-de-pareja": L.clases.identificadorDePareja,
   "perfil-de-color": L.clases.perfilDeColor,
   orientacion: L.clases.orientacion,
   jfif: L.clases.jfif,
@@ -123,6 +128,8 @@ function textoDelAviso(aviso: Aviso): { texto: Texto; n: number } {
       return { texto: A.imagenesAdicionales, n };
     case "heic-auxiliares":
       return { texto: A.heicAuxiliares, n };
+    case "live-photo-identificador":
+      return { texto: A.livePhotoIdentificador, n };
     case "texto-comprimido":
       return { texto: A.textoComprimido, n };
     case "exif-ilegible":

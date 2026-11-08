@@ -23,8 +23,18 @@ import type {
 } from "../validadores/tipos";
 
 /** El formato por CONTENIDO (bytes mágicos). La extensión es una pista y nada más. */
-export type FormatoBinario = "pdf" | "jpeg" | "png" | "webp" | "heic";
+export type FormatoBinario =
+  | "pdf"
+  | "jpeg"
+  | "png"
+  | "webp"
+  | "heic"
+  | "avif"
+  /** El video de una Live Photo (QuickTime): se limpia con las imágenes, con el mismo lector. */
+  | "mov";
 export type FormatoDeImagen = Exclude<FormatoBinario, "pdf">;
+/** La familia ISO BMFF (cajas): HEIC y AVIF, fijos o en secuencia, y el `.mov` de QuickTime. */
+export type FormatoBmff = Extract<FormatoBinario, "heic" | "avif" | "mov">;
 
 /** Qué deja saber un campo. Decide el orden de lectura y la insignia en pantalla. */
 export type Revela =
@@ -48,7 +58,9 @@ export type OrigenDeCampo =
   | "pdf-info"
   | "pdf-xmp"
   /** Un valor de una revisión ANTERIOR del PDF: el editor lo «reemplazó», pero sigue en los bytes. */
-  | "pdf-revision-anterior";
+  | "pdf-revision-anterior"
+  /** Las etiquetas de un video o una secuencia (`udta`, `keys`/`ilst`, pistas de metadatos). */
+  | "quicktime";
 
 /** Largo máximo con el que se guarda el valor de un campo. Lo que pase se recorta y se avisa. */
 export const LARGO_MAXIMO_DE_VALOR = 512;
@@ -88,6 +100,15 @@ export type ClaseDeElemento =
   | "bytes-sobrantes"
   /** Bytes dentro de la imagen que ningún elemento usa (lo que dejó una edición, por ejemplo). */
   | "datos-sin-uso"
+  // secuencias y videos (S11)
+  /** Fechas de creación y de cambio de la película, de cada pista y de cada medio. */
+  | "fecha-de-creacion"
+  /** `udta` y los elementos de `ilst`: ubicación, equipo, programa, fecha. */
+  | "metadatos-de-video"
+  /** Una pista de metadatos con tiempo (`mebx` u otra que no es imagen ni sonido): sus muestras. */
+  | "pista-de-metadatos"
+  /** Lo que se conserva: el UUID que empareja el video de una Live Photo con su foto. */
+  | "identificador-de-pareja"
   // lo que se conserva en una imagen
   | "perfil-de-color"
   | "orientacion"
@@ -131,6 +152,11 @@ export type ClaveDeAviso =
    * conservan, pero el XMP que las describe se va, así que el realce HDR puede perderse.
    */
   | "heic-auxiliares"
+  /**
+   * El video de una Live Photo conserva el UUID que lo empareja con su foto (un número al azar, no un
+   * dato personal). En la foto ese número vive en la nota del fabricante del EXIF, que se va.
+   */
+  | "live-photo-identificador"
   /** Un bloque EXIF que no se pudo leer: se quita entero igual, pero no se sabe qué decía. */
   | "exif-ilegible"
   /** Un bloque IPTC o XMP que no se pudo leer entero: se quita entero igual. */
