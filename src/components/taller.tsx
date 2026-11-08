@@ -97,6 +97,7 @@ const FALLOS: Partial<Record<MotivoDeError, Texto>> = {
   "transformacion-fallida": TRANSFORMAR.taller.fallo.transformacionFallida,
   "alto-volumen-boveda-no-cabe": TRANSFORMAR.taller.fallo.bovedaNoCabe,
   "alto-volumen-reparto-no-cabe": TRANSFORMAR.taller.fallo.repartoNoCabe,
+  "alto-volumen-histograma-no-cabe": TRANSFORMAR.taller.fallo.histogramaNoCabe,
 };
 
 /** S9: un JSON de alto volumen sale como JSON (arreglo o líneas); todo lo demás, como CSV. */
@@ -275,6 +276,7 @@ export function Taller({ informe }: { informe: Informe }) {
               onPreparar={() => prepararArchivo()}
               altoVolumen={altoVolumen}
               enDisco={taller.archivoEnDisco}
+              escrituraFallida={taller.escrituraFallida}
               onElegirDestino={
                 altoVolumen && haySelector
                   ? () => void elegirDestino(hecha.hashDePolitica)

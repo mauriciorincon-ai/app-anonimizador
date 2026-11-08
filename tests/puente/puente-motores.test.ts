@@ -44,7 +44,19 @@ const NOMBRES = [
   `${TABLA}__velo`,
   `${TABLA}__restaurada`,
   "velo_sin_llave",
+  "velo_llave_binaria",
 ];
+
+/** S10: 12 000 filas con llave BINARIA (más de dos lotes de 5 000), hechas por el propio motor. */
+const LLAVE_BINARIA = {
+  postgres: `CREATE TABLE public.velo_llave_binaria (k bytea PRIMARY KEY, b text);
+    INSERT INTO public.velo_llave_binaria
+      SELECT decode(lpad(to_hex(g), 8, '0'), 'hex'), 'b' || g FROM generate_series(1, 12000) g`,
+  mssql: `CREATE TABLE dbo.velo_llave_binaria (k varbinary(16) NOT NULL PRIMARY KEY, b nvarchar(max));
+    WITH n AS (SELECT TOP (12000) ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS g
+      FROM sys.all_objects a CROSS JOIN sys.all_objects b)
+    INSERT INTO dbo.velo_llave_binaria SELECT CAST(CAST(g AS int) AS binary(4)), CONCAT('b', g) FROM n`,
+} as const;
 
 const SOLO_REVERSIBLES: Politica = {
   version: 1,
@@ -128,7 +140,12 @@ async function preparar(motor: Motor): Promise<Preparador> {
       },
       q: (n) => `"${n}"`,
       esquema: "public",
-      tipos: { fecha: "date", entero: "integer", texto: "text", llave: "integer" },
+      tipos: {
+        fecha: "date",
+        entero: "integer",
+        texto: "text",
+        llave: "integer",
+      },
     };
   }
   const u = new URL(url.replace(/^sqlserver:/i, "mssql:"));
@@ -376,6 +393,18 @@ for (const motor of MOTORES) {
         c.existe(p.esquema, `${TABLA}__velo`),
       );
       expect(existe).toBe(false);
+    });
+
+    it("S10: una llave binaria pagina las 12 000 filas, cada una una vez", async () => {
+      await p.exec(LLAVE_BINARIA[motor]);
+      await p.soltar();
+      const h = await conUna(motor, async (c) =>
+        huellaDeTabla(
+          c,
+          await validarTabla(c, p.esquema, "velo_llave_binaria"),
+        ),
+      );
+      expect(h.filas).toBe(12_000);
     });
 
     it("un fallo de conexión dice su código y nunca la clave", async () => {

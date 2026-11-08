@@ -1065,7 +1065,7 @@ ignored:
 | **NIR** (France)           | The key: 97 minus the first 13 digits modulo 97 (with Corsica's 2A and 2B); sex 1 or 2 and a month from 01 to 12 |
 | **Codice fiscale** (Italy) | The check character (odd- and even-position tables, modulo 26); a possible month letter and day                  |
 | **Steuer-IdNr** (Germany)  | The check digit over the first 10 digits; no leading 0 and the repeated-digit structure the rule sets            |
-| **BSN** (Netherlands)      | The 11-test; all zeros are refused                                                                               |
+| **BSN** (Netherlands)      | The 11-test; an 8-digit BSN is read with a leading zero; all zeros are refused                                   |
 | **PESEL** (Poland)         | The check digit (weights 1-3-7-9) and that the birth date it carries exists                                      |
 
 **“Confirmed by the algorithm”** means two things: the check adds up and the structure is possible
@@ -1087,8 +1087,9 @@ algorithm and belongs to nobody.
   are quasi-identifiers, and inheriting them would leave half the value in plain sight.
 - **The IBAN is the partial exception:** it keeps the country, the length, which positions are
   digits and which are letters, and the grouping in fours if it came grouped. It passes the ISO 13616
-  check, but **it does not recompute the national keys inside it** (the Spanish CCC, the French RIB
-  key), so a destination that validates them may refuse it.
+  check and, for Spain and France, **recomputes the national keys inside it** (the Spanish CCC, the
+  French RIB key); **other countries' keys are not recomputed**, so a destination that validates them
+  may refuse it.
 - **The numbers that come out are synthetic, but Velo does not check that they do not exist.** They
   pass their document's check and keep nothing of the original, but Velo cannot know which numbers
   are assigned to real people: a pseudonym can be, by chance, another person's real number, and in
@@ -1342,9 +1343,9 @@ context. Velo does not run it, so it does not declare any file anonymous. It is 
 
 **Why does my bank or my system refuse the pseudonymised IBAN?**
 Because the IBAN that comes out passes the general check (ISO 13616, mod 97-10) and keeps the
-country, the length and the grouping, but Velo **does not recompute the national keys inside it**,
-such as the Spanish CCC or the French RIB key. A destination that validates them will refuse it. If
-that is your case, the pseudonym will not serve it: hand that column over another way (a hexadecimal
+country, the length and the grouping. For Spain and France, Velo also recomputes the national keys
+inside it (the Spanish CCC, the French RIB key); for other countries it **does not**, and a
+destination that validates them will refuse it. If that is your case, the pseudonym will not serve it: hand that column over another way (a hexadecimal
 pseudonym, which does not pretend to be an IBAN, or without the column).
 
 **I have a photo in HEIC, from my iPhone. Can I clean it?**

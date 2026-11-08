@@ -4,7 +4,13 @@
 // producción. Un informe de mentira probaría que el componente sabe pintar lo que le pasamos; este
 // prueba que sabe pintar lo que el motor produce, que es lo que el usuario va a ver.
 
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { generarFilas } from "../../docs/kit-de-prueba/generador.mjs";
@@ -181,7 +187,7 @@ describe("archivo con datos personales", () => {
     ).toBeInTheDocument();
   });
 
-  it("la vista previa se abre y se cierra", () => {
+  it("la vista previa se abre y se cierra", async () => {
     render(<InformeDeDiagnostico informe={informe} />);
     const abrir = screen.getByRole("button", {
       name: "Ver antes de descargar",
@@ -189,10 +195,13 @@ describe("archivo con datos personales", () => {
     expect(abrir).toHaveAttribute("aria-expanded", "false");
 
     fireEvent.click(abrir);
-    const marco = screen.getByTitle("Vista previa del reporte");
+    // El constructor del documento se carga al pedirlo (S10): el marco aparece tras esa espera.
+    const marco = await screen.findByTitle("Vista previa del reporte");
+    await waitFor(() =>
+      expect(marco.getAttribute("srcdoc")).toContain(informe.archivo.sha256),
+    );
     // `sandbox` vacío: el reporte se ve tal como lo verá quien lo reciba, y no puede tocar nada.
     expect(marco).toHaveAttribute("sandbox", "");
-    expect(marco.getAttribute("srcdoc")).toContain(informe.archivo.sha256);
 
     fireEvent.click(screen.getByRole("button", { name: "Cerrar la vista" }));
     expect(

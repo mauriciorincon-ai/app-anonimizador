@@ -342,12 +342,22 @@ export const METADATOS = {
           "picture is not rotated when opened.",
       },
       "imagenes-adicionales": {
-        es:
-          "Había imágenes adicionales dentro del archivo (por ejemplo el mapa de ganancia HDR o " +
-          "vistas alternativas): se quitan con lo demás.",
-        en:
-          "There were additional images inside the file (for instance an HDR gain map or " +
-          "alternative views): they are removed along with the rest.",
+        con: {
+          es:
+            "Imágenes adicionales dentro del archivo: {n} (por ejemplo el mapa de ganancia HDR o " +
+            "vistas alternativas). Se quitan con lo demás.",
+          en:
+            "Additional images inside the file: {n} (for instance an HDR gain map or " +
+            "alternative views). They are removed along with the rest.",
+        },
+        sin: {
+          es:
+            "Había imágenes adicionales dentro del archivo (por ejemplo el mapa de ganancia HDR o " +
+            "vistas alternativas): se quitan con lo demás.",
+          en:
+            "There were additional images inside the file (for instance an HDR gain map or " +
+            "alternative views): they are removed along with the rest.",
+        },
       },
       "heic-auxiliares": {
         es:
@@ -372,6 +382,14 @@ export const METADATOS = {
         en:
           "An EXIF block could not be read: it is removed whole anyway, but Velo does not know " +
           "what it said.",
+      },
+      "iptc-xmp-ilegible": {
+        es:
+          "Un bloque IPTC o XMP no se pudo leer entero: se quita completo igual, pero Velo no " +
+          "sabe todo lo que decía.",
+        en:
+          "An IPTC or XMP block could not be read in full: it is removed whole anyway, but " +
+          "Velo does not know everything it said.",
       },
       "valores-recortados": {
         con: {
@@ -599,6 +617,26 @@ export const METADATOS = {
           "read. Go back to the customs checkpoint, make a fresh copy from its source and drop " +
           "it in.",
       },
+      fueraDeTopes: {
+        es:
+          "El PDF tiene más objetos, o más contenido comprimido, de los que Velo puede abrir sin " +
+          "agotar la memoria de tu navegador; no está dañado. Vuelve a la aduana, imprímelo a " +
+          "PDF desde un visor para tener una copia más liviana y suéltala.",
+        en:
+          "The PDF has more objects, or more compressed content, than Velo can open without " +
+          "running your browser out of memory; it is not damaged. Go back to the customs " +
+          "checkpoint, print it to PDF from a viewer to get a lighter copy and drop it in.",
+      },
+      tiempoAgotado: {
+        es:
+          "La limpieza pasó de un minuto y Velo la cortó antes de dejar tu navegador colgado; " +
+          "no entregó nada y el original no se tocó. Vuelve a la aduana, genera una copia nueva " +
+          "desde su origen y suéltala.",
+        en:
+          "The cleaning went over a minute and Velo cut it off before leaving your browser " +
+          "hanging; it handed over nothing and the original was not touched. Go back to the " +
+          "customs checkpoint, make a fresh copy from its source and drop it in.",
+      },
       perdido: {
         es:
           "Velo ya no tiene el archivo en memoria. Vuelve a la aduana y suéltalo otra vez: " +
@@ -763,12 +801,13 @@ export const METADATOS = {
       etiqueta: { es: "Lleva:", en: "Carries:" },
       cuerpo: {
         es:
-          "los campos que tenía el archivo con sus valores enmascarados, qué se quitó y qué se " +
-          "conservó, lo que Velo no toca, la comprobación posterior, las dos huellas y la fecha.",
+          "el nombre del archivo original —también en el título del documento—, los campos que " +
+          "tenía con sus valores enmascarados, qué se quitó y qué se conservó, lo que Velo no " +
+          "toca, la comprobación posterior, las dos huellas y la fecha.",
         en:
-          "the fields the file had, with their values masked, what was removed and what was " +
-          "kept, what Velo does not touch, the check made afterwards, both fingerprints and " +
-          "the date.",
+          "the original file's name —also in the document's title—, the fields it had, with " +
+          "their values masked, what was removed and what was kept, what Velo does not touch, " +
+          "the check made afterwards, both fingerprints and the date.",
       },
     },
     noLleva: {
@@ -777,21 +816,6 @@ export const METADATOS = {
         es: "ningún valor completo de los metadatos, ni nada del contenido del archivo.",
         en: "any full metadata value, or anything from the file's contents.",
       },
-    },
-  },
-
-  // ── La anotación en la bitácora ─────────────────────────────────────────────────────────────
-  anotar: {
-    etiqueta: { es: "La bitácora", en: "The log" },
-    cuerpo: {
-      es:
-        "Se anotan el nombre del archivo, la fecha, el formato, cuántos campos con nombre tenía, " +
-        "cuántos bloques se quitaron y las dos huellas. Los valores de los metadatos no se " +
-        "anotan.",
-      en:
-        "What gets logged: the file name, the date, the format, how many named fields it had, " +
-        "how many blocks were removed and both fingerprints. The metadata values are not " +
-        "logged.",
     },
   },
 } as const satisfies Catalogo;

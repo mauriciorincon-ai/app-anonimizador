@@ -162,10 +162,10 @@ export const DIAGNOSTICO = {
       detalle: {
         es:
           "Ninguna de las {n} columnas quedó clasificada como identificador directo, " +
-          "cuasi-identificador o dato sensible del artículo 5.",
+          "cuasi-identificador o dato sensible (Ley 1581 art. 5, RGPD art. 9 y 10).",
         en:
           "None of the {n} columns was classified as a direct identifier, quasi-identifier or " +
-          "sensitive data under article 5.",
+          "sensitive data (Law 1581 art. 5, GDPR art. 9 and 10).",
       },
     },
     columnas: {
@@ -440,10 +440,9 @@ export const DIAGNOSTICO = {
         "those {n} columns.",
     },
     registros: { es: "{cifra} registros.", en: "{cifra} records." },
-    // El español del singular («las 1 columna que identifica») es el de siempre y se conserva.
     noCuentaUna: {
       es:
-        "Esta cifra **no cuenta** las {n} columna que identifica sin ayuda de ninguna otra: a " +
+        "Esta cifra **no cuenta** {n} columna que identifica sin ayuda de ninguna otra: a " +
         "esa gente no hay que cruzarla con nada para saber quién es.",
       en:
         "This figure **does not count** the {n} column that identifies people without any " +
@@ -533,9 +532,8 @@ export const DIAGNOSTICO = {
     // El alcance se cuenta en cuatro tramos porque entre ellos van elementos con su propio
     // aspecto (la cifra en `cifra`) y un tramo opcional.
     alcanceInicio: { es: "Velo evaluó", en: "Velo evaluated" },
-    // El español del singular («las 1 columna candidata») es el de siempre y se conserva tal cual.
     alcanceCombinacionesUna: {
-      es: "combinaciones de las {n} columna candidata",
+      es: "combinaciones de {n} columna candidata",
       en: "combinations of the {n} candidate column",
     },
     alcanceCombinacionesVarias: {
@@ -577,8 +575,10 @@ export const DIAGNOSTICO = {
         en: "Quasi-identifier",
       },
       datoSensible: {
-        es: "Dato sensible · art. 5",
-        en: "Sensitive data · art. 5",
+        // Ley 1581 (art. 5) y RGPD (art. 9 y 10) caen en la misma categoría: la insignia nombra las
+        // dos leyes y el informe descargable, con sus artículos. Va en `nowrap`: corta a propósito.
+        es: "Dato sensible (Ley 1581 · RGPD)",
+        en: "Sensitive data (Law 1581 · GDPR)",
       },
       noPersonal: { es: "No personal", en: "Not personal" },
     },

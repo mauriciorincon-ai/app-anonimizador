@@ -147,7 +147,12 @@ export const GENERALIZACION = {
         en: "Does it reach the k asked for ({k})?",
       },
       k: { es: "Grupo más pequeño (k)", en: "Smallest group (k)" },
-      l: { es: "ℓ distinta (pedida: {l})", en: "Distinct ℓ (asked: {l})" },
+      // La comparación mide la ℓ sobre los valores ORIGINALES de la sensible (no usa la llave); el
+      // certificado la mide sobre los del archivo, que pueden llevar una técnica. Se dice aquí.
+      l: {
+        es: "ℓ distinta, sobre los valores originales (pedida: {l})",
+        en: "Distinct ℓ, over the original values (asked: {l})",
+      },
       clases: { es: "Grupos distintos", en: "Distinct groups" },
       unicos: {
         es: "Registros solos en su grupo",
@@ -161,6 +166,10 @@ export const GENERALIZACION = {
       nodos: {
         es: "Combinaciones revisadas",
         en: "Combinations checked",
+      },
+      tiempo: {
+        es: "Tiempo de cálculo",
+        en: "Calculation time",
       },
     },
     si: { es: "Sí", en: "Yes" },

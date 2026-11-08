@@ -387,6 +387,31 @@ describe("la transformación", () => {
     },
   );
 
+  it("S10: un fallo al ESCRIBIR no tumba nada: informe, llave y transformación siguen, y se reintenta", () => {
+    const worker = conArchivo();
+    worker.responde({
+      tipo: "listo",
+      informe: { archivo: { nombre: "tabla.csv" } } as never,
+    });
+    act(() => derivarLlaveDelProyecto("frase"));
+    worker.responde({ tipo: "llave-lista", huella: "a1b2c3d4e5f6" });
+    const llave = taller.llave;
+    act(() => transformar(POLITICA));
+    const transformacion = taller.transformacion;
+    act(() => prepararArchivo());
+    worker.responde({ tipo: "error", motivo: "escritura-fallida" });
+
+    expect(sesion.fase).toBe("listo");
+    expect(taller.llave).toEqual(llave);
+    expect(taller.transformacion).toEqual(transformacion);
+    expect(taller.escrituraFallida).toBe(true);
+    expect(taller.etapa).toBeNull();
+
+    act(() => prepararArchivo());
+    expect(taller.escrituraFallida).toBe(false);
+    expect(worker.enviados.at(-1)).toEqual({ tipo: "construir-archivo" });
+  });
+
   it("un error de lectura SÍ tumba la sesión, y conserva el nombre", () => {
     const worker = conArchivo();
     worker.responde({ tipo: "error", motivo: "excel-excede-memoria" });
@@ -457,6 +482,7 @@ describe("sin worker no hay taller", () => {
       archivo: null,
       archivoEnDisco: null,
       huellaDeSalida: null,
+      escrituraFallida: false,
       boveda: { fase: "sin-sellar" },
       archivoDeBoveda: null,
       estimacion: null,

@@ -407,6 +407,16 @@ export const REGRESO = {
       en: "Prepare the restored file",
     },
     preparando: { es: "Preparando…", en: "Preparing…" },
+    escrituraFallida: {
+      es:
+        "**No se pudo escribir el archivo restaurado.** Puede que el disco esté lleno o que el " +
+        "archivo elegido ya no deje escribir. La bóveda y la restauración siguen abiertas: libera " +
+        "espacio o elige otro destino, y vuelve a prepararlo.",
+      en:
+        "**The restored file could not be written.** The disk may be full, or the chosen file may " +
+        "no longer allow writing. The vault and the restoration are still open: free some space " +
+        "or pick another destination, and prepare it again.",
+    },
     guardarInforme: { es: "Guardar el informe", en: "Save the report" },
     prepararInforme: { es: "Preparar el informe", en: "Prepare the report" },
     sello: {

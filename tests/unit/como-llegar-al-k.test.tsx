@@ -238,6 +238,10 @@ describe("la comparación", () => {
     expect(
       within(tabla).getByRole("row", { name: /Combinaciones revisadas/ }),
     ).toHaveTextContent("7 de 16");
+    // El `ms` que el worker mide por lado se pinta (fixture: 3 ms).
+    expect(
+      within(tabla).getByRole("row", { name: /Tiempo de cálculo/ }),
+    ).toHaveTextContent("3 ms");
   });
 
   it("si la retícula pasa del tope, la óptima dice «sin calcular» en vez de una cifra", () => {

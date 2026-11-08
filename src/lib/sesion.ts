@@ -15,6 +15,7 @@ import { useSyncExternalStore } from "react";
 
 import {
   columnasDeMondrian,
+  jerarquiaDe,
   type JerarquiaDeLaPolitica,
   type Politica,
 } from "@/engine/politica";
@@ -124,6 +125,11 @@ export interface EstadoDelTaller {
    * el documento del S2 disculpándose por no tenerla.
    */
   readonly huellaDeSalida: string | null;
+  /**
+   * S10: el último intento de escribir el archivo falló (`escritura-fallida`). La transformación,
+   * la política y la llave siguen: solo hay que volver a prepararlo.
+   */
+  readonly escrituraFallida: boolean;
   readonly boveda: EstadoDeBoveda;
   /** El `.velo` listo para guardar, también como asa. */
   readonly archivoDeBoveda: AsaDeArchivo | null;
@@ -174,7 +180,7 @@ export function firmaDeComparacion(
     k: politica.kObjetivo,
     reparto,
     jerarquias: Object.fromEntries(
-      reparto.map((c) => [c, jerarquias[c] ?? { tipo: "supresion" }]),
+      reparto.map((c) => [c, jerarquiaDe(jerarquias, c)]),
     ),
     diversidad: politica.generalizacion?.diversidad ?? null,
   });
@@ -247,6 +253,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   archivo: null,
   archivoEnDisco: null,
   huellaDeSalida: null,
+  escrituraFallida: false,
   boveda: { fase: "sin-sellar" },
   archivoDeBoveda: null,
   estimacion: null,
@@ -309,6 +316,7 @@ export function useTaller(): EstadoDelTaller {
  * queda ni una `CryptoKey` viva en ninguna parte del navegador.
  */
 export function descartar(): void {
+  soltarVigilante();
   worker?.terminate();
   worker = null;
   soltarArchivo();
@@ -338,6 +346,7 @@ export function invalidarTransformacion(): void {
     archivo: null,
     archivoEnDisco: null,
     huellaDeSalida: null,
+    escrituraFallida: false,
     etapa: null,
     // La bóveda también caduca: describe la correspondencia de una política que ya no es la que
     // está en pantalla. Dejarla sería ofrecer la vuelta de un tratamiento que no se hizo.
@@ -368,6 +377,7 @@ export function transformar(politica: Politica): void {
     archivo: null,
     archivoEnDisco: null,
     huellaDeSalida: null,
+    escrituraFallida: false,
     etapa: "transformando",
   });
   // El idioma del trabajo se lee AQUÍ, al pulsar, y viaja como dato (igual que el del informe del
@@ -438,12 +448,26 @@ export function pedirEstimacion(poblacion: number | null): void {
  */
 export function prepararArchivo(destino?: FileSystemFileHandle): void {
   if (!worker) return;
-  publicarTaller({ etapa: "escribiendo" });
+  publicarTaller({ etapa: "escribiendo", escrituraFallida: false });
   worker.postMessage(
     destino
       ? { tipo: "construir-archivo", destino }
       : { tipo: "construir-archivo" },
   );
+}
+
+/**
+ * Lo más que se espera a una limpieza. Un lector de PDF no se puede interrumpir desde dentro del
+ * worker (un archivo hostil lo ocupó 25–40 s en la medición del S6), así que el reloj vive aquí, en
+ * la página: al vencer se termina el worker —con él, lo que estaba haciendo— y se dice por qué.
+ */
+export const LIMITE_DE_LIMPIEZA_MS = 60_000;
+
+let vigilante: ReturnType<typeof setTimeout> | null = null;
+
+function soltarVigilante(): void {
+  if (vigilante !== null) clearTimeout(vigilante);
+  vigilante = null;
 }
 
 /** Limpia los metadatos del PDF o la imagen cargados. Sin opciones: ver el mensaje `limpiar`. */
@@ -453,6 +477,17 @@ export function limpiar(): void {
     URL.revokeObjectURL(tallerActual.limpieza.archivo.url);
   publicarTaller({ limpieza: { fase: "limpiando" }, etapa: "limpiando" });
   worker.postMessage({ tipo: "limpiar" });
+  soltarVigilante();
+  vigilante = setTimeout(() => {
+    vigilante = null;
+    if (tallerActual.limpieza.fase !== "limpiando") return;
+    worker?.terminate();
+    worker = null;
+    publicarTaller({
+      limpieza: { fase: "fallo", motivo: "tiempo-agotado" },
+      etapa: null,
+    });
+  }, LIMITE_DE_LIMPIEZA_MS);
 }
 
 /**
@@ -514,6 +549,7 @@ export function analizar(archivo: File): void {
     return;
   }
 
+  soltarVigilante();
   worker?.terminate();
   worker = new Worker(new URL("../workers/parser.worker.ts", import.meta.url));
   worker.addEventListener("message", (evento: MessageEvent<MensajeDelWorker>) =>
@@ -546,6 +582,8 @@ export function analizar(archivo: File): void {
 }
 
 function recibir(mensaje: MensajeDelWorker, nombre: string): void {
+  if (mensaje.tipo === "limpiado" || mensaje.tipo === "error")
+    soltarVigilante();
   if (mensaje.tipo === "limpiado") {
     publicarTaller({
       limpieza: {
@@ -641,6 +679,12 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
     )
       publicarTaller({ etapa: mensaje.etapa });
   }
+  if (mensaje.tipo === "error" && mensaje.motivo === "escritura-fallida") {
+    // S10: no se pudo ESCRIBIR. Antes salía como `lectura-fallida` y tumbaba el informe con la
+    // política y la llave; ahora el taller queda como estaba y el botón vuelve a ofrecerse.
+    publicarTaller({ escrituraFallida: true, etapa: null });
+    return;
+  }
   if (
     mensaje.tipo === "error" &&
     (mensaje.motivo === "sin-tabla" ||
@@ -649,7 +693,11 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
       mensaje.motivo === "transformacion-fallida" ||
       // S8: lo que el alto volumen no puede transformar se dice en el taller, sin tumbar el informe.
       mensaje.motivo === "alto-volumen-boveda-no-cabe" ||
-      mensaje.motivo === "alto-volumen-reparto-no-cabe")
+      mensaje.motivo === "alto-volumen-reparto-no-cabe" ||
+      // S10: el histograma se pasa también DESPUÉS de transformar (el ruido separa filas); entonces
+      // es un fallo del taller, y no del diagnóstico, que ya cupo.
+      (mensaje.motivo === "alto-volumen-histograma-no-cabe" &&
+        tallerActual.transformacion.fase === "transformando"))
   ) {
     // Un fallo transformando NO tumba el informe: el archivo original sigue analizado y la
     // pantalla puede decir qué pasó sin obligar a cargarlo de nuevo.

@@ -11,7 +11,9 @@ import {
   aUnidades,
   deUnidades,
   DOMINIO_MAXIMO,
+  escalaDelLaplace,
 } from "@/engine/ruido";
+import { tecnicaValida } from "@/engine/politica";
 import { AzarSembrado } from "@/engine/ruido/azar";
 import {
   bernoulliExpNeg,
@@ -339,5 +341,36 @@ describe("la rejilla decimal, exacta", () => {
     expect(deUnidades(373, 1)).toBe("37.3");
     expect(deUnidades(-5, 2)).toBe("-0.05");
     expect(deUnidades(1200, 0)).toBe("1200");
+  });
+
+  it("S10: el esquema de la política acepta un Laplace si y solo si el motor sabe su escala", () => {
+    const laplace = (
+      minimo: number,
+      maximo: number,
+      decimales: number,
+      epsilon: number,
+    ) => ({ tipo: "laplace" as const, epsilon, minimo, maximo, decimales });
+    const casos = [
+      laplace(0, 120, 0, 1),
+      laplace(-40.5, 60.25, 2, 0.5),
+      // Lo que el esquema dejaba pasar y el motor no (deuda del S7): un número que en texto sale
+      // con exponente, y unos extremos que con 6 decimales pasan de 2⁵³ unidades.
+      laplace(5e-7, 1, 0, 1),
+      laplace(999_999_000_000, 999_999_000_001, 6, 1),
+      laplace(-1e12, 1e12, 0, 8),
+      // El borde del sorteo exacto (2⁴⁰ unidades), dentro de los ±10¹² que el esquema declara.
+      laplace(-5e11, 5e11, 0, 1),
+      laplace(-6e11, 6e11, 0, 1),
+      laplace(0, 1e11, 0, 0.1),
+      laplace(0, 1.1e11, 0, 0.1),
+      laplace(0, 1_000_000, 6, 1),
+    ];
+    for (const t of casos)
+      expect(tecnicaValida(t), JSON.stringify(t)).toBe(
+        escalaDelLaplace(t) !== null,
+      );
+    expect(tecnicaValida(casos[2])).toBe(false);
+    expect(tecnicaValida(casos[3])).toBe(false);
+    expect(tecnicaValida(casos[0])).toBe(true);
   });
 });

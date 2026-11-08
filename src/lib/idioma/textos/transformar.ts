@@ -127,13 +127,23 @@ export const TRANSFORMAR = {
       },
       repartoNoCabe: {
         es:
-          "El archivo tiene demasiadas filas para el reparto (Mondrian o la generalización " +
-          "óptima) en alto volumen. Generaliza esas columnas con una técnica por columna, o divide " +
-          "el archivo en partes.",
+          "El archivo tiene demasiadas filas, o una de esas columnas demasiados valores distintos, " +
+          "para el reparto (Mondrian o la generalización óptima) en alto volumen. Generaliza esas " +
+          "columnas con una técnica por columna, o divide el archivo en partes.",
         en:
-          "The file has too many rows for the partition (Mondrian or the optimal generalization) in " +
-          "high volume. Generalize those columns with a per-column technique, or split the file " +
-          "into parts.",
+          "The file has too many rows, or one of those columns too many distinct values, for the " +
+          "partition (Mondrian or the optimal generalization) in high volume. Generalize those " +
+          "columns with a per-column technique, or split the file into parts.",
+      },
+      histogramaNoCabe: {
+        es:
+          "Ya transformadas, las columnas que identifican en conjunto forman más combinaciones " +
+          "distintas de las que Velo puede contar para el riesgo exacto, y Velo no lo estima. " +
+          "Generaliza más esas columnas o quítales el ruido, o divide el archivo en partes.",
+        en:
+          "Once transformed, the columns that identify together form more distinct combinations " +
+          "than Velo can count for the exact risk, and Velo does not estimate it. Generalize those " +
+          "columns further or take the noise off them, or split the file into parts.",
       },
       transformacionFallida: {
         es:
@@ -602,6 +612,16 @@ export const TRANSFORMAR = {
           "is the person.",
       },
     },
+    colisionesSinMedir: {
+      es:
+        "**Colisiones sin contar**: el seudónimo de estas columnas se calculó valor por valor, porque " +
+        "tienen demasiados valores distintos para guardarlos en un archivo de alto volumen. Si " +
+        "conservan el formato, dos entidades distintas pueden haber recibido el mismo seudónimo:",
+      en:
+        "**Collisions not counted**: the pseudonym of these columns was computed value by value, " +
+        "because they have too many distinct values to keep in a high-volume file. If they keep " +
+        "the format, two different entities may have received the same pseudonym:",
+    },
     colisiones: {
       antes: { es: "En", en: "In" },
       uno: {
@@ -775,6 +795,16 @@ export const TRANSFORMAR = {
     },
     preparar: { es: "Preparar el archivo", en: "Prepare the file" },
     preparando: { es: "Escribiendo el archivo…", en: "Writing the file…" },
+    escrituraFallida: {
+      es:
+        "**No se pudo escribir el archivo.** Puede que el disco esté lleno o que el archivo " +
+        "elegido ya no deje escribir. La transformación, la política y la llave siguen aquí: libera " +
+        "espacio o elige otro destino, y vuelve a prepararlo.",
+      en:
+        "**The file could not be written.** The disk may be full, or the chosen file may no " +
+        "longer allow writing. The transformation, the policy and the key are still here: free " +
+        "some space or pick another destination, and prepare it again.",
+    },
     guardar: { es: "Guardar", en: "Save" },
     // S8: alto volumen. El archivo se escribe por trozos en el que el usuario elige.
     elegirDestino: {
@@ -853,8 +883,8 @@ export const TRANSFORMAR = {
     },
     etiqueta: {
       certificado: {
-        es: "Paso 6 · el certificado",
-        en: "Step 6 · the certificate",
+        es: "El certificado",
+        en: "The certificate",
       },
       reporte: { es: "Reporte", en: "Report" },
     },
@@ -931,6 +961,10 @@ export const TRANSFORMAR = {
         en: "Download the certificate",
       },
       reporte: { es: "Descargar el reporte", en: "Download the report" },
+      fallo: {
+        es: "No se pudo armar el documento. Vuelve a intentarlo: tus datos siguen en este equipo.",
+        en: "The document could not be built. Try again: your data is still on this device.",
+      },
     },
     vistaPrevia: {
       ver: { es: "Ver antes de descargar", en: "Preview before downloading" },

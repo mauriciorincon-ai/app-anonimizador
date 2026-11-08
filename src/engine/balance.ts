@@ -108,6 +108,14 @@ export type Salvedad = { readonly gravedad: "descalifica" | "matiza" } & (
       readonly cuantas: number;
     }
   | {
+      /**
+       * S10, alto volumen: columnas seudonimizadas valor por valor porque su diccionario no cupo.
+       * Sus colisiones no se pudieron contar, y callarlo sería decir que no hubo ninguna.
+       */
+      readonly tipo: "colisiones-sin-medir";
+      readonly columnas: readonly string[];
+    }
+  | {
       /** Clases donde todo el mundo comparte el dato sensible: el ataque de homogeneidad. */
       readonly tipo: "clases-homogeneas";
       readonly atributo: string;
@@ -144,6 +152,8 @@ export interface EntradasDelBalance {
   readonly politica: Politica;
   readonly suprimidas: readonly string[];
   readonly colisiones: readonly ColisionEnColumna[];
+  /** S10: columnas seudonimizadas por valor (alto volumen) cuyas colisiones no se contaron. */
+  readonly colisionesSinMedir?: readonly string[];
   /**
    * El reparto que se hizo: el de Mondrian o el de la generalización óptima (S7). El balance solo lee
    * lo que los dos tienen en común: el k pedido, el alcanzado y sobre qué columnas.
@@ -181,6 +191,7 @@ const ORDEN: Record<Salvedad["tipo"], number> = {
   "k-del-reparto-no-es-el-del-archivo": 4,
   "clases-homogeneas": 5,
   "colisiones-de-seudonimo": 6,
+  "colisiones-sin-medir": 6,
 };
 
 function riesgoDe(tabla: TablaColumnar, qis: readonly string[]): RiesgoExacto {
@@ -213,6 +224,7 @@ export function balanceDelTratamiento(
     politica,
     suprimidas,
     colisiones,
+    colisionesSinMedir = [],
     mondrian,
     diversidad,
     pendientesDeMondrian,
@@ -318,6 +330,14 @@ export function balanceDelTratamiento(
       tipo: "colisiones-de-seudonimo",
       columna: colision.columna,
       cuantas: colision.cuantas,
+    });
+  }
+
+  if (colisionesSinMedir.length > 0) {
+    salvedades.push({
+      gravedad: "matiza",
+      tipo: "colisiones-sin-medir",
+      columnas: colisionesSinMedir,
     });
   }
 

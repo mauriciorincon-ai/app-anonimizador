@@ -21,7 +21,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { levantarKitDeBase } from "../../docs/kit-de-prueba/kit-base.mjs";
 import { serializarBoveda } from "@/engine/boveda";
 import { filaDeCsv } from "@/engine/csv";
-import { exportarPolitica, type Politica } from "@/engine/politica";
+import {
+  exportarPolitica,
+  hashDePolitica,
+  type Politica,
+} from "@/engine/politica";
 import { abrirBoveda } from "@/lib/boveda-archivo";
 import { derivarLlave, type LlaveDeProyecto } from "@/lib/llave";
 import { sha256 } from "@/lib/sha256";
@@ -275,15 +279,21 @@ describe("el paginado por llave (tablas de más de una página)", () => {
         rowMode: "array",
       })
     ).rows as (string | null)[][];
-    return [["a", "b", "c"], ...filas.map((f) => f.map((v) => v ?? ""))].map(filaDeCsv).join("");
+    return [["a", "b", "c"], ...filas.map((f) => f.map((v) => v ?? ""))]
+      .map(filaDeCsv)
+      .join("");
   }
 
   it("llave simple numérica: 12 000 filas en su orden numérico, no el del texto", async () => {
-    await admin.query(`CREATE TABLE public.larga (a integer PRIMARY KEY, b text, c text)`);
+    await admin.query(
+      `CREATE TABLE public.larga (a integer PRIMARY KEY, b text, c text)`,
+    );
     await admin.query(
       `INSERT INTO public.larga SELECT g, 'b' || g, CASE WHEN g % 7 = 0 THEN NULL ELSE 'c' || g END FROM generate_series(1, 12000) g`,
     );
-    const esperada = sha256(new TextEncoder().encode(await oraculo("larga", "t.a")));
+    const esperada = sha256(
+      new TextEncoder().encode(await oraculo("larga", "t.a")),
+    );
     const huella = await conUnaConexion(async (c) =>
       huellaDeTabla(c, await validarTabla(c, "public", "larga")),
     );
@@ -292,11 +302,15 @@ describe("el paginado por llave (tablas de más de una página)", () => {
   }, 60_000);
 
   it("llave compuesta: ninguna fila salta ni se repite entre páginas", async () => {
-    await admin.query(`CREATE TABLE public.compuesta (a integer, b integer, c text, PRIMARY KEY (a, b))`);
+    await admin.query(
+      `CREATE TABLE public.compuesta (a integer, b integer, c text, PRIMARY KEY (a, b))`,
+    );
     await admin.query(
       `INSERT INTO public.compuesta SELECT x, y, 'v' || x || '-' || y FROM generate_series(1, 120) x, generate_series(1, 100) y`,
     );
-    const esperada = sha256(new TextEncoder().encode(await oraculo("compuesta", "t.a, t.b")));
+    const esperada = sha256(
+      new TextEncoder().encode(await oraculo("compuesta", "t.a, t.b")),
+    );
     const huella = await conUnaConexion(async (c) =>
       huellaDeTabla(c, await validarTabla(c, "public", "compuesta")),
     );
@@ -318,11 +332,19 @@ describe("el paginado por llave (tablas de más de una página)", () => {
       }),
     );
     expect(r.resultado.filas).toBe(12_000);
-    const n = await admin.query(`SELECT count(*)::int AS n, count(DISTINCT a)::int AS d FROM public.larga__velo`);
+    const n = await admin.query(
+      `SELECT count(*)::int AS n, count(DISTINCT a)::int AS d FROM public.larga__velo`,
+    );
     expect(n.rows[0]).toEqual({ n: 12_000, d: 12_000 });
     // Sin reglas, todo se conserva: lo escrito es la tabla, fila por fila.
-    const escrita = await admin.query({ text: `SELECT a, b, c FROM public.larga__velo ORDER BY __velo_fila`, rowMode: "array" });
-    const origen = await admin.query({ text: `SELECT a::text, b, c FROM public.larga AS t ORDER BY t.a`, rowMode: "array" });
+    const escrita = await admin.query({
+      text: `SELECT a, b, c FROM public.larga__velo ORDER BY __velo_fila`,
+      rowMode: "array",
+    });
+    const origen = await admin.query({
+      text: `SELECT a::text, b, c FROM public.larga AS t ORDER BY t.a`,
+      rowMode: "array",
+    });
     expect(escrita.rows).toEqual(origen.rows);
   }, 120_000);
 });
@@ -517,6 +539,81 @@ describe("pnpm velo puente, de punta a punta", () => {
       FRASE_DE_BOVEDA,
     );
     expect(abierta.ok).toBe(true);
+
+    // S10 (regla 17-bis): el regreso a una tabla avisa que esa tabla lleva los originales en claro.
+    await admin.query(`DROP TABLE IF EXISTS public.clientes__restaurada`);
+    await admin.end().catch(() => {});
+    const delRegreso: string[] = [];
+    process.env.VELO_DB_URL = kit.url;
+    process.env.VELO_FRASE_BOVEDA = FRASE_DE_BOVEDA;
+    try {
+      const codigo = await principal(
+        ["puente", "--restaurar", "--tabla", "public.clientes__velo"].concat([
+          "--boveda",
+          join(salida, boveda!),
+        ]),
+        {
+          salida: (l) => void delRegreso.push(l),
+          aviso: (l) => void delRegreso.push(l),
+        },
+        () => new Date("2026-11-07T12:00:00Z"),
+      );
+      expect(codigo, delRegreso.join("\n")).toBe(0);
+    } finally {
+      delete process.env.VELO_DB_URL;
+      delete process.env.VELO_FRASE_BOVEDA;
+    }
+    admin = new pg.Client({ connectionString: kit.url });
+    await admin.connect();
+    expect(delRegreso.join("\n")).toContain(
+      "public.clientes__restaurada lleva los valores originales, en claro",
+    );
+  }, 60_000);
+
+  it("S10: si la bóveda no se puede escribir, ni tabla nueva ni certificado huérfano, y lo ajeno intacto", async () => {
+    await admin.query(`DROP TABLE IF EXISTS public.clientes__velo`);
+    await admin.end().catch(() => {});
+    const salida = mkdtempSync(join(carpeta, "orden-"));
+    const politica = join(salida, "p.json");
+    writeFileSync(politica, exportarPolitica(SOLO_REVERSIBLES));
+    // Un archivo que ya está donde iría la bóveda: Velo no lo pisa, y falla DESPUÉS del certificado.
+    const ajeno = join(
+      salida,
+      `velo-boveda-${hashDePolitica(SOLO_REVERSIBLES).slice(0, 8)}.velo`,
+    );
+    writeFileSync(ajeno, "no es de esta corrida");
+    const registro: string[] = [];
+    process.env.VELO_DB_URL = kit.url;
+    process.env.VELO_FRASE = FRASE;
+    process.env.VELO_FRASE_BOVEDA = FRASE_DE_BOVEDA;
+    try {
+      const codigo = await principal(
+        ["puente", "--tabla", "public.clientes", "--politica", politica].concat(
+          ["--sal", SAL, "--salida", salida],
+        ),
+        {
+          salida: (l) => void registro.push(l),
+          aviso: (l) => void registro.push(l),
+        },
+        () => new Date("2026-11-07T12:00:00Z"),
+      );
+      expect(codigo, registro.join("\n")).toBe(1);
+    } finally {
+      delete process.env.VELO_DB_URL;
+      delete process.env.VELO_FRASE;
+      delete process.env.VELO_FRASE_BOVEDA;
+    }
+    admin = new pg.Client({ connectionString: kit.url });
+    await admin.connect();
+    const { readdirSync, readFileSync } = await import("node:fs");
+    expect(readdirSync(salida).sort()).toEqual(
+      ["p.json", ajeno.split("/").pop()!].sort(),
+    );
+    expect(readFileSync(ajeno, "utf8")).toBe("no es de esta corrida");
+    const { rows } = await admin.query(
+      `SELECT to_regclass('public.clientes__velo') AS t`,
+    );
+    expect(rows[0].t).toBeNull();
   }, 60_000);
 
   it("un fallo de conexión dice su código, jamás la dirección ni la clave", async () => {

@@ -22,6 +22,8 @@ import {
   claveDelNir,
   controlDelCodiceFiscale,
   controlDelPesel,
+  claveDelRib,
+  controlDelCcc,
   cumpleBsn,
   cumpleCodiceFiscale,
   cumpleDni,
@@ -99,7 +101,7 @@ describe("los ejemplos que publican las fuentes oficiales", () => {
   it("Steuer-IdNr: la TestID 02476291358 tiene la cifra bien, pero empieza por 0 y se rechaza", () => {
     // El documento la declara número de prueba (las reales no empiezan por 0). Su cifra cuadra, y por
     // eso la causa del rechazo es el cero inicial y no el control.
-    const diez = [...("0247629135")].map(Number);
+    const diez = [..."0247629135"].map(Number);
     expect(cifraDeControlSteuer(diez)).toBe(8);
     expect(cumpleSteuerIdNr("02476291358")).toBe(false);
   });
@@ -113,10 +115,22 @@ describe("los ejemplos que publican las fuentes oficiales", () => {
   it("PESEL: 02070803628, el ejemplo de gov.pl, y las plantillas parciales de la misma página", () => {
     expect(cumplePesel("02070803628")).toBe(true);
     expect(cumplePesel("02070803629")).toBe(false);
-    expect(fechaDelPesel([0, 2, 0, 7, 0, 8, 0, 3, 6, 2])).toEqual({ anio: 1902, mes: 7, dia: 8 });
+    expect(fechaDelPesel([0, 2, 0, 7, 0, 8, 0, 3, 6, 2])).toEqual({
+      anio: 1902,
+      mes: 7,
+      dia: 8,
+    });
     // «810203PPP6K»: mujer nacida el 3-2-1981 (el décimo dígito es par). «142112PPPPK»: 12-1-2014.
-    expect(fechaDelPesel([8, 1, 0, 2, 0, 3, 0, 0, 0, 6])).toEqual({ anio: 1981, mes: 2, dia: 3 });
-    expect(fechaDelPesel([1, 4, 2, 1, 1, 2, 0, 0, 0, 0])).toEqual({ anio: 2014, mes: 1, dia: 12 });
+    expect(fechaDelPesel([8, 1, 0, 2, 0, 3, 0, 0, 0, 6])).toEqual({
+      anio: 1981,
+      mes: 2,
+      dia: 3,
+    });
+    expect(fechaDelPesel([1, 4, 2, 1, 1, 2, 0, 0, 0, 0])).toEqual({
+      anio: 2014,
+      mes: 1,
+      dia: 12,
+    });
   });
 
   it("codice fiscale: sin ejemplo oficial; las tablas del decreto dan estos controles", () => {
@@ -126,8 +140,12 @@ describe("los ejemplos que publican las fuentes oficiales", () => {
     // corrigen). La cifra 4 de la posición 15 se escribe Q y el control se calcula con la Q.
     const base = "RSSMRA85T10A562";
     const omocodico = "RSSMRA85T10A56" + "N"; // 2 → N
-    expect(cumpleCodiceFiscale(`${base}${controlDelCodiceFiscale(base)}`)).toBe(true);
-    expect(cumpleCodiceFiscale(`${omocodico}${controlDelCodiceFiscale(omocodico)}`)).toBe(true);
+    expect(cumpleCodiceFiscale(`${base}${controlDelCodiceFiscale(base)}`)).toBe(
+      true,
+    );
+    expect(
+      cumpleCodiceFiscale(`${omocodico}${controlDelCodiceFiscale(omocodico)}`),
+    ).toBe(true);
   });
 });
 
@@ -196,8 +214,12 @@ describe("NIR (Francia)", () => {
 
   it("Córcega: 2A y 2B valen 19 y 18 en el cálculo de la clave", () => {
     // sexo 1 · año 85 · mes 05 · departamento 2A/2B · municipio 006 · orden 084
-    expect(claveDelNir("185052A006084")).toBe(97 - (Number("1850519006084") % 97));
-    expect(claveDelNir("185052B006084")).toBe(97 - (Number("1850518006084") % 97));
+    expect(claveDelNir("185052A006084")).toBe(
+      97 - (Number("1850519006084") % 97),
+    );
+    expect(claveDelNir("185052B006084")).toBe(
+      97 - (Number("1850518006084") % 97),
+    );
     const clave = String(claveDelNir("185052A006084")).padStart(2, "0");
     expect(cumpleNir(`185052A006084${clave}`)).toBe(true);
     // Y NO es lo mismo que tratar «2A» como un departamento 20 cualquiera.
@@ -287,6 +309,23 @@ describe("Steuer-IdNr (Alemania)", () => {
   });
 });
 
+describe("las claves nacionales dentro del BBAN (S10)", () => {
+  it("CCC de España: el ejemplo del registro IBAN, ES91 2100 0418 4502 0005 1332", () => {
+    expect(controlDelCcc("21000418", "0200051332")).toBe("45");
+    // Resto 10 → 1 y resto 11 → 0, las dos excepciones de la norma.
+    expect(controlDelCcc("00000000", "0000000000")).toBe("00");
+    expect(controlDelCcc("21000418", "0200051333")).not.toBe("45");
+  });
+
+  it("RIB de Francia: el ejemplo del registro IBAN, FR14 2004 1010 0505 0001 3M02 606 (la M vale 4)", () => {
+    expect(claveDelRib("20041", "01005", "0500013M026")).toBe(6);
+    expect(claveDelRib("20041", "01005", "0500013N026")).not.toBe(6);
+    // S–Z empiezan en 2: S = 2, Z = 9.
+    expect(claveDelRib("00000", "00000", "S")).toBe(97 - ((3 * 2) % 97));
+    expect(claveDelRib("00000", "00000", "Z")).toBe(97 - ((3 * 9) % 97));
+  });
+});
+
 describe("BSN (Países Bajos)", () => {
   it("acepta 300 números sintéticos que pasan la prueba del 11", () => {
     for (const bsn of sinteticos((a) => bsnSintetico(a))) {
@@ -303,9 +342,19 @@ describe("BSN (Países Bajos)", () => {
 
   it("rechaza lo que no pasa la prueba, el largo y el todo ceros", () => {
     expect(cumpleBsn("111222334")).toBe(false);
-    expect(cumpleBsn("11122233")).toBe(false);
+    expect(cumpleBsn("1112223")).toBe(false);
     expect(cumpleBsn("1112223333")).toBe(false);
     expect(cumpleBsn("000000000")).toBe(false);
+    expect(cumpleBsn("00000000")).toBe(false);
+  });
+
+  it("un BSN de 8 cifras se lee con un cero a la izquierda (S10)", () => {
+    // 012345611: suma 8·1 + 7·2 + 6·3 + 5·4 + 4·5 + 3·6 + 2·1 − 1·1 = 99 = 11 × 9.
+    expect(cumpleBsn("12345611")).toBe(true);
+    expect(cumpleBsn("012345611")).toBe(true);
+    expect(cumpleBsn("12345612")).toBe(false);
+    // Con separadores, como el resto de los números de la familia.
+    expect(cumpleBsn("1234 5611")).toBe(true);
   });
 });
 
@@ -412,6 +461,7 @@ describe("los siete como validadores del diagnóstico", () => {
     };
     // El umbral de adjudicación del clasificador es 85 %: un 9 % por azar no adjudica una columna.
     expect(cuantos(validadorBsn, 9)).toBeLessThan(0.12);
+    expect(cuantos(validadorBsn, 8)).toBeLessThan(0.12);
     expect(cuantos(validadorPesel, 11)).toBeLessThan(0.08);
     expect(cuantos(validadorSteuerIdNr, 11)).toBeLessThan(0.01);
   });

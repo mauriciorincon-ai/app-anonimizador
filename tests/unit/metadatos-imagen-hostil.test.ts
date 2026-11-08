@@ -347,7 +347,9 @@ describe("estructuras que buscan cuelgues", () => {
     );
     const inicio = performance.now();
     const a = analizarImagen(png({ antes: [chunk("eXIf", absurdo)] }), "png");
-    expect(performance.now() - inicio).toBeLessThan(500);
+    // 2 s y no 500 ms: con cobertura y la suite entera en paralelo en la CI un recorrido de 115 ms locales
+    // tardó 621 ms (S7). El tope sigue separando un recorrido lineal de uno que trabaja de más.
+    expect(performance.now() - inicio).toBeLessThan(2_000);
     expect(a.campos).toEqual([]);
     expect(a.avisos).toEqual([{ clave: "exif-ilegible" }]);
   });

@@ -580,6 +580,14 @@ perturbaste), el panel se llama **«Ruido sin garantía formal · Sin privacidad
 habla de ε, en pantalla, en el certificado y en la bitácora: la perturbación no es privacidad
 diferencial.
 
+**Cuánto se movió cada número.** En el certificado, la tabla «Lo que el archivo perdió» mide la
+información en bits, y los bits no ven el ruido: dicen si la columna todavía distingue una fila de
+otra, y un número con ruido sigue distinguiéndola aunque haya quedado lejos del suyo. Por eso las
+columnas con Laplace o con perturbación traen además su **error medio**: cuánto se alejó, en
+promedio, cada valor del original, en las unidades de la columna. Se mide sobre las celdas que eran
+un número antes y después. En un archivo de alto volumen esta tabla no se mide, y el certificado
+lo dice.
+
 **Lo que ε no cubre**, y el panel lo dice con todas sus letras:
 
 - **Solo un valor de un campo.** No es el ε del archivo, ni de la persona entera: una persona con
@@ -935,13 +943,13 @@ sigue con lo que cambia.
 **Los topes, y lo que no cabe se dice.** Cada tope es una constante del programa, no una medida de
 tu equipo. Cuando algo no cabe, Velo lo dice y se detiene o lo deja intacto; **jamás lo estima**:
 
-| Qué                                                     | Tope                           | Qué pasa si se pasa                                                                                                                                                                                                      |
-| ------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Valores distintos en una columna                        | 1.048.576 (2²⁰)                | La columna se trata valor por valor, con la misma salida, y el diagnóstico dice «más de N valores distintos». Si era reversible, no hay bóveda para ella: Velo se detiene y pide quitar la casilla o dividir el archivo. |
-| Valores distintos en todas las columnas juntas          | 4.194.304 (2²²)                | Lo mismo.                                                                                                                                                                                                                |
-| Filas del reparto (Mondrian o la generalización óptima) | 16.000.000                     | Velo se detiene: generaliza esas columnas con una técnica por columna, o divide el archivo.                                                                                                                              |
-| Combinaciones distintas de cuasi-identificadores        | 16.777.215 (2²⁴ − 1)           | Velo dice «Demasiadas combinaciones para medir el riesgo exacto» y no estima: generaliza antes alguna de esas columnas (la fecha a año, el municipio a departamento) y suéltalo otra vez.                                |
-| Valores distintos de una columna del archivo devuelto   | 1.048.576 (2²⁰), como a la ida | El regreso se detiene: divide el archivo en partes y restaura cada una con la misma bóveda.                                                                                                                              |
+| Qué                                                     | Tope                           | Qué pasa si se pasa                                                                                                                                                                                                           |
+| ------------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Valores distintos en una columna                        | 1.048.576 (2²⁰)                | La columna se trata valor por valor, con la misma salida, y el diagnóstico dice «más de N valores distintos». Si era reversible, no hay bóveda para ella: Velo se detiene y pide quitar la casilla o dividir el archivo.      |
+| Valores distintos en todas las columnas juntas          | 4.194.304 (2²²)                | Lo mismo.                                                                                                                                                                                                                     |
+| Filas del reparto (Mondrian o la generalización óptima) | 16.000.000                     | Velo se detiene: generaliza esas columnas con una técnica por columna, o divide el archivo.                                                                                                                                   |
+| Combinaciones distintas de cuasi-identificadores        | 16.777.215 (2²⁴ − 1)           | Velo dice «Demasiadas combinaciones para medir el riesgo exacto» y no estima: generaliza antes alguna de esas columnas (la fecha a año, el municipio a departamento) y suéltalo otra vez.                                     |
+| Valores distintos de una columna del archivo devuelto   | 1.048.576 (2²⁰), como a la ida | Si la columna no trae nada de la bóveda, sale intacta y el informe dice «de al menos N valores». Si trae seudónimos de la bóveda, el regreso se detiene: divide el archivo en partes y restaura cada una con la misma bóveda. |
 
 La respuesta aleatorizada, que ya no se aplica con más de 64 valores distintos, dice «más de N» en
 vez de una cifra falsa, y la columna sale intacta.
@@ -1050,7 +1058,7 @@ guiones, y las mayúsculas:
 | **NIR** (Francia)           | La clave: 97 menos los 13 primeros dígitos módulo 97 (con 2A y 2B de Córcega); sexo 1 o 2 y mes entre 01 y 12               |
 | **Codice fiscale** (Italia) | El carácter de control (tablas de posiciones impares y pares, módulo 26); una letra de mes y un día posibles                |
 | **Steuer-IdNr** (Alemania)  | La cifra de control sobre las 10 primeras cifras; sin 0 al inicio y con la estructura de cifras repetidas que fija la norma |
-| **BSN** (Países Bajos)      | La prueba del 11; no admite todo ceros                                                                                      |
+| **BSN** (Países Bajos)      | La prueba del 11; un BSN de 8 cifras se lee con un cero a la izquierda; no admite todo ceros                                |
 | **PESEL** (Polonia)         | El dígito de control (pesos 1-3-7-9) y que la fecha de nacimiento que lleva exista                                          |
 
 **«Confirmado por el algoritmo»** quiere decir dos cosas: el control cuadra y la estructura es
@@ -1070,9 +1078,10 @@ Z—; sirve para explicar el algoritmo y no es de nadie.
 - **No conserva nada del original,** ni el departamento, ni el año, ni el sexo: esos campos son
   cuasi-identificadores, y heredarlos sería dejar la mitad del dato a la vista.
 - **El IBAN es la excepción parcial:** conserva el país, el largo, qué posiciones son dígitos y cuáles
-  letras, y el agrupado de a cuatro si venía agrupado. Pasa el control ISO 13616, pero **no
-  recalcula las claves nacionales que van dentro** (el CCC español, la clave RIB francesa), así que
-  un destino que las valide puede rechazarlo.
+  letras, y el agrupado de a cuatro si venía agrupado. Pasa el control ISO 13616 y, en España y
+  Francia, **recalcula las claves nacionales que van dentro** (el CCC español, la clave RIB
+  francesa); **las de los demás países no se recalculan**, así que un destino que las valide puede
+  rechazarlo.
 - **Los números que salen son sintéticos, pero Velo no comprueba que no existan.** Pasan el control
   de su documento y no conservan nada del original, pero Velo no puede saber qué números están
   asignados a personas reales: un seudónimo puede ser, por casualidad, el número real de otra
@@ -1179,10 +1188,13 @@ Server** (el motor sale de la conexión: `postgres://` o `mssql://`) y escribe e
   una columna, `__velo_fila`, que numera las filas para poder restaurarlas.
 - **No reemplaza una tabla que ya existe** salvo que lo pidas con `--reemplazar`.
 - **El certificado, la bóveda y la bitácora se escriben antes de confirmar la transacción:** si no
-  se pueden escribir, la tabla nueva tampoco aparece.
+  se pueden escribir, la tabla nueva tampoco aparece, y lo que alcanzó a escribirse se borra. Las
+  frases de paso se piden antes de escribir nada, así que una que falta no deja archivos a medias.
 
 Para volver: `pnpm velo puente --restaurar --tabla esquema.tabla__velo --boveda archivo.velo` escribe
-`<tabla>__restaurada`. Sin una base propia donde ensayar, `pnpm kit:base` levanta en tu equipo, en
+`<tabla>__restaurada`. **Esa tabla lleva los valores originales, en claro**, y la puede leer cualquiera
+con permiso sobre el esquema: Velo te lo recuerda al terminar. Dásela solo a quien podía ver la
+original, y bórrala cuando ya no la necesites. Sin una base propia donde ensayar, `pnpm kit:base` levanta en tu equipo, en
 `127.0.0.1:5433`, un PostgreSQL embebido con una tabla sintética (`public.clientes`); se cierra con
 Ctrl-C. No instala nada.
 
@@ -1325,9 +1337,9 @@ que no declara anónimo ningún archivo. Está explicado en
 
 **¿Por qué mi IBAN seudonimizado lo rechaza mi banco o mi sistema?**
 Porque el IBAN que sale pasa el control general (ISO 13616, mod 97-10) y conserva el país, el largo
-y el agrupado, pero Velo **no recalcula las claves nacionales que van dentro**, como el CCC español
-o la clave RIB francesa. Un destino que las valide lo rechaza. Si es tu caso, ese seudónimo no le
-servirá: entrega esa columna de otra forma (un seudónimo hexadecimal, que no finge ser un IBAN, o
+y el agrupado. En España y Francia, Velo también recalcula las claves nacionales que van dentro (el
+CCC español, la clave RIB francesa); en los demás países **no las recalcula**, y un destino que las
+valide lo rechaza. Si es tu caso, ese seudónimo no le servirá: entrega esa columna de otra forma (un seudónimo hexadecimal, que no finge ser un IBAN, o
 sin la columna).
 
 **Tengo una foto en HEIC, la de mi iPhone. ¿Puedo limpiarla?**

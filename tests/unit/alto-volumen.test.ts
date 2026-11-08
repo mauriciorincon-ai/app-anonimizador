@@ -348,7 +348,9 @@ describe("por trozos = en memoria, byte a byte (CSV)", () => {
       if (reversible) {
         expect(r.plan.colisiones).toEqual(r.enMemoria.colisiones);
         expect(
-          serializarCanonico(construirBoveda(IDENTIDAD, r.plan.correspondencias)),
+          serializarCanonico(
+            construirBoveda(IDENTIDAD, r.plan.correspondencias),
+          ),
         ).toBe(
           serializarCanonico(
             construirBoveda(IDENTIDAD, r.enMemoria.correspondencias),
@@ -404,6 +406,21 @@ describe("por trozos = en memoria, byte a byte (CSV)", () => {
         extra,
       ),
     ).toEqual(enMemoria);
+
+    // S10: con topes bajos, lo que se seudonimizó por valor no se calla en el balance.
+    const bajo = balanceDelAltoVolumen(
+      r.pasada,
+      r.plan,
+      r.medida,
+      MONDRIAN,
+      extra,
+    );
+    expect(r.plan.colisionesSinMedir.length).toBeGreaterThan(0);
+    expect(bajo.salvedades).toContainEqual({
+      gravedad: "matiza",
+      tipo: "colisiones-sin-medir",
+      columnas: r.plan.colisionesSinMedir,
+    });
   });
 
   it("un CSV raro: encabezados vacíos y repetidos, filas cortas y largas, CRLF, BOM y saltos entre comillas", async () => {
@@ -459,6 +476,82 @@ describe("el regreso por trozos = en memoria", () => {
     });
     expect(porTrozos.totales.restauradas).toBeGreaterThan(0);
   });
+
+  // S10: el devuelto de 5 M no pasaba de R1. Trece columnas casi únicas que el tercero devuelve tal
+  // cual no cabían en su diccionario y el regreso entero se negaba, aunque ninguna fuera de la bóveda.
+  const SOLO_NOMBRE: Politica = {
+    ...SIN_BOVEDA,
+    reglas: [
+      ...SIN_BOVEDA.reglas.filter((r) => r.columna !== "nombre_completo"),
+      {
+        columna: "nombre_completo",
+        tecnica: { tipo: "seudonimizar", longitud: 12, reversible: true },
+      },
+    ],
+  };
+
+  async function regresoConTope(politica: Politica, tope?: number) {
+    const r = await porLosDosCaminos(KIT, politica, HOLGADOS);
+    const boveda = construirBoveda(IDENTIDAD, r.plan.correspondencias);
+    const tabla = await tablaEnMemoria(r.salida);
+    const nombre = tabla.columnas.find((c) => c.nombre === "nombre_completo")!;
+    const topes = {
+      ...HOLGADOS,
+      distintosPorColumna: tope ?? nombre.valores.length - 1,
+    };
+    const archivo = blobDe(r.salida);
+    const pasada = await pasadaDelDevuelto(archivo, { topes });
+    const destino = recolector();
+    const porTrozos = restaurarPorTrozos(
+      archivo,
+      pasada,
+      boveda,
+      sha256(codificar(r.salida)),
+      destino,
+      { topes },
+    );
+    return { enMemoria: restaurar(tabla, boveda), pasada, porTrozos, destino };
+  }
+
+  it("las columnas que no caben y no traen nada de la bóveda salen intactas, con su piso dicho", async () => {
+    const { enMemoria, pasada, porTrozos, destino } =
+      await regresoConTope(SOLO_NOMBRE);
+    const informe = await porTrozos;
+    const incompletas = pasada.diccionarios.filter((d) => !d.completo);
+    expect(incompletas.length).toBeGreaterThan(3);
+    expect(destino.texto()).toBe(serializarCsv(enMemoria.tabla));
+
+    // Lo exacto es igual: totales, reconocimiento, salvedades y las coincidencias de cada columna.
+    expect(informe.totales).toEqual(enMemoria.totales);
+    expect(informe.reconocimiento).toBe("completo");
+    expect(informe.salvedades).toEqual(enMemoria.salvedades);
+    expect(informe.totales.restauradas).toBeGreaterThan(0);
+    informe.columnas.forEach((columna, c) => {
+      const exacta = enMemoria.columnas[c];
+      expect(columna.coincidencias).toBe(exacta.coincidencias);
+      if (!columna.distintosAlMenos) {
+        expect(columna).toEqual(exacta);
+        return;
+      }
+      // Lo que no cupo: el piso no pasa del real y la proporción no baja de la real.
+      expect(columna.deLaBoveda).toBeNull();
+      expect(columna.distintos).toBeLessThanOrEqual(exacta.distintos);
+      expect(columna.proporcionReconocida).toBeGreaterThanOrEqual(
+        exacta.proporcionReconocida,
+      );
+    });
+    expect(
+      informe.columnas.filter((c) => c.distintosAlMenos).map((c) => c.columna),
+    ).toEqual(incompletas.map((d) => d.nombre));
+  });
+
+  it("una columna que no cabe y trae de la bóveda: el regreso se niega, no adivina", async () => {
+    const { porTrozos } = await regresoConTope(SOLO_NOMBRE, 50);
+    await expect(porTrozos).rejects.toMatchObject({
+      motivo: "alto-volumen-devuelto-no-cabe",
+    });
+    await expect(porTrozos).rejects.toBeInstanceOf(NoCabeEnAltoVolumen);
+  });
 });
 
 describe("las columnas que se releen conservan el nombre que les dio el diagnóstico", () => {
@@ -497,6 +590,64 @@ describe("lo que no cabe se dice, no se estima ni se escribe a medias", () => {
       "alto-volumen-histograma-no-cabe",
     );
     expect((error as NoCabeEnAltoVolumen).cuantos).toBeGreaterThan(10);
+  });
+
+  // S10: un `Map` de V8 no pasa de 2²⁴ entradas y lanza `RangeError`. Antes solo la pasada A lo
+  // atrapaba; ahora cada tabla entera tiene su tope, y cada pasada dice qué no cupo con su clave.
+  it("la proyección de la pasada A con una columna sin cupo: el histograma no cabe", async () => {
+    const error = await pasadaDeDiagnostico(blobDe(KIT), {
+      topes: { ...HOLGADOS, distintosEnLaTabla: 50 },
+    }).catch((e: unknown) => e);
+    expect(error).toMatchObject({
+      motivo: "alto-volumen-histograma-no-cabe",
+      cuantos: 50,
+    });
+  });
+
+  it("la tabla de la pasada B con una columna sin cupo: el reparto no cabe, con su motivo", async () => {
+    const archivo = blobDe(KIT);
+    const huella = sha256(codificar(KIT));
+    const pasada = await pasadaDeDiagnostico(archivo, {
+      topes: HOLGADOS,
+      huella,
+    });
+    const error = await prepararTransformacion(
+      archivo,
+      pasada,
+      MONDRIAN,
+      llave,
+      "es",
+      huella,
+      { topes: { ...HOLGADOS, distintosEnLaTabla: 3 } },
+    ).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(NoCabeEnAltoVolumen);
+    expect(error).toMatchObject({
+      motivo: "alto-volumen-reparto-no-cabe",
+      cuantos: 3,
+    });
+  });
+
+  it("lo transformado de la pasada M sin cupo: el histograma no cabe, en vez de un RangeError", async () => {
+    const archivo = blobDe(KIT);
+    const huella = sha256(codificar(KIT));
+    const pasada = await pasadaDeDiagnostico(archivo, {
+      topes: HOLGADOS,
+      huella,
+    });
+    const plan = await prepararTransformacion(
+      archivo,
+      pasada,
+      RUIDO,
+      llave,
+      "es",
+      huella,
+      { topes: HOLGADOS },
+    );
+    await expect(
+      pasadaDeMedida(archivo, pasada, plan, {
+        topes: { ...HOLGADOS, distintosEnLaTabla: 50 },
+      }),
+    ).rejects.toMatchObject({ motivo: "alto-volumen-histograma-no-cabe" });
   });
 
   it("un archivo que cambió en el disco entre dos pasadas no se escribe", async () => {

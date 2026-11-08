@@ -11,7 +11,7 @@ import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { medirDiversidad } from "@/engine/diversidad";
 import { muestraDeColumna } from "@/engine/muestra";
 import { generalizacionAplicada, TOPE_DE_NODOS } from "@/engine/optima";
-import type { Politica } from "@/engine/politica";
+import { esDeRuidoNumerico, type Politica } from "@/engine/politica";
 import { DOMINIO_MAXIMO, informeDePrivacidad } from "@/engine/ruido";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
@@ -34,16 +34,19 @@ export async function tablaDeCsv(
   } = {},
 ): Promise<TablaColumnar | "alto-volumen" | "vacio"> {
   let constructor: ConstructorColumnar | null = null;
+  // El ancho es el del ENCABEZADO: la primera fila de un lote posterior puede venir corta o larga.
+  let ancho = 0;
   let filas = 0;
   for await (const lote of lotesDeCsv(archivo, opciones)) {
     let desde = 0;
     if (!constructor) {
       constructor = new ConstructorColumnar(lote[0] ?? [], 1 << 16);
+      ancho = lote[0]?.length ?? 0;
       desde = 1;
     }
     for (let i = desde; i < lote.length; i++) constructor.agregarFila(lote[i]);
     filas += lote.length - desde;
-    if (filas * (lote[0]?.length ?? 0) > (opciones.topeDeCeldas ?? TOPE_DE_CELDAS_EN_MEMORIA))
+    if (filas * ancho > (opciones.topeDeCeldas ?? TOPE_DE_CELDAS_EN_MEMORIA))
       return "alto-volumen";
     opciones.alLeerFilas?.(filas);
   }
@@ -139,7 +142,15 @@ export async function transformarEnMemoria(
     resultado,
     qis,
     balance,
-    utilidad: medirUtilidad(original, resultado.tabla),
+    utilidad: medirUtilidad(
+      original,
+      resultado.tabla,
+      new Set(
+        politica.reglas
+          .filter((r) => esDeRuidoNumerico(r.tecnica))
+          .map((r) => r.columna),
+      ),
+    ),
     muestras,
     generalizacion:
       optimaAplicada && politica.generalizacion

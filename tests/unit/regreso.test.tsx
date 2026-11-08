@@ -358,9 +358,27 @@ describe("las órdenes del regreso antes de tener worker", () => {
       restauracion: { fase: "sin-hacer" },
       etapa: null,
       archivo: null,
-      archivoEnDisco: null,
       informe: null,
+      escrituraFallida: false,
     });
+  });
+
+  it("S10: un fallo al escribir el restaurado deja el devuelto y la restauración, y se reintenta", () => {
+    render(<Sonda />);
+    act(() => cargarDevuelto(archivoDe("devuelto.csv")));
+    const devuelto = regreso.devuelto;
+    act(() => prepararRestaurado());
+    act(() =>
+      WorkerDeMentira.ultimo!.responde({
+        tipo: "error",
+        motivo: "escritura-fallida",
+      }),
+    );
+    expect(regreso.devuelto).toEqual(devuelto);
+    expect(regreso.escrituraFallida).toBe(true);
+    expect(regreso.etapa).toBeNull();
+    act(() => prepararRestaurado());
+    expect(regreso.escrituraFallida).toBe(false);
   });
 
   it("un worker que revienta no deja la pantalla girando", () => {

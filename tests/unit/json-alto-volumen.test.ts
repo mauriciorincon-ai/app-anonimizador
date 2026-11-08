@@ -12,7 +12,7 @@ import { construirBoveda } from "@/engine/boveda";
 import { escribirJson } from "@/engine/json/escritor";
 import { columnasNumericas, leerJson } from "@/engine/json/lector";
 import { columnasNumericasDeJson } from "@/engine/json/trozos";
-import type { Politica } from "@/engine/politica";
+import { esDeRuidoNumerico, tecnicaDe, type Politica } from "@/engine/politica";
 import { restaurar } from "@/engine/restaurar";
 import { sha256 } from "@/lib/sha256";
 import {
@@ -215,6 +215,76 @@ describe.each([
     expect(destino.texto()).toBe(texto);
   });
 });
+
+describe.each([
+  ["arreglo", ARREGLO],
+  ["JSON Lines", LINEAS],
+])(
+  "JSON %s: un número con ruido sigue siendo número (S10)",
+  (_forma, texto) => {
+    const RUIDO: Politica = {
+      ...POLITICA,
+      reglas: [
+        ...POLITICA.reglas,
+        {
+          columna: "edad",
+          tecnica: {
+            tipo: "laplace",
+            epsilon: 1,
+            minimo: 0,
+            maximo: 120,
+            decimales: 0,
+          },
+        },
+      ],
+    };
+
+    it("sin comillas, por los dos caminos y byte a byte", async () => {
+      const huella = sha256(codificar(texto));
+      const fuente = fuenteDe(texto, 4096);
+      const lectura = await leerJson(fuente);
+      const enMemoria = await aplicarPolitica(
+        lectura.tabla,
+        RUIDO,
+        llave,
+        "es",
+        huella,
+      );
+      // Lo que hace el worker en memoria: las numéricas del original a las que la política dio ruido.
+      const conRuido = new Set(
+        [...columnasNumericas(lectura)].filter((n) =>
+          esDeRuidoNumerico(tecnicaDe(RUIDO, n)),
+        ),
+      );
+      expect([...conRuido]).toEqual(["edad"]);
+      const textoEnMemoria = await recoger(
+        escribirJson(fuente, lectura, enMemoria.tabla, conRuido),
+      );
+
+      const abierto = await abrirJsonPorTrozos(fuente, codificar(texto).length);
+      const pasada = await pasadaDeDiagnostico(abierto.fuente);
+      const plan = await prepararTransformacion(
+        abierto.fuente,
+        pasada,
+        RUIDO,
+        llave,
+        "es",
+        huella,
+      );
+      const destino = recolector();
+      await escribirCsv(abierto.fuente, plan, destino, {
+        formato: abierto.formato(),
+        numericas: abierto.numericas,
+      });
+
+      expect(destino.texto()).toBe(textoEnMemoria);
+      expect(textoEnMemoria).toMatch(/"edad":-?\d+[,}]/);
+      expect(textoEnMemoria).not.toMatch(/"edad":"/);
+      // El id sigue siendo un seudónimo: texto, no número.
+      expect(textoEnMemoria).toMatch(/"id":"/);
+    });
+  },
+);
 
 describe("lo que no cabe en memoria", () => {
   it("un JSON con más celdas que el tope en memoria se trata por pasadas y da el mismo resultado", async () => {

@@ -54,6 +54,8 @@ import { nombresDeNiveles } from "@/engine/jerarquias";
 import {
   columnasDeMondrian,
   hashDePolitica,
+  jerarquiaDe,
+  numericasConRuido,
   tecnicaDe,
   type JerarquiaDeLaPolitica,
   type Politica,
@@ -114,6 +116,7 @@ import {
   type PlanDeTransformacion,
 } from "./alto-volumen";
 import { lotesDeCsv } from "./csv";
+import { destinoDe, motivoDeLaEscritura } from "./destino";
 import { tablaDeCsv, transformarEnMemoria } from "./en-memoria";
 import { ArchivoCambio, fuenteDeArchivo } from "./json";
 import { abrirJsonPorTrozos } from "./json-por-trozos";
@@ -689,6 +692,8 @@ let transformada: TablaColumnar | null = null;
 /** Las clases de equivalencia del DESPUÉS, para estimar sin recorrer el archivo otra vez. */
 let clasesDespues: ClasesDeEquivalencia | null = null;
 let hashDeLaPolitica = "";
+/** Columnas del JSON que eran todo números y a las que la política les puso ruido numérico. */
+let numericasRuidosas: ReadonlySet<string> = new Set();
 /** El material de la bóveda: pares (original, seudónimo) de las columnas reversibles. */
 let correspondencias: readonly EntradaDeBoveda[] = [];
 
@@ -760,6 +765,10 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
       resultado.tabla.filas,
     );
     hashDeLaPolitica = hashDePolitica(politica);
+    numericasRuidosas =
+      formatoOriginal === "json" && lecturaJson !== null
+        ? numericasConRuido(columnasNumericas(lecturaJson), politica)
+        : new Set();
     // El material de la bóveda se guarda AQUÍ, del lado de la frontera donde están los originales.
     // Sellarlo es un mensaje aparte porque exige la frase de paso del usuario, que se pide después.
     correspondencias =
@@ -1047,9 +1056,7 @@ function compararSobre(
     sensibles,
     optima.dimensiones.map((n, i) =>
       disponible
-        ? nombresDeNiveles(jerarquias[n] ?? { tipo: "supresion" })[
-            optima.niveles[i]
-          ]
+        ? nombresDeNiveles(jerarquiaDe(jerarquias, n))[optima.niveles[i]]
         : null,
     ),
     {
@@ -1075,46 +1082,6 @@ function compararSobre(
 
 /** Cuántas filas se juntan antes de cerrar un trozo del Blob. */
 const FILAS_POR_TROZO = 20_000;
-
-/**
- * S8: adonde va el archivo que se escribe por trozos. Los MISMOS bytes que se hashean son los que se
- * escriben: al archivo que el usuario eligió (`createWritable`, que no confirma nada hasta `close`)
- * o a un `Blob` hecho de `Blob`s, sin juntar las cadenas en memoria.
- */
-async function destinoDe(asa: FileSystemFileHandle | undefined) {
-  const huellaDeSalida = new Sha256();
-  const codificador = new TextEncoder();
-  const escritor = asa ? await asa.createWritable() : null;
-  const partes: Blob[] = [];
-  let bytes = 0;
-  const destino: Destino = {
-    async escribir(texto) {
-      const trozo = codificador.encode(texto);
-      huellaDeSalida.actualizar(trozo);
-      bytes += trozo.length;
-      if (escritor) await escritor.write(trozo);
-      else partes.push(new Blob([trozo]));
-    },
-  };
-  return {
-    destino,
-    /** Confirma el archivo (o arma el `Blob`) y devuelve lo que cruza a la página. */
-    async cerrar(tipo: string) {
-      if (escritor) await escritor.close();
-      return {
-        ...(escritor
-          ? { enDisco: true as const }
-          : { blob: new Blob(partes, { type: tipo }) }),
-        bytes,
-        sha256: huellaDeSalida.terminar(),
-      };
-    },
-    /** Deshace lo escrito: con `createWritable`, nada llega al archivo del usuario. */
-    async abortar() {
-      if (escritor) await escritor.abort().catch(() => {});
-    },
-  };
-}
 
 async function construirArchivo(asa?: FileSystemFileHandle): Promise<void> {
   if (altoVolumen?.plan) {
@@ -1194,6 +1161,7 @@ async function construirArchivoAltoVolumen(
     salida = await destinoDe(asa);
     await escribirCsv(archivo, plan, salida.destino, {
       formato: formato.formato?.(),
+      numericas: formato.numericas,
       alAvanzar: (filas, bytes, total) =>
         avisar("escribiendo", filas, bytes, total),
     });
@@ -1204,9 +1172,9 @@ async function construirArchivoAltoVolumen(
       nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica, formato.extension),
       proposito: "anonimizado",
     });
-  } catch {
+  } catch (error) {
     await salida?.abortar();
-    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    enviar({ tipo: "error", motivo: motivoDeLaEscritura(error) });
   }
 }
 
@@ -1235,6 +1203,7 @@ async function construirArchivoJson(
       fuente,
       lecturaJson,
       tablaTransformada,
+      numericasRuidosas,
     )) {
       trozos.push(trozo);
       huellaDeSalida.actualizar(codificador.encode(trozo));
@@ -1610,6 +1579,8 @@ async function analizarDevuelto(archivo: File): Promise<void> {
   }
 
   let constructor: ConstructorColumnar | null = null;
+  // El ancho es el del ENCABEZADO: la primera fila de un lote posterior puede venir corta o larga.
+  let ancho = 0;
   let filas = 0;
   let leidos = 0;
   let proximoAviso = FILAS_POR_AVISO;
@@ -1621,13 +1592,14 @@ async function analizarDevuelto(archivo: File): Promise<void> {
       let desde = 0;
       if (!constructor) {
         constructor = new ConstructorColumnar(lote[0] ?? [], 1 << 16);
+        ancho = lote[0]?.length ?? 0;
         desde = 1;
       }
       for (let i = desde; i < lote.length; i++)
         constructor.agregarFila(lote[i]);
       filas += lote.length - desde;
       // S8: el mismo tope que a la ida; por encima, el devuelto se restaura por pasadas.
-      if (filas * (lote[0]?.length ?? 0) > TOPE_DE_CELDAS_EN_MEMORIA) {
+      if (filas * ancho > TOPE_DE_CELDAS_EN_MEMORIA) {
         constructor = null;
         await analizarDevueltoAltoVolumen(archivo);
         return;
@@ -1685,13 +1657,24 @@ async function restaurarDevuelto(): Promise<void> {
           filas: resultado.filas,
         },
       });
-    } catch {
-      enviar({ tipo: "error", motivo: "restauracion-fallida" });
+    } catch (error) {
+      // S10: una columna que no cupo y trae de la bóveda no se decide sin su diccionario.
+      enviar({
+        tipo: "error",
+        motivo:
+          error instanceof NoCabeEnAltoVolumen
+            ? error.motivo
+            : "restauracion-fallida",
+      });
     }
     return;
   }
   if (!devuelta || !bovedaActual) {
-    enviar({ tipo: "error", motivo: devuelta ? "sin-boveda" : "sin-devuelto" });
+    // Un devuelto de alto volumen también es un devuelto: sin bóveda, lo que falta es la bóveda.
+    enviar({
+      tipo: "error",
+      motivo: devuelta || devueltoAltoVolumen ? "sin-boveda" : "sin-devuelto",
+    });
     return;
   }
   avisar("restaurando", devuelta.filas, 0, 0);
@@ -1794,9 +1777,9 @@ async function construirRestaurado(asa?: FileSystemFileHandle): Promise<void> {
         nombre: `velo-restaurado-${datosDelDevuelto.sha256.slice(0, 8)}.${formato.extension}`,
         proposito: "restaurado",
       });
-    } catch {
+    } catch (error) {
       await salida?.abortar();
-      enviar({ tipo: "error", motivo: "lectura-fallida" });
+      enviar({ tipo: "error", motivo: motivoDeLaEscritura(error) });
     }
     return;
   }
@@ -1829,7 +1812,10 @@ async function construirRestaurado(asa?: FileSystemFileHandle): Promise<void> {
 
 function construirInformeDelRegreso(fecha: string, idioma: Idioma): void {
   if (!restaurada || !bovedaActual) {
-    enviar({ tipo: "error", motivo: "sin-devuelto" });
+    enviar({
+      tipo: "error",
+      motivo: restaurada ? "sin-boveda" : "sin-devuelto",
+    });
     return;
   }
   const html = construirInformeDeRestauracion({

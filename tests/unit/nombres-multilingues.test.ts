@@ -110,6 +110,34 @@ describe("palabras completas, nunca subcadenas sueltas", () => {
     );
   });
 
+  // S10: una palabra suelta que también nombra cosas no marca la columna de una cosa.
+  it.each([
+    "nom_produit",
+    "genre_film",
+    "diagnostic_moteur",
+    "server_health",
+    "health_check",
+    "infraction_contrat",
+    "server_address",
+    "Nom du fichier",
+  ])("%s no es de una persona", (nombre) => {
+    expect(buscarReglaMultilingue(nombre), nombre).toBeNull();
+  });
+
+  it.each([
+    ["nom", "identificador-directo"],
+    ["nom_client", "identificador-directo"],
+    ["genre", "cuasi-identificador"],
+    ["health", "dato-sensible"],
+    ["diagnostic_patient", "dato-sensible"],
+    ["infraction", "dato-sensible"],
+    ["billing_address", "identificador-directo"],
+    // Una palabra que no es suelta sigue contando aunque el nombre hable de una cosa.
+    ["prenom_contrat", "identificador-directo"],
+  ])("%s sigue marcando: %s", (nombre, categoria) => {
+    expect(buscarReglaMultilingue(nombre)?.categoria, nombre).toBe(categoria);
+  });
+
   it("el orden decide el empate: lo sensible gana a lo directo", () => {
     expect(buscarReglaMultilingue("religion_nom")?.categoria).toBe(
       "dato-sensible",

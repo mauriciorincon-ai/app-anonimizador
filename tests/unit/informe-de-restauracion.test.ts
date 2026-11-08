@@ -366,3 +366,29 @@ describe("el informe del regreso en cada idioma", () => {
     expect(nombreDelInforme("***.csv", "en")).toBe("velo-return-file.html");
   });
 });
+
+describe("una columna que en alto volumen no cupo dice su piso, no un total", () => {
+  it("«de al menos N valores», en los dos idiomas", () => {
+    const restauracion = restaurar(DEVUELTO, LIMPIA);
+    const conPiso = {
+      ...restauracion,
+      columnas: restauracion.columnas.map((c) =>
+        c.deLaBoveda === null
+          ? { ...c, distintos: 1_048_577, distintosAlMenos: true as const }
+          : c,
+      ),
+    };
+    const html = (idioma: "es" | "en") =>
+      construirInformeDeRestauracion({
+        archivo: { nombre: "devuelto.csv", bytes: 4096, sha256: "f".repeat(64) },
+        restauracion: conPiso,
+        huellaDeBoveda: huellaDeBoveda(LIMPIA),
+        hashDePolitica: LIMPIA.hashDePolitica,
+        fecha: FECHA,
+        idioma,
+      });
+    expect(html("es")).toMatch(/0 de al menos 1\.048\.577 valores/);
+    expect(html("en")).toMatch(/0 of at least 1,048,577 values/);
+    expect(informeDe(LIMPIA, DEVUELTO)).not.toContain("al menos");
+  });
+});

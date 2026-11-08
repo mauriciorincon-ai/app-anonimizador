@@ -19,8 +19,12 @@ import {
   ESCALERAS,
   type ClaveDeEscalera,
 } from "@/engine/jerarquias/sugerencia";
-import type { JerarquiaDeLaPolitica, Politica } from "@/engine/politica";
-import { numero, unoEn } from "@/lib/formato";
+import {
+  propiaDe,
+  type JerarquiaDeLaPolitica,
+  type Politica,
+} from "@/engine/politica";
+import { milisegundos, numero, unoEn } from "@/lib/formato";
 import type { Idioma } from "@/lib/idioma";
 import { GENERALIZACION as G } from "@/lib/idioma/textos/generalizacion";
 import {
@@ -76,12 +80,17 @@ export function ComoLlegarAlK({
   const [l, setL] = useState<number | null>(
     politica.generalizacion?.diversidad?.l ?? null,
   );
-  const jerarquias: Record<string, JerarquiaDeLaPolitica> = {};
-  for (const c of reparto)
-    jerarquias[c.nombre] =
-      (optima ? politica.generalizacion?.jerarquias[c.nombre] : undefined) ??
-      borrador[c.nombre] ??
-      ESCALERAS[escaleraSugerida(c)];
+  const jerarquias: Record<string, JerarquiaDeLaPolitica> = Object.fromEntries(
+    reparto.map((c) => [
+      c.nombre,
+      propiaDe(
+        optima ? politica.generalizacion?.jerarquias : undefined,
+        c.nombre,
+      ) ??
+        propiaDe(borrador, c.nombre) ??
+        ESCALERAS[escaleraSugerida(c)],
+    ]),
+  );
 
   /** La generalización óptima con lo que hay en pantalla. */
   function generalizacionCon(
@@ -433,6 +442,9 @@ function TablaComparada({
                     n: numero(lado.nodosRevisados, idioma),
                     total: numero(lado.nodosEnLaReticula ?? 0, idioma),
                   }),
+            )}
+            {fila(t(G.tabla.filas.tiempo), (lado) =>
+              lado.disponible ? milisegundos(lado.ms, idioma) : "—",
             )}
           </tbody>
         </table>

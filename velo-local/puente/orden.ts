@@ -8,13 +8,17 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import { abrirBoveda, EXTENSION_DE_BOVEDA, sellarBoveda } from "@/lib/boveda-archivo";
+import {
+  abrirBoveda,
+  EXTENSION_DE_BOVEDA,
+  sellarBoveda,
+} from "@/lib/boveda-archivo";
 import type { Idioma } from "@/lib/idioma";
 import { decirMensaje } from "@/lib/idioma/mensajes";
 import { formatoNumerico } from "@/lib/idioma";
 
 import { escribirNuevo } from "../archivos";
-import { anotarEnBitacora, pedidaDePolitica } from "../comun";
+import { abrirBitacoraPara, borrarEscritos, pedidaDePolitica } from "../comun";
 import { preguntar, secreto } from "../consola";
 import { fechaDelDocumento, llaveDelProyecto } from "../nucleo";
 import { ErrorDeVelo, texto, VELO_LOCAL as V } from "../textos";
@@ -46,7 +50,8 @@ async function elegirTabla(
 ): Promise<string> {
   if (!dada && process.stdin.isTTY) {
     consola.aviso(texto(V.pedir.tablas, idioma));
-    for (const t of await conexion.tablas()) consola.aviso(`  ${t.esquema}.${t.tabla}`);
+    for (const t of await conexion.tablas())
+      consola.aviso(`  ${t.esquema}.${t.tabla}`);
   }
   return preguntarSiHaceFalta(dada, V.pedir.tabla, idioma, "tablaDesconocida");
 }
@@ -57,7 +62,12 @@ export async function ordenPuente(
   consola: Consola,
   ahora: () => Date,
 ): Promise<void> {
-  const url = await secreto("VELO_DB_URL", V.pedir.conexion, idioma, "sinConexion");
+  const url = await secreto(
+    "VELO_DB_URL",
+    V.pedir.conexion,
+    idioma,
+    "sinConexion",
+  );
   const conexion = await conectar(url);
   try {
     const { esquema, tabla } = partirTabla(
@@ -70,16 +80,24 @@ export async function ordenPuente(
 
     if (args.values.restaurar) {
       if (!args.values.boveda) throw new ErrorDeVelo("sinBoveda");
-      const fraseDeBoveda = await secreto("VELO_FRASE_BOVEDA", V.pedir.fraseDeBoveda, idioma);
+      const fraseDeBoveda = await secreto(
+        "VELO_FRASE_BOVEDA",
+        V.pedir.fraseDeBoveda,
+        idioma,
+      );
       let sellada: Uint8Array;
       try {
         sellada = new Uint8Array(await readFile(args.values.boveda));
       } catch {
-        throw new ErrorDeVelo("bovedaInvalida", { detalle: args.values.boveda });
+        throw new ErrorDeVelo("bovedaInvalida", {
+          detalle: args.values.boveda,
+        });
       }
       const abierta = await abrirBoveda(sellada, fraseDeBoveda);
       if (!abierta.ok)
-        throw new ErrorDeVelo("bovedaInvalida", { detalle: decirMensaje(abierta.detalle, idioma) });
+        throw new ErrorDeVelo("bovedaInvalida", {
+          detalle: decirMensaje(abierta.detalle, idioma),
+        });
       const r = await restaurarTabla({
         conexion,
         esquema,
@@ -102,51 +120,83 @@ export async function ordenPuente(
           filas: numero.format(r.filas),
         }),
       );
+      // S10 (regla 17-bis): la tabla restaurada es tan sensible como la original, y no sale cifrada.
+      consola.aviso(
+        texto(V.puente.restauradaEnClaro, idioma, {
+          tabla: `${esquema}.${r.nombreDeLaNueva}`,
+        }),
+      );
       return;
     }
 
     const politica = await pedidaDePolitica(
-      await preguntarSiHaceFalta(args.values.politica, V.pedir.politica, idioma, "sinPolitica"),
+      await preguntarSiHaceFalta(
+        args.values.politica,
+        V.pedir.politica,
+        idioma,
+        "sinPolitica",
+      ),
     );
     consola.aviso(texto(V.aviso.fraseIrrecuperable, idioma));
     const frase = await secreto("VELO_FRASE", V.pedir.frase, idioma);
     const llave = await llaveDelProyecto(frase, args.values.sal);
     consola.aviso(texto(V.aviso.sal, idioma, { sal: llave.sal }));
-    consola.aviso(texto(V.aviso.huellaDeLlave, idioma, { huella: llave.huella }));
+    consola.aviso(
+      texto(V.aviso.huellaDeLlave, idioma, { huella: llave.huella }),
+    );
 
+    // S10: la bitácora se abre (y su frase se comprueba) antes de leer la tabla.
+    const bitacora = args.values.bitacora
+      ? await abrirBitacoraPara(args.values.bitacora, idioma)
+      : null;
     const escritos: string[] = [];
-    const r = await anonimizarTabla({
-      conexion,
-      esquema,
-      tabla,
-      idioma,
-      fecha,
-      reemplazar: args.values.reemplazar ?? false,
-      politica,
-      llave,
-      antesDeConfirmar: async (resultado) => {
-        // Antes del COMMIT: un archivo que ya existe hace ROLLBACK y no queda una tabla huérfana.
-        const rutaDelCertificado = join(
-          carpeta,
-          (await import("@/engine/reporte")).nombreDelCertificado(`${esquema}-${tabla}`, idioma),
-        );
-        await escribirNuevo(rutaDelCertificado, resultado.certificado);
-        escritos.push(rutaDelCertificado);
-        if (resultado.boveda) {
-          const fraseDeBoveda = await secreto("VELO_FRASE_BOVEDA", V.pedir.fraseDeBoveda, idioma);
-          const rutaDeBoveda = join(
+    let r;
+    try {
+      r = await anonimizarTabla({
+        conexion,
+        esquema,
+        tabla,
+        idioma,
+        fecha,
+        reemplazar: args.values.reemplazar ?? false,
+        politica,
+        llave,
+        antesDeConfirmar: async (resultado) => {
+          // Antes del COMMIT: un archivo que ya existe hace ROLLBACK y no queda una tabla huérfana.
+          // S10: la frase de la bóveda se pide antes del primer archivo; lo escrito se borra si algo falla.
+          const fraseDeBoveda = resultado.boveda
+            ? await secreto("VELO_FRASE_BOVEDA", V.pedir.fraseDeBoveda, idioma)
+            : null;
+          const rutaDelCertificado = join(
             carpeta,
-            `velo-boveda-${resultado.hashDePolitica.slice(0, 8)}${EXTENSION_DE_BOVEDA}`,
+            (await import("@/engine/reporte")).nombreDelCertificado(
+              `${esquema}-${tabla}`,
+              idioma,
+            ),
           );
-          await escribirNuevo(rutaDeBoveda, await sellarBoveda(resultado.boveda, fraseDeBoveda));
-          escritos.push(rutaDeBoveda);
-        }
-        if (args.values.bitacora) {
-          await anotarEnBitacora(args.values.bitacora, resultado.entrada, idioma);
-          escritos.push(args.values.bitacora);
-        }
-      },
-    });
+          await escribirNuevo(rutaDelCertificado, resultado.certificado);
+          escritos.push(rutaDelCertificado);
+          if (resultado.boveda && fraseDeBoveda !== null) {
+            const rutaDeBoveda = join(
+              carpeta,
+              `velo-boveda-${resultado.hashDePolitica.slice(0, 8)}${EXTENSION_DE_BOVEDA}`,
+            );
+            await escribirNuevo(
+              rutaDeBoveda,
+              await sellarBoveda(resultado.boveda, fraseDeBoveda),
+            );
+            escritos.push(rutaDeBoveda);
+          }
+          await bitacora?.anotar(resultado.entrada);
+        },
+      });
+    } catch (error) {
+      // El ROLLBACK ya quitó la tabla: el certificado y la bóveda de una tabla que no existe, tampoco.
+      await borrarEscritos(escritos);
+      await bitacora?.deshacer();
+      throw error;
+    }
+    if (args.values.bitacora) escritos.push(args.values.bitacora);
     consola.salida(
       texto(V.puente.tablaEscrita, idioma, {
         tabla: `${esquema}.${r.nombreDeLaNueva}`,
@@ -154,8 +204,10 @@ export async function ordenPuente(
         huella: r.huellaDeOrigen.sha256,
       }),
     );
-    for (const ruta of escritos) consola.salida(texto(V.resultado.escrito, idioma, { ruta }));
-    if (!r.resultado.boveda) consola.aviso(texto(V.resultado.sinBoveda, idioma));
+    for (const ruta of escritos)
+      consola.salida(texto(V.resultado.escrito, idioma, { ruta }));
+    if (!r.resultado.boveda)
+      consola.aviso(texto(V.resultado.sinBoveda, idioma));
     consola.salida(
       texto(V.resultado.huellas, idioma, {
         entrada: r.huellaDeOrigen.sha256,
@@ -164,12 +216,14 @@ export async function ordenPuente(
     );
     consola.salida(
       texto(V.resultado.riesgo, idioma, {
-        antes: formatoNumerico(idioma, { style: "percent", maximumFractionDigits: 1 }).format(
-          r.resultado.unicosAntes,
-        ),
-        despues: formatoNumerico(idioma, { style: "percent", maximumFractionDigits: 1 }).format(
-          r.resultado.unicosDespues,
-        ),
+        antes: formatoNumerico(idioma, {
+          style: "percent",
+          maximumFractionDigits: 1,
+        }).format(r.resultado.unicosAntes),
+        despues: formatoNumerico(idioma, {
+          style: "percent",
+          maximumFractionDigits: 1,
+        }).format(r.resultado.unicosDespues),
       }),
     );
     consola.aviso(texto(V.puente.nota, idioma));

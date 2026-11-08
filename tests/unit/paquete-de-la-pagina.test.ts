@@ -81,6 +81,21 @@ describe("la página no importa lo que solo corre en el worker", () => {
     expect(culpables).toEqual([]);
   });
 
+  it("ningún archivo de la página importa, como valor, el constructor de documentos: se carga al pedirlo (S10)", () => {
+    // `@/engine/reporte` arrastra el catálogo de documentos entero (~21 KB comprimidos, en dos
+    // idiomas) y solo hace falta al descargar o ver el documento: con `import()` en el manejador, no
+    // entra al paquete de `/diagnostico`, que medía 346 KiB contra un margen de 330.
+    const culpables: string[] = [];
+    for (const ruta of rutas) {
+      for (const origen of importacionesDeValor(readFileSync(ruta, "utf8"))) {
+        if (origen === "@/engine/reporte") {
+          culpables.push(`${ruta.slice(process.cwd().length + 1)} → ${origen}`);
+        }
+      }
+    }
+    expect(culpables).toEqual([]);
+  });
+
   it("el gate se prueba a sí mismo: ve un import de valor y deja pasar uno de tipo", () => {
     expect(
       importacionesDeValor(

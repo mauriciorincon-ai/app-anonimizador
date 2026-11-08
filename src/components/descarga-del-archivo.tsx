@@ -45,6 +45,7 @@ export function DescargaDelArchivo({
   altoVolumen = false,
   enDisco = null,
   onElegirDestino,
+  escrituraFallida = false,
 }: {
   archivo: AsaDeArchivo | null;
   preparando: boolean;
@@ -61,6 +62,8 @@ export function DescargaDelArchivo({
   enDisco?: { readonly nombre: string; readonly bytes: number } | null;
   /** S8: abre el selector del sistema. Ausente donde el navegador no lo tiene. */
   onElegirDestino?: () => void;
+  /** S10: el último intento de escribir falló; el botón sigue para reintentar. */
+  escrituraFallida?: boolean;
 }) {
   const { t, idioma } = useT();
   return (
@@ -117,6 +120,19 @@ export function DescargaDelArchivo({
           <Rico
             texto={onElegirDestino ? E.elegirDestinoNota : E.enMemoriaNota}
           />
+        </p>
+      ) : null}
+
+      {escrituraFallida && archivo === null && enDisco === null ? (
+        // El símbolo, la palabra y el color juntos: el color nunca va solo.
+        <p
+          role="alert"
+          className="text-alerta mt-3 text-[0.875rem] leading-relaxed"
+        >
+          <span aria-hidden="true" className="mr-1.5">
+            ⚠
+          </span>
+          <Rico texto={E.escrituraFallida} />
         </p>
       ) : null}
 

@@ -530,7 +530,9 @@ describe("bloques rotos u hostiles", () => {
     const t = unir([0x4d, 0x4d, 0, 0x2a, 0, 0, 0, 8], entradas);
     const inicio = performance.now();
     const l = leerExif(t);
-    expect(performance.now() - inicio).toBeLessThan(500);
+    // 2 s y no 500 ms: con cobertura y la suite entera en paralelo en la CI un recorrido de 115 ms locales
+    // tardó 621 ms (S7). El tope sigue separando un recorrido lineal de uno que trabaja de más.
+    expect(performance.now() - inicio).toBeLessThan(2_000);
     expect(l.incompleto).toBe(true);
     expect(l.campos).toEqual([]);
     expect(MAXIMO_DE_ENTRADAS).toBe(4096);

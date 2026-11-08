@@ -6,7 +6,13 @@
 // se prueba el cableado: que cada componente los pida con el idioma de la pantalla y con los datos
 // crudos que corresponden.
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fijarIdioma } from "@/lib/idioma/estado";
@@ -51,6 +57,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   archivo: null,
   archivoEnDisco: null,
   huellaDeSalida: null,
+  escrituraFallida: false,
   boveda: { fase: "sin-sellar" },
   archivoDeBoveda: null,
   estimacion: null,
@@ -428,8 +435,9 @@ describe("el certificado", () => {
     suprimidas: [],
   } as never;
 
-  it("recibe el idioma de la pantalla y la fecha con su convención", () => {
-    vi.useFakeTimers();
+  it("recibe el idioma de la pantalla y la fecha con su convención", async () => {
+    // Solo la fecha: el módulo del constructor se carga con `import()` y necesita los temporizadores.
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-03-04T15:30:00Z"));
     fijarIdioma("en");
     render(
@@ -444,10 +452,13 @@ describe("el certificado", () => {
         huellaDeSalida="beef"
       />,
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Preview before downloading" }),
-    );
-    expect(construirReporte).toHaveBeenCalledOnce();
+    // El constructor se carga al pedirlo (S10): la vista previa llega después de una espera.
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Preview before downloading" }),
+      );
+    });
+    await waitFor(() => expect(construirReporte).toHaveBeenCalledOnce());
     const datos = construirReporte.mock.calls[0]![0] as {
       idioma: string;
       fecha: string;
@@ -457,8 +468,9 @@ describe("el certificado", () => {
     expect(datos.fecha).not.toMatch(/marzo/);
   });
 
-  it("y en español, el idioma y la fecha en español", () => {
-    vi.useFakeTimers();
+  it("y en español, el idioma y la fecha en español", async () => {
+    // Solo la fecha: el módulo del constructor se carga con `import()` y necesita los temporizadores.
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-03-04T15:30:00Z"));
     render(
       <DescargaDelCertificado
@@ -472,9 +484,12 @@ describe("el certificado", () => {
         huellaDeSalida="beef"
       />,
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Ver antes de descargar" }),
-    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Ver antes de descargar" }),
+      );
+    });
+    await waitFor(() => expect(construirReporte).toHaveBeenCalled());
     const datos = construirReporte.mock.calls[0]![0] as {
       idioma: string;
       fecha: string;
@@ -483,7 +498,7 @@ describe("el certificado", () => {
     expect(datos.fecha).toMatch(/marzo/);
   });
 
-  it("la vista previa abierta se regenera al cambiar de idioma: no enseña un idioma y descarga otro", () => {
+  it("la vista previa abierta se regenera al cambiar de idioma: no enseña un idioma y descarga otro", async () => {
     construirReporte.mockImplementation(
       (datos) => `<html lang="${(datos as { idioma: string }).idioma}"></html>`,
     );
@@ -499,21 +514,91 @@ describe("el certificado", () => {
         huellaDeSalida="beef"
       />,
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Ver antes de descargar" }),
-    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Ver antes de descargar" }),
+      );
+    });
     const marco = () => document.querySelector("iframe");
-    expect(marco()?.getAttribute("srcdoc")).toBe('<html lang="es"></html>');
+    await waitFor(() =>
+      expect(marco()?.getAttribute("srcdoc")).toBe('<html lang="es"></html>'),
+    );
 
-    act(() => fijarIdioma("en"));
-    expect(marco()?.getAttribute("srcdoc")).toBe('<html lang="en"></html>');
+    await act(async () => fijarIdioma("en"));
+    await waitFor(() =>
+      expect(marco()?.getAttribute("srcdoc")).toBe('<html lang="en"></html>'),
+    );
     // Sigue abierta: cambiar de idioma no la cierra, la repinta.
     expect(
       screen.getByRole("button", { name: "Close the preview" }),
     ).toHaveAttribute("aria-expanded", "true");
 
-    act(() => fijarIdioma("es"));
-    expect(marco()?.getAttribute("srcdoc")).toBe('<html lang="es"></html>');
+    await act(async () => fijarIdioma("es"));
+    await waitFor(() =>
+      expect(marco()?.getAttribute("srcdoc")).toBe('<html lang="es"></html>'),
+    );
+  });
+
+  const ARCHIVO = {
+    nombre: "velo-anonimizado-abc.csv",
+    bytes: 5,
+    url: "blob:x",
+  };
+
+  it("si el documento no se puede armar, lo dice y la vista no queda vacía en silencio (S10)", async () => {
+    construirReporte.mockImplementation(() => {
+      throw new Error("el módulo no cargó");
+    });
+    render(
+      <DescargaDelCertificado
+        informe={INFORME}
+        tratamiento={TRATAMIENTO}
+        archivo={ARCHIVO}
+        huellaDeSalida="beef"
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Ver antes de descargar" }),
+      );
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No se pudo armar el documento",
+    );
+    expect(document.querySelector("iframe")).toBeNull();
+  });
+
+  it("cerrar la vista mientras se arma no deja un documento viejo para la próxima apertura (S10)", async () => {
+    render(
+      <DescargaDelCertificado
+        informe={INFORME}
+        tratamiento={TRATAMIENTO}
+        archivo={ARCHIVO}
+        huellaDeSalida="beef"
+      />,
+    );
+    // Dos actos síncronos: el documento aún se está armando (el módulo se carga con `import()`).
+    act(() => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Ver antes de descargar" }),
+      );
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Cerrar la vista" }));
+    });
+    // Llega el documento de la apertura que ya se cerró.
+    await waitFor(() => expect(construirReporte).toHaveBeenCalled());
+    await act(async () => {});
+    // Al reabrir, hasta que su propio documento llegue, no se enseña el viejo.
+    act(() => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Ver antes de descargar" }),
+      );
+    });
+    expect(document.querySelector("iframe")).toBeNull();
+    await waitFor(() =>
+      expect(document.querySelector("iframe")).not.toBeNull(),
+    );
   });
 
   it("antes del archivo no hay certificado, y lo dice en inglés", () => {

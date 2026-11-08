@@ -525,6 +525,11 @@ describe("cada salvedad se escribe, y dice lo suyo", () => {
           columna: "nit_empresa",
           cuantas: 1,
         },
+        {
+          gravedad: "matiza",
+          tipo: "colisiones-sin-medir",
+          columnas: ["cedula_titular"],
+        },
       ],
     },
     utilidad: medirUtilidad(
@@ -555,6 +560,11 @@ describe("cada salvedad se escribe, y dice lo suyo", () => {
   it("cuenta la gente de las clases homogéneas, no las clases", () => {
     expect(seccion).toContain("<b>37</b> registros están en grupos");
     expect(seccion).toContain("<code>diagnostico</code>");
+  });
+
+  it("dice qué columnas quedaron con las colisiones sin contar (alto volumen)", () => {
+    expect(seccion).toContain("No se contaron las colisiones");
+    expect(seccion).toContain("<code>cedula_titular</code>");
   });
 
   it("concuerda el singular de las colisiones", () => {
@@ -610,7 +620,7 @@ describe("cada salvedad se escribe, y dice lo suyo", () => {
       seccion.indexOf("s-matiza"),
     );
     expect(seccion.split("s-descalifica").length - 1).toBe(4);
-    expect(seccion.split("s-matiza").length - 1).toBe(2);
+    expect(seccion.split("s-matiza").length - 1).toBe(3);
   });
 });
 
@@ -1051,6 +1061,31 @@ describe("el ruido con garantía en el certificado (S7)", () => {
     const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);
     return { ...datos, tratamiento: { ...datos.tratamiento!, privacidad } };
   }
+
+  it("S10: una columna con ruido trae su error medio, y una nota dice qué no miden los bits", async () => {
+    const { datos } = await reporteConTratamiento({
+      ...CON_CEDULA_INTACTA,
+      reglas: [
+        ...CON_CEDULA_INTACTA.reglas,
+        { columna: "celular", tecnica: { tipo: "enmascarar" } },
+      ],
+    });
+    const utilidad = datos.tratamiento!.utilidad!;
+    const tocada = utilidad.columnas.find((c) => c.estado === "transformada")!;
+    const conError = {
+      ...utilidad,
+      columnas: utilidad.columnas.map((c) =>
+        c === tocada ? { ...c, errorMedioAbsoluto: 246_012.345 } : c,
+      ),
+    };
+    const html = construirReporte({
+      ...datos,
+      tratamiento: { ...datos.tratamiento!, utilidad: conError },
+    });
+    expect(html).toContain("error medio ±246.012,35");
+    expect(html).toContain("los bits no dicen cuánto se movió cada número");
+    expect(construirReporte(datos)).not.toContain("error medio ±");
+  });
 
   it("sin ruido no hay sección: el certificado del S6 no cambia", async () => {
     const { datos } = await reporteConTratamiento(CON_CEDULA_INTACTA);

@@ -39,6 +39,33 @@ export interface TablaColumnar {
 
 const CAPACIDAD_INICIAL = 1024;
 
+/**
+ * El mismo texto, en memoria propia (S10). PapaParse corta cada celda del trozo de 10 MB con
+ * `substring`, y V8 guarda un corte de 13 caracteres o más como una REFERENCIA al trozo entero
+ * (`SlicedString`): un solo valor que entra al diccionario mantiene vivos los 10 MB de los que
+ * salió. Con una columna casi única de valores largos (una IP, un correo) cada trozo deja uno, y el
+ * diccionario acaba reteniendo el archivo entero: medido con el CSV de 5 M de filas, era el grueso
+ * del pico de memoria. Concatenar obliga a V8 a copiar el texto a una cadena plana nueva, y el
+ * corte de esa copia solo retiene la copia. Se paga una vez por valor DISTINTO, no por celda; el
+ * contenido no cambia, así que los bytes de salida tampoco.
+ */
+export function desprendida(valor: string): string {
+  return (" " + valor).slice(1);
+}
+
+/**
+ * Una columna con más valores distintos que los que se le permiten (S10). El alto volumen arma
+ * tablas enteras de millones de filas, y un `Map` de V8 no pasa de 2²⁴ entradas: por encima lanza un
+ * `RangeError` sin decir cuál. Con el tope dicho de antemano, la pasada sabe qué no cupo y lo dice
+ * con su clave, en vez de caerse con un error genérico.
+ */
+export class SinCupo extends Error {
+  constructor(readonly tope: number) {
+    super("sin-cupo");
+    this.name = "SinCupo";
+  }
+}
+
 class AcumuladorDeColumna {
   readonly nombre: string;
   private codigos: Uint32Array;
@@ -47,7 +74,11 @@ class AcumuladorDeColumna {
   private longitud = 0;
   private noVacios = 0;
 
-  constructor(nombre: string, capacidad: number) {
+  constructor(
+    nombre: string,
+    capacidad: number,
+    private readonly distintosMaximos: number,
+  ) {
     this.nombre = nombre;
     this.codigos = new Uint32Array(Math.max(capacidad, CAPACIDAD_INICIAL));
   }
@@ -62,9 +93,13 @@ class AcumuladorDeColumna {
     }
     let codigo = this.indice.get(valor);
     if (codigo === undefined) {
+      // `valores[0]` es el vacío: los distintos con contenido son `valores.length - 1`.
+      if (this.valores.length > this.distintosMaximos)
+        throw new SinCupo(this.distintosMaximos);
+      const propio = desprendida(valor);
       codigo = this.valores.length;
-      this.valores.push(valor);
-      this.indice.set(valor, codigo);
+      this.valores.push(propio);
+      this.indice.set(propio, codigo);
     }
     if (codigo !== CODIGO_VACIO) this.noVacios++;
     this.codigos[this.longitud++] = codigo;
@@ -102,13 +137,22 @@ export class ConstructorColumnar {
   private readonly acumuladores: AcumuladorDeColumna[];
   private filas = 0;
 
+  /**
+   * `distintosMaximos`: valores distintos (sin contar el vacío) que admite cada columna; uno más
+   * lanza `SinCupo`. Sin él no hay tope: en memoria lo pone antes el de celdas.
+   */
   constructor(
     nombresDeColumna: readonly string[],
     filasEstimadas = CAPACIDAD_INICIAL,
+    distintosMaximos = Number.POSITIVE_INFINITY,
   ) {
     this.acumuladores = nombresDeColumna.map(
       (nombre, i) =>
-        new AcumuladorDeColumna(nombre || `columna_${i + 1}`, filasEstimadas),
+        new AcumuladorDeColumna(
+          nombre || `columna_${i + 1}`,
+          filasEstimadas,
+          distintosMaximos,
+        ),
     );
   }
 
@@ -166,9 +210,10 @@ class AcumuladorDisperso {
   poner(fila: number, valor: string, clase: number): void {
     let codigo = this.indice.get(valor);
     if (codigo === undefined) {
+      const propio = desprendida(valor);
       codigo = this.valores.length;
-      this.valores.push(valor);
-      this.indice.set(valor, codigo);
+      this.valores.push(propio);
+      this.indice.set(propio, codigo);
     }
     if (codigo !== CODIGO_VACIO) this.noVacios++;
     this.codigos[fila] = codigo;
@@ -227,7 +272,9 @@ export class ConstructorColumnarDisperso {
 
   /** Descubre una columna: las filas ya cerradas quedan vacías y «ausentes». Devuelve su índice. */
   agregarColumna(nombre: string, ruta: readonly string[]): number {
-    this.acumuladores.push(new AcumuladorDisperso(nombre, ruta, this.capacidad));
+    this.acumuladores.push(
+      new AcumuladorDisperso(nombre, ruta, this.capacidad),
+    );
     return this.acumuladores.length - 1;
   }
 
@@ -242,7 +289,10 @@ export class ConstructorColumnarDisperso {
     const tope = Math.floor(
       this.celdasMaximas / Math.max(1, this.acumuladores.length),
     );
-    const nueva = Math.max(this.capacidad + 1, Math.min(this.capacidad * 2, tope));
+    const nueva = Math.max(
+      this.capacidad + 1,
+      Math.min(this.capacidad * 2, tope),
+    );
     for (const a of this.acumuladores) a.crecer(nueva);
     this.capacidad = nueva;
   }
@@ -251,7 +301,9 @@ export class ConstructorColumnarDisperso {
     const columnas: ColumnaColumnar[] = [];
     const clases: Uint8Array[] = [];
     for (const acumulador of this.acumuladores) {
-      const { columna, clases: clasesDeLaColumna } = acumulador.finalizar(this.filas);
+      const { columna, clases: clasesDeLaColumna } = acumulador.finalizar(
+        this.filas,
+      );
       columnas.push(columna);
       clases.push(clasesDeLaColumna);
     }
@@ -305,7 +357,13 @@ export function reconstruirColumna(
   // no gana la propiedad, así que su forma sigue siendo la de siempre.
   return original.ruta === undefined
     ? { nombre: original.nombre, codigos, valores, noVacios }
-    : { nombre: original.nombre, ruta: original.ruta, codigos, valores, noVacios };
+    : {
+        nombre: original.nombre,
+        ruta: original.ruta,
+        codigos,
+        valores,
+        noVacios,
+      };
 }
 
 /** Valor de una celda por (columna, fila). */

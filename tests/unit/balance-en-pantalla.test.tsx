@@ -108,6 +108,30 @@ describe("«riesgo reducido 96 %» con una cédula intacta al lado", () => {
   });
 });
 
+describe("S10: colisiones sin contar en alto volumen", () => {
+  it("nombra las columnas y se pinta como salvedad que matiza", () => {
+    render(
+      <BalanceEnPantalla
+        balance={{
+          ...LIMPIO,
+          esTitular: true,
+          salvedades: [
+            {
+              gravedad: "matiza",
+              tipo: "colisiones-sin-medir",
+              columnas: ["cedula_titular", "nit_empresa"],
+            },
+          ],
+        }}
+      />,
+    );
+    const lista = screen.getByTestId("salvedades");
+    expect(lista.textContent).toContain("Colisiones sin contar");
+    expect(lista.textContent).toContain("cedula_titular · nit_empresa");
+    expect(lista.querySelector("li")!.className).toContain("border-aviso");
+  });
+});
+
 describe("el complemento: cuando nada la descalifica", () => {
   it("la cifra sí se luce", () => {
     // Sin este test, un componente que jamás pintara el titular pasaría los de arriba.

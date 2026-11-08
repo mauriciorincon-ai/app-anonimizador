@@ -248,6 +248,12 @@ export type MotivoDeError =
    */
   | "formato-no-coincide"
   | "lectura-fallida"
+  /**
+   * S10: falló ESCRIBIR el archivo de salida (el disco se llenó, se retiró el permiso del archivo
+   * elegido, no cupo el `Blob`), no leer el de entrada. No tumba nada: la transformación o la
+   * restauración siguen hechas, con su política y su llave, y se puede volver a preparar.
+   */
+  | "escritura-fallida"
   | "sin-tabla"
   | "sin-llave"
   | "transformacion-fallida"
@@ -259,6 +265,8 @@ export type MotivoDeError =
   | MotivoDeMetadatos
   | "pdf-excede-tope"
   | "imagen-excede-tope"
+  /** La página cortó una limpieza que pasó de su límite de reloj: terminó el worker, no el archivo. */
+  | "tiempo-agotado"
   /**
    * S8: lo que el alto volumen no puede hacer con este archivo, y lo dice en vez de estimar o de
    * escribir a medias: más combinaciones de cuasi-identificadores que las que el riesgo exacto

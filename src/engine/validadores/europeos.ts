@@ -30,6 +30,56 @@ function digitosDe(cadena: string): number[] {
   return [...cadena].map(Number);
 }
 
+// ── Claves nacionales dentro del BBAN de un IBAN (S10) ────────────────────────────────────────
+/**
+ * Los dos dígitos de control del CCC español dentro del BBAN: el primero sobre «00» + banco + oficina
+ * y el segundo sobre la cuenta, con los pesos 1-2-4-8-5-10-9-7-3-6 y el resto a 11 (11 → 0, 10 → 1).
+ * El BBAN español es banco (4) · oficina (4) · control (2) · cuenta (10).
+ *
+ * Verificado contra el ejemplo del registro IBAN, ES91 2100 0418 4502 0005 1332: banco 2100, oficina
+ * 0418, cuenta 0200051332 → control «45». La fuente oficial (Banco de España) no se abrió: el
+ * algoritmo es el publicado y el ejemplo lo comprueba.
+ */
+const PESOS_DEL_CCC = [1, 2, 4, 8, 5, 10, 9, 7, 3, 6];
+
+function digitoDelCcc(diez: string): number {
+  let suma = 0;
+  for (let i = 0; i < 10; i++) suma += Number(diez[i]) * PESOS_DEL_CCC[i];
+  const resto = 11 - (suma % 11);
+  return resto === 11 ? 0 : resto === 10 ? 1 : resto;
+}
+
+/** Los dos dígitos de control del CCC (banco 4 + oficina 4, cuenta 10), como cadena de dos cifras. */
+export function controlDelCcc(bancoYOficina: string, cuenta: string): string {
+  return `${digitoDelCcc(`00${bancoYOficina}`)}${digitoDelCcc(cuenta)}`;
+}
+
+/**
+ * La clave del RIB francés: 97 − ((89 × banco + 15 × agencia + 3 × cuenta) módulo 97), con las
+ * letras de la cuenta cambiadas por cifras (A–I → 1–9, J–R → 1–9, S–Z → 2–9). El BBAN francés es
+ * banco (5) · agencia (5) · cuenta (11, alfanumérica) · clave (2).
+ *
+ * Verificado contra el ejemplo del registro IBAN, FR14 2004 1010 0505 0001 3M02 606: banco 20041,
+ * agencia 01005, cuenta 0500013M026 → clave «06». La fuente oficial (Banque de France) no se abrió.
+ * El producto cabe en un entero seguro de JS (< 2⁵³) solo si se reduce antes: se hace módulo 97 por
+ * partes.
+ */
+export function claveDelRib(
+  banco: string,
+  agencia: string,
+  cuenta: string,
+): number {
+  const cifras = cuenta.toUpperCase().replace(/[A-Z]/g, (letra) => {
+    const i = letra.charCodeAt(0) - 65;
+    return String(i < 9 ? i + 1 : i < 18 ? i - 8 : i - 16);
+  });
+  const modulo = (texto: string) =>
+    [...texto].reduce((r, c) => (r * 10 + Number(c)) % 97, 0);
+  return (
+    97 - ((89 * modulo(banco) + 15 * modulo(agencia) + 3 * modulo(cifras)) % 97)
+  );
+}
+
 // ── España: DNI y NIE ─────────────────────────────────────────────────────────────────────────
 /**
  * Letra de control del DNI y del NIE: el número módulo 23 indexa esta tabla.
@@ -285,7 +335,9 @@ export function cumpleSteuerIdNr(valor: string): boolean {
  * ejemplo 123456782 (suma 154 = 11 × 14); y RvIG, UC 27 «Genereren nummers». No se abrieron
  * rijksoverheid.nl ni la Belastingdienst, y hay un solo ejemplo oficial. Las fuentes abiertas no
  * excluyen el 000000000: rechazarlo es decisión de Velo, porque pasa la prueba sin ser un número
- * que se asigne. Un BSN de 8 cifras (al que el registro antepone un cero) no se reconoce.
+ * que se asigne. Un BSN de 8 cifras se lee con un cero a la izquierda (así lo antepone el registro,
+ * y una hoja de cálculo se lo come): se comprueba el de 9. Un número de 8 cifras cualquiera lo
+ * pasa por azar una de cada 11 veces (~9 %), muy por debajo del 85 % que adjudica una columna.
  */
 export function sumaDelBsn(nueve: readonly number[]): number {
   return nueve.reduce(
@@ -295,8 +347,9 @@ export function sumaDelBsn(nueve: readonly number[]): number {
 }
 
 export function cumpleBsn(valor: string): boolean {
-  const limpio = sinSeparadores(valor);
-  if (!/^\d{9}$/.test(limpio)) return false;
+  const sinCero = sinSeparadores(valor);
+  if (!/^\d{8,9}$/.test(sinCero)) return false;
+  const limpio = sinCero.padStart(9, "0");
   // Todo ceros pasa la prueba del 11 (la suma es 0) y no es un número que se asigne.
   if (/^0+$/.test(limpio)) return false;
   return sumaDelBsn(digitosDe(limpio)) % 11 === 0;

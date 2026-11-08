@@ -492,6 +492,10 @@ function itemDeSalvedad(salvedad: Salvedad, idioma: Idioma): string {
           filas: salvedad.filas,
           atributo: salvedad.atributo,
         });
+      case "colisiones-sin-medir":
+        return h(S.colisionesSinMedir, idioma, {
+          lista_html: listaDeCodigo(salvedad.columnas),
+        });
       case "colisiones-de-seudonimo":
         return h(
           plural(salvedad.cuantas, S.colisionesUna, S.colisionesVarias),
@@ -758,7 +762,8 @@ function seccionDelRgpd(rgpd: InformeDelRgpd, idioma: Idioma): string {
     );
   }
   bloques.push(`<p>${h(R.suprimido, idioma)}</p>`);
-  if (rgpd.editada) bloques.push(`<p class="por-que">${h(R.editada, idioma)}</p>`);
+  if (rgpd.editada)
+    bloques.push(`<p class="por-que">${h(R.editada, idioma)}</p>`);
   return `<section>
 <p class="etiqueta">${h(R.etiqueta, idioma)}</p>
 <h2>${h(R.titulo, idioma)}</h2>
@@ -786,11 +791,18 @@ function seccionDeUtilidad(utilidad: Utilidad | null, idioma: Idioma): string {
           ? `<b>${h(U.suprimida, idioma)}</b>`
           : `${numero(columna.cardinalidadAntes, idioma)} → <b>${numero(columna.cardinalidadDespues, idioma)}</b>`
       }</td>
-<td>${decimales(columna.bitsAntes, 1, idioma)} → <b>${decimales(columna.bitsDespues, 1, idioma)}</b> ${h(U.bits, idioma)}</td>
+<td>${decimales(columna.bitsAntes, 1, idioma)} → <b>${decimales(columna.bitsDespues, 1, idioma)}</b> ${h(U.bits, idioma)}${
+        columna.errorMedioAbsoluto !== undefined
+          ? `<br><small>${h(U.errorMedio, idioma, {
+              valor: decimales(columna.errorMedioAbsoluto, 2, idioma),
+            })}</small>`
+          : ""
+      }</td>
 <td>${porcentaje(columna.celdasCambiadas, idioma)}</td>
 </tr>`,
     )
     .join("");
+  const conError = perdidas.some((c) => c.errorMedioAbsoluto !== undefined);
 
   const cruces = utilidad.correlaciones
     .slice(0, 8)
@@ -823,7 +835,12 @@ ${
   filas
     ? `<table style="margin-top:16px">
 <thead><tr><th>${h(U.columna, idioma)}</th><th>${h(U.valoresDistintos, idioma)}</th><th>${h(U.informacion, idioma)}</th><th>${h(U.celdasCambiadas, idioma)}</th></tr></thead>
-<tbody>${filas}</tbody></table>`
+<tbody>${filas}</tbody></table>${
+        conError
+          ? `
+<p class="por-que" style="margin-top:14px">${h(U.errorMedioNota, idioma)}</p>`
+          : ""
+      }`
     : `<p class="por-que" style="margin-top:14px">${h(U.ningunaCambio, idioma)}</p>`
 }
 ${
@@ -1121,7 +1138,7 @@ function filaDeColumnaRestaurada(
 <td>${
     columna.deLaBoveda === null
       ? `<span class="alerta">${h(R.noReconocida, idioma)}</span> <small>${h(
-          R.valoresDeTotal,
+          columna.distintosAlMenos ? R.valoresDeAlMenos : R.valoresDeTotal,
           idioma,
           {
             n: columna.coincidencias,

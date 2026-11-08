@@ -24,6 +24,25 @@ const boton = (page: Page, nombre: "Español" | "English") =>
 
 const lang = (page: Page) => page.evaluate(() => document.documentElement.lang);
 
+// Sin `networkidle` (frágil: depende de un reloj de 500 ms que Playwright desaconseja): la red está
+// quieta cuando el contador de peticiones no se mueve durante dos lecturas separadas por 400 ms.
+async function esperarRedQuieta(page: Page): Promise<void> {
+  let vistas = 0;
+  page.on("request", () => (vistas += 1));
+  let anterior = -1;
+  await expect
+    .poll(
+      async () => {
+        const iguales = vistas === anterior;
+        anterior = vistas;
+        await page.waitForTimeout(400);
+        return iguales;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+}
+
 test("arranca en español cuando el navegador está en español", async ({
   page,
 }) => {
@@ -117,6 +136,9 @@ test("el idioma sobrevive a navegar entre pantallas", async ({ page }) => {
   await expect(page.getByText(LEMA_EN)).toBeVisible();
   await expect(boton(page, "English")).toHaveAttribute("aria-pressed", "true");
   expect(await lang(page)).toBe("en-US");
+  await expect(page).toHaveTitle(COMUN.documento.titulo.en);
+  await boton(page, "Español").click();
+  await expect(page).toHaveTitle(COMUN.documento.titulo.es);
 });
 
 test("cambiar de idioma no abre ninguna conexión", async ({ page }) => {
@@ -124,7 +146,7 @@ test("cambiar de idioma no abre ninguna conexión", async ({ page }) => {
   // Next, en producción, precarga los enlaces propios cuando entran en pantalla (el logo es un
   // <Link href="/">): son peticiones al propio origen que ocurren al cargar, no al cambiar de
   // idioma. Se espera a que la red se asiente ANTES de escuchar; lo que se vigila es el cambio.
-  await page.waitForLoadState("networkidle");
+  await esperarRedQuieta(page);
   const peticiones: string[] = [];
   page.on("request", (r) => peticiones.push(r.url()));
   await boton(page, "English").click();
@@ -132,7 +154,7 @@ test("cambiar de idioma no abre ninguna conexión", async ({ page }) => {
   await boton(page, "Español").click();
   await expect(page.getByText(LEMA_ES)).toBeVisible();
   // Y se le da tiempo a una petición tardía de aparecer: callar a destiempo no es no haber pedido.
-  await page.waitForLoadState("networkidle");
+  await esperarRedQuieta(page);
   expect(peticiones).toEqual([]);
 });
 

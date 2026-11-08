@@ -17,10 +17,9 @@
 import { ConstructorColumnar, type ColumnaColumnar } from "../columnar";
 import type { Tecnica } from "../politica";
 import { serializarCanonico } from "../serializacion";
-import { AzarSembrado, semillaDeCelda, TOPE_UNIFORME } from "./azar";
+import { AzarSembrado, semillaDeCelda } from "./azar";
 import {
   DOS_A_LA_32,
-  EPSILONES,
   epsilonEfectivo,
   laplaceDiscreto,
   pesoDelAzar,
@@ -32,9 +31,9 @@ export type TecnicaDeRuido = Extract<
   { tipo: "laplace" | "respuesta-aleatorizada" | "perturbar" }
 >;
 
-import { DOMINIO_MAXIMO } from "./limites";
+import { aUnidades, DOMINIO_MAXIMO, escalaDelLaplace, NUMERO } from "./limites";
 
-export { DOMINIO_MAXIMO };
+export { aUnidades, DOMINIO_MAXIMO, escalaDelLaplace };
 
 /** Lo que se aplicó a una columna, para la pantalla, el certificado y la bitácora. */
 export interface InformeDeRuido {
@@ -63,21 +62,6 @@ export interface InformeDeRuido {
 
 // ── Números exactos en una rejilla decimal ─────────────────────────────────────────────────────
 
-const NUMERO = /^(-?)(\d+)(?:[.,](\d+))?$/;
-
-/** `"37,25"` con 1 decimal → 373 (redondeo mitad hacia arriba, sobre los dígitos: sin flotantes). */
-export function aUnidades(texto: string, decimales: number): number | null {
-  const m = NUMERO.exec(texto.trim());
-  if (!m) return null;
-  const fraccion = (m[3] ?? "").padEnd(decimales + 1, "0");
-  let unidades =
-    Number(m[2]) * 10 ** decimales +
-    Number(fraccion.slice(0, decimales) || "0");
-  if (Number(fraccion[decimales]) >= 5) unidades += 1;
-  if (!Number.isSafeInteger(unidades)) return null;
-  return m[1] === "-" && unidades !== 0 ? -unidades : unidades;
-}
-
 /** 373 con 1 decimal → `"37.3"`. El separador de salida es siempre el punto. */
 export function deUnidades(unidades: number, decimales: number): string {
   const signo = unidades < 0 ? "-" : "";
@@ -92,18 +76,6 @@ export function deUnidades(unidades: number, decimales: number): string {
 /** Los decimales con que vino escrito un número (`"37,25"` → 2). */
 function decimalesDe(texto: string): number {
   return NUMERO.exec(texto.trim())?.[3]?.length ?? 0;
-}
-
-/** Sensibilidad en unidades de la rejilla y escala t del Laplace, o null si no caben exactas. */
-export function escalaDelLaplace(
-  tecnica: Extract<TecnicaDeRuido, { tipo: "laplace" }>,
-): { minimo: number; maximo: number; s: number; t: number } | null {
-  const minimo = aUnidades(String(tecnica.minimo), tecnica.decimales);
-  const maximo = aUnidades(String(tecnica.maximo), tecnica.decimales);
-  if (minimo === null || maximo === null || maximo <= minimo) return null;
-  const [a, b] = EPSILONES[clave(tecnica.epsilon)];
-  const t = b * (maximo - minimo);
-  return t <= TOPE_UNIFORME ? { minimo, maximo, s: a, t } : null;
 }
 
 function clave(epsilon: number): ClaveDeEpsilon {

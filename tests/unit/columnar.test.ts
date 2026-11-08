@@ -4,6 +4,8 @@ import {
   CODIGO_VACIO,
   ConstructorColumnar,
   cardinalidad,
+  desprendida,
+  SinCupo,
   valorEn,
 } from "../../src/engine/columnar";
 
@@ -118,5 +120,29 @@ describe("ConstructorColumnar", () => {
     expect(tabla.filas).toBe(0);
     expect(tabla.columnas[0].codigos).toHaveLength(0);
     expect(cardinalidad(tabla.columnas[0])).toBe(0);
+  });
+});
+
+describe("S10: memoria propia y tope de distintos", () => {
+  it("desprendida no cambia el texto: corto, largo, vacío, con tildes y fuera del BMP", () => {
+    const trozo = "x".repeat(40) + "correo.de.prueba@ejemplo.test" + "ñandú 🦙";
+    for (const valor of ["", "a", trozo.slice(40, 69), trozo.slice(69), trozo])
+      expect(desprendida(valor)).toBe(valor);
+  });
+
+  it("una columna que pasa de su tope de distintos lanza SinCupo con el tope; el vacío no cuenta", () => {
+    const constructor = new ConstructorColumnar(["a"], 4, 2);
+    constructor.agregarFila([""]);
+    constructor.agregarFila(["x"]);
+    constructor.agregarFila(["y"]);
+    constructor.agregarFila(["x"]);
+    let error: unknown = null;
+    try {
+      constructor.agregarFila(["z"]);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(SinCupo);
+    expect((error as SinCupo).tope).toBe(2);
   });
 });

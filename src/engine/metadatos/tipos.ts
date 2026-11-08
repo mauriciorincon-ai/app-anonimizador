@@ -133,6 +133,8 @@ export type ClaveDeAviso =
   | "heic-auxiliares"
   /** Un bloque EXIF que no se pudo leer: se quita entero igual, pero no se sabe qué decía. */
   | "exif-ilegible"
+  /** Un bloque IPTC o XMP que no se pudo leer entero: se quita entero igual. */
+  | "iptc-xmp-ilegible"
   | "valores-recortados"
   | "campos-de-mas"
   /** Reescribir el PDF invalida su firma. */
@@ -209,6 +211,8 @@ export interface CampoDeMetadato {
 export type MotivoDeMetadatos =
   | "pdf-cifrado"
   | "pdf-ilegible"
+  /** Un PDF sano en apariencia que pasa de los topes de objetos o de contenido comprimido. */
+  | "pdf-fuera-de-topes"
   | "imagen-ilegible"
   /**
    * La imagen usa una parte del formato que Velo no sabe reescribir sin romperla (una secuencia, una

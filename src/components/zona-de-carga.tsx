@@ -67,6 +67,8 @@ const ERRORES: Partial<
   "limpieza-incompleta": INICIO.carga.errores.limpiezaIncompleta,
   "pdf-cifrado": INICIO.carga.errores.pdfCifrado,
   "pdf-ilegible": INICIO.carga.errores.pdfIlegible,
+  "pdf-fuera-de-topes": INICIO.carga.errores.pdfFueraDeTopes,
+  "tiempo-agotado": INICIO.carga.errores.tiempoAgotado,
   "imagen-ilegible": INICIO.carga.errores.imagenIlegible,
   "imagen-no-soportada": INICIO.carga.errores.imagenNoSoportada,
   "pdf-excede-tope": INICIO.carga.errores.pdfExcedeTope,

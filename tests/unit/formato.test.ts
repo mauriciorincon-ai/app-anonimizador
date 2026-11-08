@@ -23,6 +23,15 @@ describe("números en convención colombiana (español)", () => {
     expect(porcentaje(1, "es")).toBe("100 %");
   });
 
+  it("no redondea a «100 %» lo que no es todos", () => {
+    expect(porcentaje(0.9995, "es")).toBe("99,9 %");
+    expect(porcentaje(0.9951, "es")).toBe("99,5 %");
+    expect(porcentaje(0.99999, "es")).toBe("99,9 %");
+    expect(porcentaje(0.9949, "es")).toBe("99 %");
+    expect(porcentaje(0.9995, "en")).toBe("99.9%");
+    expect(porcentaje(1, "es")).toBe("100 %");
+  });
+
   it("dice con palabras lo que el decimal ya no alcanza a escribir", () => {
     // El decimal solo corre el problema un orden de magnitud: UNA persona sola en 3.000 filas es
     // 0,03 %, y en 500.000 es 0,0002 % — las dos se escribían "0,0 %", que es el mismo cero

@@ -186,8 +186,8 @@ export const MOTOR_TRANSFORMAR = {
   },
   "fabrica.hipaa.cob.N.id": { es: "URLs", en: "Web addresses (URLs)" },
   "fabrica.hipaa.cob.N.porque": {
-    es: "Velo no trae validador de URL en el S1. Si tu tabla las lleva, márcalas tú.",
-    en: "Velo does not include a URL validator in this version. If your table has them, mark them yourself.",
+    es: "Velo no trae validador de URL. Si tu tabla las lleva, márcalas tú.",
+    en: "Velo does not include a URL validator. If your table has them, mark them yourself.",
   },
   "fabrica.hipaa.cob.O.id": { es: "Direcciones IP", en: "IP addresses" },
   "fabrica.hipaa.cob.P.id": {
@@ -257,8 +257,8 @@ export const MOTOR_TRANSFORMAR = {
     en: "Regulation (EU) 2016/679, art. 4(1) — DO L 119, 4.5.2016",
   },
   "fabrica.rgpd.cob.enLinea.id": {
-    es: "Identificadores en línea (dirección IP)",
-    en: "Online identifiers (IP address)",
+    es: "Identificadores en línea (dirección IP): se generaliza hasta el k, no se seudonimiza",
+    en: "Online identifiers (IP address): generalized up to the k, not pseudonymized",
   },
   "fabrica.rgpd.cob.enLinea.fuente": {
     es: "Reglamento (UE) 2016/679, art. 4, punto 1 — DO L 119, 4.5.2016",

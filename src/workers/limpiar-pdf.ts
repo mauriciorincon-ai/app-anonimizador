@@ -205,7 +205,7 @@ async function abrir(bytes: Uint8Array): Promise<Abierto> {
   const escaneo = escanearPdf(bytes);
   if (escaneo.cifrado) throw new ErrorDeMetadatos("pdf-cifrado");
   if (!(await cabeEnMemoria(bytes, escaneo)))
-    throw new ErrorDeMetadatos("pdf-ilegible");
+    throw new ErrorDeMetadatos("pdf-fuera-de-topes");
   const lib = await import("pdf-lib");
   let doc: PDFDocument;
   // Con un archivo dañado, pdf-lib avanza byte a byte lanzando y atrapando UNA excepción por

@@ -93,8 +93,8 @@ export const DOCUMENTOS = {
     },
     directos: { es: "Identificadores directos", en: "Direct identifiers" },
     sensibles: {
-      es: "Datos sensibles (art. 5)",
-      en: "Sensitive data (art. 5)",
+      es: "Datos sensibles (Ley 1581 art. 5 · RGPD art. 9 y 10)",
+      en: "Sensitive data (Law 1581 art. 5 · GDPR art. 9 and 10)",
     },
     cuasi: { es: "Cuasi-identificadores", en: "Quasi-identifiers" },
     noPersonales: { es: "No personales", en: "Not personal" },
@@ -221,8 +221,8 @@ export const DOCUMENTOS = {
       },
       cuasiIdentificador: { es: "Cuasi-identificador", en: "Quasi-identifier" },
       datoSensible: {
-        es: "Dato sensible · Ley 1581 art. 5",
-        en: "Sensitive data · Law 1581, art. 5",
+        es: "Dato sensible · Ley 1581 art. 5 · RGPD art. 9 y 10",
+        en: "Sensitive data · Law 1581, art. 5 · GDPR art. 9 and 10",
       },
       noPersonal: { es: "No personal", en: "Not personal" },
     },
@@ -281,8 +281,8 @@ export const DOCUMENTOS = {
       en: "Smallest group, after",
     },
     mismoCalculo: {
-      es: "Las dos medidas salen del mismo cálculo del S1, corrido sobre el archivo original y sobre el que se descarga. Las columnas cruzadas «después» son las de «antes» menos {suprimidas_html}: quien reciba el archivo no las tendrá.",
-      en: "Both measurements come from the same S1 calculation, run on the original file and on the one that is downloaded. The “after” combined columns are the “before” ones minus {suprimidas_html}: whoever receives the file will not have them.",
+      es: "Las dos medidas salen del mismo cálculo del diagnóstico, corrido sobre el archivo original y sobre el que se descarga. Las columnas cruzadas «después» son las de «antes» menos {suprimidas_html}: quien reciba el archivo no las tendrá.",
+      en: "Both measurements come from the same diagnostic calculation, run on the original file and on the one that is downloaded. The “after” combined columns are the “before” ones minus {suprimidas_html}: whoever receives the file will not have them.",
     },
     idiomaDelTrabajo: {
       es: "Idioma del trabajo: **{idioma}**. Es el que tenía Velo al pulsar «transformar» y el de los rótulos que escribió dentro del archivo: en un intervalo agrupado, «{separador}» entre los extremos y «{vacio}» si también cubre celdas vacías. No cambia la política ni su identidad.",
@@ -342,6 +342,10 @@ export const DOCUMENTOS = {
       clasesHomogeneas: {
         es: "**{filas}** registros están en grupos donde todo el mundo comparte el mismo valor de `{atributo}`. Dar con el grupo basta para saber el dato, aunque no se sepa cuál de las filas es la persona.",
         en: "**{filas}** records sit in groups where everyone shares the same value of `{atributo}`. Finding the group is enough to learn the value, even without knowing which row is the person.",
+      },
+      colisionesSinMedir: {
+        es: "**No se contaron las colisiones** de estas columnas: su seudónimo se calculó valor por valor, porque tenían demasiados valores distintos para guardarlos en un archivo de alto volumen. Si conservan el formato, dos entidades distintas pueden haber recibido el mismo seudónimo. {lista_html}.",
+        en: "**Collisions were not counted** in these columns: their pseudonym was computed value by value, because they had too many distinct values to keep in a high-volume file. If they keep the format, two different entities may have received the same pseudonym. {lista_html}.",
       },
       colisionesUna: {
         es: "En `{columna}`, **{cuantas}** par de valores distintos recibió el mismo seudónimo. Conservar el formato reduce el espacio disponible y algunos chocan: dos entidades distintas se ven como una.",
@@ -448,6 +452,12 @@ export const DOCUMENTOS = {
     informacion: { es: "Información", en: "Information" },
     celdasCambiadas: { es: "Celdas cambiadas", en: "Cells changed" },
     suprimida: { es: "suprimida", en: "suppressed" },
+    // S10: el error medio de las columnas con ruido, y por qué los bits no bastan para ellas.
+    errorMedio: { es: "error medio ±{valor}", en: "mean error ±{valor}" },
+    errorMedioNota: {
+      es: "**En las columnas con ruido, los bits no dicen cuánto se movió cada número.** Miden si la salida todavía distingue una fila de otra, y un número con ruido sigue siendo distinto de los demás aunque haya quedado lejos del suyo. Por eso esas columnas traen su **error medio**: cuánto se alejó, en promedio, cada valor del original, en las unidades de la columna.",
+      en: "**In columns with noise, the bits do not say how far each number moved.** They measure whether the output still tells one row from another, and a noisy number stays different from the rest even when it ends up far from its own. That is why those columns carry their **mean error**: how far, on average, each value moved from the original, in the column's own units.",
+    },
     ningunaCambio: { es: "Ninguna columna cambió.", en: "No column changed." },
     relacionesTitulo: {
       es: "Relaciones entre columnas",
@@ -494,8 +504,8 @@ export const DOCUMENTOS = {
 
   pie: {
     contenido: {
-      es: "**Qué lleva este documento y qué no.** Lleva nombres de columna, tipos detectados, categorías, cifras agregadas y muestras **enmascaradas** (por ejemplo `103***89`). No lleva ninguna fila del archivo, y las columnas de datos sensibles del artículo 5 no llevan muestra siquiera.",
-      en: "**What this document contains and what it does not.** It contains column names, detected types, categories, aggregate figures and **masked** samples (for example `103***89`). It contains no row from the file, and the sensitive-data columns of article 5 do not even carry a sample.",
+      es: "**Qué lleva este documento y qué no.** Lleva nombres de columna, tipos detectados, categorías, cifras agregadas y muestras **enmascaradas** (por ejemplo `103***89`). No lleva ninguna fila del archivo, y las columnas de datos sensibles (Ley 1581 art. 5, RGPD art. 9 y 10) no llevan muestra siquiera.",
+      en: "**What this document contains and what it does not.** It contains column names, detected types, categories, aggregate figures and **masked** samples (for example `103***89`). It contains no row from the file, and the sensitive-data columns (Law 1581 art. 5, GDPR art. 9 and 10) do not even carry a sample.",
     },
     cifras: {
       es: "**Qué significan las cifras.** Todas son exactas: se contaron registro por registro sobre el archivo completo. No hay muestreo ni estimación. La detección de tipos, en cambio, se hizo sobre una muestra de hasta 5.000 valores por columna, y cada columna dice con qué certeza se concluyó.",
@@ -543,8 +553,8 @@ export const DOCUMENTOS = {
       en: "You started from Velo's GDPR policy and changed it: this document describes what was done, not the template.",
     },
     noAfirma: {
-      es: "**Qué NO afirma Velo.** No declara este archivo anónimo. Que un dato deje de ser personal depende de los medios razonablemente utilizables para identificar a la persona (considerando 26), y ese análisis lo hace quien trata los datos, con su contexto: Velo no lo hace. Tampoco certifica cumplimiento: la política de fábrica es su lectura del texto. Y un IBAN seudonimizado pasa el control general (ISO 13616), no las claves nacionales que lleva dentro (el CCC español, la clave RIB francesa): un destino que las valide puede rechazarlo. Y los números que sustituyen a un documento pasan su control, pero Velo no comprueba que no existan: uno puede ser, por casualidad, el número real de otra persona.",
-      en: "**What Velo does NOT claim.** It does not declare this file anonymous. Whether data stops being personal depends on the means reasonably likely to be used to identify the person (recital 26), and that analysis is for whoever processes the data, with their own context: Velo does not run it. Nor does it certify compliance: the factory policy is its reading of the text. And a pseudonymised IBAN passes the general check (ISO 13616), not the national keys inside it (the Spanish CCC, the French RIB key): a destination that validates them may refuse it. And the numbers that replace a document pass its check, but Velo does not verify that they do not exist: one can be, by chance, another person's real number.",
+      es: "**Qué NO afirma Velo.** No declara este archivo anónimo. Que un dato deje de ser personal depende de los medios razonablemente utilizables para identificar a la persona (considerando 26), y ese análisis lo hace quien trata los datos, con su contexto: Velo no lo hace. Tampoco certifica cumplimiento: la política de fábrica es su lectura del texto. Y un IBAN seudonimizado pasa el control general (ISO 13616) y, en España y Francia, recalcula las claves nacionales que lleva dentro (el CCC español, la clave RIB francesa); las de los demás países no se recalculan: un destino que las valide puede rechazarlo. Y los números que sustituyen a un documento pasan su control, pero Velo no comprueba que no existan: uno puede ser, por casualidad, el número real de otra persona.",
+      en: "**What Velo does NOT claim.** It does not declare this file anonymous. Whether data stops being personal depends on the means reasonably likely to be used to identify the person (recital 26), and that analysis is for whoever processes the data, with their own context: Velo does not run it. Nor does it certify compliance: the factory policy is its reading of the text. And a pseudonymised IBAN passes the general check (ISO 13616) and, for Spain and France, recomputes the national keys inside it (the Spanish CCC, the French RIB key); other countries' keys are not recomputed: a destination that validates them may refuse it. And the numbers that replace a document pass its check, but Velo does not verify that they do not exist: one can be, by chance, another person's real number.",
     },
     fuente: {
       es: "Fuente: Reglamento (UE) 2016/679, art. 4, puntos 1 y 5, art. 9, art. 10 y considerando 26 — Diario Oficial de la UE, L 119, 4.5.2016; consultado el {fecha}.",
@@ -618,6 +628,10 @@ export const DOCUMENTOS = {
     valoresDeTotal: {
       es: "{n} de {total} valores",
       en: "{n} of {total} values",
+    },
+    valoresDeAlMenos: {
+      es: "{n} de al menos {total} valores",
+      en: "{n} of at least {total} values",
     },
     sobreAmbiguas: {
       es: "!!Sobre las {n} celdas ambiguas.!! Se repite aquí a propósito: este documento se lee fuera de la pantalla que lo generó, y el porcentaje de arriba se puede citar solo. Esas celdas **no volvieron**: su seudónimo correspondía a más de un valor original y Velo conservó el seudónimo en vez de elegir. Cualquier cifra de este informe que se cite sin ellas dice más de lo que ocurrió.",
@@ -958,6 +972,10 @@ export const DOCUMENTOS = {
       exifIlegible: {
         es: "Un bloque EXIF no se pudo leer: se quitó entero igual, pero no se sabe qué decía.",
         en: "An EXIF block could not be read: it was removed whole anyway, but what it said is unknown.",
+      },
+      iptcXmpIlegible: {
+        es: "Un bloque IPTC o XMP no se pudo leer entero: se quitó completo igual, pero no se sabe todo lo que decía.",
+        en: "An IPTC or XMP block could not be read in full: it was removed whole anyway, but not everything it said is known.",
       },
       valoresRecortados: {
         es: "Algunos valores eran muy largos y aquí aparecen recortados.",

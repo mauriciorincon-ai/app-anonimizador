@@ -19,24 +19,28 @@
 // que lo verifica leyendo el código fuente): si lo hiciera, el documento dejaría de ser reproducible
 // y con él se iría la promesa de determinismo.
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { IconoCertificado, IconoEquis, IconoOjo } from "@/components/iconos";
 import { Boton } from "@/components/boton";
 import { Panel } from "@/components/panel";
 import { Rico, useT } from "@/components/texto";
-import {
-  construirReporte,
-  nombreDelCertificado,
-  nombreDelReporte,
-  type DatosDelTratamiento,
-} from "@/engine/reporte";
+import type { DatosDelTratamiento } from "@/engine/reporte";
 import { LOCALE } from "@/lib/idioma";
 import { TRANSFORMAR } from "@/lib/idioma/textos/transformar";
 import type { AsaDeArchivo } from "@/lib/sesion";
 import type { Informe } from "@/workers/contrato";
 
 const C = TRANSFORMAR.certificado;
+
+/**
+ * El constructor del documento pesa lo que pesan sus textos —todo el catálogo de documentos, en los
+ * dos idiomas— y solo hace falta cuando alguien pide el archivo o la vista previa. Se carga AL PEDIRLO
+ * (S10): `/diagnostico` no lo paga para enseñar un informe que quizá nadie descargue. Aquí solo se
+ * importa su TIPO; un `import` de valor lo devolvería al paquete de la página
+ * (`tests/unit/paquete-de-la-pagina.test.ts`).
+ */
+const cargarReporte = () => import("@/engine/reporte");
 
 /** Lo del tratamiento, menos las dos cosas que solo existen cuando el archivo ya se generó. */
 type TratamientoSinSalida = Omit<
@@ -74,7 +78,13 @@ export function DescargaDelCertificado({
 
   const esCertificado = puedeCertificar;
 
-  const generar = useCallback((): string => {
+  const generar = useCallback(async (): Promise<string> => {
+    // La fecha y el idioma se leen ANTES de esperar al módulo: son los de la pantalla cuando se pidió.
+    const fecha = new Intl.DateTimeFormat(LOCALE[idioma], {
+      dateStyle: "long",
+      timeStyle: "short",
+    }).format(new Date());
+    const { construirReporte } = await cargarReporte();
     return construirReporte({
       archivo: informe.archivo,
       diagnostico: informe.diagnostico,
@@ -83,10 +93,7 @@ export function DescargaDelCertificado({
       // El idioma se lee AL GENERAR: el documento queda escrito en el que tenía la pantalla cuando
       // se pulsó, y la fecha con la convención de ese idioma. Los dos se inyectan; el motor no
       // mira ni el reloj ni la configuración regional.
-      fecha: new Intl.DateTimeFormat(LOCALE[idioma], {
-        dateStyle: "long",
-        timeStyle: "short",
-      }).format(new Date()),
+      fecha,
       idioma,
       tratamiento:
         puedeCertificar && tratamiento
@@ -101,17 +108,44 @@ export function DescargaDelCertificado({
 
   // La vista previa enseña lo que se va a mandar, así que se regenera cuando cambia lo que la
   // determina —el idioma incluido—: la fecha se vuelve a calcular con la convención del idioma nuevo.
-  const vistaPrevia = useMemo(
-    () => (abierta ? generar() : null),
-    [abierta, generar],
-  );
+  const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
+  // Si el módulo del documento no carga (sin red tras abrir la página), se dice, no se calla.
+  const [fallo, setFallo] = useState(false);
+  useEffect(() => {
+    if (!abierta) return;
+    let vigente = true;
+    generar().then(
+      (html) => {
+        if (!vigente) return;
+        setFallo(false);
+        setVistaPrevia(html);
+      },
+      () => {
+        if (vigente) setFallo(true);
+      },
+    );
+    return () => {
+      vigente = false;
+    };
+  }, [abierta, generar]);
 
-  function descargar() {
+  async function descargar() {
     // Un Blob y un enlace: el archivo se arma en memoria y se guarda con el diálogo del sistema.
     // No hay servidor que lo genere, así que no hay servidor que lo vea.
+    setFallo(false);
+    let html: string;
+    let nombres: Awaited<ReturnType<typeof cargarReporte>>;
+    try {
+      html = await generar();
+      nombres = await cargarReporte();
+    } catch {
+      setFallo(true);
+      return;
+    }
+    const { nombreDelCertificado, nombreDelReporte } = nombres;
     const enlace = document.createElement("a");
     const url = URL.createObjectURL(
-      new Blob([generar()], { type: "text/html;charset=utf-8" }),
+      new Blob([html], { type: "text/html;charset=utf-8" }),
     );
     enlace.href = url;
     enlace.download = esCertificado
@@ -182,7 +216,7 @@ export function DescargaDelCertificado({
       </ul>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <Boton type="button" onClick={descargar}>
+        <Boton type="button" onClick={() => void descargar()}>
           <IconoCertificado />
           {esCertificado ? t(C.descargar.certificado) : t(C.descargar.reporte)}
         </Boton>
@@ -190,14 +224,25 @@ export function DescargaDelCertificado({
           type="button"
           variante="discreto"
           aria-expanded={abierta}
-          onClick={() => setAbierta((actual) => !actual)}
+          onClick={() => {
+            // Al cerrar se suelta el documento: al reabrir no se enseña uno viejo mientras se arma.
+            if (abierta) setVistaPrevia(null);
+            setFallo(false);
+            setAbierta((actual) => !actual);
+          }}
         >
           {abierta ? <IconoEquis /> : <IconoOjo />}
           {abierta ? t(C.vistaPrevia.cerrar) : t(C.vistaPrevia.ver)}
         </Boton>
       </div>
 
-      {vistaPrevia !== null ? (
+      {fallo ? (
+        <p role="alert" className="text-tinta mt-4 text-[0.875rem]">
+          {t(C.descargar.fallo)}
+        </p>
+      ) : null}
+
+      {abierta && vistaPrevia !== null ? (
         <iframe
           title={
             esCertificado

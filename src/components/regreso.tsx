@@ -585,6 +585,19 @@ function PanelDeDescargas({ estado }: { estado: EstadoDelRegreso }) {
       titulo={t(REGRESO.descargas.titulo)}
       nota={<Rico texto={REGRESO.descargas.nota} />}
     >
+      {estado.escrituraFallida && !estado.archivo ? (
+        // El símbolo, la palabra y el color juntos: el color nunca va solo.
+        <p
+          role="alert"
+          className="text-alerta mb-4 text-[0.875rem] leading-relaxed"
+        >
+          <span aria-hidden="true" className="mr-1.5">
+            ⚠
+          </span>
+          <Rico texto={REGRESO.descargas.escrituraFallida} />
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-3">
         {estado.archivo ? (
           <a

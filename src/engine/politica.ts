@@ -22,6 +22,7 @@ import { mensaje } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { MOTOR_TRANSFORMAR } from "@/lib/idioma/textos/motor-transformar";
 import { sha256 } from "@/lib/sha256";
+import { escalaDelLaplace } from "./ruido/limites";
 import { serializarCanonico } from "./serializacion";
 
 /**
@@ -75,16 +76,6 @@ const epsilonSchema = z.union([
   z.literal(4),
   z.literal(8),
 ]);
-
-/** El denominador de cada ε como racional: 0,1 = 1/10 y 0,5 = 1/2; los demás son enteros. */
-const DENOMINADOR_DE_EPSILON: Record<z.infer<typeof epsilonSchema>, number> = {
-  0.1: 10,
-  0.5: 2,
-  1: 1,
-  2: 1,
-  4: 1,
-  8: 1,
-};
 
 /** El rango declarado de un Laplace no pasa de ±10¹²: lo que un número cuenta exacto con decimales. */
 const LIMITE_DEL_RANGO = 1e12;
@@ -178,12 +169,9 @@ const tecnicaSchema = z.discriminatedUnion("tipo", [
         enLaRejilla(t.maximo, t.decimales),
       "minimo and maximo must have at most `decimales` decimals",
     )
+    // S10: la misma cuenta que hace el motor del ruido, no una parecida: lo que aquí pasa, allá cabe.
     .refine(
-      (t) =>
-        (Math.round(t.maximo * 10 ** t.decimales) -
-          Math.round(t.minimo * 10 ** t.decimales)) *
-          DENOMINADOR_DE_EPSILON[t.epsilon] <=
-        2 ** 40,
+      (t) => escalaDelLaplace(t) !== null,
       "the range is too wide for exact sampling at these decimals and epsilon",
     ),
   /**
@@ -252,6 +240,30 @@ const jerarquiaSchema = z.discriminatedUnion("tipo", [
 ]);
 
 export type JerarquiaDeLaPolitica = z.infer<typeof jerarquiaSchema>;
+
+/**
+ * Lo que un registro guarda para una columna, o `undefined`. Con `Object.hasOwn` y no con
+ * `registro[nombre]`: una columna que se llame `constructor` o `toString` leería lo que hereda todo
+ * objeto de JavaScript, no `undefined`, y la óptima reventaba (S10, deuda del S7). Por lo mismo,
+ * los registros por columna se arman con `Object.fromEntries`: asignar a `__proto__` cambia el
+ * prototipo en vez de crear la clave.
+ */
+export function propiaDe<J>(
+  registro: Readonly<Record<string, J>> | undefined,
+  nombre: string,
+): J | undefined {
+  return registro !== undefined && Object.hasOwn(registro, nombre)
+    ? registro[nombre]
+    : undefined;
+}
+
+/** La jerarquía de una columna, o la de solo supresión si no tiene una. */
+export function jerarquiaDe<J>(
+  jerarquias: Readonly<Record<string, J>>,
+  nombre: string,
+): J | { readonly tipo: "supresion" } {
+  return propiaDe(jerarquias, nombre) ?? { tipo: "supresion" };
+}
 
 /**
  * Cómo se alcanza el k sobre las columnas marcadas `generalizar-automatico`.
@@ -354,9 +366,11 @@ function generalizacionNormalizada(
       .filter((r) => r.tecnica.tipo === "generalizar-automatico")
       .map((r) => r.columna),
   );
-  const jerarquias: Record<string, JerarquiaDeLaPolitica> = {};
-  for (const [columna, jerarquia] of Object.entries(generalizacion.jerarquias))
-    if (reparto.has(columna)) jerarquias[columna] = jerarquia;
+  const jerarquias: Record<string, JerarquiaDeLaPolitica> = Object.fromEntries(
+    Object.entries(generalizacion.jerarquias).filter(([columna]) =>
+      reparto.has(columna),
+    ),
+  );
   const columnas = [...new Set(generalizacion.diversidad?.columnas ?? [])]
     .filter((c) => !reparto.has(c))
     .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -534,6 +548,27 @@ export function esDeRuido(
     tecnica.tipo === "laplace" ||
     tecnica.tipo === "respuesta-aleatorizada" ||
     tecnica.tipo === "perturbar"
+  );
+}
+
+/**
+ * ¿Es de ruido y deja un NÚMERO? Laplace y perturbar sí; la respuesta aleatorizada elige entre
+ * categorías y devuelve texto. Es lo que decide si un número con ruido sale sin comillas en un JSON.
+ */
+export function esDeRuidoNumerico(tecnica: Tecnica): boolean {
+  return tecnica.tipo === "laplace" || tecnica.tipo === "perturbar";
+}
+
+/**
+ * De las columnas que eran todo números en un JSON, las que la política deja con ruido numérico: esas
+ * se escriben sin comillas. La usan la web y Velo local, para que los bytes sean los mismos.
+ */
+export function numericasConRuido(
+  numericas: Iterable<string>,
+  politica: Politica,
+): Set<string> {
+  return new Set(
+    [...numericas].filter((n) => esDeRuidoNumerico(tecnicaDe(politica, n))),
   );
 }
 

@@ -131,6 +131,7 @@ describe("construirCertificadoDeLimpieza", () => {
       "imagenes-adicionales",
       "texto-comprimido",
       "exif-ilegible",
+      "iptc-xmp-ilegible",
       "valores-recortados",
       "campos-de-mas",
       "pdf-firmado",

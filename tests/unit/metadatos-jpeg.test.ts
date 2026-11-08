@@ -160,7 +160,7 @@ describe("lo que se nombra", () => {
       { clase: "orientacion", marcador: "APP1", bytes: 36, cuantos: 1 },
     ]);
     expect(a.avisos).toEqual([
-      { clave: "imagenes-adicionales" },
+      { clave: "imagenes-adicionales", n: 1 },
       { clave: "orientacion-conservada" },
     ]);
   });
@@ -303,6 +303,50 @@ describe("la copia limpia", () => {
   });
 });
 
+describe("bytes sueltos entre segmentos: se saltan como hace libjpeg", () => {
+  const limpio = unir(SOI, CUERPO_JPEG, EOI);
+
+  it("se declaran como bytes sobrantes y la copia limpia no los lleva", () => {
+    for (const sueltos of [[0x00], [0x00, 0x01, 0x02], [0xff, 0x00]]) {
+      const sucio = unir(SOI, sueltos, CUERPO_JPEG, EOI);
+      const a = analizarJpeg(sucio);
+      expect(a.quitables.map((e) => [e.clase, e.marcador, e.bytes])).toEqual([
+        ["bytes-sobrantes", "FF", sueltos.length],
+      ]);
+      expect(limpiarJpeg(sucio).bytes).toEqual(limpio);
+    }
+  });
+
+  it("entre dos segmentos de aplicación también", () => {
+    const sucio = unir(SOI, com("a"), [0x00, 0x00], com("b"), CUERPO_JPEG, EOI);
+    const a = analizarJpeg(sucio);
+    expect(a.quitables.map((e) => [e.clase, e.bytes])).toContainEqual([
+      "bytes-sobrantes",
+      2,
+    ]);
+    expect(limpiarJpeg(sucio).bytes).toEqual(limpio);
+  });
+});
+
+describe("avisos de lo que no se pudo leer entero", () => {
+  it("un IPTC cortado avisa, y un XMP que no es XML también", () => {
+    const iptcCortado = analizarJpeg(
+      jpeg([app13([recurso8bim(0x0404, [2, 80, 0, 50, 65])])]),
+    );
+    expect(iptcCortado.avisos).toEqual([{ clave: "iptc-xmp-ilegible" }]);
+    const xmpSinXml = analizarJpeg(jpeg([app1Xmp("no es xml")]));
+    expect(xmpSinXml.avisos).toEqual([{ clave: "iptc-xmp-ilegible" }]);
+    const xmpSano = analizarJpeg(jpeg([app1Xmp(XMP)]));
+    expect(xmpSano.avisos).toEqual([]);
+  });
+
+  it("las imágenes adicionales (MPF) se cuentan", () => {
+    const mpf = segmento(0xe2, unir(texto("MPF\0"), texto("MM\0*uno")));
+    const a = analizarJpeg(jpeg([mpf, mpf, mpf]));
+    expect(a.avisos).toEqual([{ clave: "imagenes-adicionales", n: 3 }]);
+  });
+});
+
 describe("variantes de los segmentos de aplicación", () => {
   it("un EXIF ilegible se quita igual y se avisa", () => {
     const a = analizarJpeg(jpeg([segmento(0xe1, texto("Exif\0\0basura"))]));
@@ -428,8 +472,7 @@ describe("contenedores rotos: imagen-ilegible", () => {
       "un largo menor que 2",
       unir(SOI, [0xff, 0xe1, 0x00, 0x01], CUERPO_JPEG, EOI),
     ],
-    ["basura entre segmentos", unir(SOI, [0x00], CUERPO_JPEG, EOI)],
-    ["FF 00 fuera de un escaneo", unir(SOI, [0xff, 0x00], CUERPO_JPEG, EOI)],
+    ["bytes sueltos y ningún marcador detrás", unir(SOI, [0x00, 0x01, 0x02])],
     ["un segundo SOI", unir(SOI, SOI, CUERPO_JPEG, EOI)],
     ["EOI sin escaneo", unir(SOI, com("x"), EOI)],
     [

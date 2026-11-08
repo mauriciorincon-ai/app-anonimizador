@@ -33,6 +33,8 @@
 
 import { Sha256 } from "@/lib/sha256";
 
+import { TOPE_UNIFORME } from "./limites";
+
 export const ETIQUETA_DEL_RUIDO = "velo-ruido-v1";
 
 const codificador = new TextEncoder();
@@ -59,7 +61,7 @@ const DOS_A_LA_32 = 0x1_0000_0000;
 const DOS_A_LA_53 = 2 ** 53;
 
 /** El tope de `uniforme`: lo que un `number` cuenta exacto con margen para los productos de abajo. */
-export const TOPE_UNIFORME = 2 ** 40;
+export { TOPE_UNIFORME };
 
 /** Una fuente de palabras de 32 bits que sale de una semilla y nunca se acaba. */
 export class AzarSembrado {

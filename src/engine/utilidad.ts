@@ -21,6 +21,7 @@ import { mensaje } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 
 import { type ColumnaColumnar, type TablaColumnar } from "./columnar";
+import { NUMERO } from "./ruido/limites";
 
 /**
  * Cardinalidad máxima para entrar al cálculo de correlaciones.
@@ -46,6 +47,38 @@ export interface PerdidaEnColumna {
   readonly bitsDespues: number;
   /** Proporción de celdas cuyo valor cambió. Una columna intacta tiene 0; una suprimida, 1. */
   readonly celdasCambiadas: number;
+  /**
+   * S10 · Solo en las columnas con ruido numérico (Laplace, perturbación): la media de |original −
+   * salida|, en las unidades de la columna, sobre las filas donde las dos celdas son números. Los
+   * bits no lo ven: una columna casi única con ruido sigue distinguiendo filas aunque cada número
+   * se haya movido lejos, y su información mutua casi no baja (deuda del S7).
+   */
+  readonly errorMedioAbsoluto?: number;
+}
+
+/** Un número escrito con punto o coma decimal, o null. Lo mismo que el ruido lee como número. */
+function comoNumero(texto: string): number | null {
+  return NUMERO.test(texto.trim())
+    ? Number(texto.trim().replace(",", "."))
+    : null;
+}
+
+/** La media de |a − b| en las filas donde las dos celdas son números; null si no hay ninguna. */
+function errorMedioAbsoluto(
+  original: ColumnaColumnar,
+  nueva: ColumnaColumnar,
+  filas: number,
+): number | null {
+  let suma = 0;
+  let medidas = 0;
+  for (let f = 0; f < filas; f++) {
+    const a = comoNumero(original.valores[original.codigos[f]]);
+    const b = comoNumero(nueva.valores[nueva.codigos[f]]);
+    if (a === null || b === null) continue;
+    suma += Math.abs(a - b);
+    medidas++;
+  }
+  return medidas === 0 ? null : suma / medidas;
 }
 
 export interface CorrelacionComparada {
@@ -194,11 +227,13 @@ export function vDeCramer(
  * Compara el archivo original con el transformado y devuelve lo que se perdió.
  *
  * Las dos tablas se emparejan **por nombre de columna**: lo que no aparece en la salida está
- * suprimido, y eso es una pérdida del 100 % que hay que contar como tal.
+ * suprimido, y eso es una pérdida del 100 % que hay que contar como tal. `conRuido` son las columnas
+ * con ruido numérico: a ellas se les mide además el error medio absoluto.
  */
 export function medirUtilidad(
   antes: TablaColumnar,
   despues: TablaColumnar,
+  conRuido: ReadonlySet<string> = new Set(),
 ): Utilidad {
   const filas = antes.filas;
   const enSalida = new Map(despues.columnas.map((c) => [c.nombre, c]));
@@ -226,6 +261,10 @@ export function medirUtilidad(
         cambiadas++;
       }
     }
+    const error =
+      cambiadas > 0 && conRuido.has(original.nombre)
+        ? errorMedioAbsoluto(original, nueva, filas)
+        : null;
     return {
       nombre: original.nombre,
       estado:
@@ -239,6 +278,7 @@ export function medirUtilidad(
       // que el archivo GANÓ información.
       bitsDespues: informacionMutua(original, nueva, filas),
       celdasCambiadas: filas === 0 ? 0 : cambiadas / filas,
+      ...(error !== null ? { errorMedioAbsoluto: error } : {}),
     };
   });
 

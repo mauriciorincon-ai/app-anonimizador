@@ -122,18 +122,47 @@ function finDeLaEntropia(bytes: Uint8Array, desde: number): number {
 }
 
 /**
+ * Entre dos segmentos pueden colarse bytes que no son un marcador (un editor que escribió de más,
+ * un relleno): libjpeg los salta hasta el siguiente `FF` que empieza un marcador, y un `FF 00` no
+ * lo es. Aquí se hace lo mismo, y `recorrer` cuenta cuántos se saltaron para declararlos; la copia
+ * limpia no los lleva, porque solo copia segmentos.
+ */
+function proximoMarcador(bytes: Uint8Array, desde: number): number {
+  let i = desde;
+  for (;;) {
+    const ff = bytes.indexOf(0xff, i);
+    if (ff < 0) return fallar();
+    let siguiente = ff + 1;
+    while (siguiente < bytes.length && bytes[siguiente] === 0xff) siguiente++;
+    if (siguiente >= bytes.length) return fallar();
+    if (bytes[siguiente] === 0x00) {
+      i = siguiente + 1;
+      continue;
+    }
+    return ff;
+  }
+}
+
+/**
  * Recorre la estructura y llama a `visitar` con cada segmento, en orden. Valida lo que un
  * decodificador exige (SOI al principio, largos dentro del archivo, un cuadro antes del primer
  * escaneo, un escaneo antes del EOI) y lanza `imagen-ilegible` si no se cumple. Devuelve dónde
  * termina el EOI. Lineal y sin memoria propia: cada pasada vuelve a recorrer el archivo.
+ * `alSaltar` recibe cuántos bytes sueltos se saltaron entre segmentos, cada vez que hubo.
  */
-function recorrer(bytes: Uint8Array, visitar: (s: Segmento) => void): number {
+function recorrer(
+  bytes: Uint8Array,
+  visitar: (s: Segmento) => void,
+  alSaltar?: (cuantos: number) => void,
+): number {
   if (!(bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === SOI)) fallar();
   let pos = 2;
   let hayCuadro = false;
   let hayEscaneo = false;
   for (;;) {
-    if (u8(bytes, pos) !== 0xff) fallar();
+    const marcadorAdelante = proximoMarcador(bytes, pos);
+    if (marcadorAdelante > pos) alSaltar?.(marcadorAdelante - pos);
+    pos = marcadorAdelante;
     // Relleno: la norma deja poner cualquier cantidad de `FF` antes de un marcador.
     while (u8(bytes, pos + 1) === 0xff) pos++;
     const desde = pos;
@@ -289,7 +318,7 @@ function leer(bytes: Uint8Array): Lectura {
   const trozos: TrozoDeXmp[] = [];
   let bytesDeXmpExtendido = 0;
 
-  const fin = recorrer(bytes, (s) => {
+  const visitar = (s: Segmento): void => {
     const destino = destinoDe(bytes, s);
     const d = bytes.subarray(s.datos, s.finDeDatos);
     const tamano = s.hasta - s.desde;
@@ -329,14 +358,16 @@ function leer(bytes: Uint8Array): Lectura {
         orientacion ??= suya;
         return;
       }
-      case "xmp":
+      case "xmp": {
+        const paquete = d.subarray(XMP.length);
+        // Sin ningún `<` no es XML, y uno más largo que el tope solo se leyó hasta ahí.
+        if (paquete.length > LARGO_MAXIMO_DE_XMP || !paquete.includes(0x3c))
+          inventario.avisar("iptc-xmp-ilegible");
         inventario.agregarLectura(
-          leerXmp(
-            textoUtf8Laxo(d.subarray(XMP.length), LARGO_MAXIMO_DE_XMP),
-            "xmp",
-          ),
+          leerXmp(textoUtf8Laxo(paquete, LARGO_MAXIMO_DE_XMP), "xmp"),
         );
         return;
+      }
       case "xmp-extendido": {
         const desde = XMP_EXTENDIDO.length + CABECERA_DEL_TROZO;
         if (d.length <= desde || bytesDeXmpExtendido >= LARGO_MAXIMO_DE_XMP)
@@ -352,6 +383,7 @@ function leer(bytes: Uint8Array): Lectura {
       case "iptc":
         if (coincide(d, CABECERA_PHOTOSHOP)) {
           const irb = leerIrb(d.subarray(CABECERA_PHOTOSHOP.length));
+          if (irb.incompleto) inventario.avisar("iptc-xmp-ilegible");
           inventario.agregarLectura(irb);
           inventario.contarOtras(irb.otrasEtiquetas);
           if (irb.miniatura > 0)
@@ -359,7 +391,7 @@ function leer(bytes: Uint8Array): Lectura {
         }
         return;
       case "imagenes-adicionales":
-        inventario.avisar("imagenes-adicionales");
+        inventario.contarAviso("imagenes-adicionales");
         return;
       case "comentario": {
         const texto = textoUtf8OLatin1(d);
@@ -373,9 +405,14 @@ function leer(bytes: Uint8Array): Lectura {
         return;
       }
     }
+  };
+  let sueltos = 0;
+  const fin = recorrer(bytes, visitar, (cuantos) => {
+    sueltos += cuantos;
   });
 
   leerXmpExtendido(inventario, trozos);
+  if (sueltos > 0) inventario.quitar("bytes-sobrantes", "FF", sueltos);
   if (fin < bytes.length)
     inventario.quitar("bytes-sobrantes", "EOI", bytes.length - fin);
   const conservada = orientacionQueSeConserva(orientacion) ? orientacion : null;
