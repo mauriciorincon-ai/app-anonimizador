@@ -56,12 +56,15 @@ export function porcentaje(proporcion: number, idioma: Idioma): string {
   const valor = proporcion * 100;
   if (valor > 0 && valor < MINIMO_REPRESENTABLE)
     return decir(COMUN.formato.menosDeUnDecimo, idioma);
-  const decimales = valor > 0 && valor < 10 ? 1 : 0;
+  // El extremo de arriba es el mismo cero tranquilizador al revés: 99,95 % no se escribe «100 %»,
+  // porque «todos» no es lo que se midió. Se trunca a un decimal y solo la proporción 1 dice 100.
+  const casiTodos = valor >= 99.5 && valor < 100;
+  const decimales = casiTodos || (valor > 0 && valor < 10) ? 1 : 0;
   return decir(COMUN.formato.porcentaje, idioma, {
     valor: formatoNumerico(idioma, {
       minimumFractionDigits: decimales,
       maximumFractionDigits: decimales,
-    }).format(valor),
+    }).format(casiTodos ? Math.floor(valor * 10) / 10 : valor),
   });
 }
 

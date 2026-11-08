@@ -20,7 +20,7 @@ import {
   type ClaveDeEscalera,
 } from "@/engine/jerarquias/sugerencia";
 import type { JerarquiaDeLaPolitica, Politica } from "@/engine/politica";
-import { numero, unoEn } from "@/lib/formato";
+import { milisegundos, numero, unoEn } from "@/lib/formato";
 import type { Idioma } from "@/lib/idioma";
 import { GENERALIZACION as G } from "@/lib/idioma/textos/generalizacion";
 import {
@@ -435,7 +435,7 @@ function TablaComparada({
                   }),
             )}
             {fila(t(G.tabla.filas.tiempo), (lado) =>
-              lado.disponible ? `${numero(lado.ms, idioma)} ms` : "—",
+              lado.disponible ? milisegundos(lado.ms, idioma) : "—",
             )}
           </tbody>
         </table>
