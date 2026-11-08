@@ -324,7 +324,10 @@ export class EscritorDeRegistros {
     this.fila = fila;
     // Cada registro entra como una línea de JSON Lines: el visitante es el mismo, y la forma de la
     // SALIDA (arreglo o líneas) la decide la descripción, no la manera en que aquí se alimenta.
-    this.analizador.alimentar(texto + "\n");
+    // Un registro de un arreglo puede ocupar varias líneas (sangría); en JSON Lines tiene que ser
+    // una. Un CR o un LF crudo no puede estar DENTRO de una cadena JSON válida, así que quitarlos
+    // solo toca el espacio entre tokens.
+    this.analizador.alimentar(texto.replace(/[\r\n]+/g, " ") + "\n");
     return this.visitante.vaciar();
   }
 

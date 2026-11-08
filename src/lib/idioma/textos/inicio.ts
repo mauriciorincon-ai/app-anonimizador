@@ -401,8 +401,8 @@ export const INICIO = {
       },
       jsonExcedeTope: {
         titulo: {
-          es: "Ese JSON es más grande de lo que Velo puede tratar",
-          en: "That JSON is bigger than Velo can handle",
+          es: "Ese JSON pasa uno de los límites de Velo",
+          en: "That JSON goes past one of Velo's limits",
         },
         salida: {
           es:

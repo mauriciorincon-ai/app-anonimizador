@@ -34,8 +34,10 @@ Three shapes were possible:
 2. **`velo-local/` is a Node 22 process that imports `src/engine/`, `src/lib/` and the pass-based
    pipeline of `src/workers/alto-volumen.ts`, unchanged.** It is not a fork: it adds Node adapters
    for what the browser provides (`fs.openAsBlob` for `File`, a file opened with `wx` for
-   `createWritable`). It always uses the pass-based path of ADR-015, also for small files: that path
-   is proven byte-equal to the in-memory one, and one path is one place to be wrong. Two pieces that
+   `createWritable`). It picks the in-memory or the pass-based path of ADR-015 with the same rule as
+   the web (the cell cap), so the same file takes the same road in both and the certificate matches
+   too; the pass-based path is proven byte-equal to the in-memory one for the output. The restore
+   is always by passes, which that proof allows. Two pieces that
    lived in the worker and in a component were moved into the engine so both sides call the same
    code: `resultadoDelAltoVolumen` (balance, preview, optimal generalization, noise report) and
    `privacidadDeLaEntrada` (the logbook entry).

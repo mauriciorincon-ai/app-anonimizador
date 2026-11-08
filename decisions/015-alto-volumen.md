@@ -114,10 +114,12 @@ as its baseline.
 
 - A CSV of any weight goes forward and back, within the declared caps (the manual's section 9 lists them); the e2e takes a 21-million-cell file there and back and
   compares the restored file with the original by SHA-256.
-- **JSON in high volume is not built** (the plan's third cut): reading it in passes means rewriting
-  the synchronous per-leaf JSON writer around asynchronous per-cell work (noise, per-value
-  pseudonyms). A JSON over 20 million cells still stops with its cap and says so. Pending the
-  owner's decision, not discarded.
+- **JSON in high volume was not built in S8** (the plan's third cut): reading it in passes meant
+  rewriting the synchronous per-leaf JSON writer around asynchronous per-cell work (noise,
+  per-value pseudonyms). **Superseded in S9:** the writer now takes its cells from an abstract
+  source, so the same visitor writes from the whole table or from the row a pass just delivered
+  (`src/engine/json/trozos.ts`, `src/workers/json-por-trozos.ts`); a JSON over 20 million cells
+  goes in passes, forward and back, with the same bytes as in memory.
 - Excel keeps its 150 MB cap (ADR-003): SheetJS has no streaming reader in the browser.
 - The restored file in high volume goes the `Blob` way; the chosen-file way is for the anonymized
   file only.

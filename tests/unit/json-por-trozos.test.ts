@@ -148,6 +148,33 @@ describe("lo que el kit no trae", () => {
     expect(r.porTrozos).toBe(r.enMemoria);
   });
 
+  // Auditoría del S9 (A1): un registro repartido en varias líneas es JSON válido en un arreglo, y el
+  // escritor por pasadas lo alimentaba como una línea de JSON Lines. El kit escribe compacto, así
+  // que ningún fixture lo traía.
+  it.each([
+    ["sangría de 2 espacios", 2],
+    ["sangría de tabulador", "\t"],
+  ] as const)(
+    "un arreglo con %s: un registro ocupa varias líneas",
+    async (_n, sangria) => {
+      const filas = Array.from({ length: 12 }, (_, i) => ({
+        id: i,
+        nombre: `a\nb ${i}`,
+        contacto: { correo: `p${i}@x.test`, tel: i % 3 === 0 ? null : `${i}` },
+        lista: [1, { z: 2 }],
+      }));
+      const texto = `${JSON.stringify(filas, null, sangria)}\n`;
+      for (const tamano of [Infinity, 7]) {
+        const r = await porLosDosCaminos(texto, tamano, 5);
+        expect(r.porTrozos).toBe(r.enMemoria);
+      }
+      // Y lo mismo con CRLF entre las líneas del registro.
+      const crlf = texto.replace(/\n/g, "\r\n");
+      const r = await porLosDosCaminos(crlf, 5);
+      expect(r.porTrozos).toBe(r.enMemoria);
+    },
+  );
+
   it("un solo registro, y un registro vacío en JSON Lines", async () => {
     for (const t of ['[{"a":1}]', '{"a":1}\n', '{}\n{"a":1}\n']) {
       const r = await porLosDosCaminos(t, Infinity, 1);
