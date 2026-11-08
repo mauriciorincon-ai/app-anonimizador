@@ -81,18 +81,18 @@ botón (que funciona con teclado: llega con la tecla Tab y se abre con Enter). E
 
 Velo lee:
 
-| Formato                                                                                    | Tope                                 | Por qué                                                                                                                                                            |
-| ------------------------------------------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **CSV** (`.csv`)                                                                           | sin tope de peso                     | Se lee por partes; nunca existe entero en memoria. Por encima de 20.000.000 de celdas, Velo lo lee [por pasadas](#9-archivos-enormes-el-modo-de-alto-volumen).     |
-| **Excel** (`.xlsx`, `.xls`)                                                                | **150 MB**                           | Un Excel hay que abrirlo completo para leerlo. Por encima de ese tamaño el navegador se queda sin memoria, así que Velo lo rechaza **antes** de abrirlo.           |
-| **JSON** (`.json`) y **JSON Lines** (`.jsonl`, `.ndjson`)                                  | **20.000.000 de celdas**, no un peso | El archivo se lee por partes, pero la tabla que Velo arma con él vive en memoria: lo que ocupa es el número de celdas (registros × rutas distintas), no los bytes. |
-| **PDF** (`.pdf`)                                                                           | **50 MB**                            | Un PDF no se puede reescribir por partes: se abre entero en memoria, y lo que pesa es la cantidad de piezas que trae dentro. Velo lo rechaza **antes** de abrirlo. |
-| **Imagen**: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), WebP (`.webp`) y HEIC (`.heic`, `.heif`) | **100 MB**                           | Igual que el PDF: se reescribe de una vez.                                                                                                                         |
+| Formato                                                                                    | Tope                  | Por qué                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CSV** (`.csv`)                                                                           | sin tope de peso      | Se lee por partes; nunca existe entero en memoria. Por encima de 20.000.000 de celdas, Velo lo lee [por pasadas](#9-archivos-enormes-el-modo-de-alto-volumen).                              |
+| **Excel** (`.xlsx`, `.xls`)                                                                | **150 MB**            | Un Excel hay que abrirlo completo para leerlo. Por encima de ese tamaño el navegador se queda sin memoria, así que Velo lo rechaza **antes** de abrirlo.                                    |
+| **JSON** (`.json`) y **JSON Lines** (`.jsonl`, `.ndjson`)                                  | sin tope de registros | La tabla que Velo arma vive en memoria hasta 20.000.000 de celdas (registros × rutas distintas); por encima, lo lee [por pasadas](#9-archivos-enormes-el-modo-de-alto-volumen) sin armarla. |
+| **PDF** (`.pdf`)                                                                           | **50 MB**             | Un PDF no se puede reescribir por partes: se abre entero en memoria, y lo que pesa es la cantidad de piezas que trae dentro. Velo lo rechaza **antes** de abrirlo.                          |
+| **Imagen**: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), WebP (`.webp`) y HEIC (`.heic`, `.heif`) | **100 MB**            | Igual que el PDF: se reescribe de una vez.                                                                                                                                                  |
 
-Los topes completos de un JSON son: **20.000.000 de celdas** (registros × rutas distintas),
-**256 rutas distintas**, **32 niveles** de anidamiento dentro de un registro, claves de hasta 256
-caracteres y textos de hasta 1.048.576 caracteres. Pasarse de cualquiera se rechaza con un mensaje
-que dice cuál y qué hacer.
+Los topes de un JSON son: **256 rutas distintas**, **32 niveles** de anidamiento dentro de un
+registro, claves de hasta 256 caracteres y textos de hasta 1.048.576 caracteres. Pasarse de
+cualquiera se rechaza con un mensaje que dice cuál y qué hacer. El número de registros no tiene
+tope: pasadas las 20.000.000 de celdas, el JSON se lee [por pasadas](#9-archivos-enormes-el-modo-de-alto-volumen).
 
 Si tu Excel pesa más de 150 MB: ábrelo y guárdalo como CSV. Desde 40 MB Velo te avisa de que va a
 tardar y te ofrece la misma salida. Si tu PDF pasa de 50 MB o tu imagen de 100 MB: divide el PDF en
@@ -983,12 +983,20 @@ archivo no se midió a 5.000.000 de filas; sí se probó, ida y vuelta, con uno 
 comparando el restaurado con el original por su huella SHA-256. Bajar el pico de memoria está
 pendiente.
 
+**JSON y JSON Lines.** Un JSON con más de 20.000.000 de celdas (registros × rutas distintas)
+también se lee por pasadas. Una primera pasada descubre las rutas —las columnas— y la estructura sin
+guardar ningún valor; las demás recorren los registros de uno en uno. Lo que sale es el **mismo
+archivo, byte por byte,** que saldría si cupiera en memoria: un arreglo sale como arreglo y JSON
+Lines como JSON Lines, con la misma reescritura fiel de [la sección 1](#si-tu-archivo-es-un-json)
+(claves en su orden, números exactos, compacto). La bóveda y el regreso funcionan igual, y un JSON
+devuelto que no cabe en memoria se restaura por pasadas, también como JSON. Pesa mucho más que un
+CSV porque cada celda lleva su clave: 21.000.000 de celdas son unos 316 MB. Lo que cambia respecto
+a la memoria (la clasificación mira las primeras 5.000 filas, la utilidad no se mide) vale igual
+aquí. Los demás topes de un JSON siguen deteniéndolo, y lo dice; y las listas siguen sin tratarse.
+
 **Lo que sigue con su tope**
 
 - **Excel conserva su tope de 150 MB:** el lector de Excel del navegador no puede leer por partes.
-- **Un JSON de más de 20.000.000 de celdas sigue deteniéndose** con su tope, y lo dice. El alto
-  volumen para JSON no está hecho; es una de las cosas pendientes de decisión del dueño (ver «Lo que
-  viene»).
 - **El archivo restaurado no se escribe directo a disco,** como se explicó arriba.
 
 ---
@@ -1114,6 +1122,92 @@ anónimo, que no hace el análisis del considerando 26 y que no certifica cumpli
   extractos que de ella cita un buscador y se comprobó a mano. Los otros documentos se
   reprodujeron con ejemplos oficiales, salvo el codice fiscale, cuyo decreto no trae ninguno. El
   detalle, documento por documento, está en el ADR-016 (`decisions/016-rgpd.md`).
+
+---
+
+### 11. Velo en tu equipo: la consola, las bases de datos y la API
+
+**Velo local es el mismo motor de la web, como un programa de tu computador.** No es un servicio:
+no hay nadie al otro lado. Lo corres tú, con Node 22, desde el repositorio (`pnpm install` y luego
+`pnpm velo …`). Está para lo que la pestaña del navegador no puede hacer: leer una tabla directo de
+una base de datos, ofrecerle una API a otro programa tuyo y tratar archivos tan grandes como el
+disco aguante. El motor es el mismo: **el mismo archivo, con la misma política, la misma frase y la
+misma sal, da los mismos bytes** que en la web (un par de pruebas automáticas lo comparan en cada
+cambio, una de ellas con Chromium de verdad).
+
+**Tus datos no salen de tu equipo.** Velo local no se conecta a nada salvo a la base de datos que tú
+configuras, no manda telemetría y solo escribe donde tú le dices. No pisa nada: si el archivo de
+salida ya existe, se niega.
+
+**Las órdenes**
+
+| Orden                              | Qué hace                                                                                      |
+| ---------------------------------- | --------------------------------------------------------------------------------------------- |
+| `pnpm velo diagnosticar <archivo>` | El mismo diagnóstico de la web (CSV, JSON, JSON Lines). `--json` lo entrega como JSON.        |
+| `pnpm velo anonimizar <archivo>`   | Anonimiza con `--politica` (`habeas-data`, `hipaa`, `rgpd` o un archivo exportado de la web). |
+| `pnpm velo restaurar <archivo>`    | Restaura un archivo devuelto con `--boveda`.                                                  |
+| `pnpm velo puente …`               | Lo mismo, sobre una tabla de PostgreSQL o SQL Server.                                         |
+| `pnpm velo api`                    | Levanta la API local.                                                                         |
+
+`--salida` elige la carpeta, `--sal` fija la sal de la llave (para que mañana los seudónimos
+coincidan con los de hoy), `--bitacora` anota el tratamiento en tu bitácora e `--idioma es|en`
+cambia el idioma de los mensajes y de los documentos. Salen el anonimizado, **el certificado** y,
+si pediste columnas reversibles, **la bóveda**, con las mismas huellas que en la web. Un JSON entra
+y un JSON sale; uno demasiado grande para la memoria se trata
+[por pasadas](#9-archivos-enormes-el-modo-de-alto-volumen), igual que en la web.
+
+**Las frases y la conexión nunca van en una orden.** La frase de la llave sale de `VELO_FRASE` o de
+la consola, sin eco; la de la bóveda, de `VELO_FRASE_BOVEDA`; la de la bitácora, de
+`VELO_FRASE_BITACORA`; la conexión a la base, de `VELO_DB_URL` o de la consola, sin eco. Un
+argumento quedaría en el historial de tu terminal. Ni la frase ni la conexión salen en un mensaje de
+error.
+
+**El puente a bases de datos**
+
+`pnpm velo puente --tabla esquema.tabla --politica <…>` lee una tabla de **PostgreSQL** o de **SQL
+Server** (el motor sale de la conexión: `postgres://` o `mssql://`) y escribe el resultado en una
+**tabla nueva, `<tabla>__velo`**. Lo que cumple, y cómo se comprueba:
+
+- **La tabla original no se toca.** Velo calcula la huella de su contenido antes y después, y el
+  resultado dice que son la misma. Todo ocurre en una sola transacción; si algo falla, se deshace y
+  no queda nada.
+- **Sin llave primaria, Velo se niega.** Sin ella no hay un orden estable de las filas y, sin orden
+  estable, no puede prometer los mismos bytes. Lo dice y no trata la tabla.
+- **Los nombres de tabla y de columna solo entran a una consulta si existen en la base,** y los
+  valores viajan siempre como parámetros: un nombre de tabla armado a propósito no se ejecuta.
+- **El vacío y el `NULL` son lo mismo para Velo.** La tabla nueva guarda el vacío como `NULL` y suma
+  una columna, `__velo_fila`, que numera las filas para poder restaurarlas.
+- **No reemplaza una tabla que ya existe** salvo que lo pidas con `--reemplazar`.
+- **El certificado, la bóveda y la bitácora se escriben antes de confirmar la transacción:** si no
+  se pueden escribir, la tabla nueva tampoco aparece.
+
+Para volver: `pnpm velo puente --restaurar --tabla esquema.tabla__velo --boveda archivo.velo` escribe
+`<tabla>__restaurada`. Sin una base propia donde ensayar, `pnpm kit:base` levanta en tu equipo, en
+`127.0.0.1:5433`, un PostgreSQL embebido con una tabla sintética (`public.clientes`); se cierra con
+Ctrl-C. No instala nada.
+
+**La API local**
+
+`pnpm velo api` escucha **solo en `127.0.0.1:3301`**. Al arrancar muestra, **una vez**, un token
+nuevo que hay que mandar como `Authorization: Bearer …`; muere con el proceso. Rechaza lo que no
+viene de tu equipo: sin token (401), con un `Host` que no sea el suyo (421; así no la alcanza una
+página web que engañe al navegador) y con cabecera `Origin` (403; no hay CORS: un navegador no puede
+usarla). El cuerpo tiene tope (413) y los errores salen con su clave, nunca con un trozo de tu
+archivo. La llave se deriva una sola vez al arrancar: jamás viaja en una petición.
+
+| Ruta                    | Qué hace                                                                                |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| `GET /v1/salud`         | Responde si está viva, con la huella de la llave.                                       |
+| `POST /v1/diagnosticar` | El cuerpo es el archivo; responde el diagnóstico y el riesgo exacto.                    |
+| `POST /v1/anonimizar`   | Responde el archivo, el certificado y la bóveda sellada. Siempre mide el riesgo.        |
+| `POST /v1/restaurar`    | El cuerpo es el archivo devuelto; `X-Velo-Boveda` es la ruta de la bóveda en tu equipo. |
+
+La cabecera `X-Velo-Nombre` dice el nombre del archivo, y su extensión decide el formato: `.csv`, o
+`.json`, `.jsonl` o `.ndjson` para JSON. El contrato completo está en `docs/api/velo-local.yaml`.
+
+**Lo que Velo local no hace.** No habla con MySQL, Oracle ni SQLite. No parte un Excel por pasadas
+(conserva su tope de 150 MB). No sustituye la web: para una persona que solo quiere anonimizar un
+archivo, la pestaña del navegador sigue siendo lo más simple.
 
 ---
 
@@ -1282,11 +1376,12 @@ sale es el mismo, byte por byte, que saldría si cupiera en memoria.
 el riesgo estimado —las tres cosas que aquí se prometieron— están arriba, cada una con su sección.
 
 Lo que Velo **no** hace hoy vive en «Lo que Velo NO afirma» y en los topes declarados: no lee bases
-de datos, no genera `.xlsx` de salida, no trata las listas que van dentro de un JSON, no limpia las
+de datos desde la web (solo [Velo local](#11-velo-en-tu-equipo-la-consola-las-bases-de-datos-y-la-api),
+y solo PostgreSQL y SQL Server), no genera `.xlsx` de salida, no trata las listas que van dentro de un JSON, no limpia las
 anotaciones, los adjuntos ni los formularios de un PDF, y no usa —ni usará— inteligencia artificial
 generativa en ninguna parte del producto.
 
-Y hay seis cosas que **están pendientes de decisión del dueño**: ni se prometen ni se descartan.
+Y hay cinco cosas que **están pendientes de decisión del dueño**: ni se prometen ni se descartan.
 
 - **AVIF**, el otro formato de foto que se parece a HEIC: hoy Velo no lo lee.
 - **Las secuencias HEIC y las Live Photos:** hoy Velo las rechaza en vez de arriesgarse a romperlas.
@@ -1294,9 +1389,6 @@ Y hay seis cosas que **están pendientes de decisión del dueño**: ni se promet
   registro por su cuenta, y el resultado «óptimo» se limita a lo que las escaleras permiten.
 - **La CIIU Rev. 5 A.C.**, que el DANE adoptó en agosto de 2026 con dos años de transición: hoy la
   escalera de actividad económica usa la Rev. 4 A.C.
-- **El alto volumen para JSON:** hoy un JSON de más de 20.000.000 de celdas se detiene con su tope y
-  lo dice. Leerlo por pasadas exige reescribir el escritor de JSON; no se ha hecho ni se ha
-  descartado.
 - **Un selector de destino para Firefox y Safari:** hoy esos navegadores no dejan elegir un archivo
   de destino, así que un archivo de alto volumen se arma en la memoria de la pestaña y, si es muy
   grande, puede no caber.

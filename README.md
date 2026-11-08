@@ -56,7 +56,7 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   vuelven. Por **valor**, no por posición: sobrevive a que el tercero reordene filas, añada
   columnas, borre otras y corrija valores a mano — y su trabajo se respeta.
 - **Carga** de CSV (sin tope de peso: más allá de 20 millones de celdas se lee por pasadas, con los topes del manual §9), Excel (hasta 150 MB, medido) y JSON —un arreglo de objetos o JSON
-  Lines, hasta 20 millones de celdas—, con arrastre y con teclado. En un JSON, cada ruta anidada
+  Lines, sin tope de registros: más allá de 20 millones de celdas también se lee por pasadas—, con arrastre y con teclado. En un JSON, cada ruta anidada
   (`paciente.contacto.correo`) es una columna; las listas se declaran y salen sin tocar. Un JSON
   también **vuelve** (Sprint 007): con su bóveda, el regreso lee el JSON o el JSON Lines que te
   devolvieron y lo restaura con su estructura y el orden de sus claves —el original, byte por byte,
@@ -120,7 +120,18 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   En Chrome y Edge eliges dónde guardar y el archivo se escribe directo a tu disco, sin armarlo en
   memoria. Medido con 5 millones de filas × 24 columnas (1,36 GB): diagnóstico 109 s, transformación
   283 s, escritura 267 s y un pico de 4,9 GB de memoria — una referencia, no una promesa. Excel
-  conserva su tope; un JSON de más de 20 millones de celdas sigue deteniéndose, y lo dice.
+  conserva su tope. Un JSON de más de 20 millones de celdas (Sprint 009) también va por pasadas, y
+  sale —y vuelve— como el JSON o JSON Lines que entró, con los mismos bytes que en memoria.
+- **Velo local** (Sprint 009, [ADR-017](decisions/017-velo-local.md)): el **mismo motor** como un
+  programa de tu computador (`pnpm velo`), para lo que una pestaña no puede hacer. Anonimiza,
+  restaura y diagnostica CSV, JSON y JSON Lines; **da los mismos bytes que la web** (un e2e con
+  Chromium lo compara); tus datos no salen de tu equipo —solo se conecta a la base que tú
+  configuras— y las frases de paso y la conexión nunca van como argumento.
+  - **Puente a bases de datos:** PostgreSQL y SQL Server. Escribe una tabla **nueva**
+    (`<tabla>__velo`) y **no toca la original** (su huella, antes y después, en el resultado); sin
+    llave primaria se niega; tabla y columnas solo si existen en la base, valores parametrizados.
+  - **API REST** en `127.0.0.1:3301`, con un token nuevo por arranque, `Host` verificado y sin CORS
+    (contrato: [docs/api/velo-local.yaml](docs/api/velo-local.yaml)).
 - **La política RGPD** (Sprint 008, [ADR-016](decisions/016-rgpd.md)): **seudonimiza, no anonimiza**.
   Los identificadores directos pasan a un seudónimo reversible con bóveda —con el formato de su país
   y su control oficial recalculado en IBAN, DNI, NIE, NIR, codice fiscale, Steuer-IdNr, BSN y PESEL—,
@@ -180,6 +191,21 @@ pnpm gate:anti-ia    # el gate de la regla dura nº1
 pnpm typecheck && pnpm lint && pnpm build
 ```
 
+### Velo local
+
+```bash
+pnpm velo diagnosticar tmp/clinico.csv
+VELO_FRASE='…' VELO_FRASE_BOVEDA='…' pnpm velo anonimizar tmp/clinico.csv --politica habeas-data
+pnpm velo restaurar velo-anonimizado-….csv --boveda velo-boveda-….velo
+pnpm velo api        # 127.0.0.1:3301; el token se muestra una vez
+pnpm kit:base        # un PostgreSQL embebido en 127.0.0.1:5433, para ensayar el puente (Ctrl-C lo cierra)
+VELO_DB_URL='postgres://velo@127.0.0.1:5433/postgres?sslmode=disable' \
+  pnpm velo puente --tabla public.clientes --politica habeas-data
+pnpm test:puente     # el puente contra PostgreSQL y SQL Server reales (lo corre el job `puente` de la CI)
+```
+
+Detalle de cada orden, de las variables y de lo que Velo local no hace: [manual §11](docs/MANUAL-DE-USO.md).
+
 ---
 
 ## Cómo está hecho
@@ -191,6 +217,7 @@ src/
 ├─ engine/         motores puros y deterministas: validadores, clasificador, riesgo, reporte
 ├─ workers/        el worker: LA FRONTERA — los datos crudos viven aquí y solo aquí
 └─ lib/            sesión en memoria, formato, SHA-256, observabilidad
+velo-local/          Velo local: la consola, el puente a bases de datos y la API (Node 22, mismo motor)
 docs/kit-de-prueba/  generador sintético con semilla — la única fuente de datos de prueba
 decisions/           ADRs
 sprints/             bitácora y resumen de cada sprint
@@ -201,7 +228,8 @@ solo cruzan conteos, nombres de columna, proporciones y muestras ya enmascaradas
 dataset. Cuando la sesión se descarta, el worker se termina y con él muere la única copia.
 
 **Sin backend.** No hay base de datos, ni API con datos, ni servicio externo. Vercel sirve la
-aplicación; los datos viven y mueren en la pestaña.
+aplicación; los datos viven y mueren en la pestaña. (Velo local es otra cosa: un programa que corres
+tú, en tu equipo; la web no lo usa ni lo necesita.)
 
 ---
 
