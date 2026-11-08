@@ -434,6 +434,9 @@ function TablaComparada({
                     total: numero(lado.nodosEnLaReticula ?? 0, idioma),
                   }),
             )}
+            {fila(t(G.tabla.filas.tiempo), (lado) =>
+              lado.disponible ? `${numero(lado.ms, idioma)} ms` : "—",
+            )}
           </tbody>
         </table>
       </div>

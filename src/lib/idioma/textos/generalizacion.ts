@@ -162,6 +162,10 @@ export const GENERALIZACION = {
         es: "Combinaciones revisadas",
         en: "Combinations checked",
       },
+      tiempo: {
+        es: "Tiempo de cálculo",
+        en: "Calculation time",
+      },
     },
     si: { es: "Sí", en: "Yes" },
     no: { es: "No", en: "No" },
