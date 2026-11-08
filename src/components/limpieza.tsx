@@ -34,6 +34,7 @@ import { Panel } from "@/components/panel";
 import { SeccionDeElementos } from "@/components/tabla-de-metadatos";
 import { Rico, useT } from "@/components/texto";
 import type { EntradaDeBitacora } from "@/engine/bitacora";
+import { bloquesQuitados } from "@/engine/metadatos/inventario";
 import { bytes, numero } from "@/lib/formato";
 import { plural, type Texto } from "@/lib/idioma";
 import { DIAGNOSTICO } from "@/lib/idioma/textos/diagnostico";
@@ -212,8 +213,9 @@ function Resultado({
 }) {
   const { t, idioma } = useT();
   const esPdf = resumen.formato === "pdf";
-  // Bloques contados uno a uno (dos `tEXt` son dos), la misma cuenta que va a la bitácora.
-  const bloques = resumen.quitados.reduce((suma, e) => suma + e.cuantos, 0);
+  // Bloques contados uno a uno (dos `tEXt` son dos), la misma cuenta que va a la bitácora; lo que va
+  // dentro de otro bloque (la miniatura de un EXIF) no suma otra vez.
+  const bloques = bloquesQuitados(resumen.quitados);
   const camposAlSalir = resumen.poscomprobacion.campos;
   const versionesAlSalir = resumen.poscomprobacion.revisiones;
 

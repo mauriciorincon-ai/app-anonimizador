@@ -25,6 +25,25 @@ import {
   type Revela,
 } from "./tipos";
 
+/**
+ * Lo que vive DENTRO de otro bloque que también se quita: la miniatura del EXIF (`IFD1`), la nota del
+ * fabricante (`MakerNote`) y la miniatura de Photoshop (`8BIM`). Se listan aparte porque cada una
+ * dice algo, pero no son un bloque más del archivo.
+ */
+const MARCADORES_ANIDADOS: ReadonlySet<string> = new Set([
+  "IFD1",
+  "MakerNote",
+  "8BIM",
+]);
+
+/** Cuántos bloques del archivo se quitaron, uno a uno, sin contar dos veces lo que va dentro de otro. */
+export function bloquesQuitados(quitados: readonly Elemento[]): number {
+  let suma = 0;
+  for (const e of quitados)
+    if (!MARCADORES_ANIDADOS.has(e.marcador)) suma += e.cuantos;
+  return suma;
+}
+
 /** Espacios y controles (`\0` incluido) colapsados en un espacio; sin bordes. */
 export function normalizarValor(texto: string): string {
   return texto.replace(/[\p{Cc}\s]+/gu, " ").trim();
