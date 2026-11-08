@@ -136,3 +136,56 @@ test("comparar, elegir la óptima, transformar y guardar: cada campo en un nivel
 
   expect(red).toEqual([]);
 });
+
+// S11: la CIIU Rev. 5 se reconoce por sus códigos, y el tope de supresión se compara lado a lado.
+const REV5 = nombreDeFixture("jerarquias-rev5", 1_500, 42);
+
+test("la Rev. 5 se propone por sus códigos y el tope de supresión suma su columna, sin red", async ({
+  page,
+  baseURL,
+}) => {
+  const red = vigilarLaRed(page, new URL(baseURL!).origin);
+  await page.goto("/");
+  await page.setInputFiles("#archivo", REV5);
+  await page.waitForURL("**/diagnostico", { timeout: 60_000 });
+  await page.getByRole("link", { name: "Transformar este archivo" }).click();
+  await page.waitForURL("**/transformar");
+
+  for (const nombre of ["edad", "codigo_municipio", "actividad_ciiu5"])
+    await page
+      .getByLabel(`Técnica para la columna ${nombre}`)
+      .selectOption("generalizar-automatico");
+
+  await expect(
+    page.getByLabel(
+      "Escalera de generalización para la columna actividad_ciiu5",
+    ),
+  ).toHaveValue("ciiu5");
+  await expect(
+    page.getByText(
+      /de sus códigos solo existen en la Rev\. 5 A\.C\.: se propone esa\./,
+    ),
+  ).toBeVisible();
+
+  await page
+    .getByLabel("Tope de supresión (opcional), en % de las filas")
+    .fill("3");
+  await page.getByRole("button", { name: "Comparar los dos caminos" }).click();
+  const tabla = page.getByRole("table");
+  await tabla.waitFor({ timeout: 60_000 });
+  await expect(
+    tabla.getByRole("columnheader", { name: "Óptima, borrando hasta 3 %" }),
+  ).toBeVisible();
+  const quitadas = tabla.getByRole("row", {
+    name: /Filas que salen del archivo/,
+  });
+  await expect(quitadas.getByRole("cell").nth(0)).toHaveText("0");
+  await expect(quitadas.getByRole("cell").nth(1)).toHaveText("0");
+  // Con el tope, la óptima borra a lo sumo el 3 % de 1.500 filas: 45.
+  const borradas = Number(
+    (await quitadas.getByRole("cell").nth(2).innerText()).replace(/\D/g, ""),
+  );
+  expect(borradas).toBeLessThanOrEqual(45);
+
+  expect(red).toEqual([]);
+});

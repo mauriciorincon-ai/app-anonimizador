@@ -993,6 +993,70 @@ describe("la generalización óptima en el certificado (S7)", () => {
     expect(en).toContain("ℓ was not required over");
   });
 
+  it("con tope de supresión dice cuántas filas salieron y de qué tamaños de grupo, solo conteos (S11)", async () => {
+    const con = (supresion: GeneralizacionAplicada["supresion"]) =>
+      conOptima({ ...OPTIMA, supresion });
+    const html = construirReporte(
+      await con({
+        porcentaje: 2.5,
+        tope: 12,
+        filas: 7,
+        porTamano: [
+          { tamano: 1, filas: 3 },
+          { tamano: 2, filas: 4 },
+        ],
+        aplicada: true,
+      }),
+    );
+    expect(html).toContain(
+      "<b>Tope de supresión: 2,5 % de las filas (12).</b>",
+    );
+    expect(html).toContain("Salieron del archivo de salida <b>7</b> filas");
+    expect(html).toContain("3 en grupos de 1 · 4 en grupos de 2");
+    expect(html).toContain("el archivo original no se tocó");
+
+    const ninguna = construirReporte(
+      await con({
+        porcentaje: 5,
+        tope: 20,
+        filas: 0,
+        porTamano: [],
+        aplicada: true,
+      }),
+    );
+    expect(ninguna).toContain("No hizo falta quitar ninguna fila");
+
+    const json = construirReporte(
+      await con({
+        porcentaje: 5,
+        tope: 0,
+        filas: 0,
+        porTamano: [],
+        aplicada: false,
+      }),
+    );
+    expect(json).toContain("no aplicado");
+    expect(json).toContain("El archivo es JSON");
+
+    const en = construirReporte({
+      ...(await con({
+        porcentaje: 2.5,
+        tope: 12,
+        filas: 7,
+        porTamano: [{ tamano: 1, filas: 7 }],
+        aplicada: true,
+      })),
+      idioma: "en",
+    });
+    expect(en).toContain("<b>7</b> rows left the output file");
+    expect(en).toContain("7 in groups of 1");
+
+    // Sin tope, el certificado es el de antes.
+    expect(construirReporte(await conOptima(OPTIMA))).not.toContain(
+      "Tope de supresión",
+    );
+  });
+
   it("cita la fuente y la fecha de cada escalera de fábrica usada, y solo de esas", async () => {
     const html = construirReporte(await conOptima(OPTIMA));
     expect(html).toContain("Fuentes de las escaleras de fábrica");
@@ -1002,6 +1066,26 @@ describe("la generalización óptima en el certificado (S7)", () => {
     expect(html).toContain("consultada el 2026-11-02");
     // No usó CIIU: no la cita.
     expect(html).not.toContain("CIIU Rev. 4 A.C.");
+  });
+
+  it("con la Rev. 5 cita su estructura y su fecha, y dice que la Rev. 4 no se traduce (S11)", async () => {
+    const html = construirReporte(
+      await conOptima({
+        ...OPTIMA,
+        columnas: [
+          {
+            nombre: "actividad",
+            jerarquia: { tipo: "ciiu5" },
+            nivel: "division",
+          },
+        ],
+      }),
+    );
+    expect(html).toContain("CIIU_5_AC_Estructura_detallada.xlsx");
+    expect(html).toContain("consultada el 2026-11-08");
+    expect(html).toContain("Resolución 992 de 2026");
+    expect(html).toContain("de muchos a muchos");
+    expect(html).not.toContain("Estructura-detallada-CIIU-4AC-2022.xlsx");
   });
 
   it("en inglés, redactada y no traducida", async () => {

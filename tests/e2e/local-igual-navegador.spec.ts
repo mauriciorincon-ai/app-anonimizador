@@ -11,7 +11,7 @@
 // reloj del certificado se puede fijar, igual que el de la página.
 
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { expect, test } from "@playwright/test";
@@ -27,6 +27,7 @@ import {
 } from "./global-setup";
 
 const EUROPEO = nombreDeFixture("europeo", 1_500, 42);
+const REV5 = nombreDeFixture("jerarquias-rev5", 1_500, 42);
 
 /** El mismo gate para un CSV y para un JSON Lines (S9: el JSON entra por el mismo motor). */
 const CASOS = [
@@ -169,3 +170,155 @@ for (const [que, ARCHIVO, extension] of CASOS)
     if (web.ok && local.ok)
       expect(serializarBoveda(local.boveda)).toBe(serializarBoveda(web.boveda));
   });
+
+// S11: la generalización óptima con TOPE DE SUPRESIÓN y la escalera CIIU Rev. 5, por los dos caminos.
+// La política llega a la web importada desde un archivo y a Velo local con `--politica` sobre el
+// mismo archivo: las filas que salen, el nivel de cada columna y el certificado tienen que coincidir.
+test("la web y Velo local dan los mismos bytes con tope de supresión y la CIIU Rev. 5", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop-chromium",
+    "el gate entre runtimes corre en un solo proyecto",
+  );
+  test.setTimeout(180_000);
+  const carpeta = mkdtempSync(join(DIRECTORIO_DE_FIXTURES, "velo-supresion-"));
+  const rutaDePolitica = join(carpeta, "politica-supresion.json");
+  writeFileSync(
+    rutaDePolitica,
+    JSON.stringify({
+      version: 1,
+      origen: "manual",
+      kObjetivo: 10,
+      reglas: [
+        {
+          columna: "cedula_titular",
+          tecnica: { tipo: "seudonimizar", longitud: 12 },
+        },
+        { columna: "edad", tecnica: { tipo: "generalizar-automatico" } },
+        {
+          columna: "codigo_municipio",
+          tecnica: { tipo: "generalizar-automatico" },
+        },
+        {
+          columna: "actividad_ciiu5",
+          tecnica: { tipo: "generalizar-automatico" },
+        },
+        { columna: "sexo", tecnica: { tipo: "conservar" } },
+      ],
+      generalizacion: {
+        algoritmo: "optima",
+        jerarquias: {
+          edad: { tipo: "edad-dane" },
+          codigo_municipio: { tipo: "divipola" },
+          actividad_ciiu5: { tipo: "ciiu5" },
+        },
+        supresionMaxima: 3,
+      },
+    }),
+  );
+
+  // ── La web ───────────────────────────────────────────────────────────────────────────────────
+  await page.clock.setFixedTime(AHORA);
+  await page.addInitScript(() => {
+    delete (window as Window & { showSaveFilePicker?: unknown })
+      .showSaveFilePicker;
+  });
+  await page.goto("/");
+  await page.setInputFiles("#archivo", REV5);
+  await page.waitForURL("**/diagnostico", { timeout: 60_000 });
+  await page.getByRole("link", { name: "Transformar este archivo" }).click();
+  await page.waitForURL("**/transformar");
+  await page.setInputFiles(
+    'input[aria-label="Importar una política desde un archivo"]',
+    rutaDePolitica,
+  );
+  await expect(
+    page.getByLabel(
+      "Escalera de generalización para la columna actividad_ciiu5",
+    ),
+  ).toHaveValue("ciiu5");
+  await expect(
+    page.getByLabel("Tope de supresión (opcional), en % de las filas"),
+  ).toHaveValue("3");
+  await page.getByLabel("Frase de paso del proyecto").fill(FRASE);
+  await page.getByRole("button", { name: "Derivar la llave" }).click();
+  await page
+    .getByRole("heading", { name: "Llave lista" })
+    .waitFor({ timeout: 60_000 });
+  const sal = (
+    await page
+      .locator("dt", { hasText: /^Sal/ })
+      .locator("xpath=following-sibling::dd")
+      .innerText()
+  ).trim();
+  await page.getByRole("button", { name: "Transformar", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Qué cambió, y qué sigue igual" })
+    .waitFor({ timeout: 60_000 });
+  await page.getByRole("button", { name: "Preparar el archivo" }).click();
+  const guardar = page.getByRole("link", {
+    name: /^Guardar velo-anonimizado-/,
+  });
+  await guardar.waitFor({ timeout: 60_000 });
+  const [csvWeb] = await Promise.all([
+    page.waitForEvent("download"),
+    guardar.click(),
+  ]);
+  const bytesWeb = readFileSync((await csvWeb.path())!);
+  const [certificadoWeb] = await Promise.all([
+    page.waitForEvent("download"),
+    page
+      .getByRole("button", { name: "Descargar el certificado" })
+      .click({ timeout: 60_000 }),
+  ]);
+  const certificadoDeLaWeb = readFileSync(
+    (await certificadoWeb.path())!,
+    "utf8",
+  );
+
+  // ── Velo local ───────────────────────────────────────────────────────────────────────────────
+  const salida = mkdtempSync(join(carpeta, "local-"));
+  process.env.VELO_FRASE = FRASE;
+  const avisos: string[] = [];
+  const codigo = await principal(
+    [
+      "anonimizar",
+      REV5,
+      "--politica",
+      rutaDePolitica,
+      "--sal",
+      sal,
+      "--salida",
+      salida,
+      "--idioma",
+      "es",
+    ],
+    { salida: (l) => void avisos.push(l), aviso: (l) => void avisos.push(l) },
+    () => AHORA,
+  );
+  delete process.env.VELO_FRASE;
+  expect(codigo, avisos.join("\n")).toBe(0);
+  const archivos = readdirSync(salida);
+  const de = (patron: RegExp) =>
+    join(
+      salida,
+      archivos.find((a) => patron.test(a))!,
+    );
+
+  // ── Los mismos bytes, y de verdad salieron filas ─────────────────────────────────────────────
+  expect(huella(readFileSync(de(/^velo-anonimizado-.+\.csv$/)))).toBe(
+    huella(bytesWeb),
+  );
+  expect(readFileSync(de(/^velo-certificado-.+\.html$/), "utf8")).toBe(
+    certificadoDeLaWeb,
+  );
+  const filasDeSalida =
+    bytesWeb.toString("utf8").trimEnd().split("\n").length - 1;
+  expect(filasDeSalida).toBeLessThan(1_500);
+  expect(filasDeSalida).toBeGreaterThanOrEqual(
+    1_500 - Math.floor(1_500 * 0.03),
+  );
+  expect(certificadoDeLaWeb).toContain("Salieron del archivo de salida");
+  expect(certificadoDeLaWeb).toContain("CIIU_5_AC_Estructura_detallada.xlsx");
+});

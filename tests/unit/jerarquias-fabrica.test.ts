@@ -46,7 +46,7 @@ function leerMeta(tabla: string): Meta {
 
 describe("cada tabla de fábrica tiene su procedencia, y es la que dice", () => {
   it("hay tablas que revisar (un gate sobre nada no es un gate)", () => {
-    expect(TABLAS).toEqual(["ciiu.json", "divipola.json"]);
+    expect(TABLAS).toEqual(["ciiu.json", "ciiu5.json", "divipola.json"]);
   });
 
   for (const tabla of TABLAS) {
@@ -132,22 +132,118 @@ describe("CIIU dice lo que su fuente dice", () => {
   });
 });
 
+describe("CIIU Rev. 5 dice lo que su fuente dice (S11)", () => {
+  const ciiu5 = JSON.parse(
+    readFileSync(join(CARPETA, "ciiu5.json"), "utf8"),
+  ) as { secciones: [string, string, string][]; clases: string[] };
+  const meta = leerMeta("ciiu5.json");
+
+  it("22 secciones (A a V), 87 divisiones y 544 clases, los conteos del .meta.json", () => {
+    expect(ciiu5.secciones.map(([s]) => s).join("")).toBe(
+      "ABCDEFGHIJKLMNOPQRSTUV",
+    );
+    expect(ciiu5.clases).toHaveLength(544);
+    expect(
+      new Set(ciiu5.clases.map((c) => c.slice(0, 2))).size,
+      "divisiones con clases",
+    ).toBe(87);
+    expect(meta.conteos).toEqual({
+      secciones: 22,
+      divisiones: 87,
+      grupos: 266,
+      clases: 544,
+    });
+  });
+
+  it("toda clase cae en UNA sola sección por su división", () => {
+    for (const clase of ciiu5.clases) {
+      expect(clase).toMatch(/^\d{4}$/);
+      const division = Number(clase.slice(0, 2));
+      expect(
+        ciiu5.secciones.filter(
+          ([, desde, hasta]) =>
+            division >= Number(desde) && division <= Number(hasta),
+        ),
+        clase,
+      ).toHaveLength(1);
+    }
+  });
+
+  it("la correlativa del DANE se cita y NO se usa: es de muchos a muchos", () => {
+    const correlativa = meta.fuentes.find((f) =>
+      f.url.includes("tablasCorrelativas"),
+    );
+    expect(correlativa).toBeDefined();
+    expect(JSON.stringify(correlativa)).toMatch(/many-to-many/);
+  });
+});
+
+describe("la revisión de una columna CIIU sale de sus códigos exclusivos (S11)", () => {
+  it("cuenta los exclusivos de cada una y decide solo si los de una sola aparecen", async () => {
+    const { detectarRevisionCiiu } =
+      await import("@/engine/jerarquias/fabrica");
+    // 4520 y 6201: solo Rev. 4 · 0330 y 2611: solo Rev. 5 · 0111 y 8610: de las dos.
+    expect(detectarRevisionCiiu(["0111", "4520", "6201", "8610"])).toEqual({
+      soloRev4: 2,
+      soloRev5: 0,
+      enAmbas: 2,
+      revision: "ciiu",
+    });
+    expect(detectarRevisionCiiu(["0111", "0330", "2611", "", "abc"])).toEqual({
+      soloRev4: 0,
+      soloRev5: 2,
+      enAmbas: 1,
+      revision: "ciiu5",
+    });
+    // Solo comunes, o exclusivos de las dos: no se adivina.
+    expect(detectarRevisionCiiu(["0111", "8610"]).revision).toBeNull();
+    expect(detectarRevisionCiiu(["4520", "2611"]).revision).toBeNull();
+    // Un 111 de hoja de cálculo es la clase 0111, y no cuenta dos veces junto a ella.
+    expect(detectarRevisionCiiu(["111", "0111"]).enAmbas).toBe(1);
+  });
+
+  it("el diagnóstico la anota solo en las columnas de actividad económica, con conteos", async () => {
+    const { conRevisionesCiiu } = await import("@/engine/jerarquias/fabrica");
+    const columnas = conRevisionesCiiu(
+      [{ nombre: "actividad_economica" }, { nombre: "codigo" }],
+      () => ["0330", "0111"],
+    );
+    expect(columnas[0].revisionCiiu?.revision).toBe("ciiu5");
+    expect(columnas[1].revisionCiiu).toBeUndefined();
+    // Lo que viaja a la página son números y una clave, nunca los códigos.
+    expect(JSON.stringify(columnas[0].revisionCiiu)).not.toMatch(/0330|0111/);
+  });
+});
+
 describe("el kit usa códigos que existen en las tablas de fábrica", () => {
   // El perfil `jerarquias` del kit trae municipios y clases CIIU VÁLIDOS: si una tabla se
   // regenera y uno desaparece, el kit dejaría de probar el camino feliz sin que nadie lo note.
   it("cada municipio y cada clase del perfil `jerarquias` está en su tabla", async () => {
-    const { MUNICIPIOS_DIVIPOLA, CLASES_CIIU } = await import(
-      "../../docs/kit-de-prueba/generador.mjs"
-    );
+    const { MUNICIPIOS_DIVIPOLA, CLASES_CIIU } =
+      await import("../../docs/kit-de-prueba/generador.mjs");
     const divipola = JSON.parse(
       readFileSync(join(CARPETA, "divipola.json"), "utf8"),
     ) as { municipios: [string, string, string][] };
-    const ciiu = JSON.parse(readFileSync(join(CARPETA, "ciiu.json"), "utf8")) as {
+    const ciiu = JSON.parse(
+      readFileSync(join(CARPETA, "ciiu.json"), "utf8"),
+    ) as {
       clases: string[];
     };
     const codigos = new Set(divipola.municipios.map(([c]) => c));
-    for (const m of MUNICIPIOS_DIVIPOLA as string[]) expect(codigos.has(m), m).toBe(true);
-    for (const c of CLASES_CIIU as string[]) expect(ciiu.clases, c).toContain(c);
+    for (const m of MUNICIPIOS_DIVIPOLA as string[])
+      expect(codigos.has(m), m).toBe(true);
+    for (const c of CLASES_CIIU as string[])
+      expect(ciiu.clases, c).toContain(c);
+    // S11: las de la Rev. 5 existen en su tabla, y las seis primeras SOLO en ella (la detección se
+    // apoya en eso; un código común mal elegido hacía leer la columna como una mezcla).
+    const { CLASES_CIIU5 } = await import("../../docs/kit-de-prueba/generador.mjs");
+    const ciiu5 = JSON.parse(
+      readFileSync(join(CARPETA, "ciiu5.json"), "utf8"),
+    ) as { clases: string[] };
+    for (const c of CLASES_CIIU5 as string[]) expect(ciiu5.clases, c).toContain(c);
+    (CLASES_CIIU5 as string[]).forEach((c, i) =>
+      expect(ciiu.clases.includes(c), `${c} en la Rev. 4`).toBe(i >= 6),
+    );
     // Y los casos fuera de rango que el kit inyecta, de verdad fuera.
     expect(codigos.has("99999")).toBe(false);
     expect(ciiu.clases).not.toContain("9999");
@@ -164,6 +260,7 @@ describe("lo que cita el certificado es lo que dice el .meta.json", () => {
       ["divipola.json", FUENTES.divipola],
       ["divipola.json", FUENTES.regiones],
       ["ciiu.json", FUENTES.ciiu],
+      ["ciiu5.json", FUENTES.ciiu5],
     ] as const;
     for (const [tabla, fuente] of citadas) {
       const meta = leerMeta(tabla);

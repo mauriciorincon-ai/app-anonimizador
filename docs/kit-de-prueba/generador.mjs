@@ -477,6 +477,12 @@ export const CLASES_CIIU = [
   "0111", "0141", "1011", "1410", "2410", "3511", "4111", "4711", "4921",
   "5511", "6201", "6411", "6810", "7020", "8411", "8521", "8610", "9001",
 ];
+// S11: clases de la CIIU Rev. 5 A.C. Las seis primeras solo existen en la Rev. 5 (la detección de la
+// revisión se apoya en ellas); el resto existe en las dos y, desde la división 61, sube a otra letra.
+export const CLASES_CIIU5 = [
+  "0330", "2611", "2619", "3111", "3540", "4340",
+  "0111", "1011", "4711", "6411", "6810", "8610", "8411", "9900",
+];
 const COLUMNAS_DE_JERARQUIAS = {
   edad: {
     tipo: "numero",
@@ -494,6 +500,11 @@ const COLUMNAS_DE_JERARQUIAS = {
     tipo: "numero",
     categoria: "no-personal",
     gen: (a, c) => (a.conProbabilidad(c.tasaInvalida) ? "9999" : a.de(CLASES_CIIU)),
+  },
+  actividad_ciiu5: {
+    tipo: "numero",
+    categoria: "no-personal",
+    gen: (a, c) => (a.conProbabilidad(c.tasaInvalida) ? "9999" : a.de(CLASES_CIIU5)),
   },
 };
 
@@ -613,6 +624,8 @@ const PERFILES = {
     "sexo",
     "diagnostico",
   ],
+  // Para la CIIU Rev. 5 y el tope de supresión (S11): lo mismo con la actividad en la Rev. 5.
+  "jerarquias-rev5": ["cedula_titular", "edad", "codigo_municipio", "actividad_ciiu5", "sexo"],
   // Para el alto volumen (S8): ver `COLUMNAS_ANCHAS`.
   ancho: ["cedula_titular", ...Object.keys(COLUMNAS_ANCHAS)],
   // Para la política RGPD (S8): ver `COLUMNAS_EUROPEAS`.

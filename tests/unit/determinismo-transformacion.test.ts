@@ -268,6 +268,43 @@ describe("con la generalización óptima (S7), el archivo sigue siendo byte-idé
       await huellaConOptima(tabla),
     );
   });
+
+  // S11: el tope de supresión es opcional y 0 se normaliza fuera. Una política que lo trae en 0 es
+  // la MISMA política (mismo hash) y da el MISMO archivo; con tope, otro archivo, y estable.
+  it("tope de supresión 0: mismo hash de política y el mismo archivo, byte por byte", async () => {
+    const conCero: Politica = {
+      ...CON_OPTIMA,
+      generalizacion: { ...CON_OPTIMA.generalizacion!, supresionMaxima: 0 },
+    };
+    expect(hashDePolitica(conCero)).toBe(hashDePolitica(CON_OPTIMA));
+    const tabla = tablaPorBloques(500);
+    const r = await aplicarPolitica(tabla, conCero, llaveA, "es");
+    expect(r.fuera).toBeNull();
+    expect(r.tabla.filas, "con tope 0 no sale ninguna fila").toBe(tabla.filas);
+    expect(sha256(new TextEncoder().encode(serializarCsv(r.tabla)))).toBe(
+      await huellaConOptima(tabla),
+    );
+  });
+
+  it("con tope, otro hash y otro archivo, el mismo en cada corrida y con cualquier trozo", async () => {
+    const conTope: Politica = {
+      ...CON_OPTIMA,
+      generalizacion: { ...CON_OPTIMA.generalizacion!, supresionMaxima: 5 },
+    };
+    expect(hashDePolitica(conTope)).not.toBe(hashDePolitica(CON_OPTIMA));
+    const huella = async (tabla: TablaColumnar) => {
+      const r = await aplicarPolitica(tabla, conTope, llaveA, "es");
+      expect(r.optima?.alcanzado).toBe(true);
+      return {
+        sha: sha256(new TextEncoder().encode(serializarCsv(r.tabla))),
+        filas: r.tabla.filas,
+      };
+    };
+    const base = await huella(tablaPorBloques(500));
+    expect(await huella(tablaPorBloques(13))).toEqual(base);
+    expect(await huella(tablaPorBloques(500))).toEqual(base);
+    expect(base.sha).not.toBe(await huellaConOptima(tablaPorBloques(500)));
+  });
 });
 
 describe("con ruido con garantía (S7), el archivo sigue siendo byte-idéntico", () => {

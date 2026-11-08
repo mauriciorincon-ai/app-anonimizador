@@ -137,6 +137,19 @@ describe("el camino se escribe en la política", () => {
     });
   });
 
+  it("el tope de supresión se escribe en la política; 0 o vacío lo quita", () => {
+    const onCambio = pintar(OPTIMA);
+    const tope = screen.getByLabelText(
+      "Tope de supresión (opcional), en % de las filas",
+    );
+    fireEvent.change(tope, { target: { value: "2.5" } });
+    expect(
+      (onCambio.mock.calls[0][0] as Politica).generalizacion?.supresionMaxima,
+    ).toBe(2.5);
+    fireEvent.change(tope, { target: { value: "0" } });
+    expect(onCambio.mock.calls[1][0]).toEqual(OPTIMA);
+  });
+
   it("una escalera importada que no es de las ofrecidas se nombra como tal", () => {
     pintar({
       ...OPTIMA,
@@ -316,6 +329,75 @@ describe("la comparación", () => {
         "La ℓ no se exige sobre diagnostico: la política suprime esa columna y el archivo no la lleva.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("con tope de supresión, una tercera columna dice cuántas filas salen", () => {
+    const conTope = {
+      ...OPTIMA,
+      generalizacion: { ...OPTIMA.generalizacion!, supresionMaxima: 5 },
+    };
+    sesion.comparacion = {
+      fase: "hecha",
+      firma: firmaDeComparacion(conTope, OPTIMA.generalizacion!.jerarquias),
+      comparacion: {
+        kObjetivo: 5,
+        lObjetivo: null,
+        lDescartadas: [],
+        dimensiones: ["edad", "municipio"],
+        mondrian: lado({}),
+        optima: lado({ bitsDespues: 4 }),
+        conSupresion: {
+          porcentaje: 5,
+          aplicable: true,
+          lado: lado({ bitsDespues: 5.5, filasQuitadas: 3 }),
+        },
+      },
+    };
+    pintar(conTope);
+    const tabla = screen.getByRole("table");
+    expect(
+      within(tabla).getByRole("columnheader", { name: "Óptima, sin borrar" }),
+    ).toBeInTheDocument();
+    expect(
+      within(tabla).getByRole("columnheader", {
+        name: "Óptima, borrando hasta 5 %",
+      }),
+    ).toBeInTheDocument();
+    const quitadas = within(tabla).getByRole("row", {
+      name: /Filas que salen del archivo/,
+    });
+    expect(
+      within(quitadas)
+        .getAllByRole("cell")
+        .map((c) => c.textContent),
+    ).toEqual(["0", "0", "3"]);
+    expect(screen.queryByText(/El archivo es JSON/)).toBeNull();
+  });
+
+  it("en un JSON el tope no se aplicaría, y la tabla lo dice", () => {
+    const conTope = {
+      ...OPTIMA,
+      generalizacion: { ...OPTIMA.generalizacion!, supresionMaxima: 5 },
+    };
+    sesion.comparacion = {
+      fase: "hecha",
+      firma: firmaDeComparacion(conTope, OPTIMA.generalizacion!.jerarquias),
+      comparacion: {
+        kObjetivo: 5,
+        lObjetivo: null,
+        lDescartadas: [],
+        dimensiones: ["edad", "municipio"],
+        mondrian: lado({}),
+        optima: lado({}),
+        conSupresion: {
+          porcentaje: 5,
+          aplicable: false,
+          lado: lado({ filasQuitadas: 0 }),
+        },
+      },
+    };
+    pintar(conTope);
+    expect(screen.getByText(/El archivo es JSON/)).toBeInTheDocument();
   });
 
   it("un fallo se dice, no se queda en blanco", () => {

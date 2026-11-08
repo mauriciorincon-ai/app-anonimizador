@@ -342,7 +342,62 @@ describe("CIIU Rev. 4 A.C. (DANE): clase → grupo → división → sección", 
   });
 });
 
+describe("CIIU Rev. 5 A.C. (DANE, S11): la misma escalera, con su propia tabla", () => {
+  const CIIU5: Jerarquia = { tipo: "ciiu5" };
+  const CIIU4: Jerarquia = { tipo: "ciiu" };
+
+  it("una clase sube por grupo, división y sección de la Rev. 5", () => {
+    expect(escalera(CIIU5, "0111")).toEqual([
+      "0111",
+      "011",
+      "01",
+      "A",
+      SUPRIMIDO,
+    ]);
+    expect(escalera(CIIU5, "2611")).toEqual([
+      "2611",
+      "261",
+      "26",
+      "C",
+      SUPRIMIDO,
+    ]);
+    // La sección V solo existe en la Rev. 5.
+    expect(escalera(CIIU5, "9900")[3]).toBe("V");
+  });
+
+  it("el mismo código sube a OTRA sección según la revisión: por eso no se adivina", () => {
+    // 6411 (banca central) y 8610 (hospitales) existen en las dos; la Rev. 5 parte la J de la
+    // Rev. 4 y corre una letra todo lo que viene desde la división 61.
+    expect(escalera(CIIU4, "6411")[3]).toBe("K");
+    expect(escalera(CIIU5, "6411")[3]).toBe("L");
+    expect(escalera(CIIU4, "8610")[3]).toBe("Q");
+    expect(escalera(CIIU5, "8610")[3]).toBe("R");
+  });
+
+  it("un código que solo existe en la otra revisión no se encuentra, y se queda como está", () => {
+    // 4520 (mantenimiento de vehículos) es de la Rev. 4; 2611 (componentes), de la Rev. 5.
+    expect(escalera(CIIU5, "4520").slice(0, 3)).toEqual(Array(3).fill("4520"));
+    expect(escalera(CIIU4, "2611").slice(0, 3)).toEqual(Array(3).fill("2611"));
+  });
+
+  it("los niveles se llaman igual en las dos", () => {
+    expect(nombresDeNiveles(CIIU5)).toEqual(nombresDeNiveles(CIIU4));
+  });
+});
+
 describe("la escalera que la pantalla propone", () => {
+  it("la revisión de la CIIU sale de los conteos del worker; si no deciden, la Rev. 4", () => {
+    const columna = { nombre: "actividad_economica", tipo: "texto" } as const;
+    const con = (revision: "ciiu" | "ciiu5" | null) => ({
+      ...columna,
+      revisionCiiu: { soloRev4: 0, soloRev5: 0, enAmbas: 3, revision },
+    });
+    expect(escaleraSugerida(con("ciiu5"))).toBe("ciiu5");
+    expect(escaleraSugerida(con("ciiu"))).toBe("ciiu");
+    expect(escaleraSugerida(con(null))).toBe("ciiu");
+    expect(escaleraSugerida(columna)).toBe("ciiu");
+  });
+
   it("sale del tipo y del nombre, nunca de los valores", () => {
     expect(escaleraSugerida({ nombre: "Edad", tipo: "numero" })).toBe(
       "edad-dane",
