@@ -257,8 +257,8 @@ export const MOTOR_TRANSFORMAR = {
     en: "Regulation (EU) 2016/679, art. 4(1) — DO L 119, 4.5.2016",
   },
   "fabrica.rgpd.cob.enLinea.id": {
-    es: "Identificadores en línea (dirección IP)",
-    en: "Online identifiers (IP address)",
+    es: "Identificadores en línea (dirección IP): se generaliza hasta el k, no se seudonimiza",
+    en: "Online identifiers (IP address): generalized up to the k, not pseudonymized",
   },
   "fabrica.rgpd.cob.enLinea.fuente": {
     es: "Reglamento (UE) 2016/679, art. 4, punto 1 — DO L 119, 4.5.2016",

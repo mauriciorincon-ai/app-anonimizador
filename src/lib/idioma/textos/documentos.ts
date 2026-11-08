@@ -221,8 +221,8 @@ export const DOCUMENTOS = {
       },
       cuasiIdentificador: { es: "Cuasi-identificador", en: "Quasi-identifier" },
       datoSensible: {
-        es: "Dato sensible · Ley 1581 art. 5",
-        en: "Sensitive data · Law 1581, art. 5",
+        es: "Dato sensible · Ley 1581 art. 5 · RGPD art. 9 y 10",
+        en: "Sensitive data · Law 1581, art. 5 · GDPR art. 9 and 10",
       },
       noPersonal: { es: "No personal", en: "Not personal" },
     },
