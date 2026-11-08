@@ -34,19 +34,19 @@ export async function tablaDeCsv(
   } = {},
 ): Promise<TablaColumnar | "alto-volumen" | "vacio"> {
   let constructor: ConstructorColumnar | null = null;
+  // El ancho es el del ENCABEZADO: la primera fila de un lote posterior puede venir corta o larga.
+  let ancho = 0;
   let filas = 0;
   for await (const lote of lotesDeCsv(archivo, opciones)) {
     let desde = 0;
     if (!constructor) {
       constructor = new ConstructorColumnar(lote[0] ?? [], 1 << 16);
+      ancho = lote[0]?.length ?? 0;
       desde = 1;
     }
     for (let i = desde; i < lote.length; i++) constructor.agregarFila(lote[i]);
     filas += lote.length - desde;
-    if (
-      filas * (lote[0]?.length ?? 0) >
-      (opciones.topeDeCeldas ?? TOPE_DE_CELDAS_EN_MEMORIA)
-    )
+    if (filas * ancho > (opciones.topeDeCeldas ?? TOPE_DE_CELDAS_EN_MEMORIA))
       return "alto-volumen";
     opciones.alLeerFilas?.(filas);
   }

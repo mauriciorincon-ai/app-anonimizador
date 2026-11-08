@@ -1570,6 +1570,8 @@ async function analizarDevuelto(archivo: File): Promise<void> {
   }
 
   let constructor: ConstructorColumnar | null = null;
+  // El ancho es el del ENCABEZADO: la primera fila de un lote posterior puede venir corta o larga.
+  let ancho = 0;
   let filas = 0;
   let leidos = 0;
   let proximoAviso = FILAS_POR_AVISO;
@@ -1581,13 +1583,14 @@ async function analizarDevuelto(archivo: File): Promise<void> {
       let desde = 0;
       if (!constructor) {
         constructor = new ConstructorColumnar(lote[0] ?? [], 1 << 16);
+        ancho = lote[0]?.length ?? 0;
         desde = 1;
       }
       for (let i = desde; i < lote.length; i++)
         constructor.agregarFila(lote[i]);
       filas += lote.length - desde;
       // S8: el mismo tope que a la ida; por encima, el devuelto se restaura por pasadas.
-      if (filas * (lote[0]?.length ?? 0) > TOPE_DE_CELDAS_EN_MEMORIA) {
+      if (filas * ancho > TOPE_DE_CELDAS_EN_MEMORIA) {
         constructor = null;
         await analizarDevueltoAltoVolumen(archivo);
         return;
@@ -1658,7 +1661,11 @@ async function restaurarDevuelto(): Promise<void> {
     return;
   }
   if (!devuelta || !bovedaActual) {
-    enviar({ tipo: "error", motivo: devuelta ? "sin-boveda" : "sin-devuelto" });
+    // Un devuelto de alto volumen también es un devuelto: sin bóveda, lo que falta es la bóveda.
+    enviar({
+      tipo: "error",
+      motivo: devuelta || devueltoAltoVolumen ? "sin-boveda" : "sin-devuelto",
+    });
     return;
   }
   avisar("restaurando", devuelta.filas, 0, 0);
@@ -1796,7 +1803,10 @@ async function construirRestaurado(asa?: FileSystemFileHandle): Promise<void> {
 
 function construirInformeDelRegreso(fecha: string, idioma: Idioma): void {
   if (!restaurada || !bovedaActual) {
-    enviar({ tipo: "error", motivo: "sin-devuelto" });
+    enviar({
+      tipo: "error",
+      motivo: restaurada ? "sin-boveda" : "sin-devuelto",
+    });
     return;
   }
   const html = construirInformeDeRestauracion({

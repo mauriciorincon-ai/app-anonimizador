@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import { generarFilas } from "../../docs/kit-de-prueba/generador.mjs";
 import { escaparCampo } from "@/engine/csv";
 import { CONFIGURACION_CSV, lotesDeCsv } from "@/workers/csv";
+import { tablaDeCsv } from "@/workers/en-memoria";
 import { ArchivoCambio } from "@/workers/json";
 import { sha256 } from "@/lib/sha256";
 
@@ -122,5 +123,28 @@ describe("la huella del archivo", () => {
     await expect(
       filasDe(blobDe("a,b\n1,3\n"), { huellaEsperada: buena }),
     ).rejects.toBeInstanceOf(ArchivoCambio);
+  });
+});
+
+describe("el tope de celdas mide el ancho del encabezado (S10)", () => {
+  // Diez columnas y una fila entera; después, filas de un solo campo, cada una en su propio lote.
+  // Con el ancho de la PRIMERA FILA DEL LOTE (1) el tope de 45 celdas no se alcanzaba hasta la fila
+  // 46; con el del encabezado (10) se alcanza en la quinta.
+  const encabezado = Array.from({ length: 10 }, (_, i) => `c${i}`).join(",");
+  const entera = Array.from({ length: 10 }, (_, i) => i).join(",");
+  const texto = `${encabezado}\n${entera}\n${"x\n".repeat(12)}`;
+
+  it("un lote que empieza con una fila corta no esconde el alto volumen", async () => {
+    const lectura = await tablaDeCsv(blobDe(texto), {
+      trozo: 4,
+      topeDeCeldas: 45,
+    });
+    expect(lectura).toBe("alto-volumen");
+  });
+
+  it("y sin pasar el tope, el archivo se lee entero", async () => {
+    const lectura = await tablaDeCsv(blobDe(texto), { trozo: 4 });
+    expect(typeof lectura).toBe("object");
+    if (typeof lectura === "object") expect(lectura.filas).toBe(13);
   });
 });

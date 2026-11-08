@@ -60,11 +60,6 @@ export interface EstadoDelRegreso {
   readonly etapa: EtapaDelWorker | null;
   /** El CSV restaurado, como asa opaca (ADR-005). */
   readonly archivo: AsaDeArchivo | null;
-  /** S8: el restaurado que el worker escribió en el archivo que el usuario eligió (alto volumen). */
-  readonly archivoEnDisco: {
-    readonly nombre: string;
-    readonly bytes: number;
-  } | null;
   /** El informe HTML del regreso, también como asa. */
   readonly informe: AsaDeArchivo | null;
   /** S10: el último intento de escribir el restaurado falló; la restauración sigue hecha. */
@@ -77,7 +72,6 @@ const VACIO: EstadoDelRegreso = {
   restauracion: { fase: "sin-hacer" },
   etapa: null,
   archivo: null,
-  archivoEnDisco: null,
   informe: null,
   escrituraFallida: false,
 };
@@ -188,15 +182,11 @@ export function restaurarAhora(): void {
   worker.postMessage({ tipo: "restaurar" });
 }
 
-/** `destino` (S8): el archivo que el usuario eligió, en alto volumen. Ver `prepararArchivo`. */
-export function prepararRestaurado(destino?: FileSystemFileHandle): void {
+/** El restaurado sale siempre por `Blob` (S8, desviación b): la página no ofrece elegir destino. */
+export function prepararRestaurado(): void {
   if (!worker) return;
   publicar({ etapa: "escribiendo", escrituraFallida: false });
-  worker.postMessage(
-    destino
-      ? { tipo: "construir-restaurado", destino }
-      : { tipo: "construir-restaurado" },
-  );
+  worker.postMessage({ tipo: "construir-restaurado" });
 }
 
 export function prepararInformeDelRegreso(fecha: string): void {
@@ -252,12 +242,7 @@ function recibir(mensaje: MensajeDelWorker): void {
     case "archivo":
       // El `Blob` se envuelve AQUÍ y no se guarda en ningún sitio: a partir de esta línea la única
       // forma de llegar a él es pedirle una URL.
-      if (mensaje.proposito === "restaurado" && mensaje.enDisco) {
-        publicar({
-          archivoEnDisco: { nombre: mensaje.nombre, bytes: mensaje.bytes },
-          etapa: null,
-        });
-      } else if (mensaje.proposito === "restaurado") {
+      if (mensaje.proposito === "restaurado") {
         publicar({ archivo: asaDelMensaje(mensaje), etapa: null });
       } else if (mensaje.proposito === "informe-del-regreso") {
         publicar({ informe: asaDelMensaje(mensaje), etapa: null });
