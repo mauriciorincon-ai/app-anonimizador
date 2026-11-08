@@ -10,6 +10,7 @@ import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { nivelesDe, SUPRIMIDO, type Jerarquia } from "@/engine/jerarquias";
 import {
   compararNodos,
+  generalizacionAplicada,
   generalizarOptimo,
   resolverDiversidad,
   TOPE_DE_NODOS,
@@ -358,6 +359,26 @@ describe("los bordes, dichos", () => {
       generalizarOptimo(tablaDe(["edad"], []), ["edad"], ESCALERAS, 2, null)
         .motivo,
     ).toBe("sin-dimensiones");
+  });
+
+  it("S10: columnas llamadas como lo que hereda un objeto (constructor, toString) suben por supresión", () => {
+    const nombres = ["constructor", "toString", "__proto__"];
+    const tabla = tablaDe(nombres, [
+      ["a", "x", "1"],
+      ["a", "y", "1"],
+      ["b", "x", "2"],
+      ["b", "y", "2"],
+    ]);
+    const r = generalizarOptimo(tabla, nombres, {}, 2, null);
+    expect(r.motivo).toBeNull();
+    expect(r.kAlcanzado).toBeGreaterThanOrEqual(2);
+    const aplicada = generalizacionAplicada(r, {
+      algoritmo: "optima",
+      jerarquias: {},
+    });
+    expect(aplicada.columnas.map((c) => c.jerarquia.tipo)).toEqual(
+      r.dimensiones.map(() => "supresion"),
+    );
   });
 
   it(`una retícula de más de ${TOPE_DE_NODOS} nodos no se recorre: tabla intacta y «excede-tope»`, () => {

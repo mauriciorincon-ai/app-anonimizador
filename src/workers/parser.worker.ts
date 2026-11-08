@@ -54,6 +54,7 @@ import { nombresDeNiveles } from "@/engine/jerarquias";
 import {
   columnasDeMondrian,
   hashDePolitica,
+  jerarquiaDe,
   tecnicaDe,
   type JerarquiaDeLaPolitica,
   type Politica,
@@ -1048,9 +1049,7 @@ function compararSobre(
     sensibles,
     optima.dimensiones.map((n, i) =>
       disponible
-        ? nombresDeNiveles(jerarquias[n] ?? { tipo: "supresion" })[
-            optima.niveles[i]
-          ]
+        ? nombresDeNiveles(jerarquiaDe(jerarquias, n))[optima.niveles[i]]
         : null,
     ),
     {

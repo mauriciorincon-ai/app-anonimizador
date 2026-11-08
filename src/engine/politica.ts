@@ -254,6 +254,30 @@ const jerarquiaSchema = z.discriminatedUnion("tipo", [
 export type JerarquiaDeLaPolitica = z.infer<typeof jerarquiaSchema>;
 
 /**
+ * Lo que un registro guarda para una columna, o `undefined`. Con `Object.hasOwn` y no con
+ * `registro[nombre]`: una columna que se llame `constructor` o `toString` leería lo que hereda todo
+ * objeto de JavaScript, no `undefined`, y la óptima reventaba (S10, deuda del S7). Por lo mismo,
+ * los registros por columna se arman con `Object.fromEntries`: asignar a `__proto__` cambia el
+ * prototipo en vez de crear la clave.
+ */
+export function propiaDe<J>(
+  registro: Readonly<Record<string, J>> | undefined,
+  nombre: string,
+): J | undefined {
+  return registro !== undefined && Object.hasOwn(registro, nombre)
+    ? registro[nombre]
+    : undefined;
+}
+
+/** La jerarquía de una columna, o la de solo supresión si no tiene una. */
+export function jerarquiaDe<J>(
+  jerarquias: Readonly<Record<string, J>>,
+  nombre: string,
+): J | { readonly tipo: "supresion" } {
+  return propiaDe(jerarquias, nombre) ?? { tipo: "supresion" };
+}
+
+/**
  * Cómo se alcanza el k sobre las columnas marcadas `generalizar-automatico`.
  *
  * **Ausente = Mondrian**, el de siempre, y por eso es opcional y no un campo con default: si
@@ -354,9 +378,11 @@ function generalizacionNormalizada(
       .filter((r) => r.tecnica.tipo === "generalizar-automatico")
       .map((r) => r.columna),
   );
-  const jerarquias: Record<string, JerarquiaDeLaPolitica> = {};
-  for (const [columna, jerarquia] of Object.entries(generalizacion.jerarquias))
-    if (reparto.has(columna)) jerarquias[columna] = jerarquia;
+  const jerarquias: Record<string, JerarquiaDeLaPolitica> = Object.fromEntries(
+    Object.entries(generalizacion.jerarquias).filter(([columna]) =>
+      reparto.has(columna),
+    ),
+  );
   const columnas = [...new Set(generalizacion.diversidad?.columnas ?? [])]
     .filter((c) => !reparto.has(c))
     .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));

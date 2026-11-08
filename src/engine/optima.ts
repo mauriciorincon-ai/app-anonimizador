@@ -45,7 +45,11 @@ import {
   pasosDe,
   type Jerarquia,
 } from "./jerarquias";
-import type { GeneralizacionOptima, JerarquiaDeLaPolitica } from "./politica";
+import {
+  jerarquiaDe,
+  type GeneralizacionOptima,
+  type JerarquiaDeLaPolitica,
+} from "./politica";
 import { clasesDeEquivalencia } from "./riesgo";
 
 /**
@@ -402,11 +406,7 @@ export function generalizarOptimo(
   const pedidas = new Set(nombresDeDimension);
   const columnas = tabla.columnas.filter((c) => pedidas.has(c.nombre));
   const dimensiones = columnas.map((c) =>
-    proyectarDimension(
-      c,
-      jerarquias[c.nombre] ?? { tipo: "supresion" },
-      tabla.filas,
-    ),
+    proyectarDimension(c, jerarquiaDe(jerarquias, c.nombre), tabla.filas),
   );
   const alturas = dimensiones.map((d) => d.niveles.length - 1);
   const nodosEnLaReticula = alturas.reduce((p, h) => p * (h + 1), 1);
@@ -568,7 +568,7 @@ export function generalizacionAplicada(
     columnasSensibles: optima.columnasSensibles,
     lDescartadas: optima.lDescartadas,
     columnas: optima.dimensiones.map((nombre, i) => {
-      const jerarquia = pedida.jerarquias[nombre] ?? { tipo: "supresion" };
+      const jerarquia = jerarquiaDe(pedida.jerarquias, nombre);
       return {
         nombre,
         jerarquia,

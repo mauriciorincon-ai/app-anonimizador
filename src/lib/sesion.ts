@@ -15,6 +15,7 @@ import { useSyncExternalStore } from "react";
 
 import {
   columnasDeMondrian,
+  jerarquiaDe,
   type JerarquiaDeLaPolitica,
   type Politica,
 } from "@/engine/politica";
@@ -179,7 +180,7 @@ export function firmaDeComparacion(
     k: politica.kObjetivo,
     reparto,
     jerarquias: Object.fromEntries(
-      reparto.map((c) => [c, jerarquias[c] ?? { tipo: "supresion" }]),
+      reparto.map((c) => [c, jerarquiaDe(jerarquias, c)]),
     ),
     diversidad: politica.generalizacion?.diversidad ?? null,
   });
