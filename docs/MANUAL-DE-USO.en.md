@@ -1065,7 +1065,7 @@ ignored:
 | **NIR** (France)           | The key: 97 minus the first 13 digits modulo 97 (with Corsica's 2A and 2B); sex 1 or 2 and a month from 01 to 12 |
 | **Codice fiscale** (Italy) | The check character (odd- and even-position tables, modulo 26); a possible month letter and day                  |
 | **Steuer-IdNr** (Germany)  | The check digit over the first 10 digits; no leading 0 and the repeated-digit structure the rule sets            |
-| **BSN** (Netherlands)      | The 11-test; all zeros are refused                                                                               |
+| **BSN** (Netherlands)      | The 11-test; an 8-digit BSN is read with a leading zero; all zeros are refused                                   |
 | **PESEL** (Poland)         | The check digit (weights 1-3-7-9) and that the birth date it carries exists                                      |
 
 **“Confirmed by the algorithm”** means two things: the check adds up and the structure is possible

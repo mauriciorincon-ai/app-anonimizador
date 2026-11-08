@@ -1058,7 +1058,7 @@ guiones, y las mayúsculas:
 | **NIR** (Francia)           | La clave: 97 menos los 13 primeros dígitos módulo 97 (con 2A y 2B de Córcega); sexo 1 o 2 y mes entre 01 y 12               |
 | **Codice fiscale** (Italia) | El carácter de control (tablas de posiciones impares y pares, módulo 26); una letra de mes y un día posibles                |
 | **Steuer-IdNr** (Alemania)  | La cifra de control sobre las 10 primeras cifras; sin 0 al inicio y con la estructura de cifras repetidas que fija la norma |
-| **BSN** (Países Bajos)      | La prueba del 11; no admite todo ceros                                                                                      |
+| **BSN** (Países Bajos)      | La prueba del 11; un BSN de 8 cifras se lee con un cero a la izquierda; no admite todo ceros                                |
 | **PESEL** (Polonia)         | El dígito de control (pesos 1-3-7-9) y que la fecha de nacimiento que lleva exista                                          |
 
 **«Confirmado por el algoritmo»** quiere decir dos cosas: el control cuadra y la estructura es

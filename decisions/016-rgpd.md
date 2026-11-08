@@ -56,15 +56,15 @@ Velo's GDPR output is **pseudonymised**, and the certificate says so.
    All are `algoritmo-oficial` and `identificador-directo`; separators (spaces, dots, hyphens) and
    case are ignored when validating; each cites its official source in a comment:
 
-   | Validator      | Check                                                   | Refused even if the check matches                                                |
-   | -------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------- |
-   | DNI            | number mod 23 → letter table                            | not 8 digits + letter; a letter outside the table                                |
-   | NIE            | X, Y, Z = 0, 1, 2, then the DNI rule                    | prefix other than X, Y, Z                                                        |
-   | NIR (France)   | 97 − (first 13 digits mod 97); Corsica 2A = 19, 2B = 18 | sex other than 1 or 2; month outside 01–12                                       |
-   | Codice fiscale | odd/even position tables, mod 26 → letter               | month letter outside `ABCDEHLMPRST`; day outside 01–31 / 41–71; omocodia handled |
-   | Steuer-IdNr    | ISO 7064 MOD 11,10                                      | leading 0; not exactly one repeated digit; three in a row; no digit missing      |
-   | BSN            | the 11-test (9a + 8b + … + 2h − 1i)                     | all zeros                                                                        |
-   | PESEL          | weights 1-3-7-9, mod 10                                 | a birth date that does not exist (century coded in the month)                    |
+   | Validator      | Check                                                                        | Refused even if the check matches                                                |
+   | -------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+   | DNI            | number mod 23 → letter table                                                 | not 8 digits + letter; a letter outside the table                                |
+   | NIE            | X, Y, Z = 0, 1, 2, then the DNI rule                                         | prefix other than X, Y, Z                                                        |
+   | NIR (France)   | 97 − (first 13 digits mod 97); Corsica 2A = 19, 2B = 18                      | sex other than 1 or 2; month outside 01–12                                       |
+   | Codice fiscale | odd/even position tables, mod 26 → letter                                    | month letter outside `ABCDEHLMPRST`; day outside 01–31 / 41–71; omocodia handled |
+   | Steuer-IdNr    | ISO 7064 MOD 11,10                                                           | leading 0; not exactly one repeated digit; three in a row; no digit missing      |
+   | BSN            | the 11-test (9a + 8b + … + 2h − 1i); 8 digits read with a leading zero (S10) | all zeros                                                                        |
+   | PESEL          | weights 1-3-7-9, mod 10                                                      | a birth date that does not exist (century coded in the month)                    |
 
    How far each one was verified differs, and each validator's comment says it. See "Algorithm
    sources" below.

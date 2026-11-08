@@ -303,9 +303,19 @@ describe("BSN (Países Bajos)", () => {
 
   it("rechaza lo que no pasa la prueba, el largo y el todo ceros", () => {
     expect(cumpleBsn("111222334")).toBe(false);
-    expect(cumpleBsn("11122233")).toBe(false);
+    expect(cumpleBsn("1112223")).toBe(false);
     expect(cumpleBsn("1112223333")).toBe(false);
     expect(cumpleBsn("000000000")).toBe(false);
+    expect(cumpleBsn("00000000")).toBe(false);
+  });
+
+  it("un BSN de 8 cifras se lee con un cero a la izquierda (S10)", () => {
+    // 012345611: suma 8·1 + 7·2 + 6·3 + 5·4 + 4·5 + 3·6 + 2·1 − 1·1 = 99 = 11 × 9.
+    expect(cumpleBsn("12345611")).toBe(true);
+    expect(cumpleBsn("012345611")).toBe(true);
+    expect(cumpleBsn("12345612")).toBe(false);
+    // Con separadores, como el resto de los números de la familia.
+    expect(cumpleBsn("1234 5611")).toBe(true);
   });
 });
 
@@ -412,6 +422,7 @@ describe("los siete como validadores del diagnóstico", () => {
     };
     // El umbral de adjudicación del clasificador es 85 %: un 9 % por azar no adjudica una columna.
     expect(cuantos(validadorBsn, 9)).toBeLessThan(0.12);
+    expect(cuantos(validadorBsn, 8)).toBeLessThan(0.12);
     expect(cuantos(validadorPesel, 11)).toBeLessThan(0.08);
     expect(cuantos(validadorSteuerIdNr, 11)).toBeLessThan(0.01);
   });

@@ -285,7 +285,9 @@ export function cumpleSteuerIdNr(valor: string): boolean {
  * ejemplo 123456782 (suma 154 = 11 × 14); y RvIG, UC 27 «Genereren nummers». No se abrieron
  * rijksoverheid.nl ni la Belastingdienst, y hay un solo ejemplo oficial. Las fuentes abiertas no
  * excluyen el 000000000: rechazarlo es decisión de Velo, porque pasa la prueba sin ser un número
- * que se asigne. Un BSN de 8 cifras (al que el registro antepone un cero) no se reconoce.
+ * que se asigne. Un BSN de 8 cifras se lee con un cero a la izquierda (así lo antepone el registro,
+ * y una hoja de cálculo se lo come): se comprueba el de 9. Un número de 8 cifras cualquiera lo
+ * pasa por azar una de cada 11 veces (~9 %), muy por debajo del 85 % que adjudica una columna.
  */
 export function sumaDelBsn(nueve: readonly number[]): number {
   return nueve.reduce(
@@ -295,8 +297,9 @@ export function sumaDelBsn(nueve: readonly number[]): number {
 }
 
 export function cumpleBsn(valor: string): boolean {
-  const limpio = sinSeparadores(valor);
-  if (!/^\d{9}$/.test(limpio)) return false;
+  const sinCero = sinSeparadores(valor);
+  if (!/^\d{8,9}$/.test(sinCero)) return false;
+  const limpio = sinCero.padStart(9, "0");
   // Todo ceros pasa la prueba del 11 (la suma es 0) y no es un número que se asigne.
   if (/^0+$/.test(limpio)) return false;
   return sumaDelBsn(digitosDe(limpio)) % 11 === 0;
