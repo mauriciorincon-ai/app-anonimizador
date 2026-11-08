@@ -109,12 +109,20 @@ export function DescargaDelCertificado({
   // La vista previa enseña lo que se va a mandar, así que se regenera cuando cambia lo que la
   // determina —el idioma incluido—: la fecha se vuelve a calcular con la convención del idioma nuevo.
   const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
+  // Si el módulo del documento no carga (sin red tras abrir la página), se dice, no se calla.
+  const [fallo, setFallo] = useState(false);
   useEffect(() => {
     if (!abierta) return;
     let vigente = true;
-    void generar().then((html) => {
-      if (vigente) setVistaPrevia(html);
-    });
+    setFallo(false);
+    generar().then(
+      (html) => {
+        if (vigente) setVistaPrevia(html);
+      },
+      () => {
+        if (vigente) setFallo(true);
+      },
+    );
     return () => {
       vigente = false;
     };
@@ -123,8 +131,17 @@ export function DescargaDelCertificado({
   async function descargar() {
     // Un Blob y un enlace: el archivo se arma en memoria y se guarda con el diálogo del sistema.
     // No hay servidor que lo genere, así que no hay servidor que lo vea.
-    const html = await generar();
-    const { nombreDelCertificado, nombreDelReporte } = await cargarReporte();
+    setFallo(false);
+    let html: string;
+    let nombres: Awaited<ReturnType<typeof cargarReporte>>;
+    try {
+      html = await generar();
+      nombres = await cargarReporte();
+    } catch {
+      setFallo(true);
+      return;
+    }
+    const { nombreDelCertificado, nombreDelReporte } = nombres;
     const enlace = document.createElement("a");
     const url = URL.createObjectURL(
       new Blob([html], { type: "text/html;charset=utf-8" }),
@@ -216,6 +233,12 @@ export function DescargaDelCertificado({
           {abierta ? t(C.vistaPrevia.cerrar) : t(C.vistaPrevia.ver)}
         </Boton>
       </div>
+
+      {fallo ? (
+        <p role="alert" className="text-tinta mt-4 text-[0.875rem]">
+          {t(C.descargar.fallo)}
+        </p>
+      ) : null}
 
       {abierta && vistaPrevia !== null ? (
         <iframe

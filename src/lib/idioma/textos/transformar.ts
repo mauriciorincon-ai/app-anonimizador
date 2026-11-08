@@ -961,6 +961,10 @@ export const TRANSFORMAR = {
         en: "Download the certificate",
       },
       reporte: { es: "Descargar el reporte", en: "Download the report" },
+      fallo: {
+        es: "No se pudo armar el documento. Vuelve a intentarlo: tus datos siguen en este equipo.",
+        en: "The document could not be built. Try again: your data is still on this device.",
+      },
     },
     vistaPrevia: {
       ver: { es: "Ver antes de descargar", en: "Preview before downloading" },

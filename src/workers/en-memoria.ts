@@ -11,7 +11,7 @@ import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { medirDiversidad } from "@/engine/diversidad";
 import { muestraDeColumna } from "@/engine/muestra";
 import { generalizacionAplicada, TOPE_DE_NODOS } from "@/engine/optima";
-import type { Politica } from "@/engine/politica";
+import { esDeRuidoNumerico, type Politica } from "@/engine/politica";
 import { DOMINIO_MAXIMO, informeDePrivacidad } from "@/engine/ruido";
 import { aplicarPolitica } from "@/engine/tecnicas";
 import { medirUtilidad } from "@/engine/utilidad";
@@ -147,10 +147,7 @@ export async function transformarEnMemoria(
       resultado.tabla,
       new Set(
         politica.reglas
-          .filter(
-            (r) =>
-              r.tecnica.tipo === "laplace" || r.tecnica.tipo === "perturbar",
-          )
+          .filter((r) => esDeRuidoNumerico(r.tecnica))
           .map((r) => r.columna),
       ),
     ),

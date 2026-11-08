@@ -539,6 +539,68 @@ describe("el certificado", () => {
     );
   });
 
+  const ARCHIVO = {
+    nombre: "velo-anonimizado-abc.csv",
+    bytes: 5,
+    url: "blob:x",
+  };
+
+  it("si el documento no se puede armar, lo dice y la vista no queda vacía en silencio (S10)", async () => {
+    construirReporte.mockImplementation(() => {
+      throw new Error("el módulo no cargó");
+    });
+    render(
+      <DescargaDelCertificado
+        informe={INFORME}
+        tratamiento={TRATAMIENTO}
+        archivo={ARCHIVO}
+        huellaDeSalida="beef"
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Ver antes de descargar" }),
+      );
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No se pudo armar el documento",
+    );
+    expect(document.querySelector("iframe")).toBeNull();
+  });
+
+  it("cerrar la vista mientras se arma no deja un documento viejo para la próxima apertura (S10)", async () => {
+    render(
+      <DescargaDelCertificado
+        informe={INFORME}
+        tratamiento={TRATAMIENTO}
+        archivo={ARCHIVO}
+        huellaDeSalida="beef"
+      />,
+    );
+    // Dos actos síncronos: el documento aún se está armando (el módulo se carga con `import()`).
+    act(() => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Ver antes de descargar" }),
+      );
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Cerrar la vista" }));
+    });
+    // Llega el documento de la apertura que ya se cerró.
+    await waitFor(() => expect(construirReporte).toHaveBeenCalled());
+    await act(async () => {});
+    // Al reabrir, hasta que su propio documento llegue, no se enseña el viejo.
+    act(() => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Ver antes de descargar" }),
+      );
+    });
+    expect(document.querySelector("iframe")).toBeNull();
+    await waitFor(() =>
+      expect(document.querySelector("iframe")).not.toBeNull(),
+    );
+  });
+
   it("antes del archivo no hay certificado, y lo dice en inglés", () => {
     fijarIdioma("en");
     render(
