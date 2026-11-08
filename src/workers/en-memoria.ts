@@ -7,7 +7,11 @@
 
 import { balanceDelTratamiento } from "@/engine/balance";
 import type { Diagnostico } from "@/engine/clasificador";
-import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
+import {
+  ConstructorColumnar,
+  quitarFilas,
+  type TablaColumnar,
+} from "@/engine/columnar";
 import { medirDiversidad } from "@/engine/diversidad";
 import { muestraDeColumna } from "@/engine/muestra";
 import { generalizacionAplicada, TOPE_DE_NODOS } from "@/engine/optima";
@@ -65,6 +69,8 @@ export async function transformarEnMemoria(
   llave: CryptoKey | null,
   idioma: Idioma,
   huella: string,
+  /** S11: false en un JSON (el tope de supresión no se aplica, y el certificado lo dice). */
+  admiteSupresion = true,
 ) {
   // El idioma del trabajo llega como dato y se queda en el resultado. La huella del archivo de
   // entrada entra a la semilla del ruido (S7, `ruido/azar.ts`).
@@ -74,7 +80,13 @@ export async function transformarEnMemoria(
     llave,
     idioma,
     huella,
+    admiteSupresion,
   );
+  // S11: lo que se compara fila a fila con la salida son las filas del original que QUEDAN en ella.
+  const queQueda =
+    resultado.fuera === null
+      ? original
+      : quitarFilas(original, resultado.fuera);
 
   const sensibles = diagnostico.columnas
     .filter((c) => c.categoria === "dato-sensible")
@@ -128,13 +140,13 @@ export async function transformarEnMemoria(
   const categorias = new Map(
     diagnostico.columnas.map((c) => [c.nombre, c.categoria as string]),
   );
-  const muestras = original.columnas.map((columna) =>
+  const muestras = queQueda.columnas.map((columna) =>
     muestraDeColumna(
       columna,
       porNombre.get(columna.nombre),
       politica,
       categorias.get(columna.nombre) ?? "no-personal",
-      original.filas,
+      queQueda.filas,
     ),
   );
 
@@ -143,7 +155,7 @@ export async function transformarEnMemoria(
     qis,
     balance,
     utilidad: medirUtilidad(
-      original,
+      queQueda,
       resultado.tabla,
       new Set(
         politica.reglas

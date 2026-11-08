@@ -44,6 +44,7 @@ import {
 import { filaDeCsv } from "@/engine/csv";
 import { medirDiversidad } from "@/engine/diversidad";
 import { FILAS_DE_MUESTRA, muestraDeColumna } from "@/engine/muestra";
+import { conRevisionesCiiu } from "@/engine/jerarquias/fabrica";
 import { generalizacionAplicada, TOPE_DE_NODOS } from "@/engine/optima";
 import {
   columnasDeMondrian,
@@ -228,6 +229,8 @@ export interface OpcionesDeLaPasada {
   readonly formato?: FormatoDeSalida;
   /** S10: columnas del JSON de entrada que eran todo números; las de ruido numérico salen sin comillas. */
   readonly numericas?: ReadonlySet<string>;
+  /** S11: false si la salida es JSON (cada fila es un registro); el tope de supresión no se aplica. */
+  readonly admiteSupresion?: boolean;
   readonly alAvanzar?: (filas: number, bytes: number, total: number) => void;
 }
 
@@ -391,16 +394,20 @@ async function diagnosticarPorPasadas(
   const tablaQi = proyeccion!.finalizar();
   const dx = diagnostico! as Diagnostico;
   // El diagnóstico se hizo con la muestra; las cifras por columna son las del archivo ENTERO.
+  // La revisión de la CIIU se cuenta sobre el diccionario del archivo entero (hasta su tope).
   const ajustado: Diagnostico = {
     ...dx,
     filas,
-    columnas: dx.columnas.map((h, c) => ({
-      ...h,
-      filas,
-      filasNoVacias: diccionarios[c].noVacios,
-      cardinalidad: diccionarios[c].distintos,
-      ...(diccionarios[c].completo ? {} : { cardinalidadAlMenos: true }),
-    })),
+    columnas: conRevisionesCiiu(
+      dx.columnas.map((h, c) => ({
+        ...h,
+        filas,
+        filasNoVacias: diccionarios[c].noVacios,
+        cardinalidad: diccionarios[c].distintos,
+        ...(diccionarios[c].completo ? {} : { cardinalidadAlMenos: true }),
+      })),
+      (c) => diccionarios[c].valores,
+    ),
   };
 
   // Más combinaciones distintas que las que cabe contar: se dice con el conteo, y no se estima.
@@ -496,6 +503,10 @@ export interface PlanDeTransformacion {
   readonly pendientesDeMondrian: readonly string[];
   readonly llave: CryptoKey | null;
   readonly huella: string;
+  /** S11: las filas que el tope de supresión saca de la salida (1 = sale), o null. */
+  readonly fuera: Uint8Array | null;
+  /** Las filas que quedan en la salida. */
+  readonly filasQueQuedan: number;
 }
 
 /**
@@ -553,11 +564,13 @@ export async function prepararTransformacion(
       llave,
       idioma,
       huella,
+      opciones.admiteSupresion ?? true,
     );
   }
 
+  // Por posición absoluta: la tabla ALINEADA, con todas las filas (las quitadas no se escriben).
   const enElReparto = new Map(
-    (reparto?.tabla.columnas ?? []).map((c) => [c.nombre, c]),
+    (reparto?.alineada.columnas ?? []).map((c) => [c.nombre, c]),
   );
   const planes: PlanDeColumna[] = [];
   const suprimidas: string[] = [];
@@ -649,6 +662,8 @@ export async function prepararTransformacion(
     pendientesDeMondrian: conReparto ? [] : paraMondrian,
     llave,
     huella,
+    fuera: reparto?.fuera ?? null,
+    filasQueQuedan: reparto?.tabla.filas ?? pasada.filas,
   };
 }
 
@@ -836,12 +851,15 @@ async function medirPorPasadas(
   );
   const ruidos = contextosDeRuido(plan);
   const cambio = plan.planes.map(() => false);
-  const posiciones = posicionesDeMuestra(pasada.filas, FILAS_DE_MUESTRA);
+  // S11: lo que se mide es lo que lleva la salida; las filas que el tope quitó no cuentan, y la
+  // vista previa se reparte entre las que QUEDAN, como en memoria.
+  const posiciones = posicionesDeMuestra(plan.filasQueQuedan, FILAS_DE_MUESTRA);
   const enMuestra = new Map(posiciones.map((p, k) => [p, k]));
   const muestras = plan.nombres.map(() => ({
     antes: new Array<string>(posiciones.length).fill(""),
     despues: new Array<string>(posiciones.length).fill(""),
   }));
+  let queda = 0;
 
   for await (const parte of filasDelArchivo(archivo, {
     ...opciones,
@@ -855,13 +873,14 @@ async function medirPorPasadas(
       parte.desde,
     );
     for (let i = 0; i < parte.filas.length; i++) {
+      if (plan.fuera !== null && plan.fuera[parte.desde + i] === 1) continue;
       const original = parte.filas[i];
       const nueva = salida[i];
       constructor.agregarFila(medidas.map(({ i: c }) => nueva[c]));
       for (let c = 0; c < nueva.length; c++)
         if (!cambio[c] && plan.planes[c].tipo !== "suprimida")
           cambio[c] = nueva[c] !== original[c];
-      const k = enMuestra.get(parte.desde + i);
+      const k = enMuestra.get(queda++);
       if (k !== undefined)
         for (let c = 0; c < nueva.length; c++) {
           muestras[c].antes[k] = original[c];
@@ -890,7 +909,7 @@ async function medirPorPasadas(
     muestras,
     clasesDespues: clasesQueCaben(
       qisDespues.map((n) => porNombre.get(n)!).filter((c) => c !== undefined),
-      pasada.filas,
+      plan.filasQueQuedan,
       topes,
     ),
     qisDespues,
@@ -977,7 +996,7 @@ export function resultadoDelAltoVolumen(
         : columnaDeMuestra(nombre, medida.muestras[c].despues),
       politica,
       categorias.get(nombre) ?? "no-personal",
-      Math.min(pasada.filas, FILAS_DE_MUESTRA),
+      Math.min(plan.filasQueQuedan, FILAS_DE_MUESTRA),
       medida.cambio[c],
     ),
   );
@@ -1082,10 +1101,15 @@ export async function escribirCsv(
       parte.filas,
       parte.desde,
     );
+    // S11: las filas que el tope de supresión quitó no se escriben.
+    const quedan =
+      plan.fuera === null
+        ? salida
+        : salida.filter((_, i) => plan.fuera![parte.desde + i] === 0);
     acumulado += await formato.lote(
-      salida.map((fila) => vivas.map((c) => fila[c])),
+      quedan.map((fila) => vivas.map((c) => fila[c])),
     );
-    enElTrozo += salida.length;
+    enElTrozo += quedan.length;
     if (enElTrozo >= FILAS_POR_TROZO) {
       await destino.escribir(acumulado);
       acumulado = "";

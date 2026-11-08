@@ -20,6 +20,7 @@ import {
 } from "@/engine/bitacora";
 import { construirBoveda, type Boveda } from "@/engine/boveda";
 import { clasificar, type Diagnostico } from "@/engine/clasificador";
+import { conRevisionesDeLaTabla } from "@/engine/jerarquias/fabrica";
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { filasDeCsv, nombreDelArchivoAnonimizado } from "@/engine/csv";
 import { escribirJson } from "@/engine/json/escritor";
@@ -199,7 +200,7 @@ async function leerJsonLocal(
     const lectura = await leerJson(texto, { ...TOPES_JSON, celdas: tope });
     const { tabla } = lectura;
     if (tabla.filas === 0) throw new ErrorDeVelo("sinArchivo");
-    const diagnostico = clasificar(tabla);
+    const diagnostico = conRevisionesDeLaTabla(clasificar(tabla), tabla);
     const { riesgo, advisor } = evaluarRiesgo(tabla, diagnostico);
     return {
       modo: "memoria",
@@ -281,7 +282,7 @@ export async function leer(
   if (tabla === "vacio") throw new ErrorDeVelo("sinArchivo");
   if (tabla !== "alto-volumen") {
     if (tabla.filas === 0) throw new ErrorDeVelo("sinArchivo");
-    const diagnostico = clasificar(tabla);
+    const diagnostico = conRevisionesDeLaTabla(clasificar(tabla), tabla);
     const { riesgo, advisor } = evaluarRiesgo(tabla, diagnostico);
     return {
       modo: "memoria",
@@ -456,6 +457,8 @@ export async function anonimizar(
       llave.clave,
       idioma,
       origen.sha256,
+      // S11: lo mismo que el worker: un JSON no admite el tope de supresión.
+      lectura.json === undefined,
     );
     const enMemoria = lectura.json?.enMemoria;
     if (enMemoria) {
@@ -489,7 +492,7 @@ export async function anonimizar(
       llave.clave,
       idioma,
       origen.sha256,
-      opciones,
+      { ...opciones, admiteSupresion: lectura.json === undefined },
     );
     const medida = await pasadaDeMedida(filas, pasada, plan, opciones);
     // Medirla exige las dos tablas enteras, que en alto volumen no existen: no se finge (S8).

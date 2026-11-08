@@ -366,6 +366,50 @@ export function reconstruirColumna(
       };
 }
 
+/**
+ * La tabla sin las filas marcadas en `fuera` (S11, la supresión de la óptima). El diccionario se
+ * rehace en orden de primera aparición ENTRE LAS QUE QUEDAN —lo mismo que haría el constructor
+ * leyendo el archivo de salida—: un valor que solo vivía en una fila quitada deja de existir, y la
+ * cardinalidad no miente.
+ */
+export function quitarFilas(
+  tabla: TablaColumnar,
+  fuera: Uint8Array,
+): TablaColumnar {
+  let quedan = 0;
+  for (let f = 0; f < tabla.filas; f++) if (fuera[f] === 0) quedan++;
+  const columnas = tabla.columnas.map((columna) => {
+    const viejoANuevo = new Int32Array(columna.valores.length).fill(-1);
+    viejoANuevo[CODIGO_VACIO] = CODIGO_VACIO;
+    const valores: string[] = [""];
+    const codigos = new Uint32Array(quedan);
+    let noVacios = 0;
+    let j = 0;
+    for (let f = 0; f < tabla.filas; f++) {
+      if (fuera[f] !== 0) continue;
+      const viejo = columna.codigos[f];
+      let nuevo = viejoANuevo[viejo];
+      if (nuevo === -1) {
+        nuevo = valores.length;
+        valores.push(columna.valores[viejo]);
+        viejoANuevo[viejo] = nuevo;
+      }
+      codigos[j++] = nuevo;
+      if (nuevo !== CODIGO_VACIO) noVacios++;
+    }
+    return columna.ruta === undefined
+      ? { nombre: columna.nombre, codigos, valores, noVacios }
+      : {
+          nombre: columna.nombre,
+          ruta: columna.ruta,
+          codigos,
+          valores,
+          noVacios,
+        };
+  });
+  return { columnas, filas: quedan };
+}
+
 /** Valor de una celda por (columna, fila). */
 export function valorEn(columna: ColumnaColumnar, fila: number): string {
   return columna.valores[columna.codigos[fila]];

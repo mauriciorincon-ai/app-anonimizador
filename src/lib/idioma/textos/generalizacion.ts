@@ -82,12 +82,45 @@ export const GENERALIZACION = {
         en: "Age: five-year groups, broad groups (DANE)",
       },
       ciiu: {
-        es: "Actividad económica: grupo, división, sección (CIIU, DANE)",
-        en: "Economic activity: group, division, section (CIIU, DANE)",
+        es: "Actividad económica: grupo, división, sección (CIIU Rev. 4 A.C., DANE)",
+        en: "Economic activity: group, division, section (ISIC Rev. 4 A.C., DANE)",
+      },
+      ciiu5: {
+        es: "Actividad económica: grupo, división, sección (CIIU Rev. 5 A.C., DANE)",
+        en: "Economic activity: group, division, section (ISIC Rev. 5 A.C., DANE)",
       },
       propia: {
         es: "La de la política importada",
         en: "The one in the imported policy",
+      },
+    },
+    // S11: lo que los códigos de una columna CIIU dicen de su revisión. Son conteos del worker.
+    revision: {
+      rev4: {
+        es: "{n} de sus códigos solo existen en la Rev. 4 A.C.: se propone esa.",
+        en: "{n} of its codes exist only in Rev. 4 A.C.: that one is suggested.",
+      },
+      rev5: {
+        es: "{n} de sus códigos solo existen en la Rev. 5 A.C.: se propone esa.",
+        en: "{n} of its codes exist only in Rev. 5 A.C.: that one is suggested.",
+      },
+      ambas: {
+        es:
+          "Todos sus códigos existen en las dos revisiones, así que no dicen cuál es: se propone la " +
+          "Rev. 4 A.C. Si el archivo usa la Rev. 5, elígela; el mismo código puede subir a otra sección.",
+        en:
+          "All of its codes exist in both revisions, so they do not tell which one it is: Rev. 4 A.C. " +
+          "is suggested. If the file uses Rev. 5, pick it; the same code may climb to another section.",
+      },
+      mezcla: {
+        es:
+          "Tiene {n4} códigos que solo existen en la Rev. 4 A.C. y {n5} que solo existen en la Rev. 5: " +
+          "parece mezclar las dos. Se propone la Rev. 4; Velo no traduce de una a otra, así que los " +
+          "de la otra revisión subirán sin encontrarse en la tabla.",
+        en:
+          "It holds {n4} codes that exist only in Rev. 4 A.C. and {n5} that exist only in Rev. 5: it " +
+          "seems to mix both. Rev. 4 is suggested; Velo does not translate between them, so the codes " +
+          "of the other revision will climb without being found in the table.",
       },
     },
   },
@@ -105,6 +138,25 @@ export const GENERALIZACION = {
         "Asks that every group holds at least ℓ different values of the sensitive data, so " +
         "being in the group does not give it away. Only the optimal generalization enforces it; " +
         "for Mondrian it is measured.",
+    },
+  },
+  // S11: el tope de supresión. Lo pide el usuario; Velo no borra filas por su cuenta.
+  supresion: {
+    etiqueta: {
+      es: "Tope de supresión (opcional), en % de las filas",
+      en: "Suppression cap (optional), as a % of the rows",
+    },
+    nota: {
+      es:
+        "Deja que la generalización óptima quite del archivo de SALIDA las filas de los grupos " +
+        "que no llegan al k (o a la ℓ), hasta ese porcentaje, si así pierde menos información. " +
+        "El original no se toca y el certificado dice cuántas salieron. Vacío o 0: no se quita " +
+        "ninguna. En un JSON no se aplica.",
+      en:
+        "Lets the optimal generalization drop from the OUTPUT file the rows of groups that fall " +
+        "short of k (or ℓ), up to that percentage, when that loses less information. The " +
+        "original is not touched and the certificate says how many went. Empty or 0: none go. " +
+        "It does not apply to JSON.",
     },
   },
   comparar: { es: "Comparar los dos caminos", en: "Compare the two roads" },
@@ -140,6 +192,15 @@ export const GENERALIZACION = {
       medida: { es: "Medida", en: "Measure" },
       mondrian: { es: "Mondrian", en: "Mondrian" },
       optima: { es: "Óptima", en: "Optimal" },
+      sinBorrar: { es: "Óptima, sin borrar", en: "Optimal, deleting none" },
+      conSupresion: {
+        es: "Óptima, borrando hasta {porcentaje} %",
+        en: "Optimal, deleting up to {porcentaje}%",
+      },
+    },
+    noAplicable: {
+      es: "El archivo es JSON: el tope de supresión no se aplicaría, y la columna «borrando» es igual a la de sin borrar.",
+      en: "The file is JSON: the suppression cap would not apply, and the «deleting» column equals the one deleting none.",
     },
     filas: {
       cumple: {
@@ -152,6 +213,10 @@ export const GENERALIZACION = {
       l: {
         es: "ℓ distinta, sobre los valores originales (pedida: {l})",
         en: "Distinct ℓ, over the original values (asked: {l})",
+      },
+      quitadas: {
+        es: "Filas que salen del archivo",
+        en: "Rows that leave the file",
       },
       clases: { es: "Grupos distintos", en: "Distinct groups" },
       unicos: {

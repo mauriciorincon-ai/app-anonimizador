@@ -13,6 +13,7 @@
 //                   fuente se cita abajo, en `fuentes.ts` y en el ADR-013.
 //   · `ciiu`      — clase → grupo → división → sección → `*`. CIIU Rev. 4 adaptada para Colombia
 //                   (DANE); la lista de clases y las secciones, de `ciiu.meta.json`.
+//   · `ciiu5`     — lo mismo con la CIIU Rev. 5 A.C. (S11, Resolución 992 de 2026), de `ciiu5.meta.json`.
 //
 // Lo que no se encuentra en la tabla (un código que no existe, un nombre de municipio que se repite en
 // dos departamentos) se queda como está en los niveles intermedios y llega a `*` en el último, igual
@@ -24,11 +25,15 @@
 // lo que un archivo ya trae agrupado (un quinquenio escrito, un grupo CIIU de 3 dígitos).
 
 import ciiu from "./fabrica/ciiu.json";
+import ciiu5 from "./fabrica/ciiu5.json";
 import divipola from "./fabrica/divipola.json";
 
+import type { HallazgoDeColumna } from "../clasificador";
+import type { TablaColumnar } from "../columnar";
+import { esColumnaCiiu } from "./sugerencia";
 import type { Nivel } from "./tipos";
 
-export type JerarquiaDeFabrica = "divipola" | "edad-dane" | "ciiu";
+export type JerarquiaDeFabrica = "divipola" | "edad-dane" | "ciiu" | "ciiu5";
 
 /** Mayúsculas, sin tildes ni espacios de más: «Bogotá, D.C.» y «BOGOTA, D.C.» son la misma clave. */
 export function claveDeNombre(texto: string): string {
@@ -197,7 +202,12 @@ const PASOS_EDAD: readonly Nivel[] = [
   (v) => granGrupoDe(v) ?? v,
 ];
 
-// ── CIIU Rev. 4 A.C. ────────────────────────────────────────────────────────────────────────────
+// ── CIIU Rev. 4 A.C. y Rev. 5 A.C. ──────────────────────────────────────────────────────────────
+//
+// Las dos revisiones tienen la misma forma (secciones por rango de divisiones, y las clases) y se leen
+// con el mismo código. NO se traducen entre ellas: la correlativa del DANE es de muchos a muchos, y
+// un código de la Rev. 4 no tiene UN código de la Rev. 5 (`ciiu5.meta.json`). Cada columna sube por la
+// escalera de la revisión en que está escrita.
 
 interface TablasCiiu {
   readonly clases: ReadonlySet<string>;
@@ -206,45 +216,138 @@ interface TablasCiiu {
   readonly seccionDeDivision: ReadonlyMap<string, string>;
 }
 
-let tablasCiiu: TablasCiiu | null = null;
+interface TablaCiiu {
+  readonly secciones: readonly (readonly string[])[];
+  readonly clases: readonly string[];
+}
 
-function cargarCiiu(): TablasCiiu {
-  if (tablasCiiu) return tablasCiiu;
+export type RevisionCiiu = "ciiu" | "ciiu5";
+
+const FUENTES_CIIU: Readonly<Record<RevisionCiiu, TablaCiiu>> = {
+  ciiu,
+  ciiu5,
+};
+const tablasCiiu = new Map<RevisionCiiu, TablasCiiu>();
+
+function cargarCiiu(revision: RevisionCiiu): TablasCiiu {
+  const hecha = tablasCiiu.get(revision);
+  if (hecha) return hecha;
+  const fuente = FUENTES_CIIU[revision];
   const seccionDeDivision = new Map<string, string>();
-  for (const [seccion, desde, hasta] of ciiu.secciones as [
+  for (const [seccion, desde, hasta] of fuente.secciones as [
     string,
     string,
     string,
   ][])
     for (let d = Number(desde); d <= Number(hasta); d++)
       seccionDeDivision.set(String(d).padStart(2, "0"), seccion);
-  const clases = new Set(ciiu.clases as string[]);
+  const clases = new Set(fuente.clases);
   const grupos = new Set([...clases].map((c) => c.slice(0, 3)));
-  tablasCiiu = { clases, grupos, seccionDeDivision };
-  return tablasCiiu;
+  const tablas = { clases, grupos, seccionDeDivision };
+  tablasCiiu.set(revision, tablas);
+  return tablas;
 }
 
 /**
- * La clase CIIU de un valor, o null si no existe en la clasificación. Tres dígitos se leen como una
+ * La clase CIIU de un valor, o null si no existe en la revisión. Tres dígitos se leen como una
  * clase que perdió su cero (`111` → `0111`, lo que hace una hoja de cálculo con una columna
  * numérica), no como un grupo: `141` es la clase 0141, aunque también exista el grupo 141.
  */
-function claseDe(valor: string): string | null {
+function claseDe(valor: string, revision: RevisionCiiu): string | null {
   const limpio = valor.trim();
   if (!/^\d{3,4}$/.test(limpio)) return null;
   const clase = limpio.padStart(4, "0");
-  return cargarCiiu().clases.has(clase) ? clase : null;
+  return cargarCiiu(revision).clases.has(clase) ? clase : null;
 }
 
 // Clase → grupo → división → sección. Cada paso recibe lo que dejó el anterior.
-const PASOS_CIIU: readonly Nivel[] = [
-  (v) => claseDe(v)?.slice(0, 3) ?? v,
-  (v) => {
-    const limpio = v.trim();
-    return cargarCiiu().grupos.has(limpio) ? limpio.slice(0, 2) : v;
-  },
-  (v) => cargarCiiu().seccionDeDivision.get(v.trim()) ?? v,
-];
+function pasosCiiu(revision: RevisionCiiu): readonly Nivel[] {
+  return [
+    (v) => claseDe(v, revision)?.slice(0, 3) ?? v,
+    (v) => {
+      const limpio = v.trim();
+      return cargarCiiu(revision).grupos.has(limpio) ? limpio.slice(0, 2) : v;
+    },
+    (v) => cargarCiiu(revision).seccionDeDivision.get(v.trim()) ?? v,
+  ];
+}
+
+const PASOS_CIIU = pasosCiiu("ciiu");
+const PASOS_CIIU5 = pasosCiiu("ciiu5");
+
+/** Lo que una columna dice de su revisión: cuántos valores distintos son clase de una sola. */
+export interface RevisionDetectada {
+  /** Valores distintos que son clase SOLO de la Rev. 4 A.C. */
+  readonly soloRev4: number;
+  /** Valores distintos que son clase SOLO de la Rev. 5 A.C. */
+  readonly soloRev5: number;
+  /** Valores distintos que son clase de las dos. */
+  readonly enAmbas: number;
+  /** La que deciden los exclusivos; null si no deciden (ninguno, o de las dos). */
+  readonly revision: RevisionCiiu | null;
+}
+
+/**
+ * La revisión de la CIIU en que está escrita una columna, por sus códigos EXCLUSIVOS: los que solo
+ * existen en una. Recibe los valores distintos (el worker los tiene; aquí no llega la columna) y
+ * devuelve conteos. Si los exclusivos no deciden, no se adivina: `revision` es null.
+ */
+export function detectarRevisionCiiu(
+  distintos: Iterable<string>,
+): RevisionDetectada {
+  let soloRev4 = 0;
+  let soloRev5 = 0;
+  let enAmbas = 0;
+  const vistas = new Set<string>();
+  for (const valor of distintos) {
+    const limpio = valor.trim();
+    if (!/^\d{3,4}$/.test(limpio)) continue;
+    const clase = limpio.padStart(4, "0");
+    if (vistas.has(clase)) continue;
+    vistas.add(clase);
+    const en4 = cargarCiiu("ciiu").clases.has(clase);
+    const en5 = cargarCiiu("ciiu5").clases.has(clase);
+    if (en4 && en5) enAmbas++;
+    else if (en4) soloRev4++;
+    else if (en5) soloRev5++;
+  }
+  const revision =
+    soloRev4 > 0 && soloRev5 === 0
+      ? "ciiu"
+      : soloRev5 > 0 && soloRev4 === 0
+        ? "ciiu5"
+        : null;
+  return { soloRev4, soloRev5, enAmbas, revision };
+}
+
+/**
+ * El diagnóstico con la revisión de la CIIU de cada columna de actividad económica (S11), contada
+ * sobre sus valores distintos. Vive en el worker: recibe el diccionario de cada columna y devuelve
+ * el mismo diagnóstico con conteos de más.
+ */
+export function conRevisionesCiiu<H extends { readonly nombre: string }>(
+  columnas: readonly H[],
+  valoresDe: (posicion: number) => Iterable<string>,
+): (H & { revisionCiiu?: RevisionDetectada })[] {
+  return columnas.map((h, i) =>
+    esColumnaCiiu(h.nombre)
+      ? { ...h, revisionCiiu: detectarRevisionCiiu(valoresDe(i)) }
+      : h,
+  );
+}
+
+/** Lo mismo sobre una tabla en memoria: los distintos de cada columna son su diccionario. */
+export function conRevisionesDeLaTabla<
+  D extends { readonly columnas: readonly HallazgoDeColumna[] },
+>(diagnostico: D, tabla: TablaColumnar): D {
+  return {
+    ...diagnostico,
+    columnas: conRevisionesCiiu(
+      diagnostico.columnas,
+      (i) => tabla.columnas[i].valores,
+    ),
+  };
+}
 
 /** Los pasos de una jerarquía de fábrica, sin el `*` final (lo pone `index.ts`, igual para todas). */
 export function pasosDeFabrica(tipo: JerarquiaDeFabrica): readonly Nivel[] {
@@ -255,5 +358,7 @@ export function pasosDeFabrica(tipo: JerarquiaDeFabrica): readonly Nivel[] {
       return PASOS_EDAD;
     case "ciiu":
       return PASOS_CIIU;
+    case "ciiu5":
+      return PASOS_CIIU5;
   }
 }

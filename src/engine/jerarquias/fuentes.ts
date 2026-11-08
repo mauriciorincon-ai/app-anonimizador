@@ -13,6 +13,7 @@ export type ClaveDeFuente =
   | "divipola"
   | "regiones"
   | "ciiu"
+  | "ciiu5"
   | "edadesSimples"
   | "grandesGrupos";
 
@@ -30,6 +31,10 @@ export const FUENTES: Readonly<
   ciiu: {
     url: "https://www.dane.gov.co/files/sen/nomenclatura/ciiu/Estructura-detallada-CIIU-4AC-2022.xlsx",
     consultada: "2026-11-02",
+  },
+  ciiu5: {
+    url: "https://www.dane.gov.co/files/sen/nomenclatura/ciiu/CIIU_5_AC_Estructura_detallada.xlsx",
+    consultada: "2026-11-08",
   },
   // La edad no tiene tabla derivada ni `.meta.json`: sus dos documentos se citan aquí. SHA-256 de lo
   // descargado el 2026-11-02, para quien quiera comprobar que cita la misma versión:
@@ -51,5 +56,6 @@ export const FUENTES_DE_LA_ESCALERA: Readonly<
 > = {
   divipola: ["divipola", "regiones"],
   ciiu: ["ciiu"],
+  ciiu5: ["ciiu5"],
   "edad-dane": ["edadesSimples", "grandesGrupos"],
 };

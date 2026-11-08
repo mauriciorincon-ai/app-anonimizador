@@ -1,17 +1,19 @@
 #!/usr/bin/env node
-// Derives the two factory generalization hierarchies (DIVIPOLA and CIIU Rev. 4 A.C.) from the official
-// source files that the builder downloaded ONCE by hand (the app itself never uses the network).
-// No dependencies: Node built-ins only (a minimal ZIP reader for the .xlsx).
+// Derives the factory generalization hierarchies (DIVIPOLA, CIIU Rev. 4 A.C. and, since S11, CIIU
+// Rev. 5 A.C.) from the official source files that the builder downloaded ONCE by hand (the app itself
+// never uses the network). No dependencies: Node built-ins only (a minimal ZIP reader for the .xlsx).
 //
-// Usage:  node scripts/jerarquias/derivar.mjs <sources-dir> [<output-dir>]
+// Usage:  node scripts/jerarquias/derivar.mjs <sources-dir> [<output-dir>] [--solo <name>[,<name>]]
 //   <sources-dir>  directory holding the downloaded originals (names below, untouched)
 //   <output-dir>   default: src/engine/jerarquias/fabrica (relative to the repo root)
+//   --solo         derive only these (divipola, ciiu, ciiu5); only their sources need to be present
 //
 // Inputs (see the *.meta.json files for URL, publisher, date accessed and SHA-256 of each):
 //   divipola-gdxc-w37w.csv                    DANE, "DIVIPOLA- Códigos municipios" (datos.gov.co, id gdxc-w37w)
 //   ley2056-senado-pr001.html                 Ley 2056 de 2020, art. 45 (regions of the Sistema General de Regalías)
 //   Estructura-detallada-CIIU-4AC-2022.xlsx   DANE, "Estructura Detallada CIIU Rev. 4 A.C. (Excel - actualización 2022)"
-// Outputs: divipola.json and ciiu.json (UTF-8, no BOM, JSON.stringify on one line + trailing newline).
+//   CIIU_5_AC_Estructura_detallada.xlsx       DANE, "CIIU Rev. 5 A.C. — Estructura detallada" (Resolución 992 de 2026)
+// Outputs: divipola.json, ciiu.json and ciiu5.json (UTF-8, no BOM, JSON.stringify on one line + trailing newline).
 // Every sanity check throws: a source that changes shape fails loudly instead of producing a wrong file.
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -20,18 +22,26 @@ import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const [, , dirFuentes, dirSalidaArg] = process.argv;
-if (!dirFuentes) {
-  console.error("Usage: node scripts/jerarquias/derivar.mjs <sources-dir> [<output-dir>]");
+const argumentos = process.argv.slice(2);
+const iSolo = argumentos.indexOf("--solo");
+const solo = iSolo >= 0 ? new Set((argumentos[iSolo + 1] ?? "").split(",")) : null;
+if (iSolo >= 0) argumentos.splice(iSolo, 2);
+const [dirFuentes, dirSalidaArg] = argumentos;
+if (!dirFuentes || (solo && [...solo].some((n) => !["divipola", "ciiu", "ciiu5"].includes(n)))) {
+  console.error("Usage: node scripts/jerarquias/derivar.mjs <sources-dir> [<output-dir>] [--solo divipola,ciiu,ciiu5]");
   process.exit(2);
 }
 const dirSalida = resolve(dirSalidaArg ?? join(RAIZ, "src/engine/jerarquias/fabrica"));
+const toca = (nombre) => solo === null || solo.has(nombre);
 
 const ARCHIVOS = {
   divipola: "divipola-gdxc-w37w.csv",
   ley: "ley2056-senado-pr001.html",
   ciiu: "Estructura-detallada-CIIU-4AC-2022.xlsx",
+  ciiu5: "CIIU_5_AC_Estructura_detallada.xlsx",
 };
+/** The sources each output reads. */
+const FUENTES_DE = { divipola: ["divipola", "ley"], ciiu: ["ciiu"], ciiu5: ["ciiu5"] };
 
 function exigir(condicion, mensaje) {
   if (!condicion) throw new Error(`Sanity check failed: ${mensaje}`);
@@ -320,6 +330,75 @@ function derivarCiiu() {
 }
 
 // ---------------------------------------------------------------------------------------------
+// 3. CIIU Rev. 5 A.C. (S11). Same output shape as ciiu.json, so the engine reads both alike. The
+// Rev. 5 sheet names each row's category in column A and gives the code twice: with the section
+// letter (column B: "A", "A01", "A011", "A0111") and without it (column C). The section is taken
+// from column B's letter, never from a range, and the ranges are then checked to be contiguous.
+// ---------------------------------------------------------------------------------------------
+
+function derivarCiiu5() {
+  const filas = leerHoja(leerZip(leer(ARCHIVOS.ciiu5)));
+  const cabecera = filas.find((f) => f.A === "Categoría");
+  exigir(
+    cabecera &&
+      cabecera.B === "CIIU Rev. 5 A.C. Código, incluida la sección" &&
+      cabecera.C === "CIIU Rev 5 A.C. Código" &&
+      cabecera.D === "CIIU Rev 5 A.C. Título",
+    "unexpected Rev. 5 xlsx header row",
+  );
+  const LONGITUD = { Sección: 0, División: 2, Grupo: 3, Clase: 4 };
+  const secciones = []; // { letra, divisiones: [] }
+  const clases = [];
+  let grupos = 0;
+  let grupoActual = null;
+  const vistas = new Set();
+  for (const f of filas.slice(filas.indexOf(cabecera) + 1)) {
+    const categoria = (f.A ?? "").trim();
+    if (categoria === "") continue;
+    exigir(categoria in LONGITUD, `unknown category "${categoria}"`);
+    const conLetra = (f.B ?? "").trim();
+    const m = conLetra.match(/^([A-Z])(\d*)$/);
+    exigir(m && m[2].length === LONGITUD[categoria], `bad ${categoria} code "${conLetra}"`);
+    const [, letra, codigo] = m;
+    // Column C repeats the code without the letter (the section repeats its letter).
+    exigir((f.C ?? "").trim().padStart(codigo.length, "0") === (codigo || letra), `column C disagrees with "${conLetra}"`);
+    if (categoria === "Sección") {
+      exigir(secciones.length === letra.charCodeAt(0) - 65, `section ${letra} out of order`);
+      secciones.push({ letra, divisiones: [] });
+      grupoActual = null;
+      continue;
+    }
+    const seccion = secciones.at(-1);
+    exigir(seccion && seccion.letra === letra, `${conLetra} is not under section ${seccion?.letra}`);
+    if (categoria === "División") {
+      exigir(!vistas.has(codigo), `division ${codigo} listed twice`);
+      vistas.add(codigo);
+      seccion.divisiones.push(codigo);
+    } else if (categoria === "Grupo") {
+      exigir(codigo.startsWith(seccion.divisiones.at(-1) ?? "xx"), `group ${codigo} is not under its division`);
+      grupoActual = codigo;
+      grupos++;
+    } else {
+      exigir(codigo.startsWith(grupoActual ?? "xxx"), `class ${codigo} is not under group ${grupoActual}`);
+      clases.push(codigo);
+    }
+  }
+  const clasesOrdenadas = [...new Set(clases)].sort();
+  exigir(clasesOrdenadas.length === clases.length, "a class code is listed twice");
+  const rangos = secciones.map((s) => {
+    exigir(s.divisiones.length > 0, `section ${s.letra} has no divisions`);
+    const nums = s.divisiones.map(Number);
+    for (let i = 1; i < nums.length; i++) exigir(nums[i] === nums[i - 1] + 1, `section ${s.letra}: divisions are not contiguous (${s.divisiones.join(",")})`);
+    return [s.letra, s.divisiones[0], s.divisiones.at(-1)];
+  });
+  exigir(rangos.length === 22 && rangos[0][0] === "A" && rangos.at(-1)[0] === "V", `${rangos.length} sections, expected 22 (A-V)`);
+  return {
+    json: { secciones: rangos, clases: clasesOrdenadas },
+    resumen: { conteos: { secciones: rangos.length, divisiones: vistas.size, grupos, clases: clasesOrdenadas.length } },
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
 
 function escribir(nombre, objeto) {
   mkdirSync(dirSalida, { recursive: true });
@@ -328,13 +407,16 @@ function escribir(nombre, objeto) {
   return sha256(Buffer.from(texto, "utf8"));
 }
 
-console.log("Input SHA-256:");
-for (const nombre of Object.values(ARCHIVOS)) console.log(`  ${sha256(leer(nombre))}  ${nombre}`);
+const DERIVAR = { divipola: derivarDivipola, ciiu: derivarCiiu, ciiu5: derivarCiiu5 };
+const salidas = Object.keys(DERIVAR).filter(toca);
 
-const divipola = derivarDivipola();
-const ciiu = derivarCiiu();
-console.log(`\ndivipola.json  ${escribir("divipola.json", divipola.json)}`);
-console.log(JSON.stringify(divipola.resumen, null, 2));
-console.log(`\nciiu.json  ${escribir("ciiu.json", ciiu.json)}`);
-console.log(JSON.stringify(ciiu.resumen, null, 2));
+console.log("Input SHA-256:");
+for (const salida of salidas)
+  for (const fuente of FUENTES_DE[salida]) console.log(`  ${sha256(leer(ARCHIVOS[fuente]))}  ${ARCHIVOS[fuente]}`);
+
+for (const salida of salidas) {
+  const { json, resumen } = DERIVAR[salida]();
+  console.log(`\n${salida}.json  ${escribir(`${salida}.json`, json)}`);
+  console.log(JSON.stringify(resumen, null, 2));
+}
 console.log(`\nWritten to ${dirSalida}`);

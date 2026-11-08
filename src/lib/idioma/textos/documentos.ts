@@ -387,6 +387,22 @@ export const DOCUMENTOS = {
       es: "**La ℓ pedida no se alcanzó.** Hay grupos donde el dato sensible toma menos de {objetivo} valores distintos: estar en ese grupo puede delatarlo. Velo aplicó lo más que la escalera permite y no borró filas.",
       en: "**The ℓ asked for was not reached.** Some groups hold fewer than {objetivo} distinct values of the sensitive data: being in such a group can give it away. Velo applied as much as the ladder allows and deleted no rows.",
     },
+    supresion: {
+      es: "**Tope de supresión: {porcentaje} % de las filas ({tope}).** Salieron del archivo de salida **{filas}** filas, las de los grupos que no llegaban al k o a la ℓ; el archivo original no se tocó. Por tamaño de grupo: {detalle_html}.",
+      en: "**Suppression cap: {porcentaje}% of the rows ({tope}).** **{filas}** rows left the output file, the ones in groups that fell short of k or ℓ; the original file was not touched. By group size: {detalle_html}.",
+    },
+    supresionNinguna: {
+      es: "**Tope de supresión: {porcentaje} % de las filas ({tope}).** No hizo falta quitar ninguna fila: el archivo de salida lleva todas.",
+      en: "**Suppression cap: {porcentaje}% of the rows ({tope}).** No row had to go: the output file carries all of them.",
+    },
+    supresionNoAplicada: {
+      es: "**Tope de supresión pedido ({porcentaje} %) y no aplicado.** El archivo es JSON: cada fila es un registro dentro de una estructura que Velo reescribe en su lugar, y quitarlo no es quitar una fila. No salió ninguna.",
+      en: "**Suppression cap asked for ({porcentaje}%) and not applied.** The file is JSON: each row is a record inside a structure Velo rewrites in place, and removing it is not removing a row. None left.",
+    },
+    porTamano: {
+      es: "{filas} en grupos de {tamano}",
+      en: "{filas} in groups of {tamano}",
+    },
     encabezados: {
       columna: { es: "Columna", en: "Column" },
       escalera: { es: "Escalera", en: "Ladder" },
@@ -409,6 +425,10 @@ export const DOCUMENTOS = {
       ciiu: {
         es: "DANE, «Estructura detallada CIIU Rev. 4 A.C.», actualización 2022, adoptada por la Resolución 2306 de 2022",
         en: "DANE, “Estructura detallada CIIU Rev. 4 A.C.” (ISIC Rev. 4 adapted for Colombia), 2022 update, adopted by Resolución 2306 de 2022",
+      },
+      ciiu5: {
+        es: "DANE, «CIIU Rev. 5 A.C. — Estructura detallada», establecida por la Resolución 992 de 2026; la Rev. 4 A.C. no se traduce a ella (la correlativa del DANE es de muchos a muchos)",
+        en: "DANE, “CIIU Rev. 5 A.C. — Estructura detallada” (ISIC Rev. 5 adapted for Colombia), established by Resolución 992 de 2026; Rev. 4 A.C. is not translated into it (DANE's correspondence table is many-to-many)",
       },
       edadesSimples: {
         es: "DANE, Proyecciones de Población y Estudios Demográficos (PPED), serie nacional 2018-2070 por edades simples, actualizada el 18 de julio de 2025: los quinquenios agregan sus edades de 0 a 99 y su grupo abierto «100 años y más»",

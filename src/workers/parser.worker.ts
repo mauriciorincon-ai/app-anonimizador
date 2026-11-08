@@ -29,7 +29,11 @@ import {
   type EntradaDeBoveda,
 } from "@/engine/boveda";
 import { clasificar, type Diagnostico } from "@/engine/clasificador";
-import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
+import {
+  ConstructorColumnar,
+  quitarFilas,
+  type TablaColumnar,
+} from "@/engine/columnar";
 import { filasDeCsv, nombreDelArchivoAnonimizado } from "@/engine/csv";
 import { medirDiversidad } from "@/engine/diversidad";
 import { escribirJson } from "@/engine/json/escritor";
@@ -51,6 +55,7 @@ import {
 import { generalizarOptimo, resolverDiversidad } from "@/engine/optima";
 import { anonimizarConMondrian } from "@/engine/mondrian";
 import { nombresDeNiveles } from "@/engine/jerarquias";
+import { conRevisionesDeLaTabla } from "@/engine/jerarquias/fabrica";
 import {
   columnasDeMondrian,
   hashDePolitica,
@@ -632,7 +637,7 @@ function diagnosticar(
 
   const inicio = performance.now();
   avisar("clasificando", tabla.filas, archivo.size, archivo.size);
-  const diagnostico = clasificar(tabla);
+  const diagnostico = conRevisionesDeLaTabla(clasificar(tabla), tabla);
   diagnosticoActual = diagnostico;
 
   avisar("midiendo-riesgo", tabla.filas, archivo.size, archivo.size);
@@ -748,6 +753,8 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
       llave,
       idioma,
       huella,
+      // S11: un JSON se reescribe registro por registro; el tope de supresión no se le aplica.
+      formatoOriginal !== "json",
     );
 
     transformada = resultado.tabla;
@@ -831,6 +838,7 @@ async function transformarAltoVolumen(
       idioma,
       huella,
       {
+        admiteSupresion: estado.salida.extension === "csv",
         alAvanzar: (filas, bytes, total) =>
           avisar("transformando", filas, bytes, total),
       },
@@ -1069,6 +1077,54 @@ function compararSobre(
     },
   );
 
+  // S11: con tope de supresión, la óptima que borra filas al lado de la que no. Se mide sobre lo
+  // que QUEDA; los bits, los de la óptima, que cuentan cada fila borrada como pérdida total.
+  const porcentaje = politica.generalizacion?.supresionMaxima ?? 0;
+  const aplicable = admiteSupresion();
+  let conSupresion: ComparacionDeGeneralizacion["conSupresion"] = null;
+  if (porcentaje > 0) {
+    inicio = performance.now();
+    const conTope = generalizarOptimo(
+      tabla,
+      dimensiones,
+      jerarquias,
+      k,
+      diversidad,
+      suprimidas,
+      { porcentaje, aplicada: aplicable },
+    );
+    const disponibleConTope = conTope.motivo !== "excede-tope";
+    const lado = medirLado(
+      conTope.tabla,
+      conTope.fuera === null ? tabla : quitarFilas(tabla, conTope.fuera),
+      dimensiones,
+      sensibles,
+      conTope.dimensiones.map((n, i) =>
+        disponibleConTope
+          ? nombresDeNiveles(jerarquiaDe(jerarquias, n))[conTope.niveles[i]]
+          : null,
+      ),
+      {
+        disponible: disponibleConTope,
+        motivo: conTope.motivo,
+        alcanzado: conTope.alcanzado,
+        nodosRevisados: conTope.nodosRevisados,
+        nodosEnLaReticula: conTope.nodosEnLaReticula,
+        ms: Math.round(performance.now() - inicio),
+      },
+    );
+    conSupresion = {
+      porcentaje,
+      aplicable,
+      lado: {
+        ...lado,
+        bitsAntes: conTope.bitsAntes,
+        bitsDespues: conTope.bitsDespues,
+        filasQuitadas: conTope.supresion?.filas ?? 0,
+      },
+    };
+  }
+
   const comparacion: ComparacionDeGeneralizacion = {
     kObjetivo: k,
     lObjetivo: optima.lObjetivo,
@@ -1076,8 +1132,16 @@ function compararSobre(
     dimensiones,
     mondrian: ladoMondrian,
     optima: ladoOptima,
+    conSupresion,
   };
   enviar({ tipo: "comparacion", comparacion });
+}
+
+/** S11: ¿el archivo abierto admite el tope de supresión? Un JSON no (ver `optima.ts`). */
+function admiteSupresion(): boolean {
+  return altoVolumen
+    ? altoVolumen.salida.extension === "csv"
+    : formatoOriginal !== "json";
 }
 
 /** Cuántas filas se juntan antes de cerrar un trozo del Blob. */

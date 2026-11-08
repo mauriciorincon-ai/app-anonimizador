@@ -183,6 +183,9 @@ export function firmaDeComparacion(
       reparto.map((c) => [c, jerarquiaDe(jerarquias, c)]),
     ),
     diversidad: politica.generalizacion?.diversidad ?? null,
+    ...(politica.generalizacion?.supresionMaxima
+      ? { supresion: politica.generalizacion.supresionMaxima }
+      : {}),
   });
 }
 

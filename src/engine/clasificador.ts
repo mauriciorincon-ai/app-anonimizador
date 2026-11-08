@@ -60,6 +60,8 @@ export type Evidencia =
       nota: MensajeDeMotor;
     };
 
+import type { RevisionDetectada } from "./jerarquias/fabrica";
+
 export interface HallazgoDeColumna {
   nombre: string;
   posicion: number;
@@ -80,6 +82,12 @@ export interface HallazgoDeColumna {
    */
   cardinalidadAlMenos?: true;
   muestra: { texto: string; omitida: boolean } | null;
+  /**
+   * S11: solo en una columna de actividad económica (por su nombre). Cuántos de sus valores
+   * distintos son clase de una sola revisión de la CIIU, contados en el worker: a la página llegan
+   * conteos, nunca códigos.
+   */
+  revisionCiiu?: RevisionDetectada;
 }
 
 export interface Diagnostico {

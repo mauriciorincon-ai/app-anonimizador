@@ -484,6 +484,8 @@ export interface LadoDeLaComparacion {
   readonly nodosRevisados: number | null;
   readonly nodosEnLaReticula: number | null;
   readonly ms: number;
+  /** S11, solo el lado con tope de supresión: cuántas filas saldrían del archivo. */
+  readonly filasQuitadas?: number;
 }
 
 export interface ComparacionDeGeneralizacion {
@@ -493,7 +495,18 @@ export interface ComparacionDeGeneralizacion {
   readonly lDescartadas: readonly string[];
   readonly dimensiones: readonly string[];
   readonly mondrian: LadoDeLaComparacion;
+  /** La óptima SIN borrar filas. */
   readonly optima: LadoDeLaComparacion;
+  /**
+   * S11: la óptima con el tope de supresión de la política, lado a lado con la de sin borrar. null
+   * si la política no pide tope.
+   */
+  readonly conSupresion: {
+    readonly porcentaje: number;
+    /** false en un JSON: el tope no se aplicaría (ver `optima.ts`). */
+    readonly aplicable: boolean;
+    readonly lado: LadoDeLaComparacion;
+  } | null;
 }
 
 export type MensajeDelWorker =

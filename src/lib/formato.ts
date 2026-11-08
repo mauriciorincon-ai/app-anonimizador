@@ -32,6 +32,14 @@ export function numero(valor: number, idioma: Idioma): string {
 }
 
 /**
+ * Una cifra que el USUARIO escribió (el tope de supresión, S11), con sus decimales: «2,5 %» pedido
+ * no se puede leer «3 %» en el certificado. Hasta seis decimales, sin ceros de relleno.
+ */
+export function cifraPedida(valor: number, idioma: Idioma): string {
+  return formatoNumerico(idioma, { maximumFractionDigits: 6 }).format(valor);
+}
+
+/**
  * Un ε (S7), con hasta tres decimales y redondeado HACIA ARRIBA: un ε menor promete más privacidad,
  * así que la cifra que se lee nunca puede ser menor que la que se garantiza (0,99999987 se dice
  * «1», jamás «0,999»).
