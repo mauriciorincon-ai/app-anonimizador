@@ -51,6 +51,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   archivo: null,
   archivoEnDisco: null,
   huellaDeSalida: null,
+  escrituraFallida: false,
   boveda: { fase: "sin-sellar" },
   archivoDeBoveda: null,
   estimacion: null,

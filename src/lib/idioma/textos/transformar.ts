@@ -795,6 +795,16 @@ export const TRANSFORMAR = {
     },
     preparar: { es: "Preparar el archivo", en: "Prepare the file" },
     preparando: { es: "Escribiendo el archivo…", en: "Writing the file…" },
+    escrituraFallida: {
+      es:
+        "**No se pudo escribir el archivo.** Puede que el disco esté lleno o que el archivo " +
+        "elegido ya no deje escribir. La transformación, la política y la llave siguen aquí: libera " +
+        "espacio o elige otro destino, y vuelve a prepararlo.",
+      en:
+        "**The file could not be written.** The disk may be full, or the chosen file may no " +
+        "longer allow writing. The transformation, the policy and the key are still here: free " +
+        "some space or pick another destination, and prepare it again.",
+    },
     guardar: { es: "Guardar", en: "Save" },
     // S8: alto volumen. El archivo se escribe por trozos en el que el usuario elige.
     elegirDestino: {

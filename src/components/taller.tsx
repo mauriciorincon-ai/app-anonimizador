@@ -276,6 +276,7 @@ export function Taller({ informe }: { informe: Informe }) {
               onPreparar={() => prepararArchivo()}
               altoVolumen={altoVolumen}
               enDisco={taller.archivoEnDisco}
+              escrituraFallida={taller.escrituraFallida}
               onElegirDestino={
                 altoVolumen && haySelector
                   ? () => void elegirDestino(hecha.hashDePolitica)

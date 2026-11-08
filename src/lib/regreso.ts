@@ -67,6 +67,8 @@ export interface EstadoDelRegreso {
   } | null;
   /** El informe HTML del regreso, también como asa. */
   readonly informe: AsaDeArchivo | null;
+  /** S10: el último intento de escribir el restaurado falló; la restauración sigue hecha. */
+  readonly escrituraFallida: boolean;
 }
 
 const VACIO: EstadoDelRegreso = {
@@ -77,6 +79,7 @@ const VACIO: EstadoDelRegreso = {
   archivo: null,
   archivoEnDisco: null,
   informe: null,
+  escrituraFallida: false,
 };
 
 let estado: EstadoDelRegreso = VACIO;
@@ -188,7 +191,7 @@ export function restaurarAhora(): void {
 /** `destino` (S8): el archivo que el usuario eligió, en alto volumen. Ver `prepararArchivo`. */
 export function prepararRestaurado(destino?: FileSystemFileHandle): void {
   if (!worker) return;
-  publicar({ etapa: "escribiendo" });
+  publicar({ etapa: "escribiendo", escrituraFallida: false });
   worker.postMessage(
     destino
       ? { tipo: "construir-restaurado", destino }
@@ -264,6 +267,11 @@ function recibir(mensaje: MensajeDelWorker): void {
       publicar({ etapa: mensaje.etapa });
       return;
     case "error":
+      if (mensaje.motivo === "escritura-fallida") {
+        // S10: el devuelto y la restauración siguen; solo falló escribir. Se puede reintentar.
+        publicar({ escrituraFallida: true, etapa: null });
+        return;
+      }
       if (mensaje.motivo === "restauracion-fallida") {
         publicar({
           restauracion: { fase: "fallo", motivo: mensaje.motivo },

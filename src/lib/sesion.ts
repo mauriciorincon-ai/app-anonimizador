@@ -124,6 +124,11 @@ export interface EstadoDelTaller {
    * el documento del S2 disculpándose por no tenerla.
    */
   readonly huellaDeSalida: string | null;
+  /**
+   * S10: el último intento de escribir el archivo falló (`escritura-fallida`). La transformación,
+   * la política y la llave siguen: solo hay que volver a prepararlo.
+   */
+  readonly escrituraFallida: boolean;
   readonly boveda: EstadoDeBoveda;
   /** El `.velo` listo para guardar, también como asa. */
   readonly archivoDeBoveda: AsaDeArchivo | null;
@@ -247,6 +252,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   archivo: null,
   archivoEnDisco: null,
   huellaDeSalida: null,
+  escrituraFallida: false,
   boveda: { fase: "sin-sellar" },
   archivoDeBoveda: null,
   estimacion: null,
@@ -339,6 +345,7 @@ export function invalidarTransformacion(): void {
     archivo: null,
     archivoEnDisco: null,
     huellaDeSalida: null,
+    escrituraFallida: false,
     etapa: null,
     // La bóveda también caduca: describe la correspondencia de una política que ya no es la que
     // está en pantalla. Dejarla sería ofrecer la vuelta de un tratamiento que no se hizo.
@@ -369,6 +376,7 @@ export function transformar(politica: Politica): void {
     archivo: null,
     archivoEnDisco: null,
     huellaDeSalida: null,
+    escrituraFallida: false,
     etapa: "transformando",
   });
   // El idioma del trabajo se lee AQUÍ, al pulsar, y viaja como dato (igual que el del informe del
@@ -439,7 +447,7 @@ export function pedirEstimacion(poblacion: number | null): void {
  */
 export function prepararArchivo(destino?: FileSystemFileHandle): void {
   if (!worker) return;
-  publicarTaller({ etapa: "escribiendo" });
+  publicarTaller({ etapa: "escribiendo", escrituraFallida: false });
   worker.postMessage(
     destino
       ? { tipo: "construir-archivo", destino }
@@ -669,6 +677,12 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
       tallerActual.limpieza.fase === "limpiando"
     )
       publicarTaller({ etapa: mensaje.etapa });
+  }
+  if (mensaje.tipo === "error" && mensaje.motivo === "escritura-fallida") {
+    // S10: no se pudo ESCRIBIR. Antes salía como `lectura-fallida` y tumbaba el informe con la
+    // política y la llave; ahora el taller queda como estaba y el botón vuelve a ofrecerse.
+    publicarTaller({ escrituraFallida: true, etapa: null });
+    return;
   }
   if (
     mensaje.tipo === "error" &&

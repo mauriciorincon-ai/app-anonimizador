@@ -248,6 +248,12 @@ export type MotivoDeError =
    */
   | "formato-no-coincide"
   | "lectura-fallida"
+  /**
+   * S10: falló ESCRIBIR el archivo de salida (el disco se llenó, se retiró el permiso del archivo
+   * elegido, no cupo el `Blob`), no leer el de entrada. No tumba nada: la transformación o la
+   * restauración siguen hechas, con su política y su llave, y se puede volver a preparar.
+   */
+  | "escritura-fallida"
   | "sin-tabla"
   | "sin-llave"
   | "transformacion-fallida"

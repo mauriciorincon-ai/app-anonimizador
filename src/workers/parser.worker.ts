@@ -114,6 +114,7 @@ import {
   type PlanDeTransformacion,
 } from "./alto-volumen";
 import { lotesDeCsv } from "./csv";
+import { destinoDe, motivoDeLaEscritura } from "./destino";
 import { tablaDeCsv, transformarEnMemoria } from "./en-memoria";
 import { ArchivoCambio, fuenteDeArchivo } from "./json";
 import { abrirJsonPorTrozos } from "./json-por-trozos";
@@ -1076,46 +1077,6 @@ function compararSobre(
 /** Cuántas filas se juntan antes de cerrar un trozo del Blob. */
 const FILAS_POR_TROZO = 20_000;
 
-/**
- * S8: adonde va el archivo que se escribe por trozos. Los MISMOS bytes que se hashean son los que se
- * escriben: al archivo que el usuario eligió (`createWritable`, que no confirma nada hasta `close`)
- * o a un `Blob` hecho de `Blob`s, sin juntar las cadenas en memoria.
- */
-async function destinoDe(asa: FileSystemFileHandle | undefined) {
-  const huellaDeSalida = new Sha256();
-  const codificador = new TextEncoder();
-  const escritor = asa ? await asa.createWritable() : null;
-  const partes: Blob[] = [];
-  let bytes = 0;
-  const destino: Destino = {
-    async escribir(texto) {
-      const trozo = codificador.encode(texto);
-      huellaDeSalida.actualizar(trozo);
-      bytes += trozo.length;
-      if (escritor) await escritor.write(trozo);
-      else partes.push(new Blob([trozo]));
-    },
-  };
-  return {
-    destino,
-    /** Confirma el archivo (o arma el `Blob`) y devuelve lo que cruza a la página. */
-    async cerrar(tipo: string) {
-      if (escritor) await escritor.close();
-      return {
-        ...(escritor
-          ? { enDisco: true as const }
-          : { blob: new Blob(partes, { type: tipo }) }),
-        bytes,
-        sha256: huellaDeSalida.terminar(),
-      };
-    },
-    /** Deshace lo escrito: con `createWritable`, nada llega al archivo del usuario. */
-    async abortar() {
-      if (escritor) await escritor.abort().catch(() => {});
-    },
-  };
-}
-
 async function construirArchivo(asa?: FileSystemFileHandle): Promise<void> {
   if (altoVolumen?.plan) {
     await construirArchivoAltoVolumen(
@@ -1204,9 +1165,9 @@ async function construirArchivoAltoVolumen(
       nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica, formato.extension),
       proposito: "anonimizado",
     });
-  } catch {
+  } catch (error) {
     await salida?.abortar();
-    enviar({ tipo: "error", motivo: "lectura-fallida" });
+    enviar({ tipo: "error", motivo: motivoDeLaEscritura(error) });
   }
 }
 
@@ -1794,9 +1755,9 @@ async function construirRestaurado(asa?: FileSystemFileHandle): Promise<void> {
         nombre: `velo-restaurado-${datosDelDevuelto.sha256.slice(0, 8)}.${formato.extension}`,
         proposito: "restaurado",
       });
-    } catch {
+    } catch (error) {
       await salida?.abortar();
-      enviar({ tipo: "error", motivo: "lectura-fallida" });
+      enviar({ tipo: "error", motivo: motivoDeLaEscritura(error) });
     }
     return;
   }
