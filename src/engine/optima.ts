@@ -390,64 +390,53 @@ export function compararNodos(
   return 0;
 }
 
+interface Busqueda {
+  readonly elegido: readonly number[];
+  readonly medida: Medida;
+  readonly nodosRevisados: number;
+}
+
 /**
- * Generaliza las `dimensiones` al nodo óptimo de su retícula: el que cumple `kObjetivo` (y la ℓ
- * pedida) perdiendo menos bits. Las columnas que no están en `jerarquias` suben por la jerarquía de
- * solo supresión (el valor o `*`): un reparto con una columna sin escalera sigue siendo un reparto.
+ * La búsqueda sobre la retícula, la parte cara de la óptima. Es una función pura de las columnas del
+ * reparto, las sensibles, las escaleras, el k y la ℓ: la comparación y la transformación piden la
+ * MISMA búsqueda con las mismas columnas (la transformación no toca las del reparto), así que la
+ * segunda lee la respuesta de la primera en vez de recorrerla otra vez (S10). La llave es la
+ * identidad de las columnas: si algo las cambió, no son las mismas y se busca de nuevo. Una
+ * `WeakMap` no retiene la tabla cuando la sesión la suelta.
  */
-export function generalizarOptimo(
-  tabla: TablaColumnar,
-  nombresDeDimension: readonly string[],
-  jerarquias: Readonly<Record<string, Jerarquia>>,
+const BUSQUEDAS = new WeakMap<
+  object,
+  { clave: string; columnas: readonly object[]; busqueda: Busqueda }[]
+>();
+
+/** Cuántas veces se recorrió la retícula de verdad (la prueba de que corre una sola vez). */
+export const recorridos = { reticulas: 0 };
+
+function buscarElNodo(
+  dimensiones: readonly Dimension[],
+  sensibles: readonly ColumnaColumnar[],
+  filas: number,
+  alturas: readonly number[],
   kObjetivo: number,
-  diversidad: DiversidadPedida | null,
-  suprimidas: ReadonlySet<string> = new Set(),
-): ResultadoOptimo {
-  const pedidas = new Set(nombresDeDimension);
-  const columnas = tabla.columnas.filter((c) => pedidas.has(c.nombre));
-  const dimensiones = columnas.map((c) =>
-    proyectarDimension(c, jerarquiaDe(jerarquias, c.nombre), tabla.filas),
+  lObjetivo: number | null,
+  escaleras: string,
+): Busqueda {
+  const columnas: readonly object[] = [
+    ...dimensiones.map((d) => d.columna),
+    ...sensibles,
+  ];
+  const clave = JSON.stringify([filas, kObjetivo, lObjetivo, escaleras]);
+  const guardadas = BUSQUEDAS.get(dimensiones[0].columna);
+  const hallada = guardadas?.find(
+    (g) =>
+      g.clave === clave &&
+      g.columnas.length === columnas.length &&
+      g.columnas.every((c, i) => c === columnas[i]),
   );
-  const alturas = dimensiones.map((d) => d.niveles.length - 1);
-  const nodosEnLaReticula = alturas.reduce((p, h) => p * (h + 1), 1);
-  const bitsAntes = dimensiones.reduce((s, d) => s + d.bits[0], 0);
-  const resueltas = resolverDiversidad(
-    diversidad,
-    nombresDeDimension,
-    new Set(tabla.columnas.map((c) => c.nombre)),
-    suprimidas,
-  );
-  const sensibles = resueltas.columnas.map((n) =>
-    tabla.columnas.find((c) => c.nombre === n)!,
-  );
-  // Sin ninguna columna sobre la que medirla, la ℓ no se exige: exigirla dejaba `cumple` en falso
-  // para todo nodo y subía todo a `*`.
-  const lObjetivo = sensibles.length > 0 ? (diversidad?.l ?? null) : null;
+  if (hallada) return hallada.busqueda;
 
-  const sinCambio = (motivo: MotivoDeLaOptima): ResultadoOptimo => ({
-    tabla,
-    kObjetivo,
-    lObjetivo,
-    columnasSensibles: resueltas.columnas,
-    lDescartadas: resueltas.descartadas,
-    kAlcanzado: 0,
-    lAlcanzado: null,
-    alcanzado: false,
-    motivo,
-    dimensiones: columnas.map((c) => c.nombre),
-    niveles: alturas.map(() => 0),
-    alturas,
-    bitsAntes,
-    bitsDespues: bitsAntes,
-    nodosRevisados: 0,
-    nodosEnLaReticula,
-  });
-
-  if (dimensiones.length === 0 || tabla.filas === 0)
-    return sinCambio("sin-dimensiones");
-  if (nodosEnLaReticula > TOPE_DE_NODOS) return sinCambio("excede-tope");
-
-  const evaluador = new Evaluador(dimensiones, sensibles, tabla.filas);
+  recorridos.reticulas++;
+  const evaluador = new Evaluador(dimensiones, sensibles, filas);
   const cache = new Map<string, Medida>();
   const cumple = (m: Medida) =>
     m.k >= kObjetivo && (lObjetivo === null || (m.l ?? 0) >= lObjetivo);
@@ -519,6 +508,79 @@ export function generalizarOptimo(
   }
 
   const medida = medir(elegido);
+  const busqueda: Busqueda = { elegido, medida, nodosRevisados: cache.size };
+  const lista = guardadas ?? [];
+  lista.push({ clave, columnas, busqueda });
+  BUSQUEDAS.set(dimensiones[0].columna, lista);
+  return busqueda;
+}
+
+/**
+ * Generaliza las `dimensiones` al nodo óptimo de su retícula: el que cumple `kObjetivo` (y la ℓ
+ * pedida) perdiendo menos bits. Las columnas que no están en `jerarquias` suben por la jerarquía de
+ * solo supresión (el valor o `*`): un reparto con una columna sin escalera sigue siendo un reparto.
+ */
+export function generalizarOptimo(
+  tabla: TablaColumnar,
+  nombresDeDimension: readonly string[],
+  jerarquias: Readonly<Record<string, Jerarquia>>,
+  kObjetivo: number,
+  diversidad: DiversidadPedida | null,
+  suprimidas: ReadonlySet<string> = new Set(),
+): ResultadoOptimo {
+  const pedidas = new Set(nombresDeDimension);
+  const columnas = tabla.columnas.filter((c) => pedidas.has(c.nombre));
+  const dimensiones = columnas.map((c) =>
+    proyectarDimension(c, jerarquiaDe(jerarquias, c.nombre), tabla.filas),
+  );
+  const alturas = dimensiones.map((d) => d.niveles.length - 1);
+  const nodosEnLaReticula = alturas.reduce((p, h) => p * (h + 1), 1);
+  const bitsAntes = dimensiones.reduce((s, d) => s + d.bits[0], 0);
+  const resueltas = resolverDiversidad(
+    diversidad,
+    nombresDeDimension,
+    new Set(tabla.columnas.map((c) => c.nombre)),
+    suprimidas,
+  );
+  const sensibles = resueltas.columnas.map((n) =>
+    tabla.columnas.find((c) => c.nombre === n)!,
+  );
+  // Sin ninguna columna sobre la que medirla, la ℓ no se exige: exigirla dejaba `cumple` en falso
+  // para todo nodo y subía todo a `*`.
+  const lObjetivo = sensibles.length > 0 ? (diversidad?.l ?? null) : null;
+
+  const sinCambio = (motivo: MotivoDeLaOptima): ResultadoOptimo => ({
+    tabla,
+    kObjetivo,
+    lObjetivo,
+    columnasSensibles: resueltas.columnas,
+    lDescartadas: resueltas.descartadas,
+    kAlcanzado: 0,
+    lAlcanzado: null,
+    alcanzado: false,
+    motivo,
+    dimensiones: columnas.map((c) => c.nombre),
+    niveles: alturas.map(() => 0),
+    alturas,
+    bitsAntes,
+    bitsDespues: bitsAntes,
+    nodosRevisados: 0,
+    nodosEnLaReticula,
+  });
+
+  if (dimensiones.length === 0 || tabla.filas === 0)
+    return sinCambio("sin-dimensiones");
+  if (nodosEnLaReticula > TOPE_DE_NODOS) return sinCambio("excede-tope");
+
+  const { elegido, medida, nodosRevisados } = buscarElNodo(
+    dimensiones,
+    sensibles,
+    tabla.filas,
+    alturas,
+    kObjetivo,
+    lObjetivo,
+    JSON.stringify(columnas.map((c) => jerarquiaDe(jerarquias, c.nombre))),
+  );
   const generalizadas = new Map(
     dimensiones.map((d, i) => [
       d.columna.nombre,
@@ -528,7 +590,9 @@ export function generalizarOptimo(
       ),
     ]),
   );
-  const alcanzado = cumple(medida);
+  const alcanzado =
+    medida.k >= kObjetivo &&
+    (lObjetivo === null || (medida.l ?? 0) >= lObjetivo);
   return {
     tabla: {
       columnas: tabla.columnas.map((c) => generalizadas.get(c.nombre) ?? c),
@@ -547,7 +611,7 @@ export function generalizarOptimo(
     alturas,
     bitsAntes,
     bitsDespues: dimensiones.reduce((s, d, i) => s + d.bits[elegido[i]], 0),
-    nodosRevisados: cache.size,
+    nodosRevisados,
     nodosEnLaReticula,
   };
 }

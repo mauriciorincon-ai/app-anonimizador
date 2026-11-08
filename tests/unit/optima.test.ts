@@ -12,6 +12,7 @@ import {
   compararNodos,
   generalizacionAplicada,
   generalizarOptimo,
+  recorridos,
   resolverDiversidad,
   TOPE_DE_NODOS,
   type DiversidadPedida,
@@ -531,6 +532,59 @@ describe("la ℓ y las columnas sensibles que la política suprime", () => {
       transformada.optima!.alturas[0],
     );
     expect(transformada.suprimidas).toEqual(["dx"]);
+  });
+
+  it("la comparación y la transformación recorren la retícula UNA vez (S10)", async () => {
+    // Una tabla propia: la respuesta guardada es por columnas y otra prueba ya buscó sobre `original`.
+    const propia = tablaDe(["edad", "dx"], filas);
+    const antes = recorridos.reticulas;
+    const comparada = generalizarOptimo(
+      propia,
+      ["edad"],
+      escaleras,
+      3,
+      politica.generalizacion!.diversidad!,
+      new Set(["dx"]),
+    );
+    expect(recorridos.reticulas).toBe(antes + 1);
+    const transformada = await aplicarPolitica(propia, politica, null, "es");
+    // La segunda lee la respuesta de la primera: el mismo nodo, ningún recorrido más.
+    expect(recorridos.reticulas).toBe(antes + 1);
+    expect(transformada.optima!.niveles).toEqual(comparada.niveles);
+    expect(transformada.optima!.nodosRevisados).toBe(comparada.nodosRevisados);
+    expect(transformada.optima!.tabla.columnas[0].valores).toEqual(
+      comparada.tabla.columnas[0].valores,
+    );
+  });
+
+  it("otra ℓ, otro k u otra escalera no leen la respuesta ajena", () => {
+    const tabla = tablaDe(["edad", "dx"], filas);
+    const base = recorridos.reticulas;
+    generalizarOptimo(tabla, ["edad"], escaleras, 3, null);
+    generalizarOptimo(tabla, ["edad"], escaleras, 3, null);
+    expect(recorridos.reticulas).toBe(base + 1);
+    generalizarOptimo(tabla, ["edad"], escaleras, 4, null);
+    generalizarOptimo(
+      tabla,
+      ["edad"],
+      { edad: { tipo: "supresion" } },
+      3,
+      null,
+    );
+    generalizarOptimo(tabla, ["edad"], escaleras, 3, {
+      l: 2,
+      columnas: ["dx"],
+    });
+    expect(recorridos.reticulas).toBe(base + 4);
+    // Una tabla nueva con los mismos valores son columnas distintas: se busca de nuevo.
+    generalizarOptimo(
+      tablaDe(["edad", "dx"], filas),
+      ["edad"],
+      escaleras,
+      3,
+      null,
+    );
+    expect(recorridos.reticulas).toBe(base + 5);
   });
 
   it("si la sensible NO se suprime, la ℓ se sigue exigiendo", () => {
