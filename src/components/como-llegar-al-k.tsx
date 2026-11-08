@@ -24,7 +24,7 @@ import {
   type JerarquiaDeLaPolitica,
   type Politica,
 } from "@/engine/politica";
-import { milisegundos, numero, unoEn } from "@/lib/formato";
+import { cifraPedida, milisegundos, numero, unoEn } from "@/lib/formato";
 import type { Idioma } from "@/lib/idioma";
 import { GENERALIZACION as G } from "@/lib/idioma/textos/generalizacion";
 import {
@@ -80,6 +80,9 @@ export function ComoLlegarAlK({
   const [l, setL] = useState<number | null>(
     politica.generalizacion?.diversidad?.l ?? null,
   );
+  const [tope, setTope] = useState<number | null>(
+    politica.generalizacion?.supresionMaxima ?? null,
+  );
   const jerarquias: Record<string, JerarquiaDeLaPolitica> = Object.fromEntries(
     reparto.map((c) => [
       c.nombre,
@@ -96,6 +99,7 @@ export function ComoLlegarAlK({
   function generalizacionCon(
     nuevas: Record<string, JerarquiaDeLaPolitica>,
     nuevaL: number | null,
+    nuevoTope: number | null = tope,
   ): NonNullable<Politica["generalizacion"]> {
     return {
       algoritmo: "optima",
@@ -105,6 +109,8 @@ export function ComoLlegarAlK({
             diversidad: { l: nuevaL, columnas: sensibles.map((c) => c.nombre) },
           }
         : {}),
+      // Tope 0 o vacío no se escribe: la política (y su hash) queda como sin él.
+      ...(nuevoTope ? { supresionMaxima: nuevoTope } : {}),
     };
   }
 
@@ -139,6 +145,15 @@ export function ComoLlegarAlK({
       onCambio({
         ...politica,
         generalizacion: generalizacionCon(jerarquias, valor),
+      });
+  }
+
+  function cambiarTope(valor: number | null): void {
+    setTope(valor);
+    if (optima)
+      onCambio({
+        ...politica,
+        generalizacion: generalizacionCon(jerarquias, l, valor),
       });
   }
 
@@ -235,6 +250,7 @@ export function ComoLlegarAlK({
                     </option>
                   ))}
                 </select>
+                <RevisionDeLaCiiu columna={c} idioma={idioma} />
               </li>
             );
           })}
@@ -270,6 +286,32 @@ export function ComoLlegarAlK({
         </div>
       ) : null}
 
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <label htmlFor={`${idDeL}-tope`} className="text-tinta text-[0.875rem]">
+          {t(G.supresion.etiqueta)}
+        </label>
+        <input
+          id={`${idDeL}-tope`}
+          type="number"
+          min={0}
+          max={100}
+          step={0.5}
+          value={tope ?? ""}
+          className="rounded-1 border-borde-control bg-superficie text-tinta w-20 border px-2 py-1.5 text-[0.875rem]"
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            cambiarTope(
+              e.target.value === "" || !Number.isFinite(n) || n <= 0
+                ? null
+                : Math.min(100, n),
+            );
+          }}
+        />
+        <p className="text-tinta-tenue w-full text-[0.8125rem] leading-relaxed">
+          {t(G.supresion.nota)}
+        </p>
+      </div>
+
       <div className="mt-4">
         <Boton
           variante="discreto"
@@ -301,6 +343,35 @@ export function ComoLlegarAlK({
   );
 }
 
+/** Lo que los códigos de una columna CIIU dicen de su revisión (conteos del worker, S11). */
+function RevisionDeLaCiiu({
+  columna,
+  idioma,
+}: {
+  columna: HallazgoDeColumna;
+  idioma: Idioma;
+}) {
+  const { t } = useT();
+  const r = columna.revisionCiiu;
+  if (!r || r.soloRev4 + r.soloRev5 + r.enAmbas === 0) return null;
+  const texto =
+    r.revision === "ciiu"
+      ? t(G.escaleras.revision.rev4, { n: numero(r.soloRev4, idioma) })
+      : r.revision === "ciiu5"
+        ? t(G.escaleras.revision.rev5, { n: numero(r.soloRev5, idioma) })
+        : r.soloRev4 > 0 && r.soloRev5 > 0
+          ? t(G.escaleras.revision.mezcla, {
+              n4: numero(r.soloRev4, idioma),
+              n5: numero(r.soloRev5, idioma),
+            })
+          : t(G.escaleras.revision.ambas);
+  return (
+    <p className="text-tinta-tenue w-full text-[0.8125rem] leading-relaxed">
+      {texto}
+    </p>
+  );
+}
+
 function TablaComparada({
   comparacion,
   idioma,
@@ -314,7 +385,10 @@ function TablaComparada({
   idioma: Idioma;
 }) {
   const { t } = useT();
-  const lados = [comparacion.mondrian, comparacion.optima] as const;
+  const conSupresion = comparacion.conSupresion;
+  const lados: readonly LadoDeLaComparacion[] = conSupresion
+    ? [comparacion.mondrian, comparacion.optima, conSupresion.lado]
+    : [comparacion.mondrian, comparacion.optima];
   const fila = (
     titulo: string,
     celda: (lado: LadoDeLaComparacion) => React.ReactNode,
@@ -330,7 +404,7 @@ function TablaComparada({
         <td key={i} className="text-tinta py-2 pr-3 tabular-nums">
           {lado.disponible
             ? celda(lado)
-            : i === 1
+            : i >= 1
               ? t(G.tabla.noDisponible)
               : "—"}
         </td>
@@ -353,6 +427,11 @@ function TablaComparada({
           })}
         </p>
       ) : null}
+      {conSupresion && !conSupresion.aplicable ? (
+        <p className="text-tinta-suave mt-1 text-[0.8125rem] leading-relaxed">
+          {t(G.tabla.noAplicable)}
+        </p>
+      ) : null}
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[20rem] border-collapse text-[0.875rem]">
           <thead>
@@ -364,8 +443,19 @@ function TablaComparada({
                 {t(G.tabla.encabezados.mondrian)}
               </th>
               <th scope="col" className="etiqueta py-2 pr-3 text-left">
-                {t(G.tabla.encabezados.optima)}
+                {t(
+                  conSupresion
+                    ? G.tabla.encabezados.sinBorrar
+                    : G.tabla.encabezados.optima,
+                )}
               </th>
+              {conSupresion ? (
+                <th scope="col" className="etiqueta py-2 pr-3 text-left">
+                  {t(G.tabla.encabezados.conSupresion, {
+                    porcentaje: cifraPedida(conSupresion.porcentaje, idioma),
+                  })}
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -389,6 +479,11 @@ function TablaComparada({
                     lado.lAlcanzado === null
                       ? "—"
                       : numero(lado.lAlcanzado, idioma),
+                )
+              : null}
+            {conSupresion
+              ? fila(t(G.tabla.filas.quitadas), (lado) =>
+                  numero(lado.filasQuitadas ?? 0, idioma),
                 )
               : null}
             {fila(t(G.tabla.filas.clases), (lado) =>
