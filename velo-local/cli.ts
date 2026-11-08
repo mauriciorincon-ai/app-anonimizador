@@ -4,13 +4,12 @@
 // sin eco (`./consola.ts`). Lo que sí es argumento —rutas, la política, la sal— no es secreto: la
 // sal se enseña a propósito, porque sin ella la misma frase daría otra llave.
 
-import { readFile, rename } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
 import { nombreDelArchivoAnonimizado } from "@/engine/csv";
 import { hashDePolitica } from "@/engine/politica";
-import { abrirBitacora, sellarBitacora } from "@/lib/bitacora-archivo";
 import {
   EXTENSION_DE_BOVEDA,
   abrirBoveda,
@@ -24,13 +23,12 @@ import { ArchivoCambio } from "@/workers/json";
 
 import { crearApi, escuchar, PUERTO_DE_LA_API } from "./api";
 import { abrirArchivo, ArchivoNuevo, escribirNuevo } from "./archivos";
+import { anotarEnBitacora, pedidaDePolitica } from "./comun";
 import { secreto } from "./consola";
 import {
   anonimizar,
-  anotar,
   DestinoConHuella,
   diagnosticar,
-  esDeFabrica,
   fechaDelDocumento,
   llaveDelProyecto,
   resolverPolitica,
@@ -43,6 +41,7 @@ import {
   textoDeError,
   VELO_LOCAL as V,
 } from "./textos";
+import { ordenPuente } from "./puente/orden";
 
 /** Lo que la consola escribe. Las pruebas lo cambian por uno que guarda. */
 export interface Consola {
@@ -85,19 +84,6 @@ function porcentaje(valor: number, idioma: Idioma): string {
     style: "percent",
     maximumFractionDigits: 1,
   }).format(valor);
-}
-
-/** La política pedida: de fábrica por su nombre, o el texto de un archivo exportado. */
-export async function pedidaDePolitica(
-  valor: string | undefined,
-): Promise<{ fabrica: string } | { texto: string }> {
-  if (!valor) throw new ErrorDeVelo("sinPolitica");
-  if (esDeFabrica(valor)) return { fabrica: valor };
-  try {
-    return { texto: await readFile(valor, "utf8") };
-  } catch {
-    throw new ErrorDeVelo("politicaInvalida", { detalle: valor });
-  }
 }
 
 async function ordenDiagnosticar(
@@ -219,44 +205,6 @@ async function ordenAnonimizar(
   );
 }
 
-/**
- * La bitácora crece: si existe se abre, se le añade la entrada y se vuelve a sellar en su sitio
- * (como en la web, «se sobrescribe al crecer»), escribiendo primero a un archivo aparte y
- * renombrando: un corte a medias no deja la bitácora rota.
- */
-export async function anotarEnBitacora(
-  ruta: string,
-  entrada: Parameters<typeof anotar>[1],
-  idioma: Idioma,
-): Promise<void> {
-  const frase = await secreto(
-    "VELO_FRASE_BITACORA",
-    V.pedir.fraseDeBitacora,
-    idioma,
-  );
-  let previa = null;
-  let existente: Uint8Array | null = null;
-  try {
-    existente = new Uint8Array(await readFile(ruta));
-  } catch {
-    existente = null;
-  }
-  if (existente) {
-    const abierta = await abrirBitacora(existente, frase);
-    if (!abierta.ok)
-      throw new ErrorDeVelo("bitacoraInvalida", {
-        detalle: decirMensaje(abierta.detalle, idioma),
-      });
-    previa = abierta.bitacora;
-  }
-  const temporal = `${ruta}.${process.pid}.nueva`;
-  await escribirNuevo(
-    temporal,
-    await sellarBitacora(anotar(previa, entrada), frase),
-  );
-  await rename(temporal, ruta);
-}
-
 async function ordenRestaurar(
   args: Argumentos,
   idioma: Idioma,
@@ -346,17 +294,6 @@ async function ordenApi(
   });
 }
 
-/** Las órdenes que se suman fuera de este archivo (el puente, F2). */
-export type Orden = (
-  args: Argumentos,
-  idioma: Idioma,
-  consola: Consola,
-) => Promise<void>;
-const ORDENES_EXTRA = new Map<string, Orden>();
-export function registrarOrden(nombre: string, orden: Orden): void {
-  ORDENES_EXTRA.set(nombre, orden);
-}
-
 /** La orden entera. Devuelve el código de salida; los errores se dicen en el idioma de la orden. */
 export async function principal(
   argv: readonly string[],
@@ -383,8 +320,8 @@ export async function principal(
       await ordenAnonimizar(args, idioma, consola, ahora);
     else if (orden === "restaurar") await ordenRestaurar(args, idioma, consola);
     else if (orden === "api") await ordenApi(args, idioma, consola);
-    else if (ORDENES_EXTRA.has(orden))
-      await ORDENES_EXTRA.get(orden)!(args, idioma, consola);
+    else if (orden === "puente")
+      await ordenPuente(args, idioma, consola, ahora);
     else {
       consola.aviso(texto(V.error.uso, idioma));
       return 2;

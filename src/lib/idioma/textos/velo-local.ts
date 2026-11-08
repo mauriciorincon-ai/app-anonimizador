@@ -123,6 +123,10 @@ export const VELO_LOCAL = {
       es: "Tabla nueva: {tabla} ({filas} filas). La original no se tocó: su huella antes y después es {huella}.",
       en: "New table: {tabla} ({filas} rows). The original was not touched: its fingerprint before and after is {huella}.",
     },
+    nota: {
+      es: "La huella de la tabla es la de su CSV canónico (encabezado y filas en el orden de la llave primaria, celdas como texto). El vacío y el NULL son lo mismo para Velo; la tabla nueva guarda el vacío como NULL y agrega la columna __velo_fila.",
+      en: "The table's fingerprint is that of its canonical CSV (header and rows in primary-key order, cells as text). Velo treats empty and NULL as the same; the new table stores empty as NULL and adds the __velo_fila column.",
+    },
   },
   error: {
     uso: {
@@ -196,6 +200,18 @@ export const VELO_LOCAL = {
     origenEsDestino: {
       es: "Velo jamás escribe sobre la tabla de origen.",
       en: "Velo never writes over the source table.",
+    },
+    nombreLargo: {
+      es: "El nombre de la tabla nueva pasaría de {maximo} bytes, y la base lo recortaría en silencio. Velo prefiere negarse.",
+      en: "The new table's name would exceed {maximo} bytes, and the database would silently truncate it. Velo prefers to refuse.",
+    },
+    tablaCambio: {
+      es: "La tabla cambió mientras Velo la leía (su huella no es la misma entre una pasada y otra). No se escribió nada.",
+      en: "The table changed while Velo was reading it (its fingerprint differs between passes). Nothing was written.",
+    },
+    columnaReservada: {
+      es: "La tabla tiene una columna llamada {columna}, que Velo usa para numerar las filas de las tablas que escribe. Renómbrala y vuelve a intentar.",
+      en: "The table has a column named {columna}, which Velo uses to number the rows of the tables it writes. Rename it and try again.",
     },
     base: {
       es: "La base respondió con un error ({codigo}). No se escribió nada.",
