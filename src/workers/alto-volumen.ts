@@ -911,6 +911,7 @@ export function balanceDelAltoVolumen(
     politica,
     suprimidas: plan.suprimidas,
     colisiones: plan.colisiones,
+    colisionesSinMedir: plan.colisionesSinMedir,
     diversidad: medirDiversidad(
       medida.transformadaQi,
       medida.qisDespues,

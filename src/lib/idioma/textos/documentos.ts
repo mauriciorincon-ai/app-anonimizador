@@ -343,6 +343,10 @@ export const DOCUMENTOS = {
         es: "**{filas}** registros están en grupos donde todo el mundo comparte el mismo valor de `{atributo}`. Dar con el grupo basta para saber el dato, aunque no se sepa cuál de las filas es la persona.",
         en: "**{filas}** records sit in groups where everyone shares the same value of `{atributo}`. Finding the group is enough to learn the value, even without knowing which row is the person.",
       },
+      colisionesSinMedir: {
+        es: "**No se contaron las colisiones** de estas columnas: su seudónimo se calculó valor por valor, porque tenían demasiados valores distintos para guardarlos en un archivo de alto volumen. Si conservan el formato, dos entidades distintas pueden haber recibido el mismo seudónimo. {lista_html}.",
+        en: "**Collisions were not counted** in these columns: their pseudonym was computed value by value, because they had too many distinct values to keep in a high-volume file. If they keep the format, two different entities may have received the same pseudonym. {lista_html}.",
+      },
       colisionesUna: {
         es: "En `{columna}`, **{cuantas}** par de valores distintos recibió el mismo seudónimo. Conservar el formato reduce el espacio disponible y algunos chocan: dos entidades distintas se ven como una.",
         en: "In `{columna}`, **{cuantas}** pair of distinct values received the same pseudonym. Keeping the format shrinks the available space and some collide: two different entities look like one.",

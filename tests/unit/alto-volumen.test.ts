@@ -406,6 +406,21 @@ describe("por trozos = en memoria, byte a byte (CSV)", () => {
         extra,
       ),
     ).toEqual(enMemoria);
+
+    // S10: con topes bajos, lo que se seudonimizó por valor no se calla en el balance.
+    const bajo = balanceDelAltoVolumen(
+      r.pasada,
+      r.plan,
+      r.medida,
+      MONDRIAN,
+      extra,
+    );
+    expect(r.plan.colisionesSinMedir.length).toBeGreaterThan(0);
+    expect(bajo.salvedades).toContainEqual({
+      gravedad: "matiza",
+      tipo: "colisiones-sin-medir",
+      columnas: r.plan.colisionesSinMedir,
+    });
   });
 
   it("un CSV raro: encabezados vacíos y repetidos, filas cortas y largas, CRLF, BOM y saltos entre comillas", async () => {

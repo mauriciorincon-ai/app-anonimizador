@@ -492,6 +492,10 @@ function itemDeSalvedad(salvedad: Salvedad, idioma: Idioma): string {
           filas: salvedad.filas,
           atributo: salvedad.atributo,
         });
+      case "colisiones-sin-medir":
+        return h(S.colisionesSinMedir, idioma, {
+          lista_html: listaDeCodigo(salvedad.columnas),
+        });
       case "colisiones-de-seudonimo":
         return h(
           plural(salvedad.cuantas, S.colisionesUna, S.colisionesVarias),
@@ -758,7 +762,8 @@ function seccionDelRgpd(rgpd: InformeDelRgpd, idioma: Idioma): string {
     );
   }
   bloques.push(`<p>${h(R.suprimido, idioma)}</p>`);
-  if (rgpd.editada) bloques.push(`<p class="por-que">${h(R.editada, idioma)}</p>`);
+  if (rgpd.editada)
+    bloques.push(`<p class="por-que">${h(R.editada, idioma)}</p>`);
   return `<section>
 <p class="etiqueta">${h(R.etiqueta, idioma)}</p>
 <h2>${h(R.titulo, idioma)}</h2>

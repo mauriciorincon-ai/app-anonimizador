@@ -612,6 +612,16 @@ export const TRANSFORMAR = {
           "is the person.",
       },
     },
+    colisionesSinMedir: {
+      es:
+        "**Colisiones sin contar**: el seudónimo de estas columnas se calculó valor por valor, porque " +
+        "tienen demasiados valores distintos para guardarlos en un archivo de alto volumen. Si " +
+        "conservan el formato, dos entidades distintas pueden haber recibido el mismo seudónimo:",
+      en:
+        "**Collisions not counted**: the pseudonym of these columns was computed value by value, " +
+        "because they have too many distinct values to keep in a high-volume file. If they keep " +
+        "the format, two different entities may have received the same pseudonym:",
+    },
     colisiones: {
       antes: { es: "En", en: "In" },
       uno: {

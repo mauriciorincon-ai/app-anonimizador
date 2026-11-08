@@ -125,6 +125,13 @@ function TextoDeSalvedad({ salvedad }: { salvedad: Salvedad }) {
           <Rico texto={B.homogeneas.despues} />
         </>
       );
+    case "colisiones-sin-medir":
+      return (
+        <>
+          <Rico texto={B.colisionesSinMedir} />{" "}
+          <span className="font-mono">{salvedad.columnas.join(" · ")}</span>.
+        </>
+      );
     case "colisiones-de-seudonimo":
       return (
         <>

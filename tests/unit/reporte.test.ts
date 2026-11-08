@@ -525,6 +525,11 @@ describe("cada salvedad se escribe, y dice lo suyo", () => {
           columna: "nit_empresa",
           cuantas: 1,
         },
+        {
+          gravedad: "matiza",
+          tipo: "colisiones-sin-medir",
+          columnas: ["cedula_titular"],
+        },
       ],
     },
     utilidad: medirUtilidad(
@@ -555,6 +560,11 @@ describe("cada salvedad se escribe, y dice lo suyo", () => {
   it("cuenta la gente de las clases homogéneas, no las clases", () => {
     expect(seccion).toContain("<b>37</b> registros están en grupos");
     expect(seccion).toContain("<code>diagnostico</code>");
+  });
+
+  it("dice qué columnas quedaron con las colisiones sin contar (alto volumen)", () => {
+    expect(seccion).toContain("No se contaron las colisiones");
+    expect(seccion).toContain("<code>cedula_titular</code>");
   });
 
   it("concuerda el singular de las colisiones", () => {
@@ -610,7 +620,7 @@ describe("cada salvedad se escribe, y dice lo suyo", () => {
       seccion.indexOf("s-matiza"),
     );
     expect(seccion.split("s-descalifica").length - 1).toBe(4);
-    expect(seccion.split("s-matiza").length - 1).toBe(2);
+    expect(seccion.split("s-matiza").length - 1).toBe(3);
   });
 });
 
