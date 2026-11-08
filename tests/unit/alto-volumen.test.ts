@@ -476,6 +476,82 @@ describe("el regreso por trozos = en memoria", () => {
     });
     expect(porTrozos.totales.restauradas).toBeGreaterThan(0);
   });
+
+  // S10: el devuelto de 5 M no pasaba de R1. Trece columnas casi únicas que el tercero devuelve tal
+  // cual no cabían en su diccionario y el regreso entero se negaba, aunque ninguna fuera de la bóveda.
+  const SOLO_NOMBRE: Politica = {
+    ...SIN_BOVEDA,
+    reglas: [
+      ...SIN_BOVEDA.reglas.filter((r) => r.columna !== "nombre_completo"),
+      {
+        columna: "nombre_completo",
+        tecnica: { tipo: "seudonimizar", longitud: 12, reversible: true },
+      },
+    ],
+  };
+
+  async function regresoConTope(politica: Politica, tope?: number) {
+    const r = await porLosDosCaminos(KIT, politica, HOLGADOS);
+    const boveda = construirBoveda(IDENTIDAD, r.plan.correspondencias);
+    const tabla = await tablaEnMemoria(r.salida);
+    const nombre = tabla.columnas.find((c) => c.nombre === "nombre_completo")!;
+    const topes = {
+      ...HOLGADOS,
+      distintosPorColumna: tope ?? nombre.valores.length - 1,
+    };
+    const archivo = blobDe(r.salida);
+    const pasada = await pasadaDelDevuelto(archivo, { topes });
+    const destino = recolector();
+    const porTrozos = restaurarPorTrozos(
+      archivo,
+      pasada,
+      boveda,
+      sha256(codificar(r.salida)),
+      destino,
+      { topes },
+    );
+    return { enMemoria: restaurar(tabla, boveda), pasada, porTrozos, destino };
+  }
+
+  it("las columnas que no caben y no traen nada de la bóveda salen intactas, con su piso dicho", async () => {
+    const { enMemoria, pasada, porTrozos, destino } =
+      await regresoConTope(SOLO_NOMBRE);
+    const informe = await porTrozos;
+    const incompletas = pasada.diccionarios.filter((d) => !d.completo);
+    expect(incompletas.length).toBeGreaterThan(3);
+    expect(destino.texto()).toBe(serializarCsv(enMemoria.tabla));
+
+    // Lo exacto es igual: totales, reconocimiento, salvedades y las coincidencias de cada columna.
+    expect(informe.totales).toEqual(enMemoria.totales);
+    expect(informe.reconocimiento).toBe("completo");
+    expect(informe.salvedades).toEqual(enMemoria.salvedades);
+    expect(informe.totales.restauradas).toBeGreaterThan(0);
+    informe.columnas.forEach((columna, c) => {
+      const exacta = enMemoria.columnas[c];
+      expect(columna.coincidencias).toBe(exacta.coincidencias);
+      if (!columna.distintosAlMenos) {
+        expect(columna).toEqual(exacta);
+        return;
+      }
+      // Lo que no cupo: el piso no pasa del real y la proporción no baja de la real.
+      expect(columna.deLaBoveda).toBeNull();
+      expect(columna.distintos).toBeLessThanOrEqual(exacta.distintos);
+      expect(columna.proporcionReconocida).toBeGreaterThanOrEqual(
+        exacta.proporcionReconocida,
+      );
+    });
+    expect(
+      informe.columnas.filter((c) => c.distintosAlMenos).map((c) => c.columna),
+    ).toEqual(incompletas.map((d) => d.nombre));
+  });
+
+  it("una columna que no cabe y trae de la bóveda: el regreso se niega, no adivina", async () => {
+    const { porTrozos } = await regresoConTope(SOLO_NOMBRE, 50);
+    await expect(porTrozos).rejects.toMatchObject({
+      motivo: "alto-volumen-devuelto-no-cabe",
+    });
+    await expect(porTrozos).rejects.toBeInstanceOf(NoCabeEnAltoVolumen);
+  });
 });
 
 describe("las columnas que se releen conservan el nombre que les dio el diagnóstico", () => {

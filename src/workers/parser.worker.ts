@@ -1645,8 +1645,15 @@ async function restaurarDevuelto(): Promise<void> {
           filas: resultado.filas,
         },
       });
-    } catch {
-      enviar({ tipo: "error", motivo: "restauracion-fallida" });
+    } catch (error) {
+      // S10: una columna que no cupo y trae de la bóveda no se decide sin su diccionario.
+      enviar({
+        tipo: "error",
+        motivo:
+          error instanceof NoCabeEnAltoVolumen
+            ? error.motivo
+            : "restauracion-fallida",
+      });
     }
     return;
   }

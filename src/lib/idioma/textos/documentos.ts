@@ -629,6 +629,10 @@ export const DOCUMENTOS = {
       es: "{n} de {total} valores",
       en: "{n} of {total} values",
     },
+    valoresDeAlMenos: {
+      es: "{n} de al menos {total} valores",
+      en: "{n} of at least {total} values",
+    },
     sobreAmbiguas: {
       es: "!!Sobre las {n} celdas ambiguas.!! Se repite aquí a propósito: este documento se lee fuera de la pantalla que lo generó, y el porcentaje de arriba se puede citar solo. Esas celdas **no volvieron**: su seudónimo correspondía a más de un valor original y Velo conservó el seudónimo en vez de elegir. Cualquier cifra de este informe que se cite sin ellas dice más de lo que ocurrió.",
       en: "!!About the {n} ambiguous cells.!! This is repeated here on purpose: this document is read away from the screen that generated it, and the percentage above can be quoted on its own. Those cells **did not come back**: their pseudonym matched more than one original value, and Velo kept the pseudonym instead of choosing. Any figure from this report that is quoted without them says more than what happened.",

@@ -53,11 +53,16 @@ import {
   type Politica,
   type Tecnica,
 } from "@/engine/politica";
-import type { Boveda, EntradaDeBoveda } from "@/engine/boveda";
+import {
+  indiceDeColumna,
+  type Boveda,
+  type EntradaDeBoveda,
+} from "@/engine/boveda";
 import {
   cerrarRestauracion,
   contarCelda,
   decidirRestauracion,
+  MINIMO_DE_COINCIDENCIAS,
   type DecisionDeColumna,
   type Restauracion,
 } from "@/engine/restaurar";
@@ -1085,7 +1090,11 @@ export interface PasadaDelDevuelto {
   readonly diccionarios: readonly DiccionarioDeColumna[];
 }
 
-/** R1: los diccionarios de las columnas devueltas. Sin todos sus valores, no se puede decidir. */
+/**
+ * R1: los diccionarios de las columnas devueltas. Una columna que no cabe (S10: las casi únicas
+ * que el tercero devuelve tal cual) suelta su diccionario y queda `completo: false`, con su piso de
+ * distintos; `decidirElDevuelto` la cuenta después contra la bóveda.
+ */
 export async function pasadaDelDevuelto(
   archivo: Fuente,
   opciones: OpcionesDeLaPasada = {},
@@ -1113,15 +1122,18 @@ export async function pasadaDelDevuelto(
         const d = diccionarios[c];
         const valor = fila[c];
         if (valor !== "") d.noVacios++;
-        if (d.indice.has(valor)) continue;
+        if (!d.completo || d.indice.has(valor)) continue;
         if (
           d.distintos + 1 > topes.distintosPorColumna ||
           enTotal + 1 > topes.distintosEnTotal
-        )
-          throw new NoCabeEnAltoVolumen(
-            "alto-volumen-devuelto-no-cabe",
-            topes.distintosPorColumna,
-          );
+        ) {
+          enTotal -= d.distintos;
+          d.completo = false;
+          d.distintos++;
+          d.valores = [""];
+          d.indice = new Map([["", 0]]);
+          continue;
+        }
         const propio = desprendida(valor);
         d.indice.set(propio, d.valores.length);
         d.valores.push(propio);
@@ -1132,6 +1144,98 @@ export async function pasadaDelDevuelto(
     }
   }
   return { nombres, filas, diccionarios };
+}
+
+/** Las decisiones de un devuelto contra una bóveda: el regreso escribe dos veces y relee una. */
+const decididas = new WeakMap<
+  PasadaDelDevuelto,
+  { readonly boveda: Boveda; readonly decisiones: DecisionDeColumna[] }
+>();
+
+/**
+ * S10: lo que se decide de cada columna devuelta, también de las que no cupieron. Sin diccionario
+ * no hay proporción exacta, pero sí coincidencias exactas (lo visto de la bóveda está acotado por
+ * la bóveda): con menos de `MINIMO_DE_COINCIDENCIAS` la columna no se reconoce con ningún número
+ * de distintos, que es lo mismo que decide la memoria. Con más, no se puede decidir sin el
+ * diccionario, y se dice.
+ */
+async function decidirElDevuelto(
+  archivo: Fuente,
+  devuelto: PasadaDelDevuelto,
+  boveda: Boveda,
+  huella: string,
+  opciones: OpcionesDeLaPasada,
+): Promise<DecisionDeColumna[]> {
+  const previa = decididas.get(devuelto);
+  if (previa?.boveda === boveda) return previa.decisiones;
+  const decisiones = decidirRestauracion(
+    devuelto.diccionarios.map((d) => ({
+      nombre: d.nombre,
+      valores: d.valores,
+    })),
+    boveda,
+  );
+  const incompletas = devuelto.diccionarios.flatMap((d, c) =>
+    d.completo ? [] : [c],
+  );
+  if (incompletas.length > 0) {
+    const indices = boveda.columnas.map(indiceDeColumna);
+    const vistas = incompletas.map(() => indices.map(() => new Set<string>()));
+    for await (const parte of filasDelArchivo(archivo, {
+      ...opciones,
+      huella,
+    })) {
+      if ("encabezado" in parte) continue;
+      for (const fila of parte.filas)
+        incompletas.forEach((c, i) => {
+          const valor = fila[c];
+          if (!valor) return;
+          indices.forEach((indice, j) => {
+            if (indice.has(valor)) vistas[i][j].add(valor);
+          });
+        });
+    }
+    const topes = opciones.topes ?? TOPES_DEL_ALTO_VOLUMEN;
+    incompletas.forEach((c, i) => {
+      // La mejor por coincidencias: con el mismo denominador, es la mejor por proporción, y el
+      // desempate es el de `mejorCandidata`, por nombre de la columna de la bóveda.
+      let mejor = -1;
+      vistas[i].forEach((vista, j) => {
+        if (
+          mejor === -1 ||
+          vista.size > vistas[i][mejor].size ||
+          (vista.size === vistas[i][mejor].size &&
+            boveda.columnas[j].columna < boveda.columnas[mejor].columna)
+        )
+          mejor = j;
+      });
+      const coincidencias = mejor === -1 ? 0 : vistas[i][mejor].size;
+      if (coincidencias >= MINIMO_DE_COINCIDENCIAS)
+        throw new NoCabeEnAltoVolumen(
+          "alto-volumen-devuelto-no-cabe",
+          topes.distintosPorColumna,
+        );
+      const { nombre, distintos } = devuelto.diccionarios[c];
+      decisiones[c] = {
+        nombre,
+        candidata:
+          mejor === -1
+            ? null
+            : {
+                columna: boveda.columnas[mejor].columna,
+                proporcion: coincidencias / distintos,
+                coincidencias,
+                reconocida: false,
+              },
+        nuevos: null,
+        categoriaPorValor: null,
+        distintos,
+        distintosAlMenos: true,
+      };
+    });
+  }
+  decididas.set(devuelto, { boveda, decisiones });
+  return decisiones;
 }
 
 /**
@@ -1146,12 +1250,12 @@ export async function restaurarPorTrozos(
   destino: Destino,
   opciones: OpcionesDeLaPasada = {},
 ): Promise<Omit<Restauracion, "tabla"> & { readonly filas: number }> {
-  const decisiones: DecisionDeColumna[] = decidirRestauracion(
-    devuelto.diccionarios.map((d) => ({
-      nombre: d.nombre,
-      valores: d.valores,
-    })),
+  const decisiones = await decidirElDevuelto(
+    archivo,
+    devuelto,
     boveda,
+    huella,
+    opciones,
   );
   const celdas = decisiones.map(() => ({
     restauradas: 0,

@@ -1138,7 +1138,7 @@ function filaDeColumnaRestaurada(
 <td>${
     columna.deLaBoveda === null
       ? `<span class="alerta">${h(R.noReconocida, idioma)}</span> <small>${h(
-          R.valoresDeTotal,
+          columna.distintosAlMenos ? R.valoresDeAlMenos : R.valoresDeTotal,
           idioma,
           {
             n: columna.coincidencias,

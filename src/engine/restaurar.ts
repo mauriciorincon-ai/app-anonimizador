@@ -106,6 +106,11 @@ export interface ColumnaRestaurada {
    */
   readonly proporcionReconocida: number;
   readonly celdas: CeldasDeColumna;
+  /**
+   * S10: una columna que en alto volumen no cupo en su diccionario. `distintos` es un piso y la
+   * proporción, un techo; las coincidencias son exactas, y menos de dos: por eso no se reconoció.
+   */
+  readonly distintosAlMenos?: true;
 }
 
 export type ReconocimientoDeBoveda = "completo" | "parcial" | "ninguno";
@@ -277,6 +282,8 @@ export interface DecisionDeColumna {
   /** 0 restaurada · 1 ambigua · 2 desconocida, por código del diccionario; null = sale intacta. */
   readonly categoriaPorValor: Uint8Array | null;
   readonly distintos: number;
+  /** S10: la columna no cupo en su diccionario (alto volumen); `distintos` es su piso. */
+  readonly distintosAlMenos?: true;
 }
 
 /** Decide cada columna del devuelto sobre su diccionario (`valores[0]` es el vacío). */
@@ -405,6 +412,7 @@ export function cerrarRestauracion(
         distintos: decision.distintos,
         proporcionReconocida: decision.candidata?.proporcion ?? 0,
         celdas: { restauradas: 0, ambiguas: 0, desconocidas: 0 },
+        ...(decision.distintosAlMenos ? { distintosAlMenos: true } : {}),
       });
       return;
     }
