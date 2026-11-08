@@ -13,6 +13,7 @@
     "test:e2e": "playwright test --pass-with-no-tests",
     "gate:anti-ia": "node scripts/gate-anti-ia.mjs",
     "kit:generar": "node docs/kit-de-prueba/generador.mjs",
+    "velo": "tsx velo-local/velo.ts",
     "prepare": "git config core.hooksPath githooks"
   },
   "dependencies": {
