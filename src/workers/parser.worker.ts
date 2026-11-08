@@ -13,7 +13,6 @@
 //
 // El archivo se lee por trozos (`./csv.ts`, el lector compartido): nunca existe una copia completa
 // del CSV en memoria, solo la tabla columnar que se va construyendo.
-import { balanceDelTratamiento } from "@/engine/balance";
 import {
   anadirEntrada,
   bitacoraVacia,
@@ -39,7 +38,7 @@ import {
   leerJson,
   type LecturaJson,
 } from "@/engine/json/lector";
-import { ErrorDeJson } from "@/engine/json/tipos";
+import { ErrorDeJson, JsonExcedeCeldas } from "@/engine/json/tipos";
 import type { EstructuraJson } from "@/engine/json/tipos";
 import {
   EXTENSION_DEL_FORMATO,
@@ -49,20 +48,13 @@ import {
   ErrorDeMetadatos,
   type FormatoBinario,
 } from "@/engine/metadatos/tipos";
-import { FILAS_DE_MUESTRA, muestraDeColumna } from "@/engine/muestra";
-import {
-  generalizarOptimo,
-  resolverDiversidad,
-  TOPE_DE_NODOS,
-  type ResultadoOptimo,
-} from "@/engine/optima";
+import { generalizarOptimo, resolverDiversidad } from "@/engine/optima";
 import { anonimizarConMondrian } from "@/engine/mondrian";
 import { nombresDeNiveles } from "@/engine/jerarquias";
 import {
   columnasDeMondrian,
   hashDePolitica,
   tecnicaDe,
-  type GeneralizacionOptima,
   type JerarquiaDeLaPolitica,
   type Politica,
 } from "@/engine/politica";
@@ -71,7 +63,6 @@ import {
   nombreDelInforme,
 } from "@/engine/reporte";
 import { restaurar, type Restauracion } from "@/engine/restaurar";
-import { DOMINIO_MAXIMO, informeDePrivacidad } from "@/engine/ruido";
 import {
   clasesDeEquivalencia,
   evaluarRiesgo,
@@ -80,8 +71,6 @@ import {
 } from "@/engine/riesgo";
 import { estimarRiesgo } from "@/engine/riesgo-estimado";
 import { entropiaEnBits, informacionMutua } from "@/engine/utilidad";
-import { aplicarPolitica } from "@/engine/tecnicas";
-import { medirUtilidad } from "@/engine/utilidad";
 import { esDeMetadatos, formatoDeArchivo, motivoDelTope } from "@/lib/archivo";
 import {
   abrirBitacora,
@@ -101,14 +90,12 @@ import type {
   ComparacionDeGeneralizacion,
   EtapaDelWorker,
   FormatoDeArchivo,
-  GeneralizacionAplicada,
   Informe,
   LadoDeLaComparacion,
   MensajeAlWorker,
   MensajeDelWorker,
 } from "./contrato";
 import {
-  balanceDelAltoVolumen,
   escribirCsv,
   leerColumnas,
   NoCabeEnAltoVolumen,
@@ -117,14 +104,19 @@ import {
   pasadaDelDevuelto,
   prepararTransformacion,
   restaurarPorTrozos,
+  resultadoDelAltoVolumen,
   TOPE_DE_CELDAS_EN_MEMORIA,
   type Destino,
+  type FormatoDeSalida,
+  type Fuente,
   type PasadaDeDiagnostico,
   type PasadaDelDevuelto,
   type PlanDeTransformacion,
 } from "./alto-volumen";
 import { lotesDeCsv } from "./csv";
+import { tablaDeCsv, transformarEnMemoria } from "./en-memoria";
 import { ArchivoCambio, fuenteDeArchivo } from "./json";
+import { abrirJsonPorTrozos } from "./json-por-trozos";
 import { FormatoNoCoincide, leerBinario, limpiarBinario } from "./metadatos";
 
 const alcance = self as unknown as DedicatedWorkerGlobalScope;
@@ -152,10 +144,56 @@ let diagnosticoActual: Diagnostico | null = null;
  * plan con que se escribe.
  */
 let altoVolumen: {
-  readonly archivo: File;
+  readonly archivo: Fuente;
   readonly pasada: PasadaDeDiagnostico;
+  readonly salida: SalidaDeAltoVolumen;
   plan: PlanDeTransformacion | null;
 } | null = null;
+
+/**
+ * S9: cómo se escribe lo que sale de una pasada por trozos. Un CSV sale como CSV; un JSON que no
+ * cupo en memoria sale como JSON (arreglo o líneas), con la estructura de su original.
+ */
+interface SalidaDeAltoVolumen {
+  /** Un formato nuevo por escritura (lleva el estado de la pasada); sin él, CSV. */
+  readonly formato?: () => FormatoDeSalida;
+  /** Solo en un JSON: las columnas reversibles que eran todas números (ADR-011). */
+  readonly numericas?: ReadonlySet<string>;
+  readonly mime: string;
+  readonly extension: "csv" | "json" | "jsonl";
+}
+
+const SALIDA_CSV: SalidaDeAltoVolumen = {
+  mime: "text/csv;charset=utf-8",
+  extension: "csv",
+};
+
+function salidaDeJson(
+  forma: "arreglo" | "lineas",
+  abierto: Pick<
+    Awaited<ReturnType<typeof abrirJsonPorTrozos>>,
+    "formato" | "numericas"
+  >,
+): SalidaDeAltoVolumen {
+  const { formato, numericas } = abierto;
+  return forma === "arreglo"
+    ? {
+        formato,
+        numericas,
+        mime: "application/json;charset=utf-8",
+        extension: "json",
+      }
+    : {
+        formato,
+        numericas,
+        mime: "application/x-ndjson;charset=utf-8",
+        extension: "jsonl",
+      };
+}
+
+/** El tamaño en bytes de lo que se lee por pasadas: el archivo, o lo que dice su fuente de filas. */
+const bytesDe = (fuente: Fuente): number =>
+  "lotes" in fuente ? fuente.bytes : fuente.size;
 
 /** Cada cuántas filas se avisa del avance. Suficiente para una barra fluida, sin inundar. */
 const FILAS_POR_AVISO = 25_000;
@@ -244,6 +282,11 @@ async function leerJsonDelArchivo(archivo: File): Promise<void> {
       lectura.estructura,
     );
   } catch (error) {
+    // S9: registros × rutas pasó el tope de la memoria. No se rechaza: se sigue por pasadas.
+    if (error instanceof JsonExcedeCeldas) {
+      await leerJsonAltoVolumen(archivo, inicio);
+      return;
+    }
     // El mensaje de la excepción NUNCA se reenvía: solo la clave del motivo y el número de línea.
     if (error instanceof ErrorDeJson)
       enviar({
@@ -252,6 +295,70 @@ async function leerJsonDelArchivo(archivo: File): Promise<void> {
         ...(error.linea === null ? {} : { linea: error.linea }),
       });
     else enviar({ tipo: "error", motivo: "lectura-fallida" });
+  }
+}
+
+/**
+ * S9: un JSON que no cabe en memoria. Se describe en una pasada (columnas y estructura, sin
+ * guardar celdas) y de ahí en adelante es un archivo de filas para el alto volumen del S8.
+ */
+async function leerJsonAltoVolumen(
+  archivo: File,
+  inicio: number,
+): Promise<void> {
+  tabla = null;
+  lecturaJson = null;
+  archivoDeEntrada = null;
+  try {
+    const abierto = await abrirJsonPorTrozos(
+      fuenteDeArchivo(archivo, { huellaEsperada: huella }),
+      archivo.size,
+    );
+    const pasada = await pasadaDeDiagnostico(abierto.fuente, {
+      alAvanzar: (filas, bytes, total) =>
+        avisar("alto-volumen", filas, bytes, total),
+    });
+    if (pasada.filas === 0) {
+      enviar({ tipo: "error", motivo: "archivo-vacio" });
+      return;
+    }
+    altoVolumen = {
+      archivo: abierto.fuente,
+      pasada,
+      salida: salidaDeJson(abierto.descripcion.estructura.forma, abierto),
+      plan: null,
+    };
+    diagnosticoActual = pasada.diagnostico;
+    formatoOriginal = "json";
+    enviar({
+      tipo: "listo",
+      informe: {
+        archivo: {
+          nombre: archivo.name,
+          bytes: archivo.size,
+          formato: "json",
+          sha256: huella,
+        },
+        diagnostico: pasada.diagnostico,
+        riesgo: pasada.riesgo,
+        advisor: pasada.advisor,
+        estructura: abierto.descripcion.estructura,
+        modo: "alto-volumen",
+        medicion: {
+          msLectura: Math.round(performance.now() - inicio),
+          msDiagnostico: 0,
+          heapMb: heapUsadoMb(),
+        },
+      },
+    });
+  } catch (error) {
+    if (error instanceof ErrorDeJson)
+      enviar({
+        tipo: "error",
+        motivo: error.motivo,
+        ...(error.linea === null ? {} : { linea: error.linea }),
+      });
+    else enviar({ tipo: "error", motivo: motivoDelAltoVolumen(error) });
   }
 }
 
@@ -414,48 +521,36 @@ async function leerExcel(archivo: File): Promise<void> {
 
 async function leerCsv(archivo: File): Promise<void> {
   const inicio = performance.now();
-  let constructor: ConstructorColumnar | null = null;
-  let filas = 0;
   let leidos = 0;
   let proximoAviso = FILAS_POR_AVISO;
+  let leida: Awaited<ReturnType<typeof tablaDeCsv>>;
 
   try {
-    for await (const lote of lotesDeCsv(archivo, {
+    leida = await tablaDeCsv(archivo, {
       alAvanzar: (bytes) => (leidos = bytes),
-    })) {
-      let desde = 0;
-      if (!constructor) {
-        constructor = new ConstructorColumnar(lote[0] ?? [], 1 << 16);
-        desde = 1;
-      }
-      for (let i = desde; i < lote.length; i++)
-        constructor.agregarFila(lote[i]);
-      filas += lote.length - desde;
-
-      // S8: más celdas que las que caben en memoria. La tabla a medias se suelta y el archivo se
-      // vuelve a leer por pasadas. El tope es una constante de build: el mismo archivo entra por el
-      // mismo camino en cualquier equipo.
-      if (filas * (lote[0]?.length ?? 0) > TOPE_DE_CELDAS_EN_MEMORIA) {
-        constructor = null;
-        await leerCsvAltoVolumen(archivo, inicio);
-        return;
-      }
-
-      if (filas >= proximoAviso) {
-        proximoAviso = filas + FILAS_POR_AVISO;
-        avisar("leyendo", filas, leidos, archivo.size);
-      }
-    }
+      alLeerFilas: (filas) => {
+        if (filas >= proximoAviso) {
+          proximoAviso = filas + FILAS_POR_AVISO;
+          avisar("leyendo", filas, leidos, archivo.size);
+        }
+      },
+    });
   } catch {
     // El motivo del parser NUNCA se reenvía: puede citar el contenido de la línea que falló.
     enviar({ tipo: "error", motivo: "lectura-fallida" });
     return;
   }
-  if (!constructor) {
+  // S8: más celdas que las que caben en memoria. La tabla a medias ya se soltó y el archivo se
+  // vuelve a leer por pasadas (`tablaDeCsv`, compartida con Velo local).
+  if (leida === "alto-volumen") {
+    await leerCsvAltoVolumen(archivo, inicio);
+    return;
+  }
+  if (leida === "vacio") {
     enviar({ tipo: "error", motivo: "archivo-vacio" });
     return;
   }
-  tabla = (constructor as ConstructorColumnar).finalizar();
+  tabla = leida;
   formatoOriginal = "csv";
   diagnosticar(archivo, "csv", performance.now() - inicio);
 }
@@ -486,7 +581,7 @@ async function leerCsvAltoVolumen(
       enviar({ tipo: "error", motivo: "archivo-vacio" });
       return;
     }
-    altoVolumen = { archivo, pasada, plan: null };
+    altoVolumen = { archivo, pasada, salida: SALIDA_CSV, plan: null };
     diagnosticoActual = pasada.diagnostico;
     formatoOriginal = "csv";
     const msLectura = performance.now() - inicio;
@@ -632,77 +727,22 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
     // resultado: el certificado lo lee de ahí, no del idioma que tenga la pantalla al descargarlo.
     // `construirArchivo` no lee ningún idioma: la tabla que escribe ya nació en el del trabajo.
     // La huella del archivo de entrada entra a la semilla del ruido (S7, `ruido/azar.ts`).
-    const resultado = await aplicarPolitica(
+    // S9: la transformación y su medida viven en `./en-memoria.ts`, que Velo local también llama.
+    const {
+      resultado,
+      qis,
+      balance,
+      utilidad,
+      muestras,
+      generalizacion,
+      privacidad,
+    } = await transformarEnMemoria(
       original,
+      diagnostico,
       politica,
       llave,
       idioma,
       huella,
-    );
-
-    avisar("midiendo-el-despues", original.filas, 0, 0);
-    const sensibles = diagnostico.columnas
-      .filter((c) => c.categoria === "dato-sensible")
-      .map((c) => c.nombre)
-      .filter((n) => !resultado.suprimidas.includes(n));
-    const qis = diagnostico.columnas
-      .filter((c) => c.categoria === "cuasi-identificador")
-      .map((c) => c.nombre)
-      .filter((n) => !resultado.suprimidas.includes(n));
-    const diversidad = medirDiversidad(resultado.tabla, qis, sensibles);
-    // Una retícula que pasó del tope no se recorrió: no hay nada aplicado que contar.
-    const optimaAplicada =
-      resultado.optima?.motivo === "excede-tope" ? null : resultado.optima;
-
-    const balance = balanceDelTratamiento({
-      tablaOriginal: original,
-      tablaTransformada: resultado.tabla,
-      diagnostico,
-      politica,
-      suprimidas: resultado.suprimidas,
-      colisiones: resultado.colisiones,
-      // La salvedad del k habla del k: una óptima que llegó al k y no a la ℓ pedida no es un «k no
-      // alcanzado». La ℓ la cuenta el certificado, en la sección de la generalización.
-      mondrian:
-        resultado.mondrian ??
-        (optimaAplicada
-          ? {
-              ...optimaAplicada,
-              alcanzado: optimaAplicada.kAlcanzado >= optimaAplicada.kObjetivo,
-            }
-          : null),
-      diversidad,
-      pendientesDeMondrian: resultado.pendientesDeMondrian,
-      ruidoNoAplicado: {
-        columnas: resultado.ruido
-          .filter((r) => !r.aplicado)
-          .map((r) => r.columna),
-        maximo: DOMINIO_MAXIMO,
-      },
-      reticulaExcedida:
-        resultado.optima?.motivo === "excede-tope"
-          ? {
-              dimensiones: resultado.optima.dimensiones,
-              nodos: resultado.optima.nodosEnLaReticula,
-              tope: TOPE_DE_NODOS,
-            }
-          : null,
-    });
-
-    const porNombre = new Map(
-      resultado.tabla.columnas.map((c) => [c.nombre, c]),
-    );
-    const categorias = new Map(
-      diagnostico.columnas.map((c) => [c.nombre, c.categoria as string]),
-    );
-    const muestras = original.columnas.map((columna) =>
-      muestraDeColumna(
-        columna,
-        porNombre.get(columna.nombre),
-        politica,
-        categorias.get(columna.nombre) ?? "no-personal",
-        original.filas,
-      ),
     );
 
     transformada = resultado.tabla;
@@ -744,15 +784,12 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
         hashDePolitica: hashDeLaPolitica,
         idioma,
         balance,
-        utilidad: medirUtilidad(original, resultado.tabla),
+        utilidad,
         suprimidas: resultado.suprimidas,
         muestras,
         ms: Math.round(performance.now() - inicio),
-        generalizacion:
-          optimaAplicada && politica.generalizacion
-            ? generalizacionAplicada(optimaAplicada, politica.generalizacion)
-            : null,
-        privacidad: informeDePrivacidad(resultado.ruido),
+        generalizacion,
+        privacidad,
       },
     });
   } catch {
@@ -762,13 +799,6 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
       motivo: llave === null ? "sin-llave" : "transformacion-fallida",
     });
   }
-}
-
-/** Una columna de pocas filas (las de la vista previa), para las mismas funciones de la muestra. */
-function columnaDeMuestra(nombre: string, valores: readonly string[]) {
-  const constructor = new ConstructorColumnar([nombre], valores.length || 1);
-  for (const valor of valores) constructor.agregarFila([valor]);
-  return constructor.finalizar().columnas[0];
 }
 
 /**
@@ -783,7 +813,7 @@ async function transformarAltoVolumen(
   const { archivo, pasada } = estado;
   const inicio = performance.now();
   try {
-    avisar("transformando", pasada.filas, 0, archivo.size);
+    avisar("transformando", pasada.filas, 0, bytesDe(archivo));
     const plan = await prepararTransformacion(
       archivo,
       pasada,
@@ -796,56 +826,20 @@ async function transformarAltoVolumen(
           avisar("transformando", filas, bytes, total),
       },
     );
-    avisar("midiendo-el-despues", pasada.filas, 0, archivo.size);
+    avisar("midiendo-el-despues", pasada.filas, 0, bytesDe(archivo));
     const medida = await pasadaDeMedida(archivo, pasada, plan, {
       alAvanzar: (filas, bytes, total) =>
         avisar("midiendo-el-despues", filas, bytes, total),
     });
-    const optima = plan.reparto?.optima ?? null;
-    const optimaAplicada = optima?.motivo === "excede-tope" ? null : optima;
-    const balance = balanceDelAltoVolumen(pasada, plan, medida, politica, {
-      mondrian:
-        plan.reparto?.mondrian ??
-        (optimaAplicada
-          ? {
-              ...optimaAplicada,
-              alcanzado: optimaAplicada.kAlcanzado >= optimaAplicada.kObjetivo,
-            }
-          : null),
-      ruidoNoAplicado: {
-        columnas: medida.ruido.filter((r) => !r.aplicado).map((r) => r.columna),
-        maximo: DOMINIO_MAXIMO,
-      },
-      reticulaExcedida:
-        optima?.motivo === "excede-tope"
-          ? {
-              dimensiones: optima.dimensiones,
-              nodos: optima.nodosEnLaReticula,
-              tope: TOPE_DE_NODOS,
-            }
-          : null,
-    });
-    const categorias = new Map(
-      pasada.diagnostico.columnas.map((c) => [c.nombre, c.categoria as string]),
-    );
-    const muestras = plan.nombres.map((nombre, c) =>
-      muestraDeColumna(
-        columnaDeMuestra(nombre, medida.muestras[c].antes),
-        plan.planes[c].tipo === "suprimida"
-          ? undefined
-          : columnaDeMuestra(nombre, medida.muestras[c].despues),
-        politica,
-        categorias.get(nombre) ?? "no-personal",
-        Math.min(pasada.filas, FILAS_DE_MUESTRA),
-        medida.cambio[c],
-      ),
-    );
-
+    const { balance, muestras, generalizacion, privacidad } =
+      resultadoDelAltoVolumen(pasada, plan, medida, politica);
     estado.plan = plan;
     transformada = null;
     clasesDespues = medida.clasesDespues;
     hashDeLaPolitica = hashDePolitica(politica);
-    correspondencias = plan.correspondencias;
+    correspondencias = estado.salida.numericas
+      ? conNumericas(plan.correspondencias, estado.salida.numericas)
+      : plan.correspondencias;
     enviar({
       tipo: "transformado",
       resultado: {
@@ -857,11 +851,8 @@ async function transformarAltoVolumen(
         suprimidas: plan.suprimidas,
         muestras,
         ms: Math.round(performance.now() - inicio),
-        generalizacion:
-          optimaAplicada && politica.generalizacion
-            ? generalizacionAplicada(optimaAplicada, politica.generalizacion)
-            : null,
-        privacidad: informeDePrivacidad(medida.ruido),
+        generalizacion,
+        privacidad,
       },
     });
   } catch (error) {
@@ -875,34 +866,6 @@ async function transformarAltoVolumen(
             : "transformacion-fallida",
     });
   }
-}
-
-/**
- * La óptima tal como se aplicó, para el certificado: cada columna con su escalera y el nivel
- * elegido. Las columnas sin escalera en la política subieron por la de solo supresión.
- */
-function generalizacionAplicada(
-  optima: ResultadoOptimo,
-  pedida: GeneralizacionOptima,
-): GeneralizacionAplicada {
-  return {
-    kObjetivo: optima.kObjetivo,
-    kAlcanzado: optima.kAlcanzado,
-    lObjetivo: optima.lObjetivo,
-    lAlcanzado: optima.lAlcanzado,
-    columnasSensibles: optima.columnasSensibles,
-    lDescartadas: optima.lDescartadas,
-    columnas: optima.dimensiones.map((nombre, i) => {
-      const jerarquia = pedida.jerarquias[nombre] ?? { tipo: "supresion" };
-      return {
-        nombre,
-        jerarquia,
-        nivel: nombresDeNiveles(jerarquia)[optima.niveles[i]],
-      };
-    }),
-    nodosRevisados: optima.nodosRevisados,
-    nodosEnLaReticula: optima.nodosEnLaReticula,
-  };
 }
 
 /** Un lado de la comparación, medido sobre las columnas del reparto de la tabla ya generalizada. */
@@ -1005,7 +968,7 @@ async function compararAltoVolumen(
       ...columnasDeMondrian(politica),
       ...(politica.generalizacion?.diversidad?.columnas ?? []),
     ]);
-    avisar("comparando", pasada.filas, 0, archivo.size);
+    avisar("comparando", pasada.filas, 0, bytesDe(archivo));
     const parcial = await leerColumnas(
       archivo,
       pasada,
@@ -1158,6 +1121,7 @@ async function construirArchivo(asa?: FileSystemFileHandle): Promise<void> {
     await construirArchivoAltoVolumen(
       altoVolumen.archivo,
       altoVolumen.plan,
+      altoVolumen.salida,
       asa,
     );
     return;
@@ -1219,23 +1183,25 @@ async function construirArchivo(asa?: FileSystemFileHandle): Promise<void> {
 
 /** S8: la pasada C, al destino. Si algo falla, no queda un archivo a medias en el equipo. */
 async function construirArchivoAltoVolumen(
-  archivo: File,
+  archivo: Fuente,
   plan: PlanDeTransformacion,
+  formato: SalidaDeAltoVolumen,
   asa?: FileSystemFileHandle,
 ): Promise<void> {
-  avisar("escribiendo", altoVolumen?.pasada.filas ?? 0, 0, archivo.size);
+  avisar("escribiendo", altoVolumen?.pasada.filas ?? 0, 0, bytesDe(archivo));
   let salida: Awaited<ReturnType<typeof destinoDe>> | null = null;
   try {
     salida = await destinoDe(asa);
     await escribirCsv(archivo, plan, salida.destino, {
+      formato: formato.formato?.(),
       alAvanzar: (filas, bytes, total) =>
         avisar("escribiendo", filas, bytes, total),
     });
-    const cerrado = await salida.cerrar("text/csv;charset=utf-8");
+    const cerrado = await salida.cerrar(formato.mime);
     enviar({
       tipo: "archivo",
       ...cerrado,
-      nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica),
+      nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica, formato.extension),
       proposito: "anonimizado",
     });
   } catch {
@@ -1328,8 +1294,9 @@ let lecturaDevuelta: LecturaJson | null = null;
 let archivoDevuelto: File | null = null;
 /** S8: un CSV devuelto que no cupo en memoria. Se restaura por pasadas, sin tabla. */
 let devueltoAltoVolumen: {
-  readonly archivo: File;
+  readonly archivo: Fuente;
   readonly pasada: PasadaDelDevuelto;
+  readonly salida: SalidaDeAltoVolumen;
 } | null = null;
 
 /** En un JSON, las columnas reversibles que eran todas números vuelven sin comillas (ADR-011). */
@@ -1545,10 +1512,42 @@ async function analizarDevueltoAltoVolumen(archivo: File): Promise<void> {
       enviar({ tipo: "error", motivo: "archivo-vacio" });
       return;
     }
-    devueltoAltoVolumen = { archivo, pasada };
+    devueltoAltoVolumen = { archivo, pasada, salida: SALIDA_CSV };
     anunciarDevuelto({ filas: pasada.filas, columnas: pasada.nombres });
   } catch (error) {
     enviar({ tipo: "error", motivo: motivoDelAltoVolumen(error) });
+  }
+}
+
+/** S9: un JSON devuelto que no cupo en memoria: sus diccionarios por pasadas, como el CSV. */
+async function analizarJsonDevueltoAltoVolumen(archivo: File): Promise<void> {
+  try {
+    const abierto = await abrirJsonPorTrozos(
+      fuenteDeArchivo(archivo, { huellaEsperada: datosDelDevuelto.sha256 }),
+      archivo.size,
+    );
+    const pasada = await pasadaDelDevuelto(abierto.fuente, {
+      alAvanzar: (filas, bytes, total) =>
+        avisar("alto-volumen", filas, bytes, total),
+    });
+    if (pasada.filas === 0) {
+      enviar({ tipo: "error", motivo: "archivo-vacio" });
+      return;
+    }
+    devueltoAltoVolumen = {
+      archivo: abierto.fuente,
+      pasada,
+      salida: salidaDeJson(abierto.descripcion.estructura.forma, abierto),
+    };
+    anunciarDevuelto({ filas: pasada.filas, columnas: pasada.nombres });
+  } catch (error) {
+    enviar({
+      tipo: "error",
+      motivo:
+        error instanceof ErrorDeJson
+          ? error.motivo
+          : motivoDelAltoVolumen(error),
+    });
   }
 }
 
@@ -1569,6 +1568,10 @@ async function analizarJsonDevuelto(archivo: File): Promise<void> {
     archivoDevuelto = archivo;
     anunciarDevuelto(lectura.tabla);
   } catch (error) {
+    if (error instanceof JsonExcedeCeldas) {
+      await analizarJsonDevueltoAltoVolumen(archivo);
+      return;
+    }
     enviar({
       tipo: "error",
       motivo: error instanceof ErrorDeJson ? error.motivo : "lectura-fallida",
@@ -1656,7 +1659,7 @@ const SIN_DESTINO: Destino = { escribir: async () => {} };
 async function restaurarDevuelto(): Promise<void> {
   if (devueltoAltoVolumen && bovedaActual) {
     const { archivo, pasada } = devueltoAltoVolumen;
-    avisar("restaurando", pasada.filas, 0, archivo.size);
+    avisar("restaurando", pasada.filas, 0, bytesDe(archivo));
     try {
       const resultado = await restaurarPorTrozos(
         archivo,
@@ -1770,8 +1773,8 @@ async function construirRestaurado(asa?: FileSystemFileHandle): Promise<void> {
     return;
   }
   if (devueltoAltoVolumen && bovedaActual) {
-    const { archivo, pasada } = devueltoAltoVolumen;
-    avisar("escribiendo", pasada.filas, 0, archivo.size);
+    const { archivo, pasada, salida: formato } = devueltoAltoVolumen;
+    avisar("escribiendo", pasada.filas, 0, bytesDe(archivo));
     let salida: Awaited<ReturnType<typeof destinoDe>> | null = null;
     try {
       salida = await destinoDe(asa);
@@ -1781,15 +1784,14 @@ async function construirRestaurado(asa?: FileSystemFileHandle): Promise<void> {
         bovedaActual,
         datosDelDevuelto.sha256,
         salida.destino,
+        { formato: formato.formato?.() },
       );
-      const { sha256: _huella, ...cerrado } = await salida.cerrar(
-        "text/csv;charset=utf-8",
-      );
+      const { sha256: _huella, ...cerrado } = await salida.cerrar(formato.mime);
       void _huella;
       enviar({
         tipo: "archivo",
         ...cerrado,
-        nombre: `velo-restaurado-${datosDelDevuelto.sha256.slice(0, 8)}.csv`,
+        nombre: `velo-restaurado-${datosDelDevuelto.sha256.slice(0, 8)}.${formato.extension}`,
         proposito: "restaurado",
       });
     } catch {

@@ -38,6 +38,10 @@ import type { FuenteDeTexto, LecturaJson } from "./lector";
 import { partirRuta } from "./ruta";
 import {
   AnalizadorDeRegistros,
+  T_CADENA,
+  T_FALSO,
+  T_NUMERO,
+  T_VERDADERO,
   Tokenizador,
   type VisitanteDeJson,
 } from "./tokenizador";
@@ -48,7 +52,7 @@ const TAMANO_DE_TROZO = 64 * 1024;
 const SIN_TOPE = Number.MAX_SAFE_INTEGER;
 
 /** Un nodo del árbol de columnas con el que se recorre el original. */
-class NodoDeEscritura {
+export class NodoDeEscritura {
   readonly nivel: number;
   hijos: Map<string, NodoDeEscritura> | null = null;
   columna = -1;
@@ -65,14 +69,18 @@ class NodoDeEscritura {
 /** Un número JSON (RFC 8259, §6), tal cual: lo único que puede escribirse sin comillas. */
 const NUMERO_JSON = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
 
-interface ColumnaDeEscritura {
-  readonly original: ColumnaColumnar;
+/**
+ * De dónde sale lo que se escribe en cada celda. En memoria es la tabla transformada entera; por
+ * pasadas (S9, `./trozos.ts`) es la fila transformada que el alto volumen acaba de entregar. El
+ * visitante no sabe cuál de las dos es: eso es lo que hace que los dos caminos den los mismos bytes.
+ */
+export interface CeldasDeSalida {
+  /** ¿La transformación suprimió esta columna? Una columna suprimida no se escribe. */
+  suprimida(columna: number): boolean;
   /** Lo que cambió en esta columna vuelve a escribirse como número si lo es (el regreso). */
-  readonly numerica: boolean;
-  readonly clases: Uint8Array;
-  /** La misma columna en la tabla transformada, o null si la transformación la suprimió. */
-  readonly transformada: ColumnaColumnar | null;
-  readonly segmentos: readonly string[];
+  numerica(columna: number): boolean;
+  /** El valor transformado de la celda en la fila `fila`; "" si quedó vacía. */
+  nueva(columna: number, fila: number): string;
 }
 
 /** ¿Hay alguna celda que el original no traía y la transformación sí? */
@@ -97,12 +105,15 @@ const M_TRATADO = 0; // un objeto cuyas claves se recorren con el árbol de colu
 const M_CRUDO_OBJETO = 1; // un objeto que se copia tal cual
 const M_CRUDO_LISTA = 2; // una lista, que se copia tal cual
 
-class VisitanteDeEscritura implements VisitanteDeJson {
+export class VisitanteDeEscritura implements VisitanteDeJson {
   /** Los registros ya completos (con su separador) que aún no salieron. */
   salida = "";
 
   private readonly tok: Tokenizador;
-  private readonly columnas: readonly ColumnaDeEscritura[];
+  private readonly segmentos: readonly (readonly string[])[];
+  private readonly celdas: CeldasDeSalida;
+  /** Fila + 1 en la que cada columna tuvo un valor suelto (0 = en ninguna): lo que falta, falta. */
+  private readonly vista: Int32Array;
   private readonly raiz: NodoDeEscritura;
   private readonly total: number;
   private readonly arreglo: boolean;
@@ -121,14 +132,17 @@ class VisitanteDeEscritura implements VisitanteDeJson {
 
   constructor(
     tok: Tokenizador,
-    columnas: readonly ColumnaDeEscritura[],
+    segmentos: readonly (readonly string[])[],
+    celdas: CeldasDeSalida,
     raiz: NodoDeEscritura,
     total: number,
     arreglo: boolean,
     profundidad: number,
   ) {
     this.tok = tok;
-    this.columnas = columnas;
+    this.segmentos = segmentos;
+    this.celdas = celdas;
+    this.vista = new Int32Array(segmentos.length);
     this.raiz = raiz;
     this.total = total;
     this.arreglo = arreglo;
@@ -184,7 +198,8 @@ class VisitanteDeEscritura implements VisitanteDeJson {
   clave(clave: string): void {
     if (this.tipoDeMarco[this.nivel] === M_TRATADO) {
       this.claveCruda = this.tok.texto();
-      this.nodoDeClave = this.nodoDeMarco[this.nivel]!.hijos?.get(clave) ?? null;
+      this.nodoDeClave =
+        this.nodoDeMarco[this.nivel]!.hijos?.get(clave) ?? null;
     } else {
       this.registro += this.tok.texto() + ":";
     }
@@ -202,7 +217,7 @@ class VisitanteDeEscritura implements VisitanteDeJson {
     this.registro += this.claveCruda + ":";
   }
 
-  escalar(): void {
+  escalar(tipo: number): void {
     if (this.tipoDeMarco[this.nivel] !== M_TRATADO) {
       this.registro += this.tok.texto();
       return;
@@ -211,26 +226,41 @@ class VisitanteDeEscritura implements VisitanteDeJson {
     // Un valor suelto donde la primera pasada no vio ninguno: el archivo cambió entre pasadas.
     if (nodo === null || nodo.columna < 0) this.cambio();
     nodo.visto = this.fila + 1;
-    const pieza = this.celda(nodo.columna);
+    this.vista[nodo.columna] = this.fila + 1;
+    const pieza = this.celda(nodo.columna, tipo);
     if (pieza !== null) {
       this.emitirClave();
       this.registro += pieza;
     }
   }
 
-  /** Cómo se escribe el valor de la fila en curso, o null si la clave no va. */
-  private celda(indice: number): string | null {
-    const columna = this.columnas[indice];
-    const transformada = columna.transformada;
-    if (transformada === null) return null;
-    const fila = this.fila;
-    const original = columna.original.valores[columna.original.codigos[fila]];
-    const nuevo = transformada.valores[transformada.codigos[fila]];
-    if (nuevo === original) return this.tok.texto();
-    if (nuevo === "") {
-      return columna.clases[fila] === CLASE_DE_CELDA.texto ? '""' : "null";
+  /**
+   * Cómo se escribe el valor de la fila en curso, o null si la clave no va. El valor ORIGINAL y su
+   * clase se leen del token, igual que los leyó la primera pasada: así no hace falta guardarlos.
+   */
+  private celda(indice: number, tipo: number): string | null {
+    if (this.celdas.suprimida(indice)) return null;
+    const nuevo = this.celdas.nueva(indice, this.fila);
+    let original: string;
+    switch (tipo) {
+      case T_CADENA:
+        original = this.tok.cadena();
+        break;
+      case T_NUMERO:
+        original = this.tok.texto();
+        break;
+      case T_VERDADERO:
+        original = "true";
+        break;
+      case T_FALSO:
+        original = "false";
+        break;
+      default: // null
+        original = "";
     }
-    if (columna.numerica && NUMERO_JSON.test(nuevo)) return nuevo;
+    if (nuevo === original) return this.tok.texto();
+    if (nuevo === "") return tipo === T_CADENA ? '""' : "null";
+    if (this.celdas.numerica(indice) && NUMERO_JSON.test(nuevo)) return nuevo;
     return JSON.stringify(nuevo);
   }
 
@@ -285,11 +315,10 @@ class VisitanteDeEscritura implements VisitanteDeJson {
     const fila = this.fila;
     let columnas: number[] | null = null;
     for (const c of nodo.etiquetables) {
-      const columna = this.columnas[c];
-      if (columna.clases[fila] !== CLASE_DE_CELDA.ausente) continue;
-      const transformada = columna.transformada!;
-      if (transformada.codigos[fila] === CODIGO_VACIO) continue;
-      const hijo = nodo.hijos!.get(columna.segmentos[nodo.nivel])!;
+      // Con valor en este registro: no falta, y lo que ella dijo ya se escribió.
+      if (this.vista[c] === fila + 1) continue;
+      if (this.celdas.nueva(c, fila) === "") continue;
+      const hijo = nodo.hijos!.get(this.segmentos[c][nodo.nivel])!;
       // Si la clave apareció, o es un objeto (y allí se completará) o es otra cosa: no cabe.
       if (hijo.visto === fila + 1) continue;
       (columnas ??= []).push(c);
@@ -301,7 +330,7 @@ class VisitanteDeEscritura implements VisitanteDeJson {
     // Agrupa por la clave del nivel, en el orden en que se descubrieron las columnas.
     const grupos = new Map<string, number[]>();
     for (const c of columnas) {
-      const clave = this.columnas[c].segmentos[nivel];
+      const clave = this.segmentos[c][nivel];
       const grupo = grupos.get(clave);
       if (grupo === undefined) grupos.set(clave, [c]);
       else grupo.push(c);
@@ -309,13 +338,10 @@ class VisitanteDeEscritura implements VisitanteDeJson {
     const partes: string[] = [];
     for (const [clave, miembros] of grupos) {
       // Una ruta que es valor Y contenedor a la vez: gana el valor, la clave no puede ser las dos.
-      const hoja = miembros.find(
-        (c) => this.columnas[c].segmentos.length === nivel + 1,
-      );
+      const hoja = miembros.find((c) => this.segmentos[c].length === nivel + 1);
       if (hoja !== undefined) {
-        const transformada = this.columnas[hoja].transformada!;
         partes.push(
-          `${JSON.stringify(clave)}:${JSON.stringify(transformada.valores[transformada.codigos[this.fila]])}`,
+          `${JSON.stringify(clave)}:${JSON.stringify(this.celdas.nueva(hoja, this.fila))}`,
         );
       } else {
         partes.push(
@@ -325,6 +351,41 @@ class VisitanteDeEscritura implements VisitanteDeJson {
     }
     return partes.join(",");
   }
+}
+
+/** El árbol de columnas: por él se sabe, en cada clave del original, a qué columna corresponde. */
+export function arbolDeColumnas(
+  segmentosPorColumna: readonly (readonly string[])[],
+  etiquetable: (columna: number) => boolean,
+): NodoDeEscritura {
+  const raiz = new NodoDeEscritura(0);
+  segmentosPorColumna.forEach((segmentos, c) => {
+    const llena = etiquetable(c);
+    let nodo = raiz;
+    if (llena) raiz.etiquetables.push(c);
+    for (let k = 0; k < segmentos.length; k++) {
+      nodo.hijos ??= new Map();
+      let hijo = nodo.hijos.get(segmentos[k]);
+      if (hijo === undefined) {
+        hijo = new NodoDeEscritura(k + 1);
+        nodo.hijos.set(segmentos[k], hijo);
+      }
+      nodo = hijo;
+      if (llena && k < segmentos.length - 1) nodo.etiquetables.push(c);
+    }
+    nodo.columna = c;
+  });
+  return raiz;
+}
+
+export function topesDeEscritura(profundidad: number): TopesJson {
+  return {
+    rutas: SIN_TOPE,
+    celdas: SIN_TOPE,
+    profundidad,
+    largoDeClave: SIN_TOPE,
+    largoDeTexto: SIN_TOPE,
+  };
 }
 
 /**
@@ -356,51 +417,34 @@ export async function* escribirJson(
   for (const columna of transformada.columnas)
     porNombre.set(columna.nombre, columna);
 
-  const raiz = new NodoDeEscritura(0);
-  const columnas: ColumnaDeEscritura[] = tabla.columnas.map((original, c) => {
-    const nueva = porNombre.get(original.nombre) ?? null;
-    return {
-      original,
-      numerica: numericas.has(original.nombre),
-      clases: clases[c],
-      transformada: nueva,
-      segmentos: original.ruta ?? partirRuta(original.nombre),
-    };
-  });
-
-  // El árbol de columnas: por él se sabe, en cada clave del original, a qué columna corresponde.
-  columnas.forEach((columna, c) => {
-    const etiquetable =
-      columna.transformada !== null &&
-      llenaCeldasAusentes(columna.clases, columna.transformada);
-    const segmentos = columna.segmentos;
-    let nodo = raiz;
-    if (etiquetable) raiz.etiquetables.push(c);
-    for (let k = 0; k < segmentos.length; k++) {
-      nodo.hijos ??= new Map();
-      let hijo = nodo.hijos.get(segmentos[k]);
-      if (hijo === undefined) {
-        hijo = new NodoDeEscritura(k + 1);
-        nodo.hijos.set(segmentos[k], hijo);
-      }
-      nodo = hijo;
-      if (etiquetable && k < segmentos.length - 1) nodo.etiquetables.push(c);
-    }
-    nodo.columna = c;
+  const segmentos = tabla.columnas.map(
+    (original) => original.ruta ?? partirRuta(original.nombre),
+  );
+  const nuevas = tabla.columnas.map(
+    (original) => porNombre.get(original.nombre) ?? null,
+  );
+  const celdas: CeldasDeSalida = {
+    suprimida: (c) => nuevas[c] === null,
+    numerica: (c) => numericas.has(tabla.columnas[c].nombre),
+    nueva: (c, fila) => {
+      const columna = nuevas[c]!;
+      return columna.valores[columna.codigos[fila]];
+    },
+  };
+  // Solo las columnas donde la transformación llenó algo que el original no traía se vuelven a
+  // mirar al cerrar un objeto: en memoria se sabe de antemano, y es lo que mantiene barato el cierre.
+  const raiz = arbolDeColumnas(segmentos, (c) => {
+    const nueva = nuevas[c];
+    return nueva !== null && llenaCeldasAusentes(clases[c], nueva);
   });
 
   // La primera pasada ya validó los topes: aquí solo se acota la profundidad a la que se vio.
-  const topes: TopesJson = {
-    rutas: SIN_TOPE,
-    celdas: SIN_TOPE,
-    profundidad: estructura.profundidad,
-    largoDeClave: SIN_TOPE,
-    largoDeTexto: SIN_TOPE,
-  };
+  const topes = topesDeEscritura(estructura.profundidad);
   const tok = new Tokenizador(topes);
   const visitante = new VisitanteDeEscritura(
     tok,
-    columnas,
+    segmentos,
+    celdas,
     raiz,
     tabla.filas,
     estructura.forma === "arreglo",

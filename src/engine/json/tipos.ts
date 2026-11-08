@@ -55,6 +55,18 @@ export class ErrorDeJson extends Error {
   }
 }
 
+/**
+ * Registros × rutas pasó el tope de celdas EN MEMORIA. Es el único `json-excede-tope` que no es un
+ * rechazo: quien lee puede seguir por pasadas (S9, ADR-015). Los demás topes (largo de clave o de
+ * texto) siguen siendo un `ErrorDeJson` a secas.
+ */
+export class JsonExcedeCeldas extends ErrorDeJson {
+  constructor(linea: number | null) {
+    super("json-excede-tope", linea);
+    this.name = "JsonExcedeCeldas";
+  }
+}
+
 /** Topes duros del lector. Los mismos valen en el worker y en la interfaz. */
 export interface TopesJson {
   /** Rutas distintas (columnas) que se admiten. */

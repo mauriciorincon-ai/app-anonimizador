@@ -10,7 +10,6 @@
 
 import { Panel } from "@/components/panel";
 import { Rico, useT } from "@/components/texto";
-import type { PrivacidadDeLaEntrada } from "@/engine/bitacora";
 import type { InformeDePrivacidad } from "@/engine/ruido";
 import { DOMINIO_MAXIMO } from "@/engine/ruido/limites";
 import { epsilon, numero } from "@/lib/formato";
@@ -143,22 +142,5 @@ export function PrivacidadEnPantalla({
   );
 }
 
-/** Lo que la bitácora guarda del ruido: el ε por fila y los mecanismos, sin nombres de columna. */
-export function privacidadDeLaEntrada(
-  privacidad: InformeDePrivacidad,
-): PrivacidadDeLaEntrada {
-  const aplicadas = privacidad.columnas.filter((c) => c.aplicado);
-  return {
-    epsilonPorFila: privacidad.epsilonPorFila,
-    mecanismos: [
-      ...new Set(
-        aplicadas
-          .map((c) => c.mecanismo)
-          .filter(
-            (m): m is "laplace" | "respuesta-aleatorizada" => m !== "perturbar",
-          ),
-      ),
-    ],
-    perturbadas: aplicadas.filter((c) => c.mecanismo === "perturbar").length,
-  };
-}
+// S9: vive en el motor (`src/engine/bitacora.ts`) para que Velo local escriba la MISMA entrada.
+export { privacidadDeLaEntrada } from "@/engine/bitacora";

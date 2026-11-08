@@ -265,7 +265,7 @@
         margin-left: 4px;
       }
       /* GATE CORTO ⭐⭐ — el subconjunto de las ⭐ que NINGUNA automatización puede juzgar.
-     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 42 ⭐ incluyen
+     No es «el gate mínimo pero con prisa»: es un criterio distinto. Las 44 ⭐ incluyen
      comprobaciones que una máquina SÍ puede hacer y que están en el gate para que el usuario las
      haga con SUS herramientas (recalcular una huella, mirar la pestaña Red). Esas se quedan fuera
      del corto a propósito, porque el CI ya las cubre por otro camino. Lo que queda son las seis
@@ -280,7 +280,7 @@
       }
 
       /* MODO RECORRIDO — solo con el filtro ⭐ activo.
-     El gate del ciclo son 42 pruebas repartidas por los bloques que nacieron en ocho sprints
+     El gate del ciclo son 44 pruebas repartidas por los bloques que nacieron en nueve sprints
      distintos. Sin esto se leen como cuatro listas pegadas: el mismo chip de origen que sirve para
      la regresión («Heredada · S1») sugiere un orden que NO es el del recorrido. En modo recorrido
      cada prueba visible recibe su número de PARADA y la ruta donde ocurre, así que el orden a la
@@ -404,10 +404,10 @@
         </p>
         <p class="chica">
           <strong>Dos gates, y el corto existe para que el largo no gane</strong
-          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 42 pruebas · ~125
+          >. El <strong>Gate mínimo ⭐ del ciclo</strong> son 44 pruebas · ~135
           min: el acumulado completo —8 del S1, 6 del S2, 8 del S3, 4 del S4, 2
-          del S5, 4 del S6, 4 del S7 y 6 del S8— como
-          <strong>un solo recorrido numerado</strong>, no como ocho listas
+          del S5, 4 del S6, 4 del S7, 6 del S8 y 2 del S9— como
+          <strong>un solo recorrido numerado</strong>, no como nueve listas
           pegadas. El <strong>Gate corto ⭐⭐ son 6 paradas · ~20 min</strong>:
           el subconjunto donde el veredicto
           <strong>solo puede ser humano</strong>
@@ -508,7 +508,9 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
             foto HEIC, el JSON Lines del regreso y el archivo de las escaleras—,
             en <strong>AD</strong>, <strong>AE</strong> y <strong>AF</strong>;
             los del S8 —el CSV ancho del alto volumen y el europeo de la
-            política RGPD—, en <strong>AH</strong> y <strong>AI</strong>.
+            política RGPD—, en <strong>AH</strong> y <strong>AI</strong>; y los
+            del S9 —el JSON Lines ancho, la base del ensayo y la API—, en
+            <strong>AJ</strong>.
           </p>
         </div>
       </header>
@@ -525,7 +527,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
         >
           <button type="button" data-filtro="todo" class="activo">Todo</button>
           <button type="button" data-filtro="cambios">
-            Lo que cambió en S8
+            Lo que cambió en S9
           </button>
           <button type="button" data-filtro="minimo">
             Gate mínimo ⭐ del ciclo
@@ -538,7 +540,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
         <p id="recorrido-largo">
           <strong
             >El recorrido del ciclo —
-            <span id="recorrido-total">42</span> paradas · ~125 min.</strong
+            <span id="recorrido-total">44</span> paradas · ~135 min.</strong
           >
           Un solo camino, en el orden en que se hace: la aduana → el diagnóstico
           → el taller → el regreso → la bitácora, y al final el juicio del
@@ -3820,7 +3822,7 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
           selector, y ese es justo el otro camino que se prueba más abajo.
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ah1" /><label for="ah1"
               >Genera <code>tmp/ancho-100k.csv</code> (kit de abajo) y suéltalo
               en la portada. Mientras lee, la etapa dice
@@ -3834,10 +3836,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               archivo ninguna columna pasa de los topes, así que ninguna dice
               «más de…». <code>cedula_titular</code> es la columna personal; las
               209 <code>dato_…</code> no lo son.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="ah2" /><label for="ah2"
               ><strong>Juicio humano — el aviso, leído como un extraño.</strong>
               Lee el panel «Este archivo se leyó por pasadas» sin ayuda y
@@ -3856,11 +3858,11 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               el archivo. (La cifra de riesgo con cruces la ves en la medida
               opcional del final.) Si «por pasadas» te suena a «aproximado», o
               si la lista de lo que cambia pasa desapercibida, es un hallazgo.
-              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="origen origen-heredada">Heredada · S8</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ah3" /><label for="ah3"
               >Pulsa «Transformar este archivo». En el taller pulsa
               <strong>«Habeas Data (Colombia)»</strong>: las 209
@@ -3879,10 +3881,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               un archivo normal, pero la página responde: corre en segundo
               plano. Termina con el balance
               <strong>«Qué cambió, y qué sigue igual»</strong>.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="ah4" /><label for="ah4"
               ><strong
                 >Compruébalo tú: el archivo se escribe en tu disco, y la red no
@@ -3912,11 +3914,11 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               aplicación): los bytes fueron a tu disco y a ningún otro lado. Lo
               único que la CI no puede hacer es abrir el selector del sistema;
               por eso esta prueba es tuya.
-              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="origen origen-heredada">Heredada · S8</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ah5" /><label for="ah5"
               >Compruébalo con tus herramientas.
               <code>wc -l velo-anonimizado-….csv</code> da
@@ -3929,10 +3931,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               da un número mayor que 0 en el original y
               <strong>0 en el anonimizado</strong> (<code>$CED</code> es la
               cédula inventada de la primera fila).
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ah6" /><label for="ah6"
               >Más abajo está el paso de la bóveda, titulado
               <strong>«La correspondencia para poder deshacerlo»</strong>. Su
@@ -3945,10 +3947,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               <code>cedula_titular</code>. Los tres avisos son los de siempre:
               la bóveda lleva tus datos originales, sin la frase no hay
               recuperación, y conviene que la frase sea otra.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ah7" /><label for="ah7"
               >Pulsa <strong>«Descargar el certificado»</strong> y ábrelo
               (<code>velo-certificado-….html</code>). En la sección de lo que el
@@ -3968,10 +3970,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
                 -f1)" velo-certificado-….html</code
               >
               da 1 o más.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ah8" /><label for="ah8"
               ><strong>El otro camino de guardado.</strong> Abre una pestaña
               nueva y repite desde soltar <code>tmp/ancho-100k.csv</code> hasta
@@ -3994,10 +3996,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               aviso va <em>antes</em> del botón: aquí es donde un archivo mucho
               más grande puede no caber, y Velo lo dice antes de que pulses, no
               después.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="ah9" /><label for="ah9"
               ><strong
                 >Llega como llegaría el trabajo devuelto, en otra sesión, y
@@ -4024,11 +4026,11 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               <code>cmp tmp/ancho-100k.csv velo-restaurado-….csv</code> no
               imprime nada: 21 millones de celdas leídas por pasadas,
               anonimizadas y devueltas, y el original sigue siendo el original.
-              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="origen origen-heredada">Heredada · S8</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ah10" /><label for="ah10"
               >Un JSON enorme sigue deteniéndose, y lo dice. Genera
               <code>tmp/ancho-100k.jsonl</code> (unos 316 MB: el mismo perfil
@@ -4042,10 +4044,10 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               <strong>dividir el archivo en partes</strong> (en JSON Lines basta
               con cortar entre líneas). No cita ningún trozo del archivo y puede
               tardar unos segundos. Borra el archivo cuando termines.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ah11" /><label for="ah11"
               ><strong>Opcional — la medida de referencia.</strong> Para quien
               quiera ver el techo y tenga tiempo y varios GB libres: genera
@@ -4073,7 +4075,7 @@ node docs/kit-de-prueba/generador.mjs --filas 500000 --seed 42 --perfil jerarqui
               en la memoria. Si tu equipo es más chico y el navegador cierra la
               pestaña, anota el momento: es el límite del equipo, y Velo no lo
               estima ni lo esconde.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
         </ul>
@@ -4100,10 +4102,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
         </div>
         <div class="diferido">
           <p>
-            <strong>Pendiente de decisión del dueño (no descartado):</strong> el
-            alto volumen para JSON (hoy un JSON de más de 20 millones de celdas
-            se detiene con su tope). También sigue pendiente bajar el pico de
-            memoria (4,9 GB a 5 millones de filas). Y hay límites que no son una
+            <strong>Pendiente de decisión del dueño (no descartado):</strong>
+            bajar el pico de memoria (4,9 GB a 5 millones de filas). Desde el
+            S9, un JSON de más de 20 millones de celdas también se lee por
+            pasadas (bloque <strong>AJ</strong>). Y hay límites que no son una
             decisión: Excel conserva su tope de 150 MB, el archivo restaurado se
             arma en memoria, y en este modo no se miden la utilidad ni las
             colisiones de seudónimo.
@@ -4142,7 +4144,7 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
           en alemán, un diagnóstico y un dato de condenas; todo inventado).
         </p>
         <ul class="pasos">
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai1" /><label for="ai1"
               >Genera y suelta <code>tmp/europeo.csv</code>. En la tabla del
               diagnóstico cada documento sale con el nombre llano de su norma y
@@ -4164,10 +4166,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               línea de evidencia dice qué proporción cumplió («… de los …
               valores revisados cumplen»). <code>correo</code> y
               <code>nombre_completo</code> salen como identificador directo.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai2" /><label for="ai2"
               >Mira las columnas con nombre en otra lengua.
               <code>geburtsdatum</code>, <code>code_postal</code>,
@@ -4190,10 +4192,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               de la categoría de Velo (el art. 5 de la ley colombiana); los
               artículos del RGPD están en la nota de cada columna. Si eso te
               confunde en un archivo europeo, es un hallazgo de texto.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai3" /><label for="ai3"
               >Pulsa «Transformar este archivo» y, en el taller,
               <strong>«RGPD · GDPR (UE)»</strong>. Aparece el aviso de la
@@ -4214,10 +4216,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               esa fuente en 6 puntos: 2 que reconoce por el contenido, 3 solo
               por el nombre y 1 que ningún programa puede reconocer (los códigos
               internos): esos los marcas tú.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="ai4" /><label for="ai4"
               ><strong
                 >Juicio humano — la advertencia, leída como un extraño.</strong
@@ -4238,11 +4240,11 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               suena a sello de aprobación? Si te quedas con la idea de que Velo
               resuelve por ti la pregunta legal, o tuviste que releer para
               entender qué NO afirma, es un hallazgo.
-              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="origen origen-heredada">Heredada · S8</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai5" /><label for="ai5"
               >Mira la tabla del taller: la política ya está aplicada. Los ocho
               documentos salen con su seudónimo propio —<code>dni_es</code> con
@@ -4265,10 +4267,11 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               seudónimo la casilla
               <strong>«Poder deshacerlo con una bóveda»</strong> ya viene
               marcada: con esta política la reversibilidad la marca la política,
-              no tú. <span class="origen origen-nuevo">Nuevo · S8</span></label
+              no tú.
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai6" /><label for="ai6"
               >Debajo de la tabla está
               <strong
@@ -4282,10 +4285,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               origen dice que ya no es RGPD · GDPR (UE). Vuelve a 5. Ese 5 no lo
               pide el reglamento —lo dijo la advertencia—, y aquí compruebas que
               es una perilla.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai7" /><label for="ai7"
               >Abre con el teclado el desplegable de técnica de
               <code>dni_es</code>: ofrece un seudónimo por documento —«Seudónimo
@@ -4295,10 +4298,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               seudónimo»— además de «Seudónimo (hex)», que no finge ser ningún
               documento. Los nombres cortos son a propósito: en una pantalla
               estrecha el desplegable cerrado deja pocos caracteres visibles.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai8" /><label for="ai8"
               >Escribe una frase de paso, pulsa «Derivar la llave» y
               «Transformar». Termina con el balance «Qué cambió, y qué sigue
@@ -4310,10 +4313,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               reversibles: la llave y la bóveda son la «información adicional»
               que el art. 4.5 pide guardar aparte. Si no quieres la bóveda para
               alguna, la quitas en la tabla, columna por columna.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="ai9" /><label for="ai9"
               ><strong
                 >Compruébalo tú: lo que salió, con tus herramientas.</strong
@@ -4341,11 +4344,11 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               columna para repetirlo con los demás documentos. Los números que
               salen pasan el control oficial de su país, pero son ficticios: no
               son de nadie conocido.
-              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="origen origen-heredada">Heredada · S8</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai10" /><label for="ai10"
               >El IBAN conserva su país y su largo:
               <code
@@ -4358,10 +4361,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               clave RIB francesa): un sistema de destino que las valide lo
               rechazaría. El ADR-016 y el manual lo declaran; si es tu caso, la
               salida es un seudónimo hexadecimal o quitar la columna.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo" data-minimo>
+          <li data-origen="heredado" data-minimo>
             <input type="checkbox" id="ai11" /><label for="ai11"
               ><strong
                 >Compruébalo tú: lo que dice el certificado, y lo que NO
@@ -4398,11 +4401,11 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               cada vez que aparece es para negarlo. Ninguna frase afirma que el
               archivo sea anónimo, ni que Velo o el archivo cumplan con la
               norma. Se abre con el wifi apagado.
-              <span class="origen origen-nuevo">Nuevo · S8</span>
+              <span class="origen origen-heredada">Heredada · S8</span>
               <span class="minimo">⭐ mínimo</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai12" /><label for="ai12"
               ><strong>El mismo tratamiento, comprobado por su huella.</strong>
               En el panel «Llévate el archivo» anota los ocho caracteres que
@@ -4421,10 +4424,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               Deriva la llave, transforma y mira los ocho caracteres:
               <strong>son los mismos</strong>. Mismo tratamiento, mismo hash,
               aunque haya pasado por un archivo.
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai13" /><label for="ai13"
               >Cambia la técnica de <code>monto</code> a «Enmascarar
               (103***89)»: el aviso de origen deja de decir el nombre de la
@@ -4442,10 +4445,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               <code>monto</code> a «Dejar como está», porque el origen ya no es
               el de fábrica. Para volver a la plantilla, pulsa otra vez «RGPD ·
               GDPR (UE)».
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
-          <li data-origen="nuevo">
+          <li data-origen="heredado">
             <input type="checkbox" id="ai14" /><label for="ai14"
               ><strong
                 >La fuente del DNI y el NIE, leída con honestidad.</strong
@@ -4473,7 +4476,7 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               aquí, es una decisión tuya. Los demás documentos tienen sus
               propios límites en la misma tabla (el codice fiscale no trae
               ningún ejemplo oficial; del Steuer-IdNr no se abrió el § 139b).
-              <span class="origen origen-nuevo">Nuevo · S8</span></label
+              <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
         </ul>
@@ -4514,6 +4517,136 @@ pnpm kit:generar -- --filas 1500 --seed 42 --perfil europeo --salida tmp/europeo
             país, o igual al original; un k = 5 presentado como exigencia del
             reglamento; una línea de cobertura sin su artículo, su fuente y su
             fecha; y los identificadores reversibles sin la bóveda ofrecida.
+          </p>
+        </div>
+      </section>
+
+      <section class="bloque">
+        <div class="bloque-cabeza">
+          <span class="letra">AJ</span>
+          <h2>Velo en tu equipo: JSON enorme, la consola, la base y la API</h2>
+        </div>
+        <p class="meta-bloque chica suave">
+          <strong>Empieza en:</strong> <code>/</code> y una terminal en la
+          carpeta del repo · ~40 min · dos cosas del S9. Un JSON que pasa de
+          20.000.000 de celdas ya no se detiene: se lee por pasadas, como el CSV
+          del bloque AH. Y <strong>Velo local</strong> (<code>pnpm velo</code>)
+          es el mismo motor como un programa de tu computador, con un puente a
+          PostgreSQL y SQL Server y una API en <code>127.0.0.1:3301</code>. No
+          instala ninguna base: el ensayo usa <code>pnpm kit:base</code>, un
+          PostgreSQL embebido con una tabla inventada.
+        </p>
+        <div class="preparacion">
+          <p><strong>Prepara los archivos:</strong></p>
+          <pre>
+pnpm kit:generar -- --filas 100000 --seed 42 --perfil ancho --formato jsonl --salida tmp/ancho-100k.jsonl
+pnpm kit:generar -- --filas 3000 --seed 42 --perfil clinico --salida tmp/clinico.csv</pre>
+          <p class="chica suave" style="margin: 6px 0 0">
+            El JSON Lines ancho pesa unos 316 MB: en JSON cada celda lleva su
+            clave. Es el mismo dato que el CSV ancho del bloque AH.
+          </p>
+        </div>
+        <ul class="pasos">
+          <li data-origen="nuevo">
+            <input type="checkbox" id="aj1" /><label for="aj1"
+              >Suelta <code>tmp/ancho-100k.jsonl</code> en <code>/</code>. Tarda
+              más que un CSV (lee el archivo varias veces). El diagnóstico abre
+              con <strong>«Este archivo se leyó por pasadas»</strong>, el panel
+              <strong>«Estructura del JSON»</strong> habla de registros y rutas
+              (no de filas y columnas) y el riesgo dice que es exacto. En la
+              pestaña Red del navegador no sale nada.
+              <span class="origen origen-nuevo">Nuevo · S9</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="aj2" /><label for="aj2"
+              >Transforma con una cédula reversible y guárdalo («Preparar el
+              archivo»; Chrome o Edge te dejan elegir dónde). El archivo se
+              llama <strong>velo-anonimizado-…jsonl</strong>: sale como JSON
+              Lines, como entró. Ábrelo con tus herramientas: cada línea es un
+              objeto con las mismas claves y en el mismo orden, y la cédula
+              cambió. Con la bóveda, devuélvelo en <code>/regreso</code> y
+              compara el restaurado con el original:
+              <code>shasum -a 256 tmp/ancho-100k.jsonl</code> y el del
+              restaurado tienen que ser <strong>iguales</strong>.
+              <span class="origen origen-nuevo">Nuevo · S9</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="aj3" /><label for="aj3"
+              >En la terminal:
+              <code>pnpm velo diagnosticar tmp/clinico.csv</code>. Sale el mismo
+              diagnóstico de la web: filas, columnas, riesgo exacto y la
+              categoría de cada columna. Luego
+              <code
+                >pnpm velo anonimizar tmp/clinico.csv --politica habeas-data
+                --salida tmp</code
+              >
+              (la frase de paso te la pide sin eco, o sale de
+              <code>VELO_FRASE</code>; nunca va en la orden). Escribe el
+              anonimizado, el certificado y la bóveda, y muestra la sal de la
+              llave. Ese archivo no se sobrescribe: si repites la orden, Velo se
+              niega y lo dice.
+              <span class="origen origen-nuevo">Nuevo · S9</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="aj4" /><label for="aj4"
+              >Los mismos bytes que la web: anonimiza
+              <code>tmp/clinico.csv</code>
+              en la web con la política Habeas Data y una frase, y apunta la
+              <strong>sal</strong> que enseña la pantalla. Repite en la terminal
+              con la misma frase y <code>--sal &lt;esa sal&gt;</code>. El
+              <strong>SHA-256 del anonimizado</strong> tiene que ser el mismo
+              (<code>shasum -a 256</code> a cada archivo).
+              <span class="origen origen-nuevo">Nuevo · S9</span></label
+            >
+          </li>
+          <li data-origen="nuevo" data-minimo>
+            <input type="checkbox" id="aj5" /><label for="aj5"
+              >El puente. En una terminal, <code>pnpm kit:base</code> (queda
+              escuchando en <code>127.0.0.1:5433</code>). En otra:
+              <code
+                >VELO_DB_URL='postgres://velo@127.0.0.1:5433/postgres?sslmode=disable'
+                pnpm velo puente --tabla public.clientes --politica
+                habeas-data</code
+              >. Dice que escribió la tabla nueva
+              <strong>public.clientes__velo</strong> y que
+              <strong>la original no se tocó</strong>, con la huella de la
+              original antes y después, iguales. Pídele la vuelta con
+              <code>--restaurar --tabla public.clientes__velo --boveda …</code>
+              y la tabla <strong>clientes__restaurada</strong> tiene que tener
+              lo mismo que la original. Con una tabla que no existe, o escrita
+              como <code>x; drop table clientes</code>, Velo se niega y no toca
+              nada. <span class="origen origen-nuevo">Nuevo · S9</span></label
+            >
+          </li>
+          <li data-origen="nuevo">
+            <input type="checkbox" id="aj6" /><label for="aj6"
+              >La API. <code>pnpm velo api</code> muestra un token, una vez. Sin
+              token, <code>curl -i http://127.0.0.1:3301/v1/salud</code> da
+              <strong>401</strong>; con
+              <code>-H "Authorization: Bearer …"</code> da <strong>200</strong>.
+              Con <code>-H "Origin: http://x"</code> da <strong>403</strong> y
+              con <code>-H "Host: otro.test"</code>, <strong>421</strong>.
+              Cierra con Ctrl-C y comprueba que ya no escucha:
+              <code>lsof -nP -iTCP:3301 -sTCP:LISTEN</code> no imprime nada,
+              igual que para el 5433 después de cerrar el kit.
+              <span class="origen origen-nuevo">Nuevo · S9</span></label
+            >
+          </li>
+        </ul>
+        <div class="reportame">
+          <p>
+            <strong>Repórtame sí o sí:</strong> un JSON enorme que se procese en
+            silencio, falle sin decir qué hacer o salga con otra forma que la
+            que entró; un restaurado que no sea el original byte por byte; Velo
+            local que dé otros bytes que la web con la misma frase y la misma
+            sal; la tabla original de la base cambiada, o una tabla nueva que
+            aparezca cuando algo falló; una frase de paso o una conexión que se
+            vea en un mensaje, en el historial de la terminal o en una URL; y la
+            API contestando sin token, con otro <code>Host</code> o con
+            <code>Origin</code>.
           </p>
         </div>
       </section>
@@ -4676,6 +4809,24 @@ pnpm kit:generar -- --filas 1500 --seed 42 --perfil europeo --salida tmp/europeo
               (pruebas unitarias y e2e) no se actualizaron aquí: las trae el
               cierre del S8.
             </li>
+            <li>
+              <strong>S9 · 7 de noviembre de 2026:</strong> las 204 de los
+              sprints 001–008 pasan a <strong>regresión</strong> y se suma el
+              bloque <strong>AJ</strong> (un JSON de más de 20 millones de
+              celdas por pasadas, y Velo local: la consola, el puente a
+              PostgreSQL y SQL Server y la API).
+              <strong>Ninguna prueba eliminada.</strong> Las que figuraban como
+              «Nuevo · S8» pasan a «Heredada · S8». Una frase caducó y se
+              reescribió: el pendiente del bloque AH, que decía que el alto
+              volumen para JSON «se detiene con su tope» (ahora se lee por
+              pasadas). El gate ⭐ pasa de 42 a <strong>44 pruebas</strong> y de
+              ~125 a <strong>~135 min</strong>; las dos nuevas son
+              comprobaciones que ninguna máquina da por ti (el JSON restaurado
+              idéntico al original, y la tabla original de la base intacta con
+              su vuelta). El gate corto ⭐⭐ no cambia: sigue en 6 paradas. Las
+              cifras de la CI del encabezado no se actualizaron aquí: las trae
+              el cierre del S9.
+            </li>
           </ul>
         </details>
       </footer>
@@ -4686,8 +4837,8 @@ pnpm kit:generar -- --filas 1500 --seed 42 --perfil europeo --salida tmp/europeo
         // NS VERSIONADO POR SPRINT: al publicar la guía de un sprint nuevo se cambia s001 — así una
         // regresión sin correr jamás aparece marcada como hecha por el sprint anterior.
         // S2: s001 → s002. S3: s002 → s003. S4: s003 → s004. S5: s004 → s005. S6: s005 → s006. S7: s006
-        // → s007. S8: s007 → s008. Las heredadas vuelven a estar sin marcar, que es el punto.
-        var NS = "guia-anonimizador:s008:";
+        // → s007. S8: s007 → s008. S9: s008 → s009. Las heredadas vuelven a estar sin marcar, que es el punto.
+        var NS = "guia-anonimizador:s009:";
         var casillas = Array.prototype.slice.call(
           document.querySelectorAll('input[type="checkbox"]'),
         );
@@ -4737,9 +4888,9 @@ pnpm kit:generar -- --filas 1500 --seed 42 --perfil europeo --salida tmp/europeo
               b.getAttribute("data-filtro") === filtro,
             );
           });
-          // MODO RECORRIDO: el gate ⭐ del ciclo son 42 pruebas nacidas en ocho sprints distintos y
+          // MODO RECORRIDO: el gate ⭐ del ciclo son 44 pruebas nacidas en nueve sprints distintos y
           // repartidas por sus bloques. Numerarlas de corrido es lo que las convierte en UN camino en vez
-          // de ocho listas pegadas — sin mover nada de sitio: el orden del documento YA es el del
+          // de nueve listas pegadas — sin mover nada de sitio: el orden del documento YA es el del
           // recorrido, lo que faltaba era que se viera.
           document.body.classList.toggle("modo-recorrido", esRecorrido(filtro));
           numerarParadas(esRecorrido(filtro));
