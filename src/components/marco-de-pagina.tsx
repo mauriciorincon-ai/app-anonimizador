@@ -46,13 +46,24 @@ export function Pie() {
  */
 export function IdiomaDelDocumento() {
   const idioma = useIdioma();
-
   useEffect(() => {
+    const titulo = decir(COMUN.documento.titulo, idioma);
     document.documentElement.lang = LOCALE[idioma];
-    document.title = decir(COMUN.documento.titulo, idioma);
+    document.title = titulo;
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute("content", decir(COMUN.documento.descripcion, idioma));
+    // Al navegar del lado del cliente, Next vuelve a escribir el título que el servidor dejó en
+    // español, después de este efecto: se vigila el `<title>` y se repone el del idioma activo.
+    const vigilante = new MutationObserver(() => {
+      if (document.title !== titulo) document.title = titulo;
+    });
+    vigilante.observe(document.head, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    return () => vigilante.disconnect();
   }, [idioma]);
 
   return null;
