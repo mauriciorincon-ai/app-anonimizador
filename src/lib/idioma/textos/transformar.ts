@@ -822,16 +822,57 @@ export const TRANSFORMAR = {
     enMemoriaNota: {
       es:
         "Es un archivo de alto volumen, y este navegador no deja elegir un archivo de destino: Velo " +
-        "lo arma en la memoria de la pestaña antes de guardarlo. Con un archivo muy grande puede no " +
-        "caber; en Chrome o Edge se escribe por trozos.",
+        "lo entrega por la descarga de tu navegador, por trozos y sin armarlo entero en la memoria " +
+        "de la pestaña. Si tu navegador no lo permite, lo corta en partes que se pegan en orden. " +
+        "Nada sale de tu equipo.",
       en:
         "It is a high-volume file, and this browser does not let you choose a destination file: " +
-        "Velo builds it in the tab's memory before saving it. A very large file may not fit; in " +
-        "Chrome or Edge it is written in chunks.",
+        "Velo hands it to your browser's download in chunks, without building it whole in the tab's " +
+        "memory. If your browser does not allow that, it cuts the file into parts that are joined " +
+        "in order. Nothing leaves your computer.",
     },
     guardadoEnTuEquipo: {
       es: "Guardado en tu equipo: **{nombre}** · {tamano}",
       en: "Saved on your computer: **{nombre}** · {tamano}",
+    },
+    // S11: salió por el canal a la descarga del navegador. La página no puede saber cuándo termina
+    // de escribir el navegador, y el texto no lo promete.
+    enDescargas: {
+      es:
+        "Enviado a la descarga de tu navegador: **{nombre}** · {tamano}. Revisa que la descarga " +
+        "haya terminado antes de cerrar la pestaña.",
+      en:
+        "Sent to your browser's download: **{nombre}** · {tamano}. Check that the download has " +
+        "finished before closing the tab.",
+    },
+    // S11: el respaldo por partes.
+    enPartes: {
+      nota: {
+        es:
+          "El archivo pesa **{tamano}** y salió en **{n} partes**, cortadas entre filas y sin " +
+          "repetir el encabezado: pégalas en orden, una detrás de otra, y el resultado es el " +
+          "archivo completo, el mismo que certifica la huella. El manifiesto lista cada parte con " +
+          "su SHA-256 para comprobarlo.",
+        en:
+          "The file weighs **{tamano}** and came out in **{n} parts**, cut between rows and " +
+          "without repeating the header: join them in order, one after the other, and the result " +
+          "is the whole file, the one the fingerprint certifies. The manifest lists each part " +
+          "with its SHA-256 so you can check it.",
+      },
+      parte: { es: "Guardar la parte {i} de {n}", en: "Save part {i} of {n}" },
+      // Va DENTRO del manifiesto JSON, en los dos idiomas: el archivo no sabe en cuál se leerá.
+      unir: {
+        es:
+          "Pega las partes en el orden de esta lista, una detrás de otra, sin quitar ni agregar " +
+          "nada: el resultado es el archivo de arriba y su SHA-256 es el indicado.",
+        en:
+          "Join the parts in the order of this list, one after the other, adding or removing " +
+          "nothing: the result is the file above and its SHA-256 is the one shown.",
+      },
+      manifiesto: {
+        es: "Guardar el manifiesto de las partes",
+        en: "Save the manifest of the parts",
+      },
     },
     escribeTuNavegador: {
       es: "{tamano} · lo escribe tu navegador, no un servidor",

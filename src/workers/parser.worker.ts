@@ -121,7 +121,11 @@ import {
   type PlanDeTransformacion,
 } from "./alto-volumen";
 import { lotesDeCsv } from "./csv";
-import { destinoDe, motivoDeLaEscritura } from "./destino";
+import {
+  destinoDe,
+  motivoDeLaEscritura,
+  PARTE_DE_SALIDA_BYTES,
+} from "./destino";
 import { tablaDeCsv, transformarEnMemoria } from "./en-memoria";
 import { ArchivoCambio, fuenteDeArchivo } from "./json";
 import { abrirJsonPorTrozos } from "./json-por-trozos";
@@ -1147,13 +1151,19 @@ function admiteSupresion(): boolean {
 /** Cuántas filas se juntan antes de cerrar un trozo del Blob. */
 const FILAS_POR_TROZO = 20_000;
 
-async function construirArchivo(asa?: FileSystemFileHandle): Promise<void> {
+async function construirArchivo(
+  asa?: FileSystemFileHandle,
+  flujo?: MessagePort,
+  limiteDeParte?: number,
+): Promise<void> {
   if (altoVolumen?.plan) {
     await construirArchivoAltoVolumen(
       altoVolumen.archivo,
       altoVolumen.plan,
       altoVolumen.salida,
       asa,
+      flujo,
+      limiteDeParte,
     );
     return;
   }
@@ -1218,11 +1228,27 @@ async function construirArchivoAltoVolumen(
   plan: PlanDeTransformacion,
   formato: SalidaDeAltoVolumen,
   asa?: FileSystemFileHandle,
+  flujo?: MessagePort,
+  limiteDeParte?: number,
 ): Promise<void> {
   avisar("escribiendo", altoVolumen?.pasada.filas ?? 0, 0, bytesDe(archivo));
   let salida: Awaited<ReturnType<typeof destinoDe>> | null = null;
+  const nombre = nombreDelArchivoAnonimizado(
+    hashDeLaPolitica,
+    formato.extension,
+  );
   try {
-    salida = await destinoDe(asa);
+    salida = await destinoDe(asa, {
+      nombre,
+      mime: formato.mime,
+      flujo,
+      // Sin selector ni service worker, un CSV sale en partes si pasa del límite; un JSON no se
+      // corta (cada registro lleva su estructura) y sigue saliendo en un solo `Blob`.
+      partes:
+        !asa && !flujo && formato.extension === "csv"
+          ? { limite: limiteDeParte ?? PARTE_DE_SALIDA_BYTES }
+          : undefined,
+    });
     await escribirCsv(archivo, plan, salida.destino, {
       formato: formato.formato?.(),
       numericas: formato.numericas,
@@ -1233,7 +1259,7 @@ async function construirArchivoAltoVolumen(
     enviar({
       tipo: "archivo",
       ...cerrado,
-      nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica, formato.extension),
+      nombre,
       proposito: "anonimizado",
     });
   } catch (error) {
@@ -1918,7 +1944,11 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
       mensaje.idioma,
     );
   if (mensaje?.tipo === "construir-archivo")
-    void construirArchivo(mensaje.destino);
+    void construirArchivo(
+      mensaje.destino,
+      mensaje.flujo,
+      mensaje.limiteDeParte,
+    );
   if (mensaje?.tipo === "sellar-boveda") void sellar(mensaje.frase);
   if (mensaje?.tipo === "abrir-boveda")
     void abrir(mensaje.archivo, mensaje.frase);

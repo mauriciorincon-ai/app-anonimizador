@@ -121,7 +121,7 @@ export function Taller({ informe }: { informe: Informe }) {
     const elegir = (window as ConSelectorDeArchivo).showSaveFilePicker;
     if (!elegir) return;
     try {
-      prepararArchivo(
+      void prepararArchivo(
         await elegir.call(window, {
           suggestedName: nombreDelArchivoAnonimizado(
             hashDePolitica,
@@ -273,9 +273,12 @@ export function Taller({ informe }: { informe: Informe }) {
               suprimidas={hecha.suprimidas}
               hashDePolitica={hecha.hashDePolitica}
               idiomaDelTrabajo={hecha.idioma}
-              onPreparar={() => prepararArchivo()}
+              onPreparar={() =>
+                void prepararArchivo(undefined, { enFlujo: altoVolumen })
+              }
               altoVolumen={altoVolumen}
               enDisco={taller.archivoEnDisco}
+              enPartes={taller.archivoEnPartes}
               escrituraFallida={taller.escrituraFallida}
               onElegirDestino={
                 altoVolumen && haySelector
@@ -295,7 +298,11 @@ export function Taller({ informe }: { informe: Informe }) {
                 vez de enseñar un botón muerto. */}
             <DescargaDelCertificado
               informe={informe}
-              archivo={taller.archivo ?? taller.archivoEnDisco}
+              archivo={
+                taller.archivo ??
+                taller.archivoEnDisco ??
+                taller.archivoEnPartes
+              }
               huellaDeSalida={taller.huellaDeSalida}
               tratamiento={{
                 balance: hecha.balance,

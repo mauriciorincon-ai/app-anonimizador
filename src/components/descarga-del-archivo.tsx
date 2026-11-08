@@ -30,6 +30,11 @@ import type { AsaDeArchivo } from "@/lib/sesion";
 
 const E = TRANSFORMAR.entrega;
 
+/** Qué se le dice al usuario según adónde se escribió el archivo. */
+function textoDeLaVia(via: "picker" | "download") {
+  return via === "download" ? E.enDescargas : E.guardadoEnTuEquipo;
+}
+
 /** Lo que el worker escribe: un CSV o un Excel salen como CSV; un JSON, en su misma forma. */
 export type SalidaDelArchivo = keyof typeof E.salida;
 
@@ -44,6 +49,7 @@ export function DescargaDelArchivo({
   onPreparar,
   altoVolumen = false,
   enDisco = null,
+  enPartes = null,
   onElegirDestino,
   escrituraFallida = false,
 }: {
@@ -59,7 +65,17 @@ export function DescargaDelArchivo({
   /** S8: el archivo es de alto volumen (se escribe por trozos). */
   altoVolumen?: boolean;
   /** S8: lo que el worker ya escribió en el archivo que el usuario eligió. */
-  enDisco?: { readonly nombre: string; readonly bytes: number } | null;
+  enDisco?: {
+    readonly nombre: string;
+    readonly bytes: number;
+    readonly via: "picker" | "download";
+  } | null;
+  /** S11: el CSV que salió en partes (sin selector ni service worker). */
+  enPartes?: {
+    readonly bytes: number;
+    readonly partes: readonly AsaDeArchivo[];
+    readonly manifiesto: AsaDeArchivo;
+  } | null;
   /** S8: abre el selector del sistema. Ausente donde el navegador no lo tiene. */
   onElegirDestino?: () => void;
   /** S10: el último intento de escribir falló; el botón sigue para reintentar. */
@@ -115,7 +131,10 @@ export function DescargaDelArchivo({
         </p>
       ) : null}
 
-      {altoVolumen && enDisco === null && archivo === null ? (
+      {altoVolumen &&
+      enDisco === null &&
+      enPartes === null &&
+      archivo === null ? (
         <p className="text-tinta-suave mt-3 text-[0.875rem] leading-relaxed">
           <Rico
             texto={onElegirDestino ? E.elegirDestinoNota : E.enMemoriaNota}
@@ -123,7 +142,10 @@ export function DescargaDelArchivo({
         </p>
       ) : null}
 
-      {escrituraFallida && archivo === null && enDisco === null ? (
+      {escrituraFallida &&
+      archivo === null &&
+      enDisco === null &&
+      enPartes === null ? (
         // El símbolo, la palabra y el color juntos: el color nunca va solo.
         <p
           role="alert"
@@ -144,13 +166,55 @@ export function DescargaDelArchivo({
               ✓
             </span>
             <Rico
-              texto={E.guardadoEnTuEquipo}
+              texto={textoDeLaVia(enDisco.via)}
               datos={{
                 nombre: enDisco.nombre,
                 tamano: enBytes(enDisco.bytes, idioma),
               }}
             />
           </p>
+        ) : enPartes !== null ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-tinta-suave text-[0.875rem] leading-relaxed">
+              <Rico
+                texto={E.enPartes.nota}
+                datos={{
+                  tamano: enBytes(enPartes.bytes, idioma),
+                  n: enPartes.partes.length,
+                }}
+              />
+            </p>
+            <ul className="flex flex-wrap gap-3">
+              {enPartes.partes.map((parte, i) => (
+                <li key={parte.nombre}>
+                  <a
+                    href={parte.url}
+                    download={parte.nombre}
+                    className="rounded-1 bg-acento text-papel shadow-1 inline-flex items-center gap-2 px-5 py-2.5 text-[0.9375rem] font-medium"
+                  >
+                    <IconoDescargar />
+                    {t(E.enPartes.parte, {
+                      i: i + 1,
+                      n: enPartes.partes.length,
+                    })}
+                  </a>
+                  <span className="text-tinta-tenue ml-2 text-[0.8125rem]">
+                    {enBytes(parte.bytes, idioma)}
+                  </span>
+                </li>
+              ))}
+              <li>
+                <a
+                  href={enPartes.manifiesto.url}
+                  download={enPartes.manifiesto.nombre}
+                  className="rounded-1 border-borde text-tinta inline-flex items-center gap-2 border px-5 py-2.5 text-[0.9375rem] font-medium"
+                >
+                  <IconoDescargar />
+                  {t(E.enPartes.manifiesto)}
+                </a>
+              </li>
+            </ul>
+          </div>
         ) : archivo === null ? (
           <Boton
             type="button"

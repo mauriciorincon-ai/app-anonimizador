@@ -73,8 +73,18 @@ export type MensajeAlWorker =
    * `destino` (S8, alto volumen): el archivo que el usuario eligió en el selector del sistema. El
    * worker escribe en él y la página no lee nada: pasa el asa y recibe la huella. Sin `destino`, el
    * archivo vuelve como `Blob`, como siempre.
+   *
+   * `flujo` (S11, alto volumen sin selector): el extremo de un canal cuyo otro extremo tiene el
+   * service worker de la descarga (`public/velo-descarga-sw.js`). El worker escribe los trozos por
+   * ahí, uno por vez, y la página no ve un solo byte. `limiteDeParte` solo lo cambian las pruebas:
+   * es el tamaño de las partes del respaldo, cuando no hay ni selector ni service worker.
    */
-  | { tipo: "construir-archivo"; destino?: FileSystemFileHandle }
+  | {
+      tipo: "construir-archivo";
+      destino?: FileSystemFileHandle;
+      flujo?: MessagePort;
+      limiteDeParte?: number;
+    }
   /**
    * Sella la bóveda del tratamiento que se acaba de hacer. La frase de paso entra y **no vuelve a
    * salir**, igual que la de la llave: se deriva aquí, se usa aquí y muere con el worker.
@@ -547,6 +557,23 @@ export type MensajeDelWorker =
        */
       blob?: Blob;
       enDisco?: true;
+      /**
+       * S11: el archivo salió por el canal hacia la descarga del navegador, sin juntarse en ningún
+       * `Blob`: como `enDisco`, no hay nada que la página guarde, y los bytes no pasaron por ella.
+       */
+      enDescarga?: true;
+      /**
+       * S11: el CSV de alto volumen que no cupo en una parte, cortado en límites de fila SIN repetir
+       * el encabezado: pegadas en orden dan los bytes del archivo único. Cada parte es un `Blob`
+       * opaco con su nombre y su huella; el `manifiesto` es el `Blob` que las lista.
+       */
+      partes?: readonly {
+        readonly blob: Blob;
+        readonly nombre: string;
+        readonly bytes: number;
+        readonly sha256: string;
+      }[];
+      manifiesto?: Blob;
       nombre: string;
       bytes: number;
       proposito: PropositoDelArchivo;
