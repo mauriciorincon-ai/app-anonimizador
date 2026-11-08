@@ -15,10 +15,11 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { escribirJson } from "@/engine/json/escritor";
-import { leerJson } from "@/engine/json/lector";
+import { columnasNumericas, leerJson } from "@/engine/json/lector";
 import {
   exportarPolitica,
   hashDePolitica,
+  numericasConRuido,
   type Politica,
 } from "@/engine/politica";
 import { nombreDelArchivoAnonimizado } from "@/engine/csv";
@@ -231,6 +232,88 @@ describe.each(FORMAS)("%s por la consola", (extension, texto, nombre) => {
     expect(Buffer.concat(partes).toString("utf8")).toBe(await enMemoria(texto));
   });
 });
+
+describe.each(FORMAS)(
+  "%s con ruido: el número sigue siendo número, igual que en la web (S10)",
+  (extension, texto, nombre) => {
+    const RUIDO: Politica = {
+      ...POLITICA,
+      reglas: [
+        ...POLITICA.reglas,
+        {
+          columna: "edad",
+          tecnica: {
+            tipo: "laplace",
+            epsilon: 1,
+            minimo: 0,
+            maximo: 120,
+            decimales: 0,
+          },
+        },
+      ],
+    };
+
+    /** Lo que hace el worker en memoria: las numéricas del original con ruido, sin comillas. */
+    async function enLaWeb(): Promise<string> {
+      const fuente = fuenteDe(texto, 4096);
+      const lectura = await leerJson(fuente);
+      const hecho = await aplicarPolitica(
+        lectura.tabla,
+        RUIDO,
+        llave.clave,
+        "es",
+        sha256(new TextEncoder().encode(texto)),
+      );
+      return recoger(
+        escribirJson(
+          fuente,
+          lectura,
+          hecho.tabla,
+          numericasConRuido(columnasNumericas(lectura), RUIDO),
+        ),
+      );
+    }
+
+    it.each([
+      ["en memoria", undefined],
+      ["por pasadas", 10],
+    ] as const)("%s", async (_camino, topeDeCeldas) => {
+      const origen = {
+        nombre,
+        bytes: texto.length,
+        sha256: sha256(new TextEncoder().encode(texto)),
+      };
+      const fuente = new Blob([texto]);
+      const lectura = await leer(
+        fuente,
+        origen,
+        topeDeCeldas === undefined ? {} : { topeDeCeldas },
+      );
+      expect(lectura.modo).toBe(
+        topeDeCeldas === undefined ? "memoria" : "alto-volumen",
+      );
+      const partes: Uint8Array[] = [];
+      const sumidero: Sumidero = {
+        escribir: async (b) => void partes.push(b),
+      };
+      const resultado = await anonimizar({
+        fuente,
+        origen,
+        lectura,
+        politica: RUIDO,
+        llave,
+        idioma: "es",
+        destino: new DestinoConHuella(sumidero),
+        fecha: "8 de noviembre de 2026",
+      });
+      expect(resultado.extension).toBe(extension);
+      const local = Buffer.concat(partes).toString("utf8");
+      expect(local).toBe(await enLaWeb());
+      expect(local).toMatch(/"edad":-?\d+[,}]/);
+      expect(local).not.toMatch(/"edad":"/);
+    });
+  },
+);
 
 describe("un JSON roto", () => {
   it("se rechaza con su clave y sin citar lo que hay dentro del archivo", async () => {

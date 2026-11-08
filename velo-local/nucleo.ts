@@ -37,6 +37,7 @@ import {
 import {
   hashDePolitica,
   importarPolitica,
+  numericasConRuido,
   type Politica,
 } from "@/engine/politica";
 import {
@@ -463,6 +464,8 @@ export async function anonimizar(
         enMemoria.texto,
         enMemoria.lectura,
         hecho.resultado.tabla,
+        // Lo mismo que el worker: el número con ruido sigue siendo número.
+        numericasConRuido(lectura.json?.numericas ?? [], politica),
       ))
         await destino.escribir(trozo);
     } else await escribirTabla(hecho.resultado.tabla, destino);
@@ -502,6 +505,7 @@ export async function anonimizar(
     await escribirCsv(filas, plan, destino, {
       ...opciones,
       formato: porPasadas?.formato(),
+      numericas: numericasConRuido(lectura.json?.numericas ?? [], politica),
     });
   }
   const {

@@ -93,8 +93,8 @@ export const DOCUMENTOS = {
     },
     directos: { es: "Identificadores directos", en: "Direct identifiers" },
     sensibles: {
-      es: "Datos sensibles (art. 5)",
-      en: "Sensitive data (art. 5)",
+      es: "Datos sensibles (Ley 1581 art. 5 · RGPD art. 9 y 10)",
+      en: "Sensitive data (Law 1581 art. 5 · GDPR art. 9 and 10)",
     },
     cuasi: { es: "Cuasi-identificadores", en: "Quasi-identifiers" },
     noPersonales: { es: "No personales", en: "Not personal" },
@@ -504,8 +504,8 @@ export const DOCUMENTOS = {
 
   pie: {
     contenido: {
-      es: "**Qué lleva este documento y qué no.** Lleva nombres de columna, tipos detectados, categorías, cifras agregadas y muestras **enmascaradas** (por ejemplo `103***89`). No lleva ninguna fila del archivo, y las columnas de datos sensibles del artículo 5 no llevan muestra siquiera.",
-      en: "**What this document contains and what it does not.** It contains column names, detected types, categories, aggregate figures and **masked** samples (for example `103***89`). It contains no row from the file, and the sensitive-data columns of article 5 do not even carry a sample.",
+      es: "**Qué lleva este documento y qué no.** Lleva nombres de columna, tipos detectados, categorías, cifras agregadas y muestras **enmascaradas** (por ejemplo `103***89`). No lleva ninguna fila del archivo, y las columnas de datos sensibles (Ley 1581 art. 5, RGPD art. 9 y 10) no llevan muestra siquiera.",
+      en: "**What this document contains and what it does not.** It contains column names, detected types, categories, aggregate figures and **masked** samples (for example `103***89`). It contains no row from the file, and the sensitive-data columns (Law 1581 art. 5, GDPR art. 9 and 10) do not even carry a sample.",
     },
     cifras: {
       es: "**Qué significan las cifras.** Todas son exactas: se contaron registro por registro sobre el archivo completo. No hay muestreo ni estimación. La detección de tipos, en cambio, se hizo sobre una muestra de hasta 5.000 valores por columna, y cada columna dice con qué certeza se concluyó.",

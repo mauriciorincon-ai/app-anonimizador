@@ -55,7 +55,7 @@ import {
   columnasDeMondrian,
   hashDePolitica,
   jerarquiaDe,
-  esDeRuidoNumerico,
+  numericasConRuido,
   tecnicaDe,
   type JerarquiaDeLaPolitica,
   type Politica,
@@ -693,7 +693,7 @@ let transformada: TablaColumnar | null = null;
 let clasesDespues: ClasesDeEquivalencia | null = null;
 let hashDeLaPolitica = "";
 /** Columnas del JSON que eran todo números y a las que la política les puso ruido numérico. */
-let numericasConRuido: ReadonlySet<string> = new Set();
+let numericasRuidosas: ReadonlySet<string> = new Set();
 /** El material de la bóveda: pares (original, seudónimo) de las columnas reversibles. */
 let correspondencias: readonly EntradaDeBoveda[] = [];
 
@@ -765,13 +765,9 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
       resultado.tabla.filas,
     );
     hashDeLaPolitica = hashDePolitica(politica);
-    numericasConRuido =
+    numericasRuidosas =
       formatoOriginal === "json" && lecturaJson !== null
-        ? new Set(
-            [...columnasNumericas(lecturaJson)].filter((nombre) =>
-              esDeRuidoNumerico(tecnicaDe(politica, nombre)),
-            ),
-          )
+        ? numericasConRuido(columnasNumericas(lecturaJson), politica)
         : new Set();
     // El material de la bóveda se guarda AQUÍ, del lado de la frontera donde están los originales.
     // Sellarlo es un mensaje aparte porque exige la frase de paso del usuario, que se pide después.
@@ -1207,7 +1203,7 @@ async function construirArchivoJson(
       fuente,
       lecturaJson,
       tablaTransformada,
-      numericasConRuido,
+      numericasRuidosas,
     )) {
       trozos.push(trozo);
       huellaDeSalida.actualizar(codificador.encode(trozo));

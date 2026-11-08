@@ -162,10 +162,10 @@ export const DIAGNOSTICO = {
       detalle: {
         es:
           "Ninguna de las {n} columnas quedó clasificada como identificador directo, " +
-          "cuasi-identificador o dato sensible del artículo 5.",
+          "cuasi-identificador o dato sensible (Ley 1581 art. 5, RGPD art. 9 y 10).",
         en:
           "None of the {n} columns was classified as a direct identifier, quasi-identifier or " +
-          "sensitive data under article 5.",
+          "sensitive data (Law 1581 art. 5, GDPR art. 9 and 10).",
       },
     },
     columnas: {

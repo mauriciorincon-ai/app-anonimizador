@@ -560,6 +560,19 @@ export function esDeRuidoNumerico(tecnica: Tecnica): boolean {
 }
 
 /**
+ * De las columnas que eran todo números en un JSON, las que la política deja con ruido numérico: esas
+ * se escriben sin comillas. La usan la web y Velo local, para que los bytes sean los mismos.
+ */
+export function numericasConRuido(
+  numericas: Iterable<string>,
+  politica: Politica,
+): Set<string> {
+  return new Set(
+    [...numericas].filter((n) => esDeRuidoNumerico(tecnicaDe(politica, n))),
+  );
+}
+
+/**
  * ¿Esta técnica guarda la correspondencia para poder deshacerse?
  *
  * Solo las dos de seudónimo pueden ser reversibles, y no es una limitación de esta versión: una
