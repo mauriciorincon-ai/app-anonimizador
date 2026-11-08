@@ -6,7 +6,7 @@
 > `docs/REGLAS-ANEXO.md` § «Velo», junto a las reglas del kit en detalle; el anexo se lee solo cuando una regla se cita, nunca al abrir la sesión.
 > Las reglas duras de producto de Velo están aquí, completas; lo que no es regla dura (estado, tesis, stack y workflow v1, reglas de desarrollo
 > v1) vive en ese anexo. Frase centinela de esta adopción: «nada sale de aquí, tampoco una regla».
-> Ajustada el 2026-11-07 para el S9: regla 2 ampliada a Velo local (ADR-017), reglas por ruta en `.claude/rules/` y `# Compact instructions`.
+> Ajustada el 2026-11-07 para el S9: regla 2 ampliada a Velo local (ADR-017), reglas por ruta en `.claude/rules/` y `# Compact instructions`. Ajustada el 2026-11-08 para el S10: el gate de fase trae el esfuerzo y su `/effort`, construcción en esfuerzo `high` (decisión del usuario, 2026-11-07) y los comandos de sesión los pide el builder.
 
 ## Identidad y las dos casas (regla dura)
 
@@ -65,15 +65,15 @@ Numeración de la v1 conservada (el código y los ADR citan «regla dura nº1…
   | Planear sprint, cerrar sprint, preguntas de la planeadora | Opus 5.5 | medium |
   | Checkpoint de hito, decisión irreversible, auditoría del proceso | Opus 5.5 | high |
   | **Emergencia declarada por el usuario** (validación o planeación extraordinaria) | Fable 5.1 | — (solo si él lo pide en el mensaje) |
-  | Construcción con alcance claro (interfaz, lógica, pruebas) | Sonnet 5.5 | medium |
-  | Construcción simple: ajustes de interfaz, textos, cambios pequeños | Haiku 5.5 (en prueba) | medium |
+  | Construcción con alcance claro (interfaz, lógica, pruebas) | Sonnet 5.5 | high |
+  | Construcción simple: ajustes de interfaz, textos, cambios pequeños | Haiku 5.5 (en prueba) | high |
   | Depuración difícil, Rust, concurrencia, seguridad, nativo | Opus 5.5 | high |
   | Auditoría de una pasada | Sonnet 5.5 | high |
   | Cierre ejecutivo, script de horas, documentación corta | Haiku 5.5 | low |
-  | Subagentes de búsqueda o lectura de archivos | Haiku 5.5 | — |
+  | Subagentes de búsqueda o lectura de archivos | `Explore` de usuario (Haiku 5.5, `~/.claude/agents/Explore.md`) | medium (en su archivo) |
 
-  - **Gate de modelo al abrir cada fase:** tu primera línea es «Fase N · modelo requerido: X · modelo activo: Y» (Y lo lees de tu propio encabezado de sesión). Si coinciden, arrancas. **Si no coinciden, NO construyes nada** hasta que el usuario escriba «vamos con Y» (queda registrado en el archivo del sprint como decisión) o cambie con `/model X`. Es un renglón, no una parada del techo. Trabajo de rutina en Opus o Fable también se detiene y se recomienda bajar.
-  - **El esfuerzo es sugerido:** no se verifica, no se reporta como desvío y nunca detiene nada; `/effort` es opcional.
+  - **Gate de modelo al abrir cada fase:** tu primera línea es «Fase N · modelo requerido: X · esfuerzo sugerido: E (`/effort E` si tu encabezado muestra otro) · modelo activo: Y» (Y lo lees de tu propio encabezado de sesión; pedido del usuario, 2026-11-07). Si coinciden, arrancas. **Si no coinciden, NO construyes nada** hasta que el usuario escriba «vamos con Y» (queda registrado en el archivo del sprint como decisión) o cambie con `/model X`. Es un renglón, no una parada del techo. Trabajo de rutina en Opus o Fable también se detiene y se recomienda bajar.
+  - **El esfuerzo es sugerido:** va en el gate con su comando, pero no se reporta como desvío y nunca detiene nada. `/model`, `/effort`, `/compact` y `/advisor` los escribe el usuario: cuando el sprint los pida, se los pides en una línea con el comando exacto.
   - **Relevo, nunca loop (regla 29):** al **segundo intento fallido** sobre el mismo problema, o a los **20 min sin avance verificable** (un test que pasa, un error que cambia), **paras**: escribes en el cierre o la bitácora qué intentaste, qué falló y qué sabes, y pides relevo en UNA línea: «Relevo: modelo actual X · recomiendo Y · por qué · `/model Y`». Prohibido el tercer intento por el mismo camino con el mismo modelo. Escalón: Haiku → Sonnet → Opus; si Opus pide relevo, decide el usuario (Fable solo si él lo declara emergencia).
   - **Haiku 5.5 en construcción simple está en prueba:** su relevo es Sonnet 5.5 (regla 29); el cierre registra si Haiku bastó o no; tras 3 sprints se decide si se queda. Nombre completo `claude-haiku-5-5` en `/model` hasta confirmar que el alias `haiku` apunta a esa versión.
   - Al cambiar de fase, si el contexto anterior no se necesita, recomienda `/clear` o `/compact`: el archivo del sprint conserva el estado.
