@@ -34,6 +34,7 @@ import {
 import {
   CLASE_DE_CELDA,
   ErrorDeJson,
+  JsonExcedeCeldas,
   TOPES_JSON,
   type EstructuraJson,
   type MotivoJson,
@@ -60,10 +61,22 @@ const M_OBJETO = 0; // un objeto fuera de las listas (el del registro incluido)
 const M_OBJETO_DE_LISTA = 1; // un objeto dentro de una lista
 const M_LISTA = 2; // una lista (sus elementos no se tratan)
 
-class VisitanteDeLectura implements VisitanteDeJson {
+/**
+ * Adónde van las celdas que el visitante lee. En memoria es el constructor columnar disperso; por
+ * pasadas (S9, `./trozos.ts`) es uno que no guarda nada o que arma lotes de filas.
+ */
+export interface SumideroDeCeldas {
+  readonly filasCerradas: number;
+  readonly totalDeColumnas: number;
+  agregarColumna(nombre: string, segmentos: readonly string[]): number;
+  poner(columna: number, valor: string, clase: number): void;
+  cerrarFila(): void;
+}
+
+export class VisitanteDeLectura implements VisitanteDeJson {
   private readonly tok: Tokenizador;
   private readonly topes: TopesJson;
-  private readonly constructorDeTabla: ConstructorColumnarDisperso;
+  private readonly constructorDeTabla: SumideroDeCeldas;
   private readonly esquema: Esquema;
   private readonly lineaActual: () => number;
 
@@ -79,10 +92,15 @@ class VisitanteDeLectura implements VisitanteDeJson {
   /** La lista de primer nivel en la que se está (null fuera de una). */
   private listaActual: ListaDeEsquema | null = null;
 
-  constructor(tok: Tokenizador, topes: TopesJson, linea: () => number) {
+  constructor(
+    tok: Tokenizador,
+    topes: TopesJson,
+    linea: () => number,
+    sumidero: SumideroDeCeldas = new ConstructorColumnarDisperso(topes.celdas),
+  ) {
     this.tok = tok;
     this.topes = topes;
-    this.constructorDeTabla = new ConstructorColumnarDisperso(topes.celdas);
+    this.constructorDeTabla = sumidero;
     this.esquema = new Esquema(topes.rutas, (motivo) => {
       throw new ErrorDeJson(motivo, linea());
     });
@@ -128,7 +146,7 @@ class VisitanteDeLectura implements VisitanteDeJson {
     this.constructorDeTabla.cerrarFila();
     // Registros × rutas es lo que de verdad ocupa la memoria: se corta en cuanto se pasa.
     if (this.filas * this.columnas > this.topes.celdas) {
-      this.fallar("json-excede-tope");
+      throw new JsonExcedeCeldas(this.lineaActual());
     }
   }
 
@@ -283,7 +301,7 @@ class VisitanteDeLectura implements VisitanteDeJson {
         this.fallar("json-demasiado-ancho");
       // La fila en curso ya cuenta: si con la columna nueva se pasa, se corta antes de reservar.
       if ((this.filas + 1) * (this.columnas + 1) > this.topes.celdas) {
-        this.fallar("json-excede-tope");
+        throw new JsonExcedeCeldas(this.lineaActual());
       }
       nodo.columna = this.constructorDeTabla.agregarColumna(
         nodo.ruta,
@@ -299,8 +317,20 @@ class VisitanteDeLectura implements VisitanteDeJson {
     if (lista !== null && nodoDeLista === lista.raiz) lista.conObjetos = true;
   }
 
+  /** Lo que el diagnóstico enseña, para quien no guardó la tabla (la lectura por pasadas). */
+  estructura(forma: "arreglo" | "lineas", profundidad: number): EstructuraJson {
+    return this.esquema.describir(
+      forma,
+      this.filas,
+      profundidad,
+      this.columnas,
+    );
+  }
+
   resultado(forma: "arreglo" | "lineas", profundidad: number): LecturaJson {
-    const { tabla, clases } = this.constructorDeTabla.finalizar();
+    const { tabla, clases } = (
+      this.constructorDeTabla as ConstructorColumnarDisperso
+    ).finalizar();
     return {
       tabla,
       clases,
@@ -332,10 +362,7 @@ export async function leerJson(
   analizador.terminar();
 
   // `terminar()` sin error implica que hubo al menos un registro y que la forma quedó fijada.
-  return visitante.resultado(
-    analizador.forma!,
-    analizador.profundidadMaxima,
-  );
+  return visitante.resultado(analizador.forma!, analizador.profundidadMaxima);
 }
 
 /**
@@ -351,7 +378,10 @@ export function columnasNumericas(lectura: LecturaJson): Set<string> {
     for (let fila = 0; fila < clases.length; fila++) {
       const clase = clases[fila];
       if (clase === CLASE_DE_CELDA.numero) numeros++;
-      else if (clase !== CLASE_DE_CELDA.ausente && clase !== CLASE_DE_CELDA.nulo)
+      else if (
+        clase !== CLASE_DE_CELDA.ausente &&
+        clase !== CLASE_DE_CELDA.nulo
+      )
         return;
     }
     if (numeros > 0) numericas.add(columna.nombre);
