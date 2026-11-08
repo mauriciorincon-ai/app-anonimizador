@@ -309,3 +309,42 @@ describe("información mutua: lo que la salida todavía dice del original (S7)",
     expect(informacionMutua(x, g, 4)).toBeCloseTo(0.5, 12);
   });
 });
+
+describe("el error medio de las columnas con ruido (S10, deuda del S7)", () => {
+  // Una columna casi única (cada fila su número) a la que el ruido mueve lejos: sigue distinguiendo
+  // una fila de otra, así que sus bits casi no bajan. El error medio sí lo dice.
+  const filas = Array.from({ length: 200 }, (_, i) => [String(1_000 * i), "x"]);
+  const antes = tablaDe(["monto", "otra"], filas);
+  const despues = tablaDe(
+    ["monto", "otra"],
+    filas.map(([m], i) => [
+      String(Number(m) + (i % 2 === 0 ? 250_000 : -250_000)),
+      "y",
+    ]),
+  );
+
+  it("los bits casi no bajan, y el error medio es el desplazamiento", () => {
+    const u = medirUtilidad(antes, despues, new Set(["monto"]));
+    const monto = u.columnas.find((c) => c.nombre === "monto")!;
+    expect(monto.bitsDespues).toBeGreaterThan(monto.bitsAntes - 0.01);
+    expect(monto.errorMedioAbsoluto).toBe(250_000);
+  });
+
+  it("solo en las columnas con ruido y sobre las celdas que son números", () => {
+    const u = medirUtilidad(antes, despues, new Set(["monto", "otra"]));
+    // `otra` cambió pero no es numérica: sin pares de números, sin cifra.
+    expect(u.columnas.find((c) => c.nombre === "otra")!).not.toHaveProperty(
+      "errorMedioAbsoluto",
+    );
+    // Sin decir cuáles llevan ruido, ninguna lo trae: un seudónimo con formato también es número.
+    for (const c of medirUtilidad(antes, despues).columnas)
+      expect(c).not.toHaveProperty("errorMedioAbsoluto");
+  });
+
+  it("lee la coma decimal y salta lo que no es un número", () => {
+    const a = tablaDe(["v"], [["1,5"], ["2.5"], ["n/a"], [""]]);
+    const b = tablaDe(["v"], [["2,5"], ["0.5"], ["3"], ["4"]]);
+    const v = medirUtilidad(a, b, new Set(["v"])).columnas[0];
+    expect(v.errorMedioAbsoluto).toBe(1.5);
+  });
+});

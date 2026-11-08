@@ -43,7 +43,10 @@ export async function tablaDeCsv(
     }
     for (let i = desde; i < lote.length; i++) constructor.agregarFila(lote[i]);
     filas += lote.length - desde;
-    if (filas * (lote[0]?.length ?? 0) > (opciones.topeDeCeldas ?? TOPE_DE_CELDAS_EN_MEMORIA))
+    if (
+      filas * (lote[0]?.length ?? 0) >
+      (opciones.topeDeCeldas ?? TOPE_DE_CELDAS_EN_MEMORIA)
+    )
       return "alto-volumen";
     opciones.alLeerFilas?.(filas);
   }
@@ -139,7 +142,18 @@ export async function transformarEnMemoria(
     resultado,
     qis,
     balance,
-    utilidad: medirUtilidad(original, resultado.tabla),
+    utilidad: medirUtilidad(
+      original,
+      resultado.tabla,
+      new Set(
+        politica.reglas
+          .filter(
+            (r) =>
+              r.tecnica.tipo === "laplace" || r.tecnica.tipo === "perturbar",
+          )
+          .map((r) => r.columna),
+      ),
+    ),
     muestras,
     generalizacion:
       optimaAplicada && politica.generalizacion

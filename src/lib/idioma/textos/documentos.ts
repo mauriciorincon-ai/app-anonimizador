@@ -452,6 +452,12 @@ export const DOCUMENTOS = {
     informacion: { es: "Información", en: "Information" },
     celdasCambiadas: { es: "Celdas cambiadas", en: "Cells changed" },
     suprimida: { es: "suprimida", en: "suppressed" },
+    // S10: el error medio de las columnas con ruido, y por qué los bits no bastan para ellas.
+    errorMedio: { es: "error medio ±{valor}", en: "mean error ±{valor}" },
+    errorMedioNota: {
+      es: "**En las columnas con ruido, los bits no dicen cuánto se movió cada número.** Miden si la salida todavía distingue una fila de otra, y un número con ruido sigue siendo distinto de los demás aunque haya quedado lejos del suyo. Por eso esas columnas traen su **error medio**: cuánto se alejó, en promedio, cada valor del original, en las unidades de la columna.",
+      en: "**In columns with noise, the bits do not say how far each number moved.** They measure whether the output still tells one row from another, and a noisy number stays different from the rest even when it ends up far from its own. That is why those columns carry their **mean error**: how far, on average, each value moved from the original, in the column's own units.",
+    },
     ningunaCambio: { es: "Ninguna columna cambió.", en: "No column changed." },
     relacionesTitulo: {
       es: "Relaciones entre columnas",

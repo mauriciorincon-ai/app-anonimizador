@@ -580,6 +580,14 @@ perturbaste), el panel se llama **«Ruido sin garantía formal · Sin privacidad
 habla de ε, en pantalla, en el certificado y en la bitácora: la perturbación no es privacidad
 diferencial.
 
+**Cuánto se movió cada número.** En el certificado, la tabla «Lo que el archivo perdió» mide la
+información en bits, y los bits no ven el ruido: dicen si la columna todavía distingue una fila de
+otra, y un número con ruido sigue distinguiéndola aunque haya quedado lejos del suyo. Por eso las
+columnas con Laplace o con perturbación traen además su **error medio**: cuánto se alejó, en
+promedio, cada valor del original, en las unidades de la columna. Se mide sobre las celdas que eran
+un número antes y después. En un archivo de alto volumen esta tabla no se mide, y el certificado
+lo dice.
+
 **Lo que ε no cubre**, y el panel lo dice con todas sus letras:
 
 - **Solo un valor de un campo.** No es el ε del archivo, ni de la persona entera: una persona con
