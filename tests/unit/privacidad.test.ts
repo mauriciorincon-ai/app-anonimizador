@@ -40,6 +40,13 @@ const PROHIBIDOS: readonly { patron: RegExp; porque: string }[] = [
     porque: "una cookie viaja al servidor en cada petición",
   },
   {
+    // S11: la descarga en streaming pasa por un service worker, y la Cache API es justo lo que ese
+    // tipo de worker suele usar. Lo que se descarga NO se guarda en el navegador: pasa y se suelta.
+    patron: /\bcaches\b|CacheStorage/,
+    porque:
+      "la Cache API guardaría en el navegador, fuera del alcance del usuario, lo que debería solo pasar",
+  },
+  {
     patron: /\bfetch\(|XMLHttpRequest|new WebSocket|sendBeacon/,
     porque:
       "no hay una sola razón para que esta app abra una conexión: no tiene backend",
@@ -142,4 +149,60 @@ describe("nada en `src/` puede sacar ni guardar los datos del usuario", () => {
       );
     });
   }
+});
+
+// S11: el service worker de la descarga en streaming vive en `public/`, que el barrido de `src/` no
+// ve. Tiene su propio gate: no guarda nada, no pide nada a la red y no importa otros scripts. Es un
+// segundo contexto que ve los bytes de SALIDA (ya anonimizados, los mismos que llevaría el `Blob`).
+describe("el service worker de la descarga no guarda ni pide nada", () => {
+  const VETOS_DEL_SERVICE_WORKER: readonly {
+    patron: RegExp;
+    porque: string;
+  }[] = [
+    {
+      patron: /\bcaches\b|CacheStorage/,
+      porque: "la Cache API guardaría la salida",
+    },
+    { patron: /\bfetch\(/, porque: "pediría algo a la red" },
+    { patron: /importScripts/, porque: "cargaría código que nadie revisó" },
+    {
+      patron: /XMLHttpRequest|new WebSocket|sendBeacon/,
+      porque: "abriría una conexión",
+    },
+    {
+      patron:
+        /indexedDB|localStorage|sessionStorage|navigator\.storage|getDirectory\(/,
+      porque: "guardaría en el navegador",
+    },
+  ];
+  const RUTA = join(process.cwd(), "public", "velo-descarga-sw.js");
+  const codigo = sinComentarios(readFileSync(RUTA, "utf8"));
+
+  it("es el único script de `public/` (otro service worker no entraría sin pasar por aquí)", () => {
+    const scripts = readdirSync(join(process.cwd(), "public")).filter((n) =>
+      /\.m?js$/.test(n),
+    );
+    expect(scripts).toEqual(["velo-descarga-sw.js"]);
+  });
+
+  it("atiende solo /descarga/ y responde con lo que le llega por el canal", () => {
+    expect(codigo).toContain('"/descarga/"');
+    expect(codigo).toContain("respondWith");
+  });
+
+  for (const { patron, porque } of VETOS_DEL_SERVICE_WORKER) {
+    it(`no usa ${patron.source} — ${porque}`, () => {
+      expect(codigo).not.toMatch(patron);
+    });
+  }
+
+  it("el gate muerde: una carnada con la Cache API y con fetch(…) cae", () => {
+    const carnada = sinComentarios(
+      'self.addEventListener("fetch", async (e) => { const c = await caches.open("x"); await fetch(e.request); });',
+    );
+    const caidos = VETOS_DEL_SERVICE_WORKER.filter(({ patron }) =>
+      patron.test(carnada),
+    );
+    expect(caidos.length).toBe(2);
+  });
 });
