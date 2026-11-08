@@ -14,8 +14,10 @@ import { expect, test, type Page } from "@playwright/test";
 
 import {
   centinelasDe,
+  FIXTURE_AVIF,
   FIXTURE_HEIC,
   FIXTURE_JPEG,
+  FIXTURE_MOV,
   FIXTURE_PDF,
   FIXTURE_PDF_CIFRADO,
   FIXTURE_PDF_FIRMADO,
@@ -101,6 +103,12 @@ const IMAGENES = [
     extension: "heic",
     firma: [0x00, 0x00, 0x00, 0x1c, 0x66, 0x74, 0x79, 0x70],
   },
+  {
+    formato: "AVIF",
+    fixture: FIXTURE_AVIF,
+    extension: "avif",
+    firma: [0x00, 0x00, 0x00, 0x1c, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66],
+  },
 ];
 
 for (const { formato, fixture, extension, firma } of IMAGENES) {
@@ -147,6 +155,47 @@ for (const { formato, fixture, extension, firma } of IMAGENES) {
       expect(certificado.html).not.toContain(centinela);
   });
 }
+
+test("el video de una Live Photo: nada se mueve, la ubicación se va y el UUID de la pareja se queda", async ({
+  page,
+}) => {
+  const centinelas = centinelasDe(FIXTURE_MOV);
+  const original = readFileSync(FIXTURE_MOV);
+  await soltar(page, FIXTURE_MOV);
+  await expect(
+    page.getByText("com.apple.quicktime.location.ISO6709").first(),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/conserva el número que lo empareja con su foto/).first(),
+  ).toBeVisible();
+  const pantalla = await page.locator("body").innerText();
+  for (const centinela of centinelas)
+    expect(pantalla, `«${centinela}» en la pantalla`).not.toContain(centinela);
+
+  const { nombre, bytes } = await limpiarYGuardar(page);
+  expect(nombre).toMatch(/^velo-limpio-[0-9a-f]{8}\.mov$/);
+  // Limpiar en su lugar: la copia solo pierde los bytes sobrantes del final, y empieza igual.
+  expect(bytes.length).toBeLessThan(original.length);
+  expect(bytes.length).toBeGreaterThan(original.length - 64);
+  expect(bytes.subarray(0, 12).equals(original.subarray(0, 12))).toBe(true);
+  for (const centinela of centinelas)
+    expect(contiene(bytes, centinela), `«${centinela}» en la copia`).toBe(
+      false,
+    );
+  expect(contiene(bytes, "com.apple.quicktime.content.identifier")).toBe(true);
+  await expect(
+    page.getByText(/volvió a leer el archivo limpio: 0 campos con nombre/),
+  ).toBeVisible();
+
+  const certificado = await descargarCertificado(page);
+  expect(certificado.html).toContain(sha256(original));
+  expect(certificado.html).toContain(sha256(bytes));
+  expect(certificado.html).toContain(
+    "UUID que empareja el video de la Live Photo con su foto",
+  );
+  for (const centinela of centinelas)
+    expect(certificado.html).not.toContain(centinela);
+});
 
 test("un PDF con dos versiones sale con una sola, un /ID nuevo y sin lo que decía antes", async ({
   page,
@@ -233,7 +282,7 @@ const RUTAS_PERMITIDAS = [
 ];
 const PARAMETROS_PERMITIDOS = new Set(["_rsc", "dpl"]);
 
-for (const fixture of [FIXTURE_JPEG, FIXTURE_HEIC, FIXTURE_PDF]) {
+for (const fixture of [FIXTURE_JPEG, FIXTURE_HEIC, FIXTURE_MOV, FIXTURE_PDF]) {
   test(`cero peticiones con datos al limpiar ${fixture.split("/").pop()}`, async ({
     page,
     baseURL,

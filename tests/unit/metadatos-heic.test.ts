@@ -250,9 +250,11 @@ describe("una foto HEIC del kit: lo que se nombra", () => {
     expect(extensionCoincide("foto.HEIC", "heic")).toBe(true);
     expect(extensionCoincide("foto.heif", "heic")).toBe(true);
     expect(extensionCoincide("foto.jpg", "heic")).toBe(false);
-    // Un HEIF con otra codificación (AVIF) no es HEIC: Velo no lo trata.
+    // Un HEIF con otra codificación (AVIF) no es HEIC: desde el S11 es su propio formato.
     const avif = caja("ftyp", texto("avif"), be32(0), texto("mif1avif"));
-    expect(formatoPorContenido(avif)).toBeNull();
+    expect(formatoPorContenido(avif)).toBe("avif");
+    const otro = caja("ftyp", texto("mif1"), be32(0), texto("mif1jpeg"));
+    expect(formatoPorContenido(otro)).toBeNull();
   });
 
   it("EXIF (tras sus 4 bytes de desplazamiento), GPS, XMP y la descripción `udes`", () => {
