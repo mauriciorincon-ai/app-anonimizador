@@ -114,10 +114,11 @@ export function DescargaDelCertificado({
   useEffect(() => {
     if (!abierta) return;
     let vigente = true;
-    setFallo(false);
     generar().then(
       (html) => {
-        if (vigente) setVistaPrevia(html);
+        if (!vigente) return;
+        setFallo(false);
+        setVistaPrevia(html);
       },
       () => {
         if (vigente) setFallo(true);
@@ -226,6 +227,7 @@ export function DescargaDelCertificado({
           onClick={() => {
             // Al cerrar se suelta el documento: al reabrir no se enseña uno viejo mientras se arma.
             if (abierta) setVistaPrevia(null);
+            setFallo(false);
             setAbierta((actual) => !actual);
           }}
         >
