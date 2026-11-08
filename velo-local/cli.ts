@@ -9,7 +9,7 @@ import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
 import { nombreDelArchivoAnonimizado } from "@/engine/csv";
-import { hashDePolitica } from "@/engine/politica";
+import { hashDePolitica, requiereBoveda } from "@/engine/politica";
 import {
   EXTENSION_DE_BOVEDA,
   abrirBoveda,
@@ -24,7 +24,7 @@ import { ArchivoCambio } from "@/workers/json";
 
 import { crearApi, escuchar, PUERTO_DE_LA_API } from "./api";
 import { abrirArchivo, ArchivoNuevo, escribirNuevo } from "./archivos";
-import { anotarEnBitacora, pedidaDePolitica } from "./comun";
+import { abrirBitacoraPara, borrarEscritos, pedidaDePolitica } from "./comun";
 import { secreto } from "./consola";
 import {
   abrirDevuelto,
@@ -141,61 +141,74 @@ async function ordenAnonimizar(
   const politica = resolverPolitica(pedida, lectura.diagnostico, idioma);
   const fecha = fechaDelDocumento(idioma, ahora());
 
+  // S10: las frases que faltan se piden ANTES de escribir el primer byte. Pedirlas después dejaba el
+  // anonimizado y el certificado en el disco sin su bóveda si la frase no llegaba.
+  const fraseDeBoveda = requiereBoveda(politica)
+    ? await secreto("VELO_FRASE_BOVEDA", V.pedir.fraseDeBoveda, idioma)
+    : null;
+  const bitacora = args.values.bitacora
+    ? await abrirBitacoraPara(args.values.bitacora, idioma)
+    : null;
+
   // El nombre de salida depende del hash de la política, que ya se sabe: se abre antes de escribir.
   const hash = hashDePolitica(politica);
   const rutaDeSalida = join(
     carpeta,
     nombreDelArchivoAnonimizado(hash, extensionDeSalida(lectura)),
   );
-  const archivo = await ArchivoNuevo.crear(rutaDeSalida);
+  const escritos: string[] = [];
   let resultado;
   try {
-    resultado = await anonimizar({
-      fuente,
-      origen,
-      lectura,
-      politica,
-      llave,
-      idioma,
-      destino: new DestinoConHuella(archivo),
-      fecha,
-    });
-    await archivo.cerrar();
+    const archivo = await ArchivoNuevo.crear(rutaDeSalida);
+    try {
+      resultado = await anonimizar({
+        fuente,
+        origen,
+        lectura,
+        politica,
+        llave,
+        idioma,
+        destino: new DestinoConHuella(archivo),
+        fecha,
+      });
+      await archivo.cerrar();
+    } catch (error) {
+      await archivo.abortar();
+      throw error;
+    }
+    escritos.push(rutaDeSalida);
+
+    const rutaDelCertificado = join(carpeta, resultado.nombreDelCertificado);
+    await escribirNuevo(rutaDelCertificado, resultado.certificado);
+    escritos.push(rutaDelCertificado);
+
+    if (resultado.boveda) {
+      const rutaDeBoveda = join(
+        carpeta,
+        `velo-boveda-${hash.slice(0, 8)}${EXTENSION_DE_BOVEDA}`,
+      );
+      await escribirNuevo(
+        rutaDeBoveda,
+        await sellarBoveda(
+          resultado.boveda,
+          fraseDeBoveda ??
+            (await secreto("VELO_FRASE_BOVEDA", V.pedir.fraseDeBoveda, idioma)),
+        ),
+      );
+      escritos.push(rutaDeBoveda);
+    }
+    await bitacora?.anotar(resultado.entrada);
   } catch (error) {
-    await archivo.abortar();
+    // Un anonimizado sin su bóveda o un certificado sin su archivo no quedan a medias en el disco.
+    await borrarEscritos(escritos);
+    await bitacora?.deshacer();
     throw error;
   }
-  consola.salida(texto(V.resultado.escrito, idioma, { ruta: rutaDeSalida }));
-
-  const rutaDelCertificado = join(carpeta, resultado.nombreDelCertificado);
-  await escribirNuevo(rutaDelCertificado, resultado.certificado);
-  consola.salida(
-    texto(V.resultado.escrito, idioma, { ruta: rutaDelCertificado }),
-  );
-
-  if (resultado.boveda) {
-    const fraseDeBoveda = await secreto(
-      "VELO_FRASE_BOVEDA",
-      V.pedir.fraseDeBoveda,
-      idioma,
-    );
-    const rutaDeBoveda = join(
-      carpeta,
-      `velo-boveda-${hash.slice(0, 8)}${EXTENSION_DE_BOVEDA}`,
-    );
-    await escribirNuevo(
-      rutaDeBoveda,
-      await sellarBoveda(resultado.boveda, fraseDeBoveda),
-    );
-    consola.salida(texto(V.resultado.escrito, idioma, { ruta: rutaDeBoveda }));
-  } else consola.aviso(texto(V.resultado.sinBoveda, idioma));
-
-  if (args.values.bitacora) {
-    await anotarEnBitacora(args.values.bitacora, resultado.entrada, idioma);
-    consola.salida(
-      texto(V.resultado.escrito, idioma, { ruta: args.values.bitacora }),
-    );
-  }
+  for (const ruta of escritos)
+    consola.salida(texto(V.resultado.escrito, idioma, { ruta }));
+  if (!resultado.boveda) consola.aviso(texto(V.resultado.sinBoveda, idioma));
+  if (bitacora)
+    consola.salida(texto(V.resultado.escrito, idioma, { ruta: bitacora.ruta }));
 
   consola.salida(
     texto(V.resultado.huellas, idioma, {
