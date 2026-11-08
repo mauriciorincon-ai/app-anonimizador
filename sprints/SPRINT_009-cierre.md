@@ -1,6 +1,6 @@
 ---
 sprint: 009 · «Velo en tu equipo» · app: anonimizador · hito: H-2 · opened: 2026-11-07 · closed: 2026-11-07
-branch: sprint-009/velo-en-tu-equipo · pr: (se escribe al abrirlo)
+branch: sprint-009/velo-en-tu-equipo · pr: #19
 ---
 
 **Objetivo:** Velo local (mismo motor, `pnpm velo`), puente a PostgreSQL y SQL Server, API REST en `127.0.0.1:3301`, JSON/JSONL en alto volumen. **Estado: construido; PR listo, merge del usuario.**
