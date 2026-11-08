@@ -959,6 +959,10 @@ export const DOCUMENTOS = {
         es: "Un bloque EXIF no se pudo leer: se quitó entero igual, pero no se sabe qué decía.",
         en: "An EXIF block could not be read: it was removed whole anyway, but what it said is unknown.",
       },
+      iptcXmpIlegible: {
+        es: "Un bloque IPTC o XMP no se pudo leer entero: se quitó completo igual, pero no se sabe todo lo que decía.",
+        en: "An IPTC or XMP block could not be read in full: it was removed whole anyway, but not everything it said is known.",
+      },
       valoresRecortados: {
         es: "Algunos valores eran muy largos y aquí aparecen recortados.",
         en: "Some values were very long and appear truncated here.",

@@ -133,6 +133,8 @@ export type ClaveDeAviso =
   | "heic-auxiliares"
   /** Un bloque EXIF que no se pudo leer: se quita entero igual, pero no se sabe qué decía. */
   | "exif-ilegible"
+  /** Un bloque IPTC o XMP que no se pudo leer entero: se quita entero igual. */
+  | "iptc-xmp-ilegible"
   | "valores-recortados"
   | "campos-de-mas"
   /** Reescribir el PDF invalida su firma. */

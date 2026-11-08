@@ -127,6 +127,8 @@ function textoDelAviso(aviso: Aviso): { texto: Texto; n: number } {
       return { texto: A.textoComprimido, n };
     case "exif-ilegible":
       return { texto: A.exifIlegible, n };
+    case "iptc-xmp-ilegible":
+      return { texto: A.iptcXmpIlegible, n };
     case "valores-recortados":
       return { texto: A.valoresRecortados, n };
     case "campos-de-mas":

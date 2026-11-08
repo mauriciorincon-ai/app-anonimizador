@@ -342,12 +342,22 @@ export const METADATOS = {
           "picture is not rotated when opened.",
       },
       "imagenes-adicionales": {
-        es:
-          "Había imágenes adicionales dentro del archivo (por ejemplo el mapa de ganancia HDR o " +
-          "vistas alternativas): se quitan con lo demás.",
-        en:
-          "There were additional images inside the file (for instance an HDR gain map or " +
-          "alternative views): they are removed along with the rest.",
+        con: {
+          es:
+            "Imágenes adicionales dentro del archivo: {n} (por ejemplo el mapa de ganancia HDR o " +
+            "vistas alternativas). Se quitan con lo demás.",
+          en:
+            "Additional images inside the file: {n} (for instance an HDR gain map or " +
+            "alternative views). They are removed along with the rest.",
+        },
+        sin: {
+          es:
+            "Había imágenes adicionales dentro del archivo (por ejemplo el mapa de ganancia HDR o " +
+            "vistas alternativas): se quitan con lo demás.",
+          en:
+            "There were additional images inside the file (for instance an HDR gain map or " +
+            "alternative views): they are removed along with the rest.",
+        },
       },
       "heic-auxiliares": {
         es:
@@ -372,6 +382,14 @@ export const METADATOS = {
         en:
           "An EXIF block could not be read: it is removed whole anyway, but Velo does not know " +
           "what it said.",
+      },
+      "iptc-xmp-ilegible": {
+        es:
+          "Un bloque IPTC o XMP no se pudo leer entero: se quita completo igual, pero Velo no " +
+          "sabe todo lo que decía.",
+        en:
+          "An IPTC or XMP block could not be read in full: it is removed whole anyway, but " +
+          "Velo does not know everything it said.",
       },
       "valores-recortados": {
         con: {
