@@ -28,6 +28,8 @@ import type { FormatoDeSeudonimo } from "../politica";
 import {
   cifraDeControlSteuer,
   claveDelNir,
+  claveDelRib,
+  controlDelCcc,
   controlDelCodiceFiscale,
   controlDelPesel,
   LETRAS_DE_MES,
@@ -94,6 +96,25 @@ const relleno = (numero: number, largo: number): string =>
 
 // ── Constructores, uno por formato ────────────────────────────────────────────────────────────
 
+/**
+ * Las claves que algunos países llevan DENTRO del BBAN (S10): el CCC de España y la clave del RIB de
+ * Francia. Un destino que las valida rechazaría un BBAN al azar. Solo estos dos países, y solo con el
+ * largo de su BBAN; el resto de los países sale como antes, y la salvedad vive en el certificado, el
+ * manual y ADR-016.
+ */
+function conClavesNacionales(pais: string, bban: string): string {
+  if (pais === "ES" && /^\d{20}$/.test(bban)) {
+    return `${bban.slice(0, 8)}${controlDelCcc(bban.slice(0, 8), bban.slice(10))}${bban.slice(10)}`;
+  }
+  if (pais === "FR" && /^\d{5}\d{5}[A-Z0-9]{11}\d{2}$/.test(bban)) {
+    const clave = String(
+      claveDelRib(bban.slice(0, 5), bban.slice(5, 10), bban.slice(10, 21)),
+    );
+    return `${bban.slice(0, 21)}${clave.padStart(2, "0")}`;
+  }
+  return bban;
+}
+
 /** IBAN: el país y el largo del original, y el BBAN nuevo con la misma clase de carácter por posición. */
 function iban(entrada: string, s: Simbolos): string {
   const limpio = sinSeparadores(entrada);
@@ -106,6 +127,7 @@ function iban(entrada: string, s: Simbolos): string {
   for (const caracter of modelo) {
     bban += /\d/.test(caracter) ? s.digito() : s.letra();
   }
+  bban = conClavesNacionales(pais, bban);
   // Los dos dígitos de control: 98 − (BBAN + país + «00», con las letras como A=10…Z=35, módulo 97).
   const numerico = `${bban}${pais}00`.replace(/[A-Z]/g, (c) =>
     String(c.charCodeAt(0) - 55),

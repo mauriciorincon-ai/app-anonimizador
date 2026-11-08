@@ -80,9 +80,12 @@ Velo's GDPR output is **pseudonymised**, and the certificate says so.
      that they do not exist**. A pseudonym can be another person's real number, and where the
      space is small next to the population (DNI, PESEL, BSN, Steuer-IdNr) that is not rare. The
      manual and the certificate say so (audit finding A1).
-   - **The national keys inside a BBAN are not recomputed**: an IBAN pseudonym passes ISO 13616
-     (mod 97-10), not the internal check digits some countries add (the Spanish CCC, the French RIB
-     key). A destination that validates those would refuse it. The certificate and the manual say so.
+   - **The national keys inside a BBAN are recomputed for Spain and France only (S10)**: an IBAN
+     pseudonym passes ISO 13616 (mod 97-10) and, for ES and FR, the Spanish CCC and the French RIB
+     key (both checked against the registry examples ES91 2100 0418 4502 0005 1332 and FR14 2004
+     1010 0505 0001 3M02 606; the official sources were not opened). The internal keys some other
+     countries add (the Italian CIN, the Belgian check pair…) are not recomputed, and a destination
+     that validates those would refuse the pseudonym. The certificate and the manual say so.
    - **Never equal to the input.** A pseudonym equal to its input would be a leak dressed as a
      pseudonym. The chance per value is about 10⁻⁸, but "almost never" is not a guarantee: if the
      candidate equals the input (ignoring separators and case) it is drawn again with the next

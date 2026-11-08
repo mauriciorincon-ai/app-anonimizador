@@ -575,9 +575,10 @@ export const DIAGNOSTICO = {
         en: "Quasi-identifier",
       },
       datoSensible: {
-        // Ley 1581 art. 5 y RGPD art. 9 y 10 caen en la misma categoría: la insignia nombra los tres.
-        es: "Dato sensible (art. 5, 9, 10)",
-        en: "Sensitive data (art. 5, 9, 10)",
+        // Ley 1581 (art. 5) y RGPD (art. 9 y 10) caen en la misma categoría: la insignia nombra las
+        // dos leyes y el informe descargable, con sus artículos. Va en `nowrap`: corta a propósito.
+        es: "Dato sensible (Ley 1581 · RGPD)",
+        en: "Sensitive data (Law 1581 · GDPR)",
       },
       noPersonal: { es: "No personal", en: "Not personal" },
     },

@@ -16,6 +16,8 @@ import {
   cumpleNie,
   cumpleNir,
   cumplePesel,
+  claveDelRib,
+  controlDelCcc,
   cumpleSteuerIdNr,
   estructuraDeSteuer,
   fechaDelPesel,
@@ -148,6 +150,40 @@ describe("la forma de cada seudónimo, más allá del control", () => {
     ).valores;
     expect(agrupado).toMatch(/^ES\d{2}( \d{4}){5}$/);
     expect(cumpleIban(agrupado)).toBe(true);
+  });
+
+  it("IBAN: los BBAN de España y de Francia salen con la clave nacional recalculada (S10)", async () => {
+    const entradas = entradasDe("iban");
+    const r = await seudonimizarConFormato(entradas, llaveA, "iban");
+    let es = 0;
+    let fr = 0;
+    entradas.forEach((original, i) => {
+      const salida = r.valores[i];
+      if (salida.startsWith("ES")) {
+        es++;
+        const bban = salida.slice(4);
+        expect(bban.slice(8, 10), salida).toBe(
+          controlDelCcc(bban.slice(0, 8), bban.slice(10)),
+        );
+      } else if (salida.startsWith("FR")) {
+        fr++;
+        const bban = salida.slice(4);
+        expect(bban.slice(21), salida).toBe(
+          String(
+            claveDelRib(
+              bban.slice(0, 5),
+              bban.slice(5, 10),
+              bban.slice(10, 21),
+            ),
+          ).padStart(2, "0"),
+        );
+      }
+      // Sigue siendo un IBAN: la clave nacional no rompe el módulo 97.
+      expect(cumpleIban(salida), salida).toBe(true);
+      expect(original).not.toBe(salida);
+    });
+    expect(es).toBeGreaterThan(100);
+    expect(fr).toBeGreaterThan(100);
   });
 
   it("IBAN: un valor sin forma de IBAN sale como un IBAN español sintético", async () => {

@@ -1078,9 +1078,10 @@ Z—; sirve para explicar el algoritmo y no es de nadie.
 - **No conserva nada del original,** ni el departamento, ni el año, ni el sexo: esos campos son
   cuasi-identificadores, y heredarlos sería dejar la mitad del dato a la vista.
 - **El IBAN es la excepción parcial:** conserva el país, el largo, qué posiciones son dígitos y cuáles
-  letras, y el agrupado de a cuatro si venía agrupado. Pasa el control ISO 13616, pero **no
-  recalcula las claves nacionales que van dentro** (el CCC español, la clave RIB francesa), así que
-  un destino que las valide puede rechazarlo.
+  letras, y el agrupado de a cuatro si venía agrupado. Pasa el control ISO 13616 y, en España y
+  Francia, **recalcula las claves nacionales que van dentro** (el CCC español, la clave RIB
+  francesa); **las de los demás países no se recalculan**, así que un destino que las valide puede
+  rechazarlo.
 - **Los números que salen son sintéticos, pero Velo no comprueba que no existan.** Pasan el control
   de su documento y no conservan nada del original, pero Velo no puede saber qué números están
   asignados a personas reales: un seudónimo puede ser, por casualidad, el número real de otra
@@ -1336,9 +1337,9 @@ que no declara anónimo ningún archivo. Está explicado en
 
 **¿Por qué mi IBAN seudonimizado lo rechaza mi banco o mi sistema?**
 Porque el IBAN que sale pasa el control general (ISO 13616, mod 97-10) y conserva el país, el largo
-y el agrupado, pero Velo **no recalcula las claves nacionales que van dentro**, como el CCC español
-o la clave RIB francesa. Un destino que las valide lo rechaza. Si es tu caso, ese seudónimo no le
-servirá: entrega esa columna de otra forma (un seudónimo hexadecimal, que no finge ser un IBAN, o
+y el agrupado. En España y Francia, Velo también recalcula las claves nacionales que van dentro (el
+CCC español, la clave RIB francesa); en los demás países **no las recalcula**, y un destino que las
+valide lo rechaza. Si es tu caso, ese seudónimo no le servirá: entrega esa columna de otra forma (un seudónimo hexadecimal, que no finge ser un IBAN, o
 sin la columna).
 
 **Tengo una foto en HEIC, la de mi iPhone. ¿Puedo limpiarla?**
