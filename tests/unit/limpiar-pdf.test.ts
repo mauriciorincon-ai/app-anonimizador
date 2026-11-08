@@ -486,7 +486,9 @@ describe("topes medidos ANTES de pdf-lib (sin tumbar el worker)", () => {
     const inicio = performance.now();
     expect(await motivo(analizarPdf(denso))).toBe("pdf-ilegible");
     expect(await motivo(limpiarPdf(denso))).toBe("pdf-ilegible");
-    expect(performance.now() - inicio).toBeLessThan(500);
+    // 2 s y no 500 ms: con cobertura y la suite entera en paralelo en la CI un recorrido de 115 ms locales
+    // tardó 621 ms (S7). El tope sigue separando un recorrido lineal de uno que trabaja de más.
+    expect(performance.now() - inicio).toBeLessThan(2_000);
   });
 
   it("una bomba de compresión en un `/ObjStm` se mide inflándola por trozos y se rechaza", async () => {

@@ -583,7 +583,7 @@ function bytesDeUbicacion(
   heif: Heif,
   u: Ubicacion,
 ): Uint8Array | null {
-  if (u.metodo === 2 || !referenciaPropia(heif, u.referencia)) return null;
+  if (u.metodo >= 2 || !referenciaPropia(heif, u.referencia)) return null;
   const base = u.metodo === 1 ? heif.idat : null;
   if (u.metodo === 1 && base === null) fallar();
   const partes: Uint8Array[] = [];
@@ -628,7 +628,7 @@ function planear(bytes: Uint8Array): Plan {
   for (const id of conservados) {
     const u = ubicacionDe.get(id);
     if (!u) continue;
-    if (u.metodo === 2 || !referenciaPropia(heif, u.referencia))
+    if (u.metodo >= 2 || !referenciaPropia(heif, u.referencia))
       fallar(NO_SOPORTADA);
     for (const t of u.tramos) if (t.largo === 0) fallar(NO_SOPORTADA);
     bytesDeUbicacion(bytes, heif, u);

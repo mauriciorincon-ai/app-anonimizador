@@ -131,7 +131,7 @@ interface ElementoDePrueba {
   id: number;
   tipo: string;
   datos: Uint8Array;
-  metodo?: 0 | 1 | 2;
+  metodo?: number;
   contenido?: string;
   protegido?: boolean;
 }
@@ -429,6 +429,12 @@ describe("la estructura, caso por caso", () => {
       () => analizarHeic(armar({ elementos: [{ ...una, metodo: 2 }] })),
       "imagen-no-soportada",
     );
+    // Los métodos 3 a 15 están reservados: no se leen como si fueran 0, y no son un archivo roto.
+    for (const metodo of [3, 7, 15])
+      esperarError(
+        () => analizarHeic(armar({ elementos: [{ ...una, metodo }] })),
+        "imagen-no-soportada",
+      );
   });
 
   it("el elemento primario no puede ser un metadato, ni una imagen armada con uno", () => {
