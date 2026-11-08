@@ -284,15 +284,125 @@ export function palabrasDelNombre(nombre: string): string[] {
     .filter((palabra) => palabra !== "");
 }
 
+/**
+ * S10: palabras que, solas, también nombran cosas: `nom_produit` es el nombre de un producto,
+ * `genre_film` el de una película, `diagnostic_moteur` el de un motor, `server_health` el estado de
+ * un servidor. La política `rgpd` suprimía esas columnas inocentes. Siguen contando —una sospecha de
+ * más es el lado seguro— salvo cuando el nombre trae una palabra de {@link COSAS}.
+ */
+const SUELTAS: ReadonlySet<string> = new Set([
+  "infraction",
+  "health",
+  "diagnostic",
+  "address",
+  "nom",
+  "genre",
+]);
+
+/** Lo que dice que la columna habla de una cosa, no de una persona. Palabras completas, sin acentos. */
+const COSAS: ReadonlySet<string> = new Set([
+  // productos y artículos
+  ...[
+    "product",
+    "produit",
+    "prodotto",
+    "produkt",
+    "produto",
+    "item",
+    "article",
+    "artikel",
+  ],
+  // archivos y sistemas
+  ...["file", "fichier", "datei", "bestand", "plik", "ficheiro", "arquivo"],
+  ...[
+    "server",
+    "serveur",
+    "system",
+    "systeme",
+    "sistema",
+    "service",
+    "device",
+    "appareil",
+  ],
+  ...[
+    "network",
+    "reseau",
+    "netzwerk",
+    "host",
+    "domain",
+    "domaine",
+    "check",
+    "memory",
+  ],
+  // máquinas y vehículos
+  ...[
+    "machine",
+    "maschine",
+    "moteur",
+    "motor",
+    "engine",
+    "vehicle",
+    "vehicule",
+    "fahrzeug",
+  ],
+  // empresas y lugares de negocio
+  ...[
+    "company",
+    "societe",
+    "entreprise",
+    "unternehmen",
+    "azienda",
+    "empresa",
+    "bedrijf",
+  ],
+  ...[
+    "store",
+    "shop",
+    "magasin",
+    "boutique",
+    "branch",
+    "filiale",
+    "contract",
+    "contrat",
+  ],
+  // catálogos y obras
+  ...[
+    "category",
+    "categorie",
+    "kategorie",
+    "categoria",
+    "project",
+    "projet",
+    "projekt",
+  ],
+  ...[
+    "music",
+    "musique",
+    "musik",
+    "musica",
+    "film",
+    "movie",
+    "book",
+    "livre",
+    "buch",
+    "libro",
+  ],
+  ...["game", "jeu", "spiel", "gioco", "jogo", "album", "song", "chanson"],
+]);
+
 /** ¿Alguna de las palabras (o secuencia de hasta tres) del nombre está en la lista de la regla? */
 function coincide(
   regla: ReglaDePalabras,
   palabras: readonly string[],
 ): boolean {
   const conocidas = new Set(regla.palabras);
+  const deUnaCosa = palabras.some((palabra) => COSAS.has(palabra));
   for (let largo = 1; largo <= 3; largo++) {
     for (let i = 0; i + largo <= palabras.length; i++) {
-      if (conocidas.has(palabras.slice(i, i + largo).join(" "))) return true;
+      const frase = palabras.slice(i, i + largo).join(" ");
+      if (!conocidas.has(frase)) continue;
+      if (deUnaCosa && SUELTAS.has(frase)) continue;
+      return true;
     }
   }
   return false;
