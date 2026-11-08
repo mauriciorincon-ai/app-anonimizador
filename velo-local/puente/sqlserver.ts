@@ -97,7 +97,10 @@ export async function conectarSqlServer(url: string): Promise<Conexion> {
       throw traducir(error);
     }
   };
-  const texto = (valor: string | null) => ({ tipo: sql.NVarChar(sql.MAX), valor });
+  const texto = (valor: string | null) => ({
+    tipo: sql.NVarChar(sql.MAX),
+    valor,
+  });
 
   const nombre = (await consultar("SELECT DB_NAME()"))[0][0]!;
 
@@ -177,12 +180,18 @@ export async function conectarSqlServer(url: string): Promise<Conexion> {
         valor: string | null;
       }[] = [];
       if (despuesDe) {
+        // S10: una llave binaria viaja como texto hexadecimal («0x0A1B», estilo 1). SQL Server no
+        // convierte solo un NVARCHAR en VARBINARY: el parámetro se convierte de vuelta, con el mismo estilo.
+        const marca = (n: string, i: number) =>
+          BINARIOS.has(porNombre.get(n)?.tipo.toLowerCase() ?? "")
+            ? `CONVERT(VARBINARY(MAX), @p${i}, 1)`
+            : `@p${i}`;
         // SQL Server no compara filas: «a > x  O  (a = x  Y  b > y)  O …», una rama por columna.
         const ramas = t.llave.map((_, i) => {
           const iguales = t.llave
             .slice(0, i)
-            .map((n, j) => `t.${citar(n)} = @p${j}`);
-          return `(${[...iguales, `t.${citar(t.llave[i])} > @p${i}`].join(" AND ")})`;
+            .map((n, j) => `t.${citar(n)} = ${marca(n, j)}`);
+          return `(${[...iguales, `t.${citar(t.llave[i])} > ${marca(t.llave[i], i)}`].join(" AND ")})`;
         });
         filtro = `WHERE ${ramas.join(" OR ")}`;
         parametros.push(...despuesDe.map(texto));
