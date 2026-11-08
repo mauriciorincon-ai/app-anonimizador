@@ -552,6 +552,14 @@ export function esDeRuido(
 }
 
 /**
+ * ¿Es de ruido y deja un NÚMERO? Laplace y perturbar sí; la respuesta aleatorizada elige entre
+ * categorías y devuelve texto. Es lo que decide si un número con ruido sale sin comillas en un JSON.
+ */
+export function esDeRuidoNumerico(tecnica: Tecnica): boolean {
+  return tecnica.tipo === "laplace" || tecnica.tipo === "perturbar";
+}
+
+/**
  * ¿Esta técnica guarda la correspondencia para poder deshacerse?
  *
  * Solo las dos de seudónimo pueden ser reversibles, y no es una limitación de esta versión: una

@@ -48,6 +48,7 @@ import { generalizacionAplicada, TOPE_DE_NODOS } from "@/engine/optima";
 import {
   columnasDeMondrian,
   esDeRuido,
+  esDeRuidoNumerico,
   esReversible,
   tecnicaDe,
   type Politica,
@@ -225,6 +226,8 @@ export interface OpcionesDeLaPasada {
   readonly huella?: string;
   /** Cómo se escribe la salida de la pasada C o del regreso. Por omisión, CSV. */
   readonly formato?: FormatoDeSalida;
+  /** S10: columnas del JSON de entrada que eran todo números; las de ruido numérico salen sin comillas. */
+  readonly numericas?: ReadonlySet<string>;
   readonly alAvanzar?: (filas: number, bytes: number, total: number) => void;
 }
 
@@ -1048,11 +1051,22 @@ export async function escribirCsv(
     .filter((c) => c >= 0);
   const ruidos = contextosDeRuido(plan);
   const formato = opciones.formato ?? FORMATO_CSV;
+  // Un número al que se le puso ruido sigue siendo un número: solo si la columna lo era entera.
+  const conRuidoNumerico = new Set<number>();
+  for (const c of vivas) {
+    const p = plan.planes[c]!;
+    if (
+      p.tipo === "ruido" &&
+      esDeRuidoNumerico(p.tecnica) &&
+      opciones.numericas?.has(plan.nombres[c])
+    )
+      conRuidoNumerico.add(c);
+  }
   await destino.escribir(
     await formato.iniciar({
       nombres: vivas.map((c) => plan.nombres[c]),
       vivas,
-      numericas: new Set(),
+      numericas: conRuidoNumerico,
     }),
   );
   let acumulado = "";

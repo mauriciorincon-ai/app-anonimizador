@@ -55,6 +55,7 @@ import {
   columnasDeMondrian,
   hashDePolitica,
   jerarquiaDe,
+  esDeRuidoNumerico,
   tecnicaDe,
   type JerarquiaDeLaPolitica,
   type Politica,
@@ -691,6 +692,8 @@ let transformada: TablaColumnar | null = null;
 /** Las clases de equivalencia del DESPUÉS, para estimar sin recorrer el archivo otra vez. */
 let clasesDespues: ClasesDeEquivalencia | null = null;
 let hashDeLaPolitica = "";
+/** Columnas del JSON que eran todo números y a las que la política les puso ruido numérico. */
+let numericasConRuido: ReadonlySet<string> = new Set();
 /** El material de la bóveda: pares (original, seudónimo) de las columnas reversibles. */
 let correspondencias: readonly EntradaDeBoveda[] = [];
 
@@ -762,6 +765,14 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
       resultado.tabla.filas,
     );
     hashDeLaPolitica = hashDePolitica(politica);
+    numericasConRuido =
+      formatoOriginal === "json" && lecturaJson !== null
+        ? new Set(
+            [...columnasNumericas(lecturaJson)].filter((nombre) =>
+              esDeRuidoNumerico(tecnicaDe(politica, nombre)),
+            ),
+          )
+        : new Set();
     // El material de la bóveda se guarda AQUÍ, del lado de la frontera donde están los originales.
     // Sellarlo es un mensaje aparte porque exige la frase de paso del usuario, que se pide después.
     correspondencias =
@@ -1154,6 +1165,7 @@ async function construirArchivoAltoVolumen(
     salida = await destinoDe(asa);
     await escribirCsv(archivo, plan, salida.destino, {
       formato: formato.formato?.(),
+      numericas: formato.numericas,
       alAvanzar: (filas, bytes, total) =>
         avisar("escribiendo", filas, bytes, total),
     });
@@ -1195,6 +1207,7 @@ async function construirArchivoJson(
       fuente,
       lecturaJson,
       tablaTransformada,
+      numericasConRuido,
     )) {
       trozos.push(trozo);
       huellaDeSalida.actualizar(codificador.encode(trozo));
