@@ -186,8 +186,8 @@ export const MOTOR_TRANSFORMAR = {
   },
   "fabrica.hipaa.cob.N.id": { es: "URLs", en: "Web addresses (URLs)" },
   "fabrica.hipaa.cob.N.porque": {
-    es: "Velo no trae validador de URL en el S1. Si tu tabla las lleva, márcalas tú.",
-    en: "Velo does not include a URL validator in this version. If your table has them, mark them yourself.",
+    es: "Velo no trae validador de URL. Si tu tabla las lleva, márcalas tú.",
+    en: "Velo does not include a URL validator. If your table has them, mark them yourself.",
   },
   "fabrica.hipaa.cob.O.id": { es: "Direcciones IP", en: "IP addresses" },
   "fabrica.hipaa.cob.P.id": {

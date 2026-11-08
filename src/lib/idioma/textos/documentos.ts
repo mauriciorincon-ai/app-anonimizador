@@ -281,8 +281,8 @@ export const DOCUMENTOS = {
       en: "Smallest group, after",
     },
     mismoCalculo: {
-      es: "Las dos medidas salen del mismo cálculo del S1, corrido sobre el archivo original y sobre el que se descarga. Las columnas cruzadas «después» son las de «antes» menos {suprimidas_html}: quien reciba el archivo no las tendrá.",
-      en: "Both measurements come from the same S1 calculation, run on the original file and on the one that is downloaded. The “after” combined columns are the “before” ones minus {suprimidas_html}: whoever receives the file will not have them.",
+      es: "Las dos medidas salen del mismo cálculo del diagnóstico, corrido sobre el archivo original y sobre el que se descarga. Las columnas cruzadas «después» son las de «antes» menos {suprimidas_html}: quien reciba el archivo no las tendrá.",
+      en: "Both measurements come from the same diagnostic calculation, run on the original file and on the one that is downloaded. The “after” combined columns are the “before” ones minus {suprimidas_html}: whoever receives the file will not have them.",
     },
     idiomaDelTrabajo: {
       es: "Idioma del trabajo: **{idioma}**. Es el que tenía Velo al pulsar «transformar» y el de los rótulos que escribió dentro del archivo: en un intervalo agrupado, «{separador}» entre los extremos y «{vacio}» si también cubre celdas vacías. No cambia la política ni su identidad.",

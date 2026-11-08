@@ -440,10 +440,9 @@ export const DIAGNOSTICO = {
         "those {n} columns.",
     },
     registros: { es: "{cifra} registros.", en: "{cifra} records." },
-    // El español del singular («las 1 columna que identifica») es el de siempre y se conserva.
     noCuentaUna: {
       es:
-        "Esta cifra **no cuenta** las {n} columna que identifica sin ayuda de ninguna otra: a " +
+        "Esta cifra **no cuenta** {n} columna que identifica sin ayuda de ninguna otra: a " +
         "esa gente no hay que cruzarla con nada para saber quién es.",
       en:
         "This figure **does not count** the {n} column that identifies people without any " +
@@ -533,9 +532,8 @@ export const DIAGNOSTICO = {
     // El alcance se cuenta en cuatro tramos porque entre ellos van elementos con su propio
     // aspecto (la cifra en `cifra`) y un tramo opcional.
     alcanceInicio: { es: "Velo evaluó", en: "Velo evaluated" },
-    // El español del singular («las 1 columna candidata») es el de siempre y se conserva tal cual.
     alcanceCombinacionesUna: {
-      es: "combinaciones de las {n} columna candidata",
+      es: "combinaciones de {n} columna candidata",
       en: "combinations of the {n} candidate column",
     },
     alcanceCombinacionesVarias: {

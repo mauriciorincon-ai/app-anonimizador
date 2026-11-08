@@ -853,8 +853,8 @@ export const TRANSFORMAR = {
     },
     etiqueta: {
       certificado: {
-        es: "Paso 6 · el certificado",
-        en: "Step 6 · the certificate",
+        es: "El certificado",
+        en: "The certificate",
       },
       reporte: { es: "Reporte", en: "Report" },
     },
