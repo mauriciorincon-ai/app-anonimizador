@@ -334,7 +334,7 @@ describe("avisos de lo que no se pudo leer entero", () => {
       jpeg([app13([recurso8bim(0x0404, [2, 80, 0, 50, 65])])]),
     );
     expect(iptcCortado.avisos).toEqual([{ clave: "iptc-xmp-ilegible" }]);
-    const xmpSinXml = analizarJpeg(jpeg([app1Xmp(texto("no es xml"))]));
+    const xmpSinXml = analizarJpeg(jpeg([app1Xmp("no es xml")]));
     expect(xmpSinXml.avisos).toEqual([{ clave: "iptc-xmp-ilegible" }]);
     const xmpSano = analizarJpeg(jpeg([app1Xmp(XMP)]));
     expect(xmpSano.avisos).toEqual([]);
