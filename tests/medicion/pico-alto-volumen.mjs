@@ -1,4 +1,13 @@
-// Medición del alto volumen EN CHROMIUM: el pico de memoria y los tiempos de la ida y del regreso.
+// Medición del alto volumen: el pico de memoria y los tiempos de la ida y del regreso.
+//
+// S11: en Chromium (por omisión) y, con `NAVEGADOR=firefox` o `NAVEGADOR=webkit`, en el Firefox y el
+// WebKit de Playwright, que no tienen selector de archivo del sistema. `SERVICE_WORKER=0` bloquea el
+// service worker de la descarga: sin él, el CSV sale por el respaldo por partes (armado en memoria),
+// que es lo que antes de la F3 hacían todos los navegadores sin selector; con él, por el canal a la
+// descarga del navegador. `SOLO_IDA=1` termina tras escribir y descargar el anonimizado (sin bóveda
+// ni regreso): es lo que cambia en la F3 y lo único que hace falta medir en esos navegadores.
+// El pico de Firefox y de WebKit es el RSS de los procesos cuyo ejecutable vive en `ms-playwright/`
+// (los de WebKit no cuelgan de este proceso en macOS), y se compara contra sí mismo, no con Chromium.
 //
 // Se corre a mano, contra el build: `pnpm build && node tests/medicion/pico-alto-volumen.mjs`. No entra
 // a la CI porque tarda unos veinte minutos y no verifica nada salvo el regreso (la columna con
@@ -27,7 +36,7 @@ import { createReadStream, existsSync, mkdirSync, rmSync } from "node:fs";
 import { connect } from "node:net";
 import { join } from "node:path";
 
-import { chromium } from "@playwright/test";
+import { chromium, firefox, webkit } from "@playwright/test";
 import Papa from "papaparse";
 
 const RAIZ = new URL("../..", import.meta.url).pathname;
@@ -40,6 +49,9 @@ const PERFIL = join(SALIDA, "perfil");
 const HUELLAS = {
   5_000_000: "47f6d50707b3fddc118ce073f3b966c88f879501a93ab251b1d831bdcf70953d",
 };
+const NAVEGADOR = process.env.NAVEGADOR ?? "chromium";
+const SERVICE_WORKER = process.env.SERVICE_WORKER !== "0";
+const SOLO_IDA = Boolean(process.env.SOLO_IDA);
 const PUERTO = 3300;
 const BASE = `http://127.0.0.1:${PUERTO}`;
 const FRASE_DE_LLAVE = "una frase de la medida de cinco millones";
@@ -118,9 +130,10 @@ if (!(await escucha())) {
     await new Promise((r) => setTimeout(r, 200));
 }
 
-const nav = await chromium.launchPersistentContext(PERFIL, {
+const nav = await { chromium, firefox, webkit }[NAVEGADOR].launchPersistentContext(PERFIL, {
   locale: "es-CO",
   acceptDownloads: true,
+  serviceWorkers: SERVICE_WORKER ? "allow" : "block",
 });
 const propios = new Set(servidorPropio ? [String(servidorPropio.pid)] : []);
 
@@ -136,7 +149,25 @@ const hijosDe = (p) => {
 };
 let picoDelPaso = 0;
 let picoTotal = 0;
+/** Los procesos de Firefox o de WebKit de Playwright: por su ejecutable, no por quién los lanzó. */
+const delNavegadorPorRuta = () => {
+  try {
+    return execFileSync("ps", ["-axo", "pid=,rss=,command="], { encoding: "utf8" })
+      .split("\n")
+      .filter((linea) => linea.includes(`ms-playwright/${NAVEGADOR}`))
+      .map((linea) => Number(linea.trim().split(/\s+/)[1]));
+  } catch {
+    return [];
+  }
+};
 const muestreo = setInterval(() => {
+  if (NAVEGADOR !== "chromium") {
+    for (const rss of delNavegadorPorRuta()) {
+      picoDelPaso = Math.max(picoDelPaso, rss);
+      picoTotal = Math.max(picoTotal, rss);
+    }
+    return;
+  }
   // Todo lo que cuelga de este proceso salvo el `next start` propio: el navegador y sus hijos.
   const pendientes = hijosDe(process.pid).filter((h) => !propios.has(h));
   const delNavegador = [];
@@ -170,6 +201,9 @@ const sinSelector = (pagina) =>
   pagina.addInitScript(() => {
     delete window.showSaveFilePicker;
   });
+
+/** `SOLO_IDA`: se acabó lo que había que medir; no es un fallo. */
+class Termino extends Error {}
 
 let codigo = 0;
 try {
@@ -214,13 +248,34 @@ try {
   ]);
   marca("B+M · transformar y medir");
 
-  await page.getByRole("button", { name: "Preparar el archivo" }).click();
-  const guardar = page.getByRole("link", { name: /^Guardar velo-anonimizado-/ });
-  await guardar.waitFor({ timeout: 60 * MINUTOS });
-  marca("C · escribir");
-  const [descarga] = await Promise.all([page.waitForEvent("download"), guardar.click()]);
   const anonimizado = join(SALIDA, "anonimizado.csv");
-  await descarga.saveAs(anonimizado);
+  if (SERVICE_WORKER) {
+    // S11: «Preparar el archivo» dispara la descarga y el archivo se guarda mientras se escribe.
+    const [descarga] = await Promise.all([
+      page.waitForEvent("download", { timeout: 60 * MINUTOS }),
+      page.getByRole("button", { name: "Preparar el archivo" }).click(),
+    ]);
+    await page
+      .getByText(/Enviado a la descarga de tu navegador/)
+      .waitFor({ timeout: 60 * MINUTOS });
+    marca("C · escribir (service worker)");
+    await descarga.saveAs(anonimizado);
+  } else {
+    await page.getByRole("button", { name: "Preparar el archivo" }).click();
+    // Sin service worker: un solo archivo si cabe en una parte, o el respaldo por partes.
+    const guardar = page.getByRole("link", { name: /^Guardar velo-anonimizado-/ });
+    const partes = page.getByText(/salió en \d+ partes/);
+    await Promise.race([
+      guardar.waitFor({ timeout: 60 * MINUTOS }),
+      partes.waitFor({ timeout: 60 * MINUTOS }),
+    ]);
+    marca("C · escribir (en memoria)");
+    if ((await guardar.count()) > 0) {
+      const [descarga] = await Promise.all([page.waitForEvent("download"), guardar.click()]);
+      await descarga.saveAs(anonimizado);
+    }
+  }
+  if (SOLO_IDA) throw new Termino();
 
   await page.getByLabel("Frase de paso de la bóveda").fill(FRASE_DE_BOVEDA);
   await page.getByRole("button", { name: "Cifrar y preparar la bóveda" }).click();
@@ -279,12 +334,22 @@ try {
   );
   if (!(volvio && enOrden && intactas)) codigo = 1;
 } catch (error) {
-  console.error("FALLO:", error.message);
-  codigo = 1;
+  if (!(error instanceof Termino)) {
+    console.error("FALLO:", error.message);
+    codigo = 1;
+  }
 } finally {
   clearInterval(muestreo);
   console.log(`PICO RSS del proceso más pesado: ${Math.round(picoTotal / 1024)} MB`);
-  console.log(JSON.stringify({ filas: FILAS, pasos: filas, picoMb: Math.round(picoTotal / 1024) }));
+  console.log(
+    JSON.stringify({
+      navegador: NAVEGADOR,
+      serviceWorker: SERVICE_WORKER,
+      filas: FILAS,
+      pasos: filas,
+      picoMb: Math.round(picoTotal / 1024),
+    }),
+  );
   await nav.close();
   if (servidorPropio) process.kill(-servidorPropio.pid);
   // `CONSERVAR=1` deja las descargas en `tmp/` para mirarlas cuando el regreso no cuadra.

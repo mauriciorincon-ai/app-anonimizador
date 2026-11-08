@@ -32,7 +32,7 @@ own section below.
 And Velo works with **three kinds of file**, not one. **Tables** (CSV and Excel) and **JSON** (an
 array of objects, or JSON Lines) go through the diagnosis and the workshop of sections 2 to 7; for
 JSON, [how it is read and what is not treated](#if-your-file-is-a-json) is explained in section 1.
-**PDFs and images** (JPEG, PNG, WebP and HEIC, the format iPhone photos come in) are not tabular
+**PDFs and images** (JPEG, PNG, WebP, HEIC —the format iPhone photos come in—, AVIF and a Live Photo's video) are not tabular
 data: Velo cleans their **metadata**, what the
 file says about itself that nobody sees on screen (author, camera, location, dates, earlier
 versions), and [section 8](#8-pdfs-and-images-cleaning-what-the-file-says-about-itself) explains it.
@@ -82,13 +82,13 @@ works from the keyboard: reach it with the Tab key and open it with Enter). The 
 
 Velo reads:
 
-| Format                                                                                      | Limit               | Why                                                                                                                                                                                     |
-| ------------------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CSV** (`.csv`)                                                                            | no limit on weight  | It is read in parts; it never exists whole in memory. Above 20,000,000 cells, Velo reads it [in passes](#9-huge-files-high-volume-mode).                                                |
-| **Excel** (`.xlsx`, `.xls`)                                                                 | **150 MB**          | An Excel file has to be opened whole to be read. Above that size the browser runs out of memory, so Velo rejects it **before** opening it.                                              |
-| **JSON** (`.json`) and **JSON Lines** (`.jsonl`, `.ndjson`)                                 | no limit on records | The table Velo builds lives in memory up to 20,000,000 cells (records × distinct paths); above that, it reads the file [in passes](#9-huge-files-high-volume-mode) without building it. |
-| **PDF** (`.pdf`)                                                                            | **50 MB**           | A PDF cannot be rewritten in parts: it is opened whole in memory, and what weighs is how many pieces it holds. Velo rejects it **before** opening it.                                   |
-| **Image**: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), WebP (`.webp`) and HEIC (`.heic`, `.heif`) | **100 MB**          | Same as the PDF: it is rewritten in one go.                                                                                                                                             |
+| Format                                                                                                                                     | Limit               | Why                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CSV** (`.csv`)                                                                                                                           | no limit on weight  | It is read in parts; it never exists whole in memory. Above 20,000,000 cells, Velo reads it [in passes](#9-huge-files-high-volume-mode).                                                |
+| **Excel** (`.xlsx`, `.xls`)                                                                                                                | **150 MB**          | An Excel file has to be opened whole to be read. Above that size the browser runs out of memory, so Velo rejects it **before** opening it.                                              |
+| **JSON** (`.json`) and **JSON Lines** (`.jsonl`, `.ndjson`)                                                                                | no limit on records | The table Velo builds lives in memory up to 20,000,000 cells (records × distinct paths); above that, it reads the file [in passes](#9-huge-files-high-volume-mode) without building it. |
+| **PDF** (`.pdf`)                                                                                                                           | **50 MB**           | A PDF cannot be rewritten in parts: it is opened whole in memory, and what weighs is how many pieces it holds. Velo rejects it **before** opening it.                                   |
+| **Image**: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), WebP (`.webp`), HEIC (`.heic`, `.heif`), AVIF (`.avif`) and a Live Photo's video (`.mov`) | **100 MB**          | Same as the PDF: it is rewritten in one go.                                                                                                                                             |
 
 The JSON limits are: **256 distinct paths**, **32 levels** of nesting inside a record, keys of up
 to 256 characters and strings of up to 1,048,576 characters. Going past any of them is rejected with
@@ -106,11 +106,11 @@ Two more things about what Velo reads:
   really a PNG, it treats it as a PNG, says so in a notice, and the clean copy comes out with the
   extension that fits. If the contents are none of what Velo reads (a `.json` that is really a PDF,
   for instance), it is rejected with a message that says what to do.
-- **It reads HEIC**, the format many iPhones save photos in (`.heic` and `.heif`), but only to clean
-  its metadata, like any other image. Velo **does not convert** the photo or decode it: the clean
-  copy is still a HEIC. What it removes, what it keeps and what it refuses is in
-  [section 8](#8-pdfs-and-images-cleaning-what-the-file-says-about-itself). A HEIF that stores the
-  picture in another format (AVIF) is not a HEIC, and Velo does not read it.
+- **It reads HEIC and AVIF**, the formats many phones save photos in (`.heic`, `.heif` and
+  `.avif`), and **a Live Photo's video** (`.mov`), but only to clean their metadata, like any other
+  image. Velo **does not convert** the photo or decode it: the clean copy is still the same format.
+  What it removes, what it keeps and what it refuses is in
+  [section 8](#8-pdfs-and-images-cleaning-what-the-file-says-about-itself).
 
 While it works you will see where it is: **taking the file's fingerprint**, **reading the file**,
 **recognizing what is in each column** and **measuring the re-identification risk**. The bar only
@@ -473,7 +473,8 @@ appears under the minimum-group-size box. There you choose between two roads to 
 - **The optimal generalization.** It moves each column up its own **ladder** to one level, **the
   same across the whole file**, and out of every combination of levels it picks the one that meets k
   while losing the least information, measured in bits. It is the OLA algorithm (El Emam et al.,
-  _JAMIA_, 2009). **It does not delete rows.**
+  _JAMIA_, 2009). **By default it does not delete rows**; if you ask it to, it may delete up to a cap
+  (below).
 
 Your choice is stored inside the policy, so it travels with it if you export it.
 
@@ -481,26 +482,48 @@ Your choice is stored inside the policy, so it travels with it if you export it.
 climbs. Velo suggests one from the column's type and name; if it does not fit, you change it in the
 “Generalization ladder for the column …” dropdown:
 
-| Ladder                                                     | What it does                                                    |
-| ---------------------------------------------------------- | --------------------------------------------------------------- |
-| “Ranges of 5, 10, 20 and 40”                               | A number in ever wider ranges.                                  |
-| “Ranges of 10, 100, 1,000 and 10,000”                      | The same, for big figures.                                      |
-| “Date: month, quarter, year”                               | The quarter comes out as an interval (`1987-01/1987-03`).       |
-| “First 3, 2 and 1 characters”                              | A code that keeps fewer and fewer characters from the start.    |
-| “The value or nothing”                                     | The value as it is, or suppressed (`*`), with no steps between. |
-| “Municipality, department, region (DIVIPOLA, DANE)”        | Built in, with an official source.                              |
-| “Age: five-year groups, broad groups (DANE)”               | Built in, with an official source.                              |
-| “Economic activity: group, division, section (CIIU, DANE)” | Built in, with an official source.                              |
+| Ladder                                                                 | What it does                                                    |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| “Ranges of 5, 10, 20 and 40”                                           | A number in ever wider ranges.                                  |
+| “Ranges of 10, 100, 1,000 and 10,000”                                  | The same, for big figures.                                      |
+| “Date: month, quarter, year”                                           | The quarter comes out as an interval (`1987-01/1987-03`).       |
+| “First 3, 2 and 1 characters”                                          | A code that keeps fewer and fewer characters from the start.    |
+| “The value or nothing”                                                 | The value as it is, or suppressed (`*`), with no steps between. |
+| “Municipality, department, region (DIVIPOLA, DANE)”                    | Built in, with an official source.                              |
+| “Age: five-year groups, broad groups (DANE)”                           | Built in, with an official source.                              |
+| “Economic activity: group, division, section (ISIC Rev. 4 A.C., DANE)” | Built in, with an official source.                              |
+| “Economic activity: group, division, section (ISIC Rev. 5 A.C., DANE)” | Built in, with an official source.                              |
 
-The three built-in ladders rest on official sources, and the certificate cites them with the date
+The built-in ladders rest on official sources, and the certificate cites them with the date
 they were consulted (November 2, 2026):
 
-| Ladder                              | Source and version                                                                                                                                                                                |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Municipality → department           | DANE, DIVIPOLA “Códigos municipios”, published on datos.gov.co (dataset gdxc-w37w), update cut off on December 30, 2024: 1,122 municipalities and areas, 33 departments.                          |
-| Department → region                 | Ley 2056 de 2020, article 45 (secretariasenado.gov.co): the 6 regions of the General Royalties System.                                                                                            |
-| Age → five-year group → broad group | DANE, Population Projections and Demographic Studies (PPED), July 2025 update: five-year groups from 0-4 to 95-99 and 100 and over; broad groups 0-14, 15-59 and 60 and over.                     |
-| Economic activity                   | DANE, CIIU Rev. 4 A.C. (ISIC Rev. 4 adapted for Colombia), 2022 update, adopted by Resolución 2306 de 2022: class, group, division, section. Rev. 5 A.C. is not included (see “What comes next”). |
+| Ladder                              | Source and version                                                                                                                                                            |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Municipality → department           | DANE, DIVIPOLA “Códigos municipios”, published on datos.gov.co (dataset gdxc-w37w), update cut off on December 30, 2024: 1,122 municipalities and areas, 33 departments.      |
+| Department → region                 | Ley 2056 de 2020, article 45 (secretariasenado.gov.co): the 6 regions of the General Royalties System.                                                                        |
+| Age → five-year group → broad group | DANE, Population Projections and Demographic Studies (PPED), July 2025 update: five-year groups from 0-4 to 95-99 and 100 and over; broad groups 0-14, 15-59 and 60 and over. |
+| Economic activity (Rev. 4)          | DANE, CIIU Rev. 4 A.C. (ISIC Rev. 4 adapted for Colombia), 2022 update, adopted by Resolución 2306 de 2022: class, group, division, section.                                  |
+| Economic activity (Rev. 5)          | DANE, CIIU Rev. 5 A.C., “Estructura detallada”, adopted by Resolución 992 de 2026: 22 sections, 87 divisions, 266 groups and 544 classes.                                     |
+
+**Two revisions of the CIIU, side by side.** Velo ships **Rev. 4 A.C.** (2022) and **Rev. 5 A.C.**
+(the one DANE adopted in 2026, with a two-year transition): one file may carry codes from either. They
+are not interchangeable: **436 of Rev. 5's 544 classes also exist in Rev. 4 under the same number,
+and 118 of those change section** (Rev. 4 puts divisions 58 to 63 in section J; Rev. 5 splits them
+into J and K). The same code may climb to another letter depending on the revision, which is why it
+matters which one you use.
+
+- **How Velo decides which to suggest.** It looks at the column's codes: how many exist **only** in
+  Rev. 4 and how many **only** in Rev. 5 (66 and 108 classes respectively; the rest are shared). If
+  the exclusive ones all belong to one revision, it suggests that one, and under the dropdown it
+  says how many of its codes exist only there. If there are some of each, or if **every** code is
+  shared and none says which it is, it suggests Rev. 4 and says so. **The ladder dropdown is the
+  selector: you choose.** Only those counts reach the page; the codes do not leave the file.
+- **Velo does not translate from one revision to the other.** DANE's correspondence table
+  (September 15, 2026) relates the codes of one to the other **many-to-many**: a code can split into
+  several and several can merge into one. Velo **cites** it in the certificate but **does not use
+  it**: turning one code into another would be inventing which activity each row belongs to. Each
+  column climbs the ladder of the revision you chose, and a code that is not in that revision stays
+  as it is in the middle steps and reaches `*` at the last one, like any code that is not found.
 
 What a built-in ladder does not find —a code that does not exist, a municipality name that appears
 in two departments— stays as it is in the middle steps and reaches `*` at the last one. Velo **does
@@ -510,7 +533,7 @@ not guess** which “La Unión” you mean: choosing one would be stating where 
 (optional) over …”, from 2 to 100. It asks that every group hold at least ℓ different values of the
 sensitive data, so that being in the group does not give it away. **Only the optimal generalization
 enforces it**; with Mondrian it is measured, not enforced. If the ℓ asked for is not reached, the
-certificate says so and Velo does not delete rows to get there.
+certificate says so; only with the suppression cap, which you set, does Velo delete rows to get there.
 
 **Comparing them before you choose.** The **“Compare the two roads”** button works both out and puts
 them in a table, “The two roads, side by side”:
@@ -533,8 +556,30 @@ Other columns that were not part of the partition can split those groups; the fu
 that counts, arrives when you transform.
 
 “Optimal” means the best combination of levels **from the ladders you gave it**, not the best
-generalization that exists: with other ladders, or by being allowed to delete rows —which Velo does
-not do— the result could be different.
+generalization that exists: with other ladders, or with another suppression cap, the result could be
+different.
+
+**Suppression cap: deleting rows, only if you ask.** Under the ladders there is a field
+**“Suppression cap (optional), as a % of the rows”**. Empty, or at 0, Velo **deletes no row** and
+everything works as before: the file comes out **byte for byte the same** as without the field. With
+a number —say 2.5— the search may leave out of the output file the rows that sit in groups that do
+not reach k (or ℓ), **as long as they are no more than that percentage of the rows**, in exchange
+for generalizing the others less: sometimes deleting three stray rows saves climbing a whole column
+one level. The search is still **exact**, not an approximation: it finds the combination with the
+least loss among those that fit in the cap, and every deleted row counts as a total loss.
+
+- **The table “The two roads, side by side”** gains a third column, **“Optimal, deleting up to N%”**,
+  next to **“Optimal, deleting none”**, and a row **“Rows that leave the file”**: so you see, with
+  the loss of each, how much the cap saves and what it costs.
+- **The rows leave the output file, never your original.** The preview and the utility measures are
+  computed over the rows that remain. The certificate and the report say **how many rows left and
+  of what group sizes they were** (for instance “3 from groups of 1 · 4 from groups of 2”): counts,
+  never values.
+- **In a JSON the cap does not apply**: each row of a JSON is a record rewritten in place, and
+  removing it would break its structure. The screen and the certificate say so (“The file is
+  JSON…”).
+- The cap travels inside the policy if you export it, and [Velo local](#11-velo-on-your-machine-the-console-databases-and-the-api)
+  honors it too: the same policy gives the same bytes on the web and on your computer.
 
 **The limit and the time.** If the lattice —the product of the steps of all the ladders— goes over
 **20,000 combinations**, Velo does not walk through it: the table says “Not computed: the lattice is
@@ -769,7 +814,7 @@ hands you a copy without it. It all happens inside the tab, as with a table.
 **How to use it**
 
 1. **Drop the file** on the main screen, like any other. Velo recognizes it by its contents: PDF,
-   JPEG, PNG, WebP or HEIC. If the extension lies (a `.jpg` that is a PNG), it treats the file as what it
+   JPEG, PNG, WebP, HEIC, AVIF or a Live Photo's video (MOV). If the extension lies (a `.jpg` that is a PNG), it treats the file as what it
    is and says so.
 2. **Read the metadata diagnosis.** It has four parts:
    - **“What Velo cleans and what it leaves alone”**: the limit above, with what changes and what
@@ -797,7 +842,7 @@ hands you a copy without it. It all happens inside the tab, as with a table.
    was removed and what was kept, and —again— what did not change. In a clean PDF, the new document
    identifier.
 5. **Take the clean copy** with **Save**. It is named `velo-limpio-<8 characters>.pdf` (or `.jpg`,
-   `.png`, `.webp`, `.heic`, according to its contents). The eight characters are the start of the SHA-256
+   `.png`, `.webp`, `.heic`, `.avif`, `.mov`, according to its contents). The eight characters are the start of the SHA-256
    of the file **that went in**; the original's name is not repeated, because it already says what
    the file is about. **The original is not touched.**
 6. **Take the cleaning certificate** (`velo-limpieza-<8 characters>.html`, `velo-cleaning-….html` in English).
@@ -835,9 +880,9 @@ and the diagnosis says so.
   is not in its normal position, Velo writes a minimal EXIF block with only that tag, so the clean
   copy does not open sideways. If the file carried additional images inside (for example, the gain
   map of an HDR photo), they are removed, and a notice says so.
-- **In a HEIC photo** (the iPhone's) the file is also **rewritten**, because removing one block
+- **In a HEIC or AVIF photo** (the iPhone's, or a phone's or editor's that saves AVIF) the file is also **rewritten**, because removing one block
   changes where everything after it sits, but the image data is copied as it is: Velo does not
-  decode the photo or convert it, and the clean copy is still a HEIC. EXIF (location, camera, dates,
+  decode the photo or convert it, and the clean copy is still a HEIC —or an AVIF—. EXIF (location, camera, dates,
   author), XMP, the descriptions and tags someone wrote about the photo, the internal names of its
   parts, blocks Velo does not recognize, unused data an edit may have left inside and the **bytes
   left over at the end** are removed. What is kept is the image, the **color profile**, the
@@ -845,6 +890,23 @@ and the diagnosis says so.
   thumbnail and the auxiliary images —a depth map, an HDR boost map—, which are pixels. Hence a
   notice of its own: the data describing the HDR boost goes with the XMP, and on an HDR screen the
   photo may show less range.
+- **In a HEIC or AVIF sequence, and in a Live Photo's video (`.mov`)** the file is **not rewritten:
+  it is cleaned in place.** These files carry an index of times and positions that points at every
+  frame of the video, and moving everything to remove one block would risk breaking them. Velo
+  leaves **every byte of image, video and audio exactly where it was**, and erases only the
+  metadata blocks: it replaces them with an empty block **of the same size**. What goes is the
+  location (including the one that travels as a metadata track with one position per frame, whose
+  samples are zeroed), the make and model of the device, the program, titles and descriptions, the
+  EXIF and XMP of the sequence, and the container's creation and modification dates, which are set
+  to zero. The clean copy plays the same: it was checked by decoding before and after with the
+  system's own tools and comparing frame by frame, and the result is identical.
+- **The Live Photo, said plainly.** A Live Photo is **two files**: the photo and a short video
+  (`.mov`). Each is cleaned separately, and **the number that pairs them is kept only in the
+  video**: it is a random identifier, nothing about you. In the photo that number travels inside the
+  manufacturer's private note, which goes with the rest of the EXIF. **The consequence: the clean
+  photo and video no longer show up together as a single Live Photo in Photos.** Velo warns about
+  this in the diagnosis and in the certificate. If you need them to stay paired, do not clean them
+  with Velo.
 - **In a PDF** the file is **rewritten whole**, and the pages and their content are copied as they
   are. The information dictionary (author, software, dates), the XMP, the data from the application
   that made it, the date each page was last edited, page thumbnails and orphan objects are removed.
@@ -858,19 +920,20 @@ and the diagnosis says so.
 **The notices: what Velo does not clean, or cleans at a cost.** They show up in the diagnosis before
 you press anything, and they are repeated in the certificate:
 
-| Notice                               | What it means                                                                                                             |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| Annotations with an author (PDF)     | Velo shows them but **does not clean them**: the name of whoever commented stays inside the clean copy.                   |
-| Attached files (PDF)                 | **It does not clean them**: each one can carry its own metadata.                                                          |
-| Form fields (PDF)                    | Their names and values **stay as they are**: what someone typed into them is still in the clean copy.                     |
-| Embedded JavaScript (PDF)            | **It does not touch it**: it can contain data or addresses, and it stays in the clean copy.                               |
-| Signed PDF                           | Rewriting it **invalidates the signature**: the clean copy no longer carries it.                                          |
-| Versions in compressed streams (PDF) | They are removed, but Velo cannot list what they said.                                                                    |
-| Extension differs from the contents  | The file was treated as what it is, not as what its name says.                                                            |
-| Orientation kept (image)             | A minimal EXIF block with only that tag, so the photo is not rotated.                                                     |
-| Additional images (image)            | There were more images inside the file; they are removed along with the rest.                                             |
-| Auxiliary images (HEIC)              | They are kept (they are pixels), but the data describing them is removed: on an HDR screen the photo may show less range. |
-| Compressed text (image)              | It is removed without being read, so it does not appear in the table of fields.                                           |
+| Notice                               | What it means                                                                                                                                |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Annotations with an author (PDF)     | Velo shows them but **does not clean them**: the name of whoever commented stays inside the clean copy.                                      |
+| Attached files (PDF)                 | **It does not clean them**: each one can carry its own metadata.                                                                             |
+| Form fields (PDF)                    | Their names and values **stay as they are**: what someone typed into them is still in the clean copy.                                        |
+| Embedded JavaScript (PDF)            | **It does not touch it**: it can contain data or addresses, and it stays in the clean copy.                                                  |
+| Signed PDF                           | Rewriting it **invalidates the signature**: the clean copy no longer carries it.                                                             |
+| Versions in compressed streams (PDF) | They are removed, but Velo cannot list what they said.                                                                                       |
+| Extension differs from the contents  | The file was treated as what it is, not as what its name says.                                                                               |
+| Orientation kept (image)             | A minimal EXIF block with only that tag, so the photo is not rotated.                                                                        |
+| Additional images (image)            | There were more images inside the file; they are removed along with the rest.                                                                |
+| Auxiliary images (HEIC)              | They are kept (they are pixels), but the data describing them is removed: on an HDR screen the photo may show less range.                    |
+| Live Photo identifier (video)        | The video keeps the number that pairs it with its photo (a random UUID); the clean photo no longer carries it and Photos does not join them. |
+| Compressed text (image)              | It is removed without being read, so it does not appear in the table of fields.                                                              |
 
 **What Velo refuses to do.**
 
@@ -878,11 +941,12 @@ you press anything, and they are repeated in the certificate:
   cannot be read or rewritten without one. The message says what to do: remove the protection with
   the program that made it —by opening it and saving a copy without a password— and drop that copy
   in.
-- **A HEIC photo with parts Velo cannot rewrite without breaking it is left alone.** That is the
-  case for a Live Photo or a burst (a sequence), a photo with protected parts, with data stored
-  outside the file or with an unknown property the file declares essential. Velo says “That photo
+- **A HEIC or AVIF photo with parts Velo cannot rewrite without breaking it is left alone.** That is
+  the case for a photo with protected parts, with data stored outside the file or with an unknown
+  property the file declares essential. (Sequences and Live Photo videos are no longer here: they
+  are cleaned in place.) Velo says “That photo
   uses a part of the format Velo does not rewrite” and hands nothing over: rather than a broken
-  copy, none. Export the photo as a still image —HEIC or JPEG— from your photos app and drop that
+  copy, none. Export the photo as a still image —HEIC, AVIF or JPEG— from your photos app and drop that
   copy in.
 - **If the check finds anything, it does not hand the file over.** After cleaning, the same reader
   that made the diagnosis runs over the copy. If it finds **a single** named field, or (in a PDF)
@@ -970,11 +1034,35 @@ N” instead of a false figure, and the column comes out untouched.
   It is a download by your explicit action: the bytes go to your disk and nowhere else. If
   something fails halfway, no half-written file is left behind.
 - **In Firefox and Safari** there is no destination picker. Velo says so —“this browser does not
-  let you choose a destination file”— and builds the file in the tab's memory before saving it
-  (**“Prepare the file”** and then **“Save”**). **A very large file may not fit.** If that is your
-  case, use Chrome or Edge.
-- **The restored file from the return always goes the second way,** in Chrome and Edge too: it is
-  built in memory and downloaded.
+  let you choose a destination file”— and, when you press **“Prepare the file”**, it hands the CSV
+  to **your browser's download, in chunks and without building it whole in the tab's memory**: the
+  file is saved in your downloads folder while Velo writes it, and the screen says “Sent to your
+  browser's download: …”. Underneath there is a _service worker_ of Velo's own that serves only the
+  address of that download: **it stores nothing in the browser, requests nothing from the network
+  and sees only what Velo hands it**, which is the already-anonymized file, the same bytes that
+  would be saved any other way. The screen cannot know when the browser finishes writing: **check
+  that the download has finished before closing the tab.** If you cancel the download halfway, Velo
+  notices and says “The file could not be written”.
+- **If your browser does not allow that service worker** (a private window that blocks it, a company
+  policy, a very old browser), Velo falls back to **parts**: it builds the CSV in memory and, if it
+  weighs more than 256 MB, hands it over **cut into parts** —**“Save part 1 of 5”**, and so on—,
+  cut between rows and **without repeating the header**. Joined in order, one after the other, they
+  give **exactly** the whole file, the one the SHA-256 fingerprint certifies. Next to the parts there
+  is a **manifest** (`….json`) listing each one with its size and SHA-256, and the fingerprint of the
+  whole, so you can check you joined them right:
+
+  ```bash
+  # macOS or Linux: join the parts in order and check the fingerprint of the whole
+  cat velo-anonimizado-3f9a1c2e-parte-*-de-5.csv > velo-anonimizado-3f9a1c2e.csv
+  shasum -a 256 velo-anonimizado-3f9a1c2e.csv
+  ```
+
+  The fallback by parts is **for CSV only**: a high-volume JSON or JSON Lines with neither a picker
+  nor a _service worker_ comes out as a single file built in memory, and if it is very large it may
+  not fit; then use Chrome or Edge.
+
+- **The restored file from the return always goes the memory way,** in Chrome and Edge too: it is
+  built in memory and downloaded, with no streaming and no parts.
 
 **A defect that was fixed.** A CSV over 10 MB with an accented letter right at the edge of one of
 the chunks it is read in came out with “�” in place of the letter. It happened on the in-memory road
@@ -1348,13 +1436,15 @@ inside it (the Spanish CCC, the French RIB key); for other countries it **does n
 destination that validates them will refuse it. If that is your case, the pseudonym will not serve it: hand that column over another way (a hexadecimal
 pseudonym, which does not pretend to be an IBAN, or without the column).
 
-**I have a photo in HEIC, from my iPhone. Can I clean it?**
+**I have a photo in HEIC or AVIF, from my phone. Can I clean it?**
 Yes. Drop it in like any other image. Velo removes the EXIF (location, camera, dates, author), the
-XMP and the descriptions someone wrote about the photo, and gives you back a HEIC: it does not
-convert it to JPEG. It keeps the image, the color profile, the orientation, the thumbnail and the
+XMP and the descriptions someone wrote about the photo, and gives you back a HEIC or an AVIF: it does
+not convert it to JPEG. It keeps the image, the color profile, the orientation, the thumbnail and the
 auxiliary maps (depth or HDR boost); that is why, on an HDR screen, the photo may show less range,
-and Velo warns you. If it is a Live Photo, a burst or has parts Velo cannot rewrite, it leaves the
-file alone and tells you what to do: export it as a still image. The details are in
+and Velo warns you. A Live Photo is two files, the photo and its video (`.mov`): they are cleaned
+separately, and the two clean ones no longer show up together in Photos. A burst or a `.mov` video
+is cleaned too. If it has parts Velo cannot rewrite, it leaves the file alone and tells you what to
+do: export it as a still image. The details are in
 [section 8](#8-pdfs-and-images-cleaning-what-the-file-says-about-itself).
 
 **In “Noise with a guarantee”, which ε do I choose?**
@@ -1400,16 +1490,3 @@ not read databases from the web (only [Velo local](#11-velo-on-your-machine-the-
 and only PostgreSQL and SQL Server), it does not generate `.xlsx` output, it does not treat the lists inside a JSON,
 it does not clean the annotations, attachments or forms of a PDF, and it does not use —and will not
 use— generative artificial intelligence anywhere in the product.
-
-And there are five things that are **pending the owner's decision**: they are neither promised nor
-discarded.
-
-- **AVIF**, the other photo format that resembles HEIC: today Velo does not read it.
-- **HEIC sequences and Live Photos:** today Velo refuses them rather than risk breaking them.
-- **Deleting rows inside the optimal generalization's search:** today Velo deletes no record on its
-  own, and the “optimal” result is limited to what the ladders allow.
-- **CIIU Rev. 5 A.C.**, which DANE adopted in August 2026 with a two-year transition: today the
-  economic-activity ladder uses Rev. 4 A.C.
-- **A destination picker for Firefox and Safari:** today those browsers do not let you choose a
-  destination file, so a high-volume file is built in the tab's memory and, if it is very large, may
-  not fit.
