@@ -127,13 +127,23 @@ export const TRANSFORMAR = {
       },
       repartoNoCabe: {
         es:
-          "El archivo tiene demasiadas filas para el reparto (Mondrian o la generalización " +
-          "óptima) en alto volumen. Generaliza esas columnas con una técnica por columna, o divide " +
-          "el archivo en partes.",
+          "El archivo tiene demasiadas filas, o una de esas columnas demasiados valores distintos, " +
+          "para el reparto (Mondrian o la generalización óptima) en alto volumen. Generaliza esas " +
+          "columnas con una técnica por columna, o divide el archivo en partes.",
         en:
-          "The file has too many rows for the partition (Mondrian or the optimal generalization) in " +
-          "high volume. Generalize those columns with a per-column technique, or split the file " +
-          "into parts.",
+          "The file has too many rows, or one of those columns too many distinct values, for the " +
+          "partition (Mondrian or the optimal generalization) in high volume. Generalize those " +
+          "columns with a per-column technique, or split the file into parts.",
+      },
+      histogramaNoCabe: {
+        es:
+          "Ya transformadas, las columnas que identifican en conjunto forman más combinaciones " +
+          "distintas de las que Velo puede contar para el riesgo exacto, y Velo no lo estima. " +
+          "Generaliza más esas columnas o quítales el ruido, o divide el archivo en partes.",
+        en:
+          "Once transformed, the columns that identify together form more distinct combinations " +
+          "than Velo can count for the exact risk, and Velo does not estimate it. Generalize those " +
+          "columns further or take the noise off them, or split the file into parts.",
       },
       transformacionFallida: {
         es:

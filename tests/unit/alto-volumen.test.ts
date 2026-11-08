@@ -348,7 +348,9 @@ describe("por trozos = en memoria, byte a byte (CSV)", () => {
       if (reversible) {
         expect(r.plan.colisiones).toEqual(r.enMemoria.colisiones);
         expect(
-          serializarCanonico(construirBoveda(IDENTIDAD, r.plan.correspondencias)),
+          serializarCanonico(
+            construirBoveda(IDENTIDAD, r.plan.correspondencias),
+          ),
         ).toBe(
           serializarCanonico(
             construirBoveda(IDENTIDAD, r.enMemoria.correspondencias),
@@ -497,6 +499,64 @@ describe("lo que no cabe se dice, no se estima ni se escribe a medias", () => {
       "alto-volumen-histograma-no-cabe",
     );
     expect((error as NoCabeEnAltoVolumen).cuantos).toBeGreaterThan(10);
+  });
+
+  // S10: un `Map` de V8 no pasa de 2²⁴ entradas y lanza `RangeError`. Antes solo la pasada A lo
+  // atrapaba; ahora cada tabla entera tiene su tope, y cada pasada dice qué no cupo con su clave.
+  it("la proyección de la pasada A con una columna sin cupo: el histograma no cabe", async () => {
+    const error = await pasadaDeDiagnostico(blobDe(KIT), {
+      topes: { ...HOLGADOS, distintosEnLaTabla: 50 },
+    }).catch((e: unknown) => e);
+    expect(error).toMatchObject({
+      motivo: "alto-volumen-histograma-no-cabe",
+      cuantos: 50,
+    });
+  });
+
+  it("la tabla de la pasada B con una columna sin cupo: el reparto no cabe, con su motivo", async () => {
+    const archivo = blobDe(KIT);
+    const huella = sha256(codificar(KIT));
+    const pasada = await pasadaDeDiagnostico(archivo, {
+      topes: HOLGADOS,
+      huella,
+    });
+    const error = await prepararTransformacion(
+      archivo,
+      pasada,
+      MONDRIAN,
+      llave,
+      "es",
+      huella,
+      { topes: { ...HOLGADOS, distintosEnLaTabla: 3 } },
+    ).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(NoCabeEnAltoVolumen);
+    expect(error).toMatchObject({
+      motivo: "alto-volumen-reparto-no-cabe",
+      cuantos: 3,
+    });
+  });
+
+  it("lo transformado de la pasada M sin cupo: el histograma no cabe, en vez de un RangeError", async () => {
+    const archivo = blobDe(KIT);
+    const huella = sha256(codificar(KIT));
+    const pasada = await pasadaDeDiagnostico(archivo, {
+      topes: HOLGADOS,
+      huella,
+    });
+    const plan = await prepararTransformacion(
+      archivo,
+      pasada,
+      RUIDO,
+      llave,
+      "es",
+      huella,
+      { topes: HOLGADOS },
+    );
+    await expect(
+      pasadaDeMedida(archivo, pasada, plan, {
+        topes: { ...HOLGADOS, distintosEnLaTabla: 50 },
+      }),
+    ).rejects.toMatchObject({ motivo: "alto-volumen-histograma-no-cabe" });
   });
 
   it("un archivo que cambió en el disco entre dos pasadas no se escribe", async () => {

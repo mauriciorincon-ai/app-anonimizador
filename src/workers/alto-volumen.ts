@@ -36,6 +36,8 @@ import {
 } from "@/engine/clasificador";
 import {
   ConstructorColumnar,
+  desprendida,
+  SinCupo,
   type ColumnaColumnar,
   type TablaColumnar,
 } from "@/engine/columnar";
@@ -116,6 +118,12 @@ export interface TopesDelAltoVolumen {
    * la regla dura 4 prohíbe.
    */
   readonly combinacionesDelRiesgo: number;
+  /**
+   * S10: valores distintos de UNA columna en las tablas que se arman enteras (la proyección de los
+   * cuasi-identificadores, el reparto, la medida). Uno más y la pasada dice qué no cupo, antes de
+   * que el `Map` lance su `RangeError`.
+   */
+  readonly distintosEnLaTabla: number;
   /** El trozo de bytes del lector. Solo las pruebas lo cambian. */
   readonly trozo?: number;
 }
@@ -130,6 +138,7 @@ export const TOPES_DEL_ALTO_VOLUMEN: TopesDelAltoVolumen = {
   filasDelReparto: 16_000_000,
   filasParaClasificar: FILAS_PARA_CLASIFICAR_EN_ALTO_VOLUMEN,
   combinacionesDelRiesgo: COMBINACIONES_DEL_RIESGO,
+  distintosEnLaTabla: COMBINACIONES_DEL_RIESGO,
 };
 
 /** Algo que el alto volumen no puede hacer con este archivo, dicho con su clave y su conteo. */
@@ -144,6 +153,26 @@ export class NoCabeEnAltoVolumen extends Error {
   ) {
     super(motivo);
     this.name = "NoCabeEnAltoVolumen";
+  }
+}
+
+/**
+ * Lo que arma una tabla entera, con el `SinCupo` de una columna (o el `RangeError` de un `Map` que
+ * pasó de 2²⁴) dicho como lo que no cupo en ESA pasada: ninguna se cae con un error genérico por
+ * falta de sitio.
+ */
+async function conCupo<T>(
+  motivo: NoCabeEnAltoVolumen["motivo"],
+  armar: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await armar();
+  } catch (error) {
+    if (error instanceof SinCupo)
+      throw new NoCabeEnAltoVolumen(motivo, error.tope);
+    if (error instanceof RangeError)
+      throw new NoCabeEnAltoVolumen(motivo, 1 << 24);
+    throw error;
   }
 }
 
@@ -253,9 +282,18 @@ async function* filasDelArchivo(
  * a saltos sobre el archivo entero: el diagnóstico puede diferir, y la pantalla lo dice), cuenta
  * exacto el resto y arma la proyección de los cuasi-identificadores para el riesgo exacto.
  */
-export async function pasadaDeDiagnostico(
+export function pasadaDeDiagnostico(
   archivo: Fuente,
   opciones: OpcionesDeLaPasada = {},
+): Promise<PasadaDeDiagnostico> {
+  return conCupo("alto-volumen-histograma-no-cabe", () =>
+    diagnosticarPorPasadas(archivo, opciones),
+  );
+}
+
+async function diagnosticarPorPasadas(
+  archivo: Fuente,
+  opciones: OpcionesDeLaPasada,
 ): Promise<PasadaDeDiagnostico> {
   const topes = opciones.topes ?? TOPES_DEL_ALTO_VOLUMEN;
   let encabezado: readonly string[] = [];
@@ -282,6 +320,7 @@ export async function pasadaDeDiagnostico(
     proyeccion = new ConstructorColumnar(
       indicesQi.map((i) => nombres[i]),
       1 << 16,
+      topes.distintosEnLaTabla,
     );
     for (const fila of filasDeMuestra)
       proyeccion.agregarFila(indicesQi.map((i) => fila[i]));
@@ -322,8 +361,9 @@ export async function pasadaDeDiagnostico(
           d.distintos = topes.distintosPorColumna;
           continue;
         }
-        d.indice.set(valor, d.valores.length);
-        d.valores.push(valor);
+        const propio = desprendida(valor);
+        d.indice.set(propio, d.valores.length);
+        d.valores.push(propio);
         d.distintos++;
         enTotal++;
       }
@@ -356,19 +396,7 @@ export async function pasadaDeDiagnostico(
   };
 
   // Más combinaciones distintas que las que cabe contar: se dice con el conteo, y no se estima.
-  let clases: ClasesDeEquivalencia;
-  try {
-    clases = clasesDeEquivalencia(tablaQi.columnas, filas);
-  } catch (error) {
-    if (error instanceof RangeError)
-      throw new NoCabeEnAltoVolumen("alto-volumen-histograma-no-cabe", 1 << 24);
-    throw error;
-  }
-  if (clases.tamanos.length > topes.combinacionesDelRiesgo)
-    throw new NoCabeEnAltoVolumen(
-      "alto-volumen-histograma-no-cabe",
-      clases.tamanos.length,
-    );
+  const clases = clasesQueCaben(tablaQi.columnas, filas, topes);
   const riesgo: RiesgoExacto = riesgoProsecutor(
     clases,
     tablaQi.columnas.map((c) => c.nombre),
@@ -385,6 +413,22 @@ export async function pasadaDeDiagnostico(
     riesgo,
     advisor: consejeroDeAltoVolumen(tablaQi, ajustado),
   };
+}
+
+/** Las clases de equivalencia, si caben en lo que el riesgo exacto cuenta; si no, se dice cuántas. */
+function clasesQueCaben(
+  columnas: readonly ColumnaColumnar[],
+  filas: number,
+  topes: TopesDelAltoVolumen,
+): ClasesDeEquivalencia {
+  // El `RangeError` de un `Map` de más de 2²⁴ combinaciones lo traduce `conCupo`.
+  const clases = clasesDeEquivalencia(columnas, filas);
+  if (clases.tamanos.length > topes.combinacionesDelRiesgo)
+    throw new NoCabeEnAltoVolumen(
+      "alto-volumen-histograma-no-cabe",
+      clases.tamanos.length,
+    );
+  return clases;
 }
 
 /**
@@ -605,11 +649,22 @@ export async function prepararTransformacion(
  * comparación de los dos caminos. Con los valores originales y su diccionario en orden de primera
  * aparición, que es lo que tendría la tabla en memoria.
  */
-export async function leerColumnas(
+export function leerColumnas(
   archivo: Fuente,
   pasada: Pick<PasadaDeDiagnostico, "nombres" | "filas">,
   columnas: readonly string[],
   opciones: OpcionesDeLaPasada = {},
+): Promise<TablaColumnar> {
+  return conCupo("alto-volumen-reparto-no-cabe", () =>
+    leerColumnasEnteras(archivo, pasada, columnas, opciones),
+  );
+}
+
+async function leerColumnasEnteras(
+  archivo: Fuente,
+  pasada: Pick<PasadaDeDiagnostico, "nombres" | "filas">,
+  columnas: readonly string[],
+  opciones: OpcionesDeLaPasada,
 ): Promise<TablaColumnar> {
   const topes = opciones.topes ?? TOPES_DEL_ALTO_VOLUMEN;
   if (pasada.filas > topes.filasDelReparto)
@@ -626,6 +681,7 @@ export async function leerColumnas(
       constructor = new ConstructorColumnar(
         indices.map((i) => pasada.nombres[i]),
         1 << 16,
+        topes.distintosEnLaTabla,
       );
       continue;
     }
@@ -733,12 +789,24 @@ export interface MedidaDelAltoVolumen {
  * ALGUNA celda (sobre el archivo entero, como `columnaCambio`), las filas de la vista previa y los
  * contadores del ruido.
  */
-export async function pasadaDeMedida(
+export function pasadaDeMedida(
   archivo: Fuente,
   pasada: PasadaDeDiagnostico,
   plan: PlanDeTransformacion,
   opciones: OpcionesDeLaPasada = {},
 ): Promise<MedidaDelAltoVolumen> {
+  return conCupo("alto-volumen-histograma-no-cabe", () =>
+    medirPorPasadas(archivo, pasada, plan, opciones),
+  );
+}
+
+async function medirPorPasadas(
+  archivo: Fuente,
+  pasada: PasadaDeDiagnostico,
+  plan: PlanDeTransformacion,
+  opciones: OpcionesDeLaPasada,
+): Promise<MedidaDelAltoVolumen> {
+  const topes = opciones.topes ?? TOPES_DEL_ALTO_VOLUMEN;
   const qis = pasada.diagnostico.columnas
     .filter((c) => c.categoria === "cuasi-identificador")
     .map((c) => c.nombre);
@@ -752,9 +820,11 @@ export async function pasadaDeMedida(
         plan.planes[i].tipo !== "suprimida" &&
         (qis.includes(n) || sensibles.includes(n)),
     );
+  // El ruido puede volver distinta cada celda: lo transformado tampoco se sale del tope.
   const constructor = new ConstructorColumnar(
     medidas.map(({ n }) => n),
     1 << 16,
+    topes.distintosEnLaTabla,
   );
   const ruidos = contextosDeRuido(plan);
   const cambio = plan.planes.map(() => false);
@@ -810,9 +880,10 @@ export async function pasadaDeMedida(
     ruido,
     cambio,
     muestras,
-    clasesDespues: clasesDeEquivalencia(
+    clasesDespues: clasesQueCaben(
       qisDespues.map((n) => porNombre.get(n)!).filter((c) => c !== undefined),
       pasada.filas,
+      topes,
     ),
     qisDespues,
   };
@@ -1050,8 +1121,9 @@ export async function pasadaDelDevuelto(
             "alto-volumen-devuelto-no-cabe",
             topes.distintosPorColumna,
           );
-        d.indice.set(valor, d.valores.length);
-        d.valores.push(valor);
+        const propio = desprendida(valor);
+        d.indice.set(propio, d.valores.length);
+        d.valores.push(propio);
         d.distintos++;
         enTotal++;
       }

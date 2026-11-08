@@ -678,7 +678,11 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
       mensaje.motivo === "transformacion-fallida" ||
       // S8: lo que el alto volumen no puede transformar se dice en el taller, sin tumbar el informe.
       mensaje.motivo === "alto-volumen-boveda-no-cabe" ||
-      mensaje.motivo === "alto-volumen-reparto-no-cabe")
+      mensaje.motivo === "alto-volumen-reparto-no-cabe" ||
+      // S10: el histograma se pasa también DESPUÉS de transformar (el ruido separa filas); entonces
+      // es un fallo del taller, y no del diagnóstico, que ya cupo.
+      (mensaje.motivo === "alto-volumen-histograma-no-cabe" &&
+        tallerActual.transformacion.fase === "transformando"))
   ) {
     // Un fallo transformando NO tumba el informe: el archivo original sigue analizado y la
     // pantalla puede decir qué pasó sin obligar a cargarlo de nuevo.
