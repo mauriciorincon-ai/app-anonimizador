@@ -39,8 +39,13 @@ import {
   type ColumnaColumnar,
   type TablaColumnar,
 } from "./columnar";
-import { nivelesDe, pasosDe, type Jerarquia } from "./jerarquias";
-import type { JerarquiaDeLaPolitica } from "./politica";
+import {
+  nivelesDe,
+  nombresDeNiveles,
+  pasosDe,
+  type Jerarquia,
+} from "./jerarquias";
+import type { GeneralizacionOptima, JerarquiaDeLaPolitica } from "./politica";
 import { clasesDeEquivalencia } from "./riesgo";
 
 /**
@@ -544,5 +549,33 @@ export function generalizarOptimo(
     bitsDespues: dimensiones.reduce((s, d, i) => s + d.bits[elegido[i]], 0),
     nodosRevisados: cache.size,
     nodosEnLaReticula,
+  };
+}
+
+/**
+ * La óptima tal como se aplicó, para el certificado: cada columna con su escalera y el nivel
+ * elegido. Las columnas sin escalera en la política subieron por la de solo supresión.
+ */
+export function generalizacionAplicada(
+  optima: ResultadoOptimo,
+  pedida: GeneralizacionOptima,
+): GeneralizacionAplicada {
+  return {
+    kObjetivo: optima.kObjetivo,
+    kAlcanzado: optima.kAlcanzado,
+    lObjetivo: optima.lObjetivo,
+    lAlcanzado: optima.lAlcanzado,
+    columnasSensibles: optima.columnasSensibles,
+    lDescartadas: optima.lDescartadas,
+    columnas: optima.dimensiones.map((nombre, i) => {
+      const jerarquia = pedida.jerarquias[nombre] ?? { tipo: "supresion" };
+      return {
+        nombre,
+        jerarquia,
+        nivel: nombresDeNiveles(jerarquia)[optima.niveles[i]],
+      };
+    }),
+    nodosRevisados: optima.nodosRevisados,
+    nodosEnLaReticula: optima.nodosEnLaReticula,
   };
 }

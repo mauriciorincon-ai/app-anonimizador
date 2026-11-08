@@ -24,6 +24,7 @@ import { mensaje } from "@/lib/idioma";
 import type { MensajeDeMotor } from "@/lib/idioma/mensajes";
 import { sha256 } from "@/lib/sha256";
 import type { FormatoBinario } from "./metadatos/tipos";
+import type { InformeDePrivacidad } from "./ruido";
 import { serializarCanonico } from "./serializacion";
 
 z.config({ jitless: true });
@@ -254,4 +255,24 @@ export function deserializarBitacora(texto: string): ResultadoDeLectura {
     };
   }
   return { ok: true, bitacora: leida.data };
+}
+
+/** Lo que la bitácora guarda del ruido: el ε por fila y los mecanismos, sin nombres de columna. */
+export function privacidadDeLaEntrada(
+  privacidad: InformeDePrivacidad,
+): PrivacidadDeLaEntrada {
+  const aplicadas = privacidad.columnas.filter((c) => c.aplicado);
+  return {
+    epsilonPorFila: privacidad.epsilonPorFila,
+    mecanismos: [
+      ...new Set(
+        aplicadas
+          .map((c) => c.mecanismo)
+          .filter(
+            (m): m is "laplace" | "respuesta-aleatorizada" => m !== "perturbar",
+          ),
+      ),
+    ],
+    perturbadas: aplicadas.filter((c) => c.mecanismo === "perturbar").length,
+  };
 }

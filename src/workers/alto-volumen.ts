@@ -41,7 +41,8 @@ import {
 } from "@/engine/columnar";
 import { filaDeCsv } from "@/engine/csv";
 import { medirDiversidad } from "@/engine/diversidad";
-import { FILAS_DE_MUESTRA } from "@/engine/muestra";
+import { FILAS_DE_MUESTRA, muestraDeColumna } from "@/engine/muestra";
+import { generalizacionAplicada, TOPE_DE_NODOS } from "@/engine/optima";
 import {
   columnasDeMondrian,
   esDeRuido,
@@ -67,6 +68,8 @@ import {
   type RiesgoExacto,
 } from "@/engine/riesgo";
 import {
+  DOMINIO_MAXIMO,
+  informeDePrivacidad,
   informeDelRuido,
   prepararRuido,
   ruidoDeCelda,
@@ -189,9 +192,29 @@ export interface OpcionesDeLaPasada {
   readonly alAvanzar?: (filas: number, bytes: number, total: number) => void;
 }
 
+/**
+ * S9: filas que no vienen de un CSV —las de una tabla de base de datos (Velo local) o las de un JSON
+ * por trozos—, con el MISMO contrato que `lotesDeCsv`: lotes de filas de texto, y la primera fila
+ * del primer lote es el encabezado. Cada llamada a `lotes()` vuelve a leer desde el principio, en el
+ * mismo orden: las pasadas lo exigen. Comprobar que la fuente no cambió entre pasadas es cosa de la
+ * fuente (el CSV lo hace con su huella; la tabla, con la suya).
+ */
+export interface FuenteDeFilas {
+  /** Bytes de la fuente, para el avance; 0 si no se saben. */
+  readonly bytes: number;
+  lotes(): AsyncIterable<readonly (readonly string[])[]>;
+}
+
+/** De dónde salen las filas: el `Blob` de un CSV, o una fuente de filas. */
+export type Fuente = Blob | FuenteDeFilas;
+
+function esFuenteDeFilas(fuente: Fuente): fuente is FuenteDeFilas {
+  return typeof (fuente as FuenteDeFilas).lotes === "function";
+}
+
 /** Las filas del archivo, ya normalizadas, en lotes; la primera llamada trae el encabezado. */
 async function* filasDelArchivo(
-  archivo: Blob,
+  archivo: Fuente,
   opciones: OpcionesDeLaPasada,
 ): AsyncGenerator<
   | { readonly encabezado: readonly string[] }
@@ -200,11 +223,15 @@ async function* filasDelArchivo(
   let ancho = -1;
   let contadas = 0;
   let bytes = 0;
-  for await (const lote of lotesDeCsv(archivo, {
-    trozo: opciones.topes?.trozo,
-    huellaEsperada: opciones.huella,
-    alAvanzar: (b) => (bytes = b),
-  })) {
+  const total = esFuenteDeFilas(archivo) ? archivo.bytes : archivo.size;
+  const lotes = esFuenteDeFilas(archivo)
+    ? archivo.lotes()
+    : lotesDeCsv(archivo, {
+        trozo: opciones.topes?.trozo,
+        huellaEsperada: opciones.huella,
+        alAvanzar: (b) => (bytes = b),
+      });
+  for await (const lote of lotes) {
     let inicio = 0;
     if (ancho < 0) {
       const encabezado = lote[0] ?? [];
@@ -215,7 +242,7 @@ async function* filasDelArchivo(
     const filas = lote.slice(inicio).map((f) => normalizar(f, ancho));
     yield { filas, desde: contadas };
     contadas += filas.length;
-    opciones.alAvanzar?.(contadas, bytes, archivo.size);
+    opciones.alAvanzar?.(contadas, bytes, total);
   }
 }
 
@@ -225,7 +252,7 @@ async function* filasDelArchivo(
  * exacto el resto y arma la proyección de los cuasi-identificadores para el riesgo exacto.
  */
 export async function pasadaDeDiagnostico(
-  archivo: Blob,
+  archivo: Fuente,
   opciones: OpcionesDeLaPasada = {},
 ): Promise<PasadaDeDiagnostico> {
   const topes = opciones.topes ?? TOPES_DEL_ALTO_VOLUMEN;
@@ -447,7 +474,7 @@ function elReparto(politica: Politica, nombres: readonly string[]) {
  * columnas.
  */
 export async function prepararTransformacion(
-  archivo: Blob,
+  archivo: Fuente,
   pasada: PasadaDeDiagnostico,
   politica: Politica,
   llave: CryptoKey | null,
@@ -577,7 +604,7 @@ export async function prepararTransformacion(
  * aparición, que es lo que tendría la tabla en memoria.
  */
 export async function leerColumnas(
-  archivo: Blob,
+  archivo: Fuente,
   pasada: Pick<PasadaDeDiagnostico, "nombres" | "filas">,
   columnas: readonly string[],
   opciones: OpcionesDeLaPasada = {},
@@ -705,7 +732,7 @@ export interface MedidaDelAltoVolumen {
  * contadores del ruido.
  */
 export async function pasadaDeMedida(
-  archivo: Blob,
+  archivo: Fuente,
   pasada: PasadaDeDiagnostico,
   plan: PlanDeTransformacion,
   opciones: OpcionesDeLaPasada = {},
@@ -821,6 +848,75 @@ export function balanceDelAltoVolumen(
   });
 }
 
+/**
+ * S9: lo que la pantalla y el certificado reciben de una transformación por pasadas —el balance, la
+ * vista previa, la óptima aplicada y el ruido con su ε—, armado en UN sitio. El worker y Velo local
+ * llaman a esta misma función: si el certificado de un lado dijera otra cosa que el del otro, sería
+ * porque el código es otro, y no lo es.
+ */
+export function resultadoDelAltoVolumen(
+  pasada: PasadaDeDiagnostico,
+  plan: PlanDeTransformacion,
+  medida: MedidaDelAltoVolumen,
+  politica: Politica,
+) {
+  const optima = plan.reparto?.optima ?? null;
+  const optimaAplicada = optima?.motivo === "excede-tope" ? null : optima;
+  const balance = balanceDelAltoVolumen(pasada, plan, medida, politica, {
+    mondrian:
+      plan.reparto?.mondrian ??
+      (optimaAplicada
+        ? {
+            ...optimaAplicada,
+            alcanzado: optimaAplicada.kAlcanzado >= optimaAplicada.kObjetivo,
+          }
+        : null),
+    ruidoNoAplicado: {
+      columnas: medida.ruido.filter((r) => !r.aplicado).map((r) => r.columna),
+      maximo: DOMINIO_MAXIMO,
+    },
+    reticulaExcedida:
+      optima?.motivo === "excede-tope"
+        ? {
+            dimensiones: optima.dimensiones,
+            nodos: optima.nodosEnLaReticula,
+            tope: TOPE_DE_NODOS,
+          }
+        : null,
+  });
+  const categorias = new Map(
+    pasada.diagnostico.columnas.map((c) => [c.nombre, c.categoria as string]),
+  );
+  const muestras = plan.nombres.map((nombre, c) =>
+    muestraDeColumna(
+      columnaDeMuestra(nombre, medida.muestras[c].antes),
+      plan.planes[c].tipo === "suprimida"
+        ? undefined
+        : columnaDeMuestra(nombre, medida.muestras[c].despues),
+      politica,
+      categorias.get(nombre) ?? "no-personal",
+      Math.min(pasada.filas, FILAS_DE_MUESTRA),
+      medida.cambio[c],
+    ),
+  );
+  return {
+    balance,
+    muestras,
+    generalizacion:
+      optimaAplicada && politica.generalizacion
+        ? generalizacionAplicada(optimaAplicada, politica.generalizacion)
+        : null,
+    privacidad: informeDePrivacidad(medida.ruido),
+  };
+}
+
+/** Una columna de pocas filas (las de la vista previa), para las mismas funciones de la muestra. */
+function columnaDeMuestra(nombre: string, valores: readonly string[]) {
+  const constructor = new ConstructorColumnar([nombre], valores.length || 1);
+  for (const valor of valores) constructor.agregarFila([valor]);
+  return constructor.finalizar().columnas[0];
+}
+
 // ── Pasada C · escribir ───────────────────────────────────────────────────────────────────────
 
 /** Adonde va el archivo: un `Blob` hecho de partes, o el archivo que el usuario eligió. */
@@ -833,7 +929,7 @@ const FILAS_POR_TROZO = 20_000;
 
 /** La pasada C: el CSV de salida, fila a fila, con la misma regla de `filasDeCsv`. */
 export async function escribirCsv(
-  archivo: Blob,
+  archivo: Fuente,
   plan: PlanDeTransformacion,
   destino: Destino,
   opciones: OpcionesDeLaPasada = {},
@@ -878,7 +974,7 @@ export interface PasadaDelDevuelto {
 
 /** R1: los diccionarios de las columnas devueltas. Sin todos sus valores, no se puede decidir. */
 export async function pasadaDelDevuelto(
-  archivo: Blob,
+  archivo: Fuente,
   opciones: OpcionesDeLaPasada = {},
 ): Promise<PasadaDelDevuelto> {
   const topes = opciones.topes ?? TOPES_DEL_ALTO_VOLUMEN;
@@ -929,7 +1025,7 @@ export async function pasadaDelDevuelto(
  * MISMA función que en memoria; las celdas se cuentan mientras se escriben.
  */
 export async function restaurarPorTrozos(
-  archivo: Blob,
+  archivo: Fuente,
   devuelto: PasadaDelDevuelto,
   boveda: Boveda,
   huella: string,

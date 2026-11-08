@@ -13,7 +13,6 @@
 //
 // El archivo se lee por trozos (`./csv.ts`, el lector compartido): nunca existe una copia completa
 // del CSV en memoria, solo la tabla columnar que se va construyendo.
-import { balanceDelTratamiento } from "@/engine/balance";
 import {
   anadirEntrada,
   bitacoraVacia,
@@ -49,20 +48,13 @@ import {
   ErrorDeMetadatos,
   type FormatoBinario,
 } from "@/engine/metadatos/tipos";
-import { FILAS_DE_MUESTRA, muestraDeColumna } from "@/engine/muestra";
-import {
-  generalizarOptimo,
-  resolverDiversidad,
-  TOPE_DE_NODOS,
-  type ResultadoOptimo,
-} from "@/engine/optima";
+import { generalizarOptimo, resolverDiversidad } from "@/engine/optima";
 import { anonimizarConMondrian } from "@/engine/mondrian";
 import { nombresDeNiveles } from "@/engine/jerarquias";
 import {
   columnasDeMondrian,
   hashDePolitica,
   tecnicaDe,
-  type GeneralizacionOptima,
   type JerarquiaDeLaPolitica,
   type Politica,
 } from "@/engine/politica";
@@ -71,7 +63,6 @@ import {
   nombreDelInforme,
 } from "@/engine/reporte";
 import { restaurar, type Restauracion } from "@/engine/restaurar";
-import { DOMINIO_MAXIMO, informeDePrivacidad } from "@/engine/ruido";
 import {
   clasesDeEquivalencia,
   evaluarRiesgo,
@@ -80,8 +71,6 @@ import {
 } from "@/engine/riesgo";
 import { estimarRiesgo } from "@/engine/riesgo-estimado";
 import { entropiaEnBits, informacionMutua } from "@/engine/utilidad";
-import { aplicarPolitica } from "@/engine/tecnicas";
-import { medirUtilidad } from "@/engine/utilidad";
 import { esDeMetadatos, formatoDeArchivo, motivoDelTope } from "@/lib/archivo";
 import {
   abrirBitacora,
@@ -101,14 +90,12 @@ import type {
   ComparacionDeGeneralizacion,
   EtapaDelWorker,
   FormatoDeArchivo,
-  GeneralizacionAplicada,
   Informe,
   LadoDeLaComparacion,
   MensajeAlWorker,
   MensajeDelWorker,
 } from "./contrato";
 import {
-  balanceDelAltoVolumen,
   escribirCsv,
   leerColumnas,
   NoCabeEnAltoVolumen,
@@ -117,6 +104,7 @@ import {
   pasadaDelDevuelto,
   prepararTransformacion,
   restaurarPorTrozos,
+  resultadoDelAltoVolumen,
   TOPE_DE_CELDAS_EN_MEMORIA,
   type Destino,
   type PasadaDeDiagnostico,
@@ -124,6 +112,7 @@ import {
   type PlanDeTransformacion,
 } from "./alto-volumen";
 import { lotesDeCsv } from "./csv";
+import { tablaDeCsv, transformarEnMemoria } from "./en-memoria";
 import { ArchivoCambio, fuenteDeArchivo } from "./json";
 import { FormatoNoCoincide, leerBinario, limpiarBinario } from "./metadatos";
 
@@ -414,48 +403,36 @@ async function leerExcel(archivo: File): Promise<void> {
 
 async function leerCsv(archivo: File): Promise<void> {
   const inicio = performance.now();
-  let constructor: ConstructorColumnar | null = null;
-  let filas = 0;
   let leidos = 0;
   let proximoAviso = FILAS_POR_AVISO;
+  let leida: Awaited<ReturnType<typeof tablaDeCsv>>;
 
   try {
-    for await (const lote of lotesDeCsv(archivo, {
+    leida = await tablaDeCsv(archivo, {
       alAvanzar: (bytes) => (leidos = bytes),
-    })) {
-      let desde = 0;
-      if (!constructor) {
-        constructor = new ConstructorColumnar(lote[0] ?? [], 1 << 16);
-        desde = 1;
-      }
-      for (let i = desde; i < lote.length; i++)
-        constructor.agregarFila(lote[i]);
-      filas += lote.length - desde;
-
-      // S8: más celdas que las que caben en memoria. La tabla a medias se suelta y el archivo se
-      // vuelve a leer por pasadas. El tope es una constante de build: el mismo archivo entra por el
-      // mismo camino en cualquier equipo.
-      if (filas * (lote[0]?.length ?? 0) > TOPE_DE_CELDAS_EN_MEMORIA) {
-        constructor = null;
-        await leerCsvAltoVolumen(archivo, inicio);
-        return;
-      }
-
-      if (filas >= proximoAviso) {
-        proximoAviso = filas + FILAS_POR_AVISO;
-        avisar("leyendo", filas, leidos, archivo.size);
-      }
-    }
+      alLeerFilas: (filas) => {
+        if (filas >= proximoAviso) {
+          proximoAviso = filas + FILAS_POR_AVISO;
+          avisar("leyendo", filas, leidos, archivo.size);
+        }
+      },
+    });
   } catch {
     // El motivo del parser NUNCA se reenvía: puede citar el contenido de la línea que falló.
     enviar({ tipo: "error", motivo: "lectura-fallida" });
     return;
   }
-  if (!constructor) {
+  // S8: más celdas que las que caben en memoria. La tabla a medias ya se soltó y el archivo se
+  // vuelve a leer por pasadas (`tablaDeCsv`, compartida con Velo local).
+  if (leida === "alto-volumen") {
+    await leerCsvAltoVolumen(archivo, inicio);
+    return;
+  }
+  if (leida === "vacio") {
     enviar({ tipo: "error", motivo: "archivo-vacio" });
     return;
   }
-  tabla = (constructor as ConstructorColumnar).finalizar();
+  tabla = leida;
   formatoOriginal = "csv";
   diagnosticar(archivo, "csv", performance.now() - inicio);
 }
@@ -632,77 +609,22 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
     // resultado: el certificado lo lee de ahí, no del idioma que tenga la pantalla al descargarlo.
     // `construirArchivo` no lee ningún idioma: la tabla que escribe ya nació en el del trabajo.
     // La huella del archivo de entrada entra a la semilla del ruido (S7, `ruido/azar.ts`).
-    const resultado = await aplicarPolitica(
+    // S9: la transformación y su medida viven en `./en-memoria.ts`, que Velo local también llama.
+    const {
+      resultado,
+      qis,
+      balance,
+      utilidad,
+      muestras,
+      generalizacion,
+      privacidad,
+    } = await transformarEnMemoria(
       original,
+      diagnostico,
       politica,
       llave,
       idioma,
       huella,
-    );
-
-    avisar("midiendo-el-despues", original.filas, 0, 0);
-    const sensibles = diagnostico.columnas
-      .filter((c) => c.categoria === "dato-sensible")
-      .map((c) => c.nombre)
-      .filter((n) => !resultado.suprimidas.includes(n));
-    const qis = diagnostico.columnas
-      .filter((c) => c.categoria === "cuasi-identificador")
-      .map((c) => c.nombre)
-      .filter((n) => !resultado.suprimidas.includes(n));
-    const diversidad = medirDiversidad(resultado.tabla, qis, sensibles);
-    // Una retícula que pasó del tope no se recorrió: no hay nada aplicado que contar.
-    const optimaAplicada =
-      resultado.optima?.motivo === "excede-tope" ? null : resultado.optima;
-
-    const balance = balanceDelTratamiento({
-      tablaOriginal: original,
-      tablaTransformada: resultado.tabla,
-      diagnostico,
-      politica,
-      suprimidas: resultado.suprimidas,
-      colisiones: resultado.colisiones,
-      // La salvedad del k habla del k: una óptima que llegó al k y no a la ℓ pedida no es un «k no
-      // alcanzado». La ℓ la cuenta el certificado, en la sección de la generalización.
-      mondrian:
-        resultado.mondrian ??
-        (optimaAplicada
-          ? {
-              ...optimaAplicada,
-              alcanzado: optimaAplicada.kAlcanzado >= optimaAplicada.kObjetivo,
-            }
-          : null),
-      diversidad,
-      pendientesDeMondrian: resultado.pendientesDeMondrian,
-      ruidoNoAplicado: {
-        columnas: resultado.ruido
-          .filter((r) => !r.aplicado)
-          .map((r) => r.columna),
-        maximo: DOMINIO_MAXIMO,
-      },
-      reticulaExcedida:
-        resultado.optima?.motivo === "excede-tope"
-          ? {
-              dimensiones: resultado.optima.dimensiones,
-              nodos: resultado.optima.nodosEnLaReticula,
-              tope: TOPE_DE_NODOS,
-            }
-          : null,
-    });
-
-    const porNombre = new Map(
-      resultado.tabla.columnas.map((c) => [c.nombre, c]),
-    );
-    const categorias = new Map(
-      diagnostico.columnas.map((c) => [c.nombre, c.categoria as string]),
-    );
-    const muestras = original.columnas.map((columna) =>
-      muestraDeColumna(
-        columna,
-        porNombre.get(columna.nombre),
-        politica,
-        categorias.get(columna.nombre) ?? "no-personal",
-        original.filas,
-      ),
     );
 
     transformada = resultado.tabla;
@@ -744,15 +666,12 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
         hashDePolitica: hashDeLaPolitica,
         idioma,
         balance,
-        utilidad: medirUtilidad(original, resultado.tabla),
+        utilidad,
         suprimidas: resultado.suprimidas,
         muestras,
         ms: Math.round(performance.now() - inicio),
-        generalizacion:
-          optimaAplicada && politica.generalizacion
-            ? generalizacionAplicada(optimaAplicada, politica.generalizacion)
-            : null,
-        privacidad: informeDePrivacidad(resultado.ruido),
+        generalizacion,
+        privacidad,
       },
     });
   } catch {
@@ -762,13 +681,6 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
       motivo: llave === null ? "sin-llave" : "transformacion-fallida",
     });
   }
-}
-
-/** Una columna de pocas filas (las de la vista previa), para las mismas funciones de la muestra. */
-function columnaDeMuestra(nombre: string, valores: readonly string[]) {
-  const constructor = new ConstructorColumnar([nombre], valores.length || 1);
-  for (const valor of valores) constructor.agregarFila([valor]);
-  return constructor.finalizar().columnas[0];
 }
 
 /**
@@ -801,46 +713,8 @@ async function transformarAltoVolumen(
       alAvanzar: (filas, bytes, total) =>
         avisar("midiendo-el-despues", filas, bytes, total),
     });
-    const optima = plan.reparto?.optima ?? null;
-    const optimaAplicada = optima?.motivo === "excede-tope" ? null : optima;
-    const balance = balanceDelAltoVolumen(pasada, plan, medida, politica, {
-      mondrian:
-        plan.reparto?.mondrian ??
-        (optimaAplicada
-          ? {
-              ...optimaAplicada,
-              alcanzado: optimaAplicada.kAlcanzado >= optimaAplicada.kObjetivo,
-            }
-          : null),
-      ruidoNoAplicado: {
-        columnas: medida.ruido.filter((r) => !r.aplicado).map((r) => r.columna),
-        maximo: DOMINIO_MAXIMO,
-      },
-      reticulaExcedida:
-        optima?.motivo === "excede-tope"
-          ? {
-              dimensiones: optima.dimensiones,
-              nodos: optima.nodosEnLaReticula,
-              tope: TOPE_DE_NODOS,
-            }
-          : null,
-    });
-    const categorias = new Map(
-      pasada.diagnostico.columnas.map((c) => [c.nombre, c.categoria as string]),
-    );
-    const muestras = plan.nombres.map((nombre, c) =>
-      muestraDeColumna(
-        columnaDeMuestra(nombre, medida.muestras[c].antes),
-        plan.planes[c].tipo === "suprimida"
-          ? undefined
-          : columnaDeMuestra(nombre, medida.muestras[c].despues),
-        politica,
-        categorias.get(nombre) ?? "no-personal",
-        Math.min(pasada.filas, FILAS_DE_MUESTRA),
-        medida.cambio[c],
-      ),
-    );
-
+    const { balance, muestras, generalizacion, privacidad } =
+      resultadoDelAltoVolumen(pasada, plan, medida, politica);
     estado.plan = plan;
     transformada = null;
     clasesDespues = medida.clasesDespues;
@@ -857,11 +731,8 @@ async function transformarAltoVolumen(
         suprimidas: plan.suprimidas,
         muestras,
         ms: Math.round(performance.now() - inicio),
-        generalizacion:
-          optimaAplicada && politica.generalizacion
-            ? generalizacionAplicada(optimaAplicada, politica.generalizacion)
-            : null,
-        privacidad: informeDePrivacidad(medida.ruido),
+        generalizacion,
+        privacidad,
       },
     });
   } catch (error) {
@@ -875,34 +746,6 @@ async function transformarAltoVolumen(
             : "transformacion-fallida",
     });
   }
-}
-
-/**
- * La óptima tal como se aplicó, para el certificado: cada columna con su escalera y el nivel
- * elegido. Las columnas sin escalera en la política subieron por la de solo supresión.
- */
-function generalizacionAplicada(
-  optima: ResultadoOptimo,
-  pedida: GeneralizacionOptima,
-): GeneralizacionAplicada {
-  return {
-    kObjetivo: optima.kObjetivo,
-    kAlcanzado: optima.kAlcanzado,
-    lObjetivo: optima.lObjetivo,
-    lAlcanzado: optima.lAlcanzado,
-    columnasSensibles: optima.columnasSensibles,
-    lDescartadas: optima.lDescartadas,
-    columnas: optima.dimensiones.map((nombre, i) => {
-      const jerarquia = pedida.jerarquias[nombre] ?? { tipo: "supresion" };
-      return {
-        nombre,
-        jerarquia,
-        nivel: nombresDeNiveles(jerarquia)[optima.niveles[i]],
-      };
-    }),
-    nodosRevisados: optima.nodosRevisados,
-    nodosEnLaReticula: optima.nodosEnLaReticula,
-  };
 }
 
 /** Un lado de la comparación, medido sobre las columnas del reparto de la tabla ya generalizada. */
