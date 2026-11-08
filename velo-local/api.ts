@@ -31,6 +31,7 @@ import { decirMensaje } from "@/lib/idioma/mensajes";
 import type { LlaveDeProyecto } from "@/lib/llave";
 import { Sha256 } from "@/lib/sha256";
 import { NoCabeEnAltoVolumen } from "@/workers/alto-volumen";
+import { ErrorDeJson } from "@/engine/json/tipos";
 import { ArchivoCambio } from "@/workers/json";
 
 import {
@@ -274,6 +275,7 @@ async function atender(
     new DestinoConHuella(memoria),
   );
   responder(respuesta, 200, {
+    nombre: `velo-restaurado-${origen.sha256.slice(0, 8)}.${resultado.extension}`,
     restaurado: memoria.base64(),
     sha256DeSalida: resultado.sha256DeSalida,
     filas: resultado.filas,
@@ -307,6 +309,12 @@ export function crearApi(config: ConfiguracionDeLaApi): {
         responder(respuesta, 422, { error: error.motivo });
       else if (error instanceof ArchivoCambio)
         responder(respuesta, 409, { error: "archivo-cambio" });
+      else if (error instanceof ErrorDeJson)
+        // La clave cerrada del motivo y la línea: jamás un trozo del archivo.
+        responder(respuesta, 422, {
+          error: error.motivo,
+          ...(error.linea === null ? {} : { linea: error.linea }),
+        });
       else responder(respuesta, 500, { error: "fallo-interno" });
     });
   });

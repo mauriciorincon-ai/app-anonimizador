@@ -22,6 +22,18 @@ import { construirBoveda, type Boveda } from "@/engine/boveda";
 import { clasificar, type Diagnostico } from "@/engine/clasificador";
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { filasDeCsv, nombreDelArchivoAnonimizado } from "@/engine/csv";
+import { escribirJson } from "@/engine/json/escritor";
+import {
+  columnasNumericas,
+  leerJson,
+  type FuenteDeTexto,
+  type LecturaJson,
+} from "@/engine/json/lector";
+import {
+  JsonExcedeCeldas,
+  TOPES_JSON,
+  type FormaJson,
+} from "@/engine/json/tipos";
 import {
   hashDePolitica,
   importarPolitica,
@@ -38,7 +50,7 @@ import {
   type AdvisorDeQis,
   type RiesgoExacto,
 } from "@/engine/riesgo";
-import { TOPE_DE_CELDAS_EN_MEMORIA } from "@/lib/archivo";
+import { formatoDeArchivo, TOPE_DE_CELDAS_EN_MEMORIA } from "@/lib/archivo";
 import { decirMensaje } from "@/lib/idioma/mensajes";
 import { LOCALE, type Idioma } from "@/lib/idioma";
 import { derivarLlave, generarSal, type LlaveDeProyecto } from "@/lib/llave";
@@ -52,12 +64,19 @@ import {
   restaurarPorTrozos,
   resultadoDelAltoVolumen,
   type Destino,
+  type FormatoDeSalida,
   type Fuente,
   type FuenteDeFilas,
   type OpcionesDeLaPasada,
   type PasadaDeDiagnostico,
+  type PasadaDelDevuelto,
 } from "@/workers/alto-volumen";
 import { tablaDeCsv, transformarEnMemoria } from "@/workers/en-memoria";
+import { fuenteDeArchivo } from "@/workers/json";
+import {
+  abrirJsonPorTrozos,
+  type JsonPorTrozos,
+} from "@/workers/json-por-trozos";
 
 import { ErrorDeVelo } from "./textos";
 
@@ -108,6 +127,21 @@ export function fechaDelDocumento(idioma: Idioma, ahora: Date): string {
 
 // ── Leer y diagnosticar: el mismo camino que elegiría la web ──────────────────────────────────
 
+/**
+ * Solo si la fuente es un JSON (S9): lo que hace falta para escribir la salida con la estructura de
+ * su original. Por el camino de memoria, la lectura y el texto; por pasadas, el JSON ya descrito.
+ */
+export interface DeJson {
+  readonly forma: FormaJson;
+  /** Las columnas que la bóveda marca como numéricas (ADR-011): lo restaurado vuelve sin comillas. */
+  readonly numericas: ReadonlySet<string>;
+  readonly enMemoria?: {
+    readonly lectura: LecturaJson;
+    readonly texto: FuenteDeTexto;
+  };
+  readonly porPasadas?: JsonPorTrozos;
+}
+
 /** Lo que dejó la lectura: la tabla entera (cabe) o la pasada A (no cabe). */
 export type Lectura =
   | {
@@ -117,6 +151,7 @@ export type Lectura =
       readonly riesgo: RiesgoExacto;
       readonly advisor: AdvisorDeQis;
       readonly filas: number;
+      readonly json?: DeJson;
     }
   | {
       readonly modo: "alto-volumen";
@@ -125,7 +160,79 @@ export type Lectura =
       readonly riesgo: RiesgoExacto;
       readonly advisor: AdvisorDeQis;
       readonly filas: number;
+      readonly json?: DeJson;
     };
+
+/** La extensión del archivo que sale: CSV, o la forma del JSON que entró. */
+export function extensionDeSalida(
+  lectura: Pick<Lectura, "json">,
+): "csv" | "json" | "jsonl" {
+  if (!lectura.json) return "csv";
+  return lectura.json.forma === "arreglo" ? "json" : "jsonl";
+}
+
+/** En un JSON, las columnas reversibles que eran todas números vuelven sin comillas (ADR-011). */
+function conNumericas<T extends { readonly columna: string }>(
+  entradas: readonly T[],
+  numericas: ReadonlySet<string> | undefined,
+): T[] {
+  if (!numericas) return [...entradas];
+  return entradas.map((e) =>
+    numericas.has(e.columna) ? { ...e, numerica: true as const } : e,
+  );
+}
+
+/**
+ * Un JSON, leído como lo lee el worker: entero si cabe (`leerJson`), por pasadas si registros ×
+ * rutas pasa del tope de la memoria. Los dos caminos dejan en la lectura lo que la salida necesita.
+ */
+async function leerJsonLocal(
+  fuente: Blob,
+  origen: Origen,
+  opciones: OpcionesDeLaPasada & { readonly topeDeCeldas?: number },
+): Promise<Lectura> {
+  if (origen.bytes === 0) throw new ErrorDeVelo("sinArchivo");
+  const tope = opciones.topeDeCeldas ?? TOPE_DE_CELDAS_EN_MEMORIA;
+  const texto = fuenteDeArchivo(fuente, { huellaEsperada: origen.sha256 });
+  try {
+    const lectura = await leerJson(texto, { ...TOPES_JSON, celdas: tope });
+    const { tabla } = lectura;
+    if (tabla.filas === 0) throw new ErrorDeVelo("sinArchivo");
+    const diagnostico = clasificar(tabla);
+    const { riesgo, advisor } = evaluarRiesgo(tabla, diagnostico);
+    return {
+      modo: "memoria",
+      tabla,
+      diagnostico,
+      riesgo,
+      advisor,
+      filas: tabla.filas,
+      json: {
+        forma: lectura.estructura.forma,
+        numericas: columnasNumericas(lectura),
+        enMemoria: { lectura, texto },
+      },
+    };
+  } catch (error) {
+    if (!(error instanceof JsonExcedeCeldas)) throw error;
+  }
+  const abierto = await abrirJsonPorTrozos(texto, origen.bytes);
+  const pasada = await pasadaDeDiagnostico(abierto.fuente, opciones);
+  if (pasada.filas === 0) throw new ErrorDeVelo("sinArchivo");
+  return {
+    modo: "alto-volumen",
+    pasada,
+    diagnostico: pasada.diagnostico,
+    riesgo: pasada.riesgo,
+    advisor: pasada.advisor,
+    filas: pasada.filas,
+    json: {
+      forma: abierto.descripcion.estructura.forma,
+      numericas: abierto.numericas,
+      porPasadas: abierto,
+    },
+  };
+}
 
 function esFuenteDeFilas(fuente: Fuente): fuente is FuenteDeFilas {
   return typeof (fuente as FuenteDeFilas).lotes === "function";
@@ -161,6 +268,8 @@ export async function leer(
   origen: Origen,
   opciones: OpcionesDeLaPasada & { readonly topeDeCeldas?: number } = {},
 ): Promise<Lectura> {
+  if (!esFuenteDeFilas(fuente) && formatoDeArchivo(origen.nombre) === "json")
+    return leerJsonLocal(fuente, origen, opciones);
   const tope = opciones.topeDeCeldas ?? TOPE_DE_CELDAS_EN_MEMORIA;
   const tabla = esFuenteDeFilas(fuente)
     ? await tablaDeFilas(fuente, tope)
@@ -288,6 +397,8 @@ export interface PedidoDeAnonimizar {
 
 export interface ResultadoDeAnonimizar {
   readonly modo: Lectura["modo"];
+  /** CSV, o JSON / JSON Lines si eso fue lo que entró. */
+  readonly extension: "csv" | "json" | "jsonl";
   readonly hashDePolitica: string;
   readonly nombreDeSalida: string;
   readonly sha256DeSalida: string;
@@ -345,16 +456,31 @@ export async function anonimizar(
       idioma,
       origen.sha256,
     );
-    await escribirTabla(hecho.resultado.tabla, destino);
+    const enMemoria = lectura.json?.enMemoria;
+    if (enMemoria) {
+      // La misma segunda pasada del escritor que usa el worker: los trozos que salen son los bytes.
+      for await (const trozo of escribirJson(
+        enMemoria.texto,
+        enMemoria.lectura,
+        hecho.resultado.tabla,
+      ))
+        await destino.escribir(trozo);
+    } else await escribirTabla(hecho.resultado.tabla, destino);
     tratado = {
       ...hecho,
       suprimidas: hecho.resultado.suprimidas,
-      correspondencias: hecho.resultado.correspondencias,
+      correspondencias: conNumericas(
+        hecho.resultado.correspondencias,
+        lectura.json?.numericas,
+      ),
     };
   } else {
     const { pasada } = lectura;
+    // Un JSON por pasadas se lee por su propia fuente de filas, no por el `Blob` del archivo.
+    const porPasadas = lectura.json?.porPasadas;
+    const filas: Fuente = porPasadas?.fuente ?? fuente;
     const plan = await prepararTransformacion(
-      fuente,
+      filas,
       pasada,
       politica,
       llave.clave,
@@ -362,15 +488,21 @@ export async function anonimizar(
       origen.sha256,
       opciones,
     );
-    const medida = await pasadaDeMedida(fuente, pasada, plan, opciones);
+    const medida = await pasadaDeMedida(filas, pasada, plan, opciones);
     // Medirla exige las dos tablas enteras, que en alto volumen no existen: no se finge (S8).
     tratado = {
       ...resultadoDelAltoVolumen(pasada, plan, medida, politica),
       utilidad: null,
       suprimidas: plan.suprimidas,
-      correspondencias: plan.correspondencias,
+      correspondencias: conNumericas(
+        plan.correspondencias,
+        lectura.json?.numericas,
+      ),
     };
-    await escribirCsv(fuente, plan, destino, opciones);
+    await escribirCsv(filas, plan, destino, {
+      ...opciones,
+      formato: porPasadas?.formato(),
+    });
   }
   const {
     balance,
@@ -383,7 +515,8 @@ export async function anonimizar(
 
   const hash = hashDePolitica(politica);
   const nombreDeSalida =
-    pedido.nombreDeSalida ?? nombreDelArchivoAnonimizado(hash);
+    pedido.nombreDeSalida ??
+    nombreDelArchivoAnonimizado(hash, extensionDeSalida(lectura));
   const sha256DeSalida = destino.terminar();
   const rgpd = informeDelRgpd(politica, suprimidas);
 
@@ -446,6 +579,7 @@ export async function anonimizar(
 
   return {
     modo: lectura.modo,
+    extension: extensionDeSalida(lectura),
     hashDePolitica: hash,
     nombreDeSalida,
     sha256DeSalida,
@@ -470,6 +604,50 @@ export function anotar(
 
 // ── Restaurar ─────────────────────────────────────────────────────────────────────────────────
 
+/** Un archivo devuelto, ya leído por la pasada R1: lo que hace falta para escribir lo restaurado. */
+export interface DevueltoAbierto {
+  /** CSV, o JSON / JSON Lines si eso fue lo que volvió. */
+  readonly extension: "csv" | "json" | "jsonl";
+  readonly fuente: Fuente;
+  readonly formato?: () => FormatoDeSalida;
+  readonly pasada: PasadaDelDevuelto;
+}
+
+/**
+ * La pasada R1 sobre lo devuelto: los diccionarios de sus columnas. Un JSON se abre por pasadas
+ * (`abrirJsonPorTrozos`), igual que en el worker cuando no cabe en memoria; por trozos y en memoria
+ * dan los mismos bytes (el gate de `json-alto-volumen.test.ts`).
+ */
+export async function abrirDevuelto(
+  fuente: Fuente,
+  origen: Origen,
+  opciones: OpcionesDeLaPasada = {},
+): Promise<DevueltoAbierto> {
+  let abierto: JsonPorTrozos | null = null;
+  if (!esFuenteDeFilas(fuente) && formatoDeArchivo(origen.nombre) === "json") {
+    if (origen.bytes === 0) throw new ErrorDeVelo("sinArchivo");
+    abierto = await abrirJsonPorTrozos(
+      fuenteDeArchivo(fuente, { huellaEsperada: origen.sha256 }),
+      origen.bytes,
+    );
+  }
+  const paraLasPasadas: Fuente = abierto?.fuente ?? fuente;
+  const pasada = await pasadaDelDevuelto(paraLasPasadas, {
+    ...opciones,
+    huella: origen.sha256,
+  });
+  return {
+    extension: abierto
+      ? abierto.descripcion.estructura.forma === "arreglo"
+        ? "json"
+        : "jsonl"
+      : "csv",
+    fuente: paraLasPasadas,
+    formato: abierto?.formato,
+    pasada,
+  };
+}
+
 /**
  * El regreso por trozos del S8: las dos pasadas R1 y R2, con la MISMA decisión por columna que en
  * memoria (`decidirRestauracion`), y los mismos bytes (el gate del S8 lo comprueba).
@@ -480,18 +658,20 @@ export async function restaurar(
   boveda: Boveda,
   destino: DestinoConHuella,
   opciones: OpcionesDeLaPasada = {},
+  abierto?: DevueltoAbierto,
 ) {
-  const devuelto = await pasadaDelDevuelto(fuente, {
-    ...opciones,
-    huella: origen.sha256,
-  });
+  const devuelto = abierto ?? (await abrirDevuelto(fuente, origen, opciones));
   const resultado = await restaurarPorTrozos(
-    fuente,
-    devuelto,
+    devuelto.fuente,
+    devuelto.pasada,
     boveda,
     origen.sha256,
     destino,
-    opciones,
+    { ...opciones, formato: devuelto.formato?.() },
   );
-  return { ...resultado, sha256DeSalida: destino.terminar() };
+  return {
+    ...resultado,
+    extension: devuelto.extension,
+    sha256DeSalida: destino.terminar(),
+  };
 }

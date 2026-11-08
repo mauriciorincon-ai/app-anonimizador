@@ -24,7 +24,9 @@ components:
       name: X-Velo-Nombre
       in: header
       required: false
-      description: The file name to write in the certificate (a name, never a path).
+      description: >-
+        The file name to write in the certificate (a name, never a path). Its extension decides the
+        format: .csv, or .json / .jsonl / .ndjson for JSON. Without it, the body is read as CSV.
       schema: { type: string }
   schemas:
     Error:
@@ -62,13 +64,15 @@ paths:
         required: true
         content:
           text/csv: { schema: { type: string, format: binary } }
+          application/json: { schema: { type: string, format: binary } }
+          application/x-ndjson: { schema: { type: string, format: binary } }
       responses:
         "200": { description: The same report the web app builds (diagnosis, exact risk, advisor). }
         "422": { description: Velo cannot process this file, with its key. }
         default: { $ref: "#/components/responses/Rechazo" }
   /v1/anonimizar:
     post:
-      summary: Anonymize a CSV with a policy. Returns the file, the certificate and the sealed vault.
+      summary: Anonymize a CSV or JSON with a policy. Returns the file, the certificate and the sealed vault.
       parameters:
         - { $ref: "#/components/parameters/nombre" }
         - name: X-Velo-Politica
@@ -80,6 +84,8 @@ paths:
         required: true
         content:
           text/csv: { schema: { type: string, format: binary } }
+          application/json: { schema: { type: string, format: binary } }
+          application/x-ndjson: { schema: { type: string, format: binary } }
       responses:
         "200":
           description: Anonymized.
@@ -105,7 +111,7 @@ paths:
         default: { $ref: "#/components/responses/Rechazo" }
   /v1/restaurar:
     post:
-      summary: Restore the original values of a returned CSV with its vault.
+      summary: Restore the original values of a returned CSV or JSON with its vault.
       parameters:
         - { $ref: "#/components/parameters/nombre" }
         - name: X-Velo-Boveda
@@ -117,6 +123,8 @@ paths:
         required: true
         content:
           text/csv: { schema: { type: string, format: binary } }
+          application/json: { schema: { type: string, format: binary } }
+          application/x-ndjson: { schema: { type: string, format: binary } }
       responses:
         "200": { description: Restored file (base64), its fingerprint and the restoration totals. }
         "422": { description: The vault could not be opened, with its key. }

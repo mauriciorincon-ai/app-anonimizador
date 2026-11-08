@@ -19,6 +19,7 @@ import type { Idioma } from "@/lib/idioma";
 import { decirMensaje } from "@/lib/idioma/mensajes";
 import { formatoNumerico } from "@/lib/idioma";
 import { NoCabeEnAltoVolumen } from "@/workers/alto-volumen";
+import { ErrorDeJson } from "@/engine/json/tipos";
 import { ArchivoCambio } from "@/workers/json";
 
 import { crearApi, escuchar, PUERTO_DE_LA_API } from "./api";
@@ -26,9 +27,11 @@ import { abrirArchivo, ArchivoNuevo, escribirNuevo } from "./archivos";
 import { anotarEnBitacora, pedidaDePolitica } from "./comun";
 import { secreto } from "./consola";
 import {
+  abrirDevuelto,
   anonimizar,
   DestinoConHuella,
   diagnosticar,
+  extensionDeSalida,
   fechaDelDocumento,
   llaveDelProyecto,
   resolverPolitica,
@@ -140,7 +143,10 @@ async function ordenAnonimizar(
 
   // El nombre de salida depende del hash de la política, que ya se sabe: se abre antes de escribir.
   const hash = hashDePolitica(politica);
-  const rutaDeSalida = join(carpeta, nombreDelArchivoAnonimizado(hash));
+  const rutaDeSalida = join(
+    carpeta,
+    nombreDelArchivoAnonimizado(hash, extensionDeSalida(lectura)),
+  );
   const archivo = await ArchivoNuevo.crear(rutaDeSalida);
   let resultado;
   try {
@@ -231,10 +237,12 @@ async function ordenRestaurar(
     });
 
   const { fuente, origen } = await abrirArchivo(ruta);
+  // La pasada R1 va antes de abrir el destino: de ella sale si lo restaurado es CSV, JSON o JSON Lines.
+  const devuelto = await abrirDevuelto(fuente, origen);
   const carpeta = resolve(args.values.salida ?? dirname(ruta));
   const rutaDeSalida = join(
     carpeta,
-    `velo-restaurado-${origen.sha256.slice(0, 8)}.csv`,
+    `velo-restaurado-${origen.sha256.slice(0, 8)}.${devuelto.extension}`,
   );
   const archivo = await ArchivoNuevo.crear(rutaDeSalida);
   let resultado;
@@ -244,6 +252,8 @@ async function ordenRestaurar(
       origen,
       abierta.boveda,
       new DestinoConHuella(archivo),
+      {},
+      devuelto,
     );
     await archivo.cerrar();
   } catch (error) {
@@ -335,6 +345,13 @@ export async function principal(
       consola.aviso(texto(V.error.noCabe, idioma, { motivo: error.motivo }));
     else if (error instanceof ArchivoCambio)
       consola.aviso(texto(V.error.archivoCambio, idioma));
+    else if (error instanceof ErrorDeJson)
+      consola.aviso(
+        texto(V.error.jsonInvalido, idioma, {
+          motivo: error.motivo,
+          linea: error.linea ?? "?",
+        }),
+      );
     else consola.aviso(`velo: ${(error as Error)?.name ?? "Error"}`);
     return 1;
   }

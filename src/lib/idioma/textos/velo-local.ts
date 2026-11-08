@@ -169,6 +169,10 @@ export const VELO_LOCAL = {
       es: "Este archivo no se puede tratar por pasadas: {motivo}.",
       en: "This file cannot be processed in passes: {motivo}.",
     },
+    jsonInvalido: {
+      es: "El JSON no se pudo leer ({motivo}, línea {linea}). No se escribió nada.",
+      en: "The JSON could not be read ({motivo}, line {linea}). Nothing was written.",
+    },
     archivoCambio: {
       es: "El archivo cambió mientras Velo lo leía. No se escribió nada.",
       en: "The file changed while Velo was reading it. Nothing was written.",
