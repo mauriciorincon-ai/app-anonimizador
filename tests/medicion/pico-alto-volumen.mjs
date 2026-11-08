@@ -9,9 +9,15 @@
 // `tmp/` (ignorado). Regla 17-bis: el arnés declara su árbol al arrancar y aborta si el archivo no es
 // el del generador, comparando su SHA-256 con el de la corrida sembrada. Ningún dato real entra aquí.
 //
-// La memoria es el RSS de cada proceso hijo del navegador, muestreado cada 500 ms; el pico es el del
+// La política: Habeas Data, más `nombre_completo` seudonimizada con bóveda (para poder volver).
+//
+// La memoria es el RSS de cada proceso del navegador, muestreado cada 500 ms; el pico es el del
 // proceso que más pesó (la pestaña: la página y su worker viven en él). Cuenta la basura aún no
 // recogida, así que es un techo, no el montón vivo. Cada paso da su propio pico.
+//
+// El navegador corre con un perfil de verdad (en `tmp/`, se borra al terminar), no con un contexto de
+// incógnito: en incógnito Chromium no puede pasar a disco un Blob de 1,36 GB y cancela la descarga
+// (S10). Así es como lo usa una persona. Cada sesión es una pestaña nueva; la anterior se cierra.
 //
 // Abre `next start` en 127.0.0.1:3300 si nadie escucha allí, y lo cierra al terminar.
 
@@ -28,6 +34,7 @@ const TMP = join(RAIZ, "tmp");
 const FILAS = Number(process.env.FILAS ?? 5_000_000);
 const ARCHIVO = join(TMP, `clinico-${FILAS / 1_000_000}m.csv`);
 const SALIDA = join(TMP, "pico-alto-volumen");
+const PERFIL = join(SALIDA, "perfil");
 // SHA-256 de `generador.mjs --filas 5000000 --seed 42 --perfil clinico` (verificado el 2026-11-08).
 const HUELLAS = {
   5_000_000: "47f6d50707b3fddc118ce073f3b966c88f879501a93ab251b1d831bdcf70953d",
@@ -40,7 +47,7 @@ const MINUTOS = 60_000;
 
 console.log("Árbol que toca este arnés:");
 console.log(`  lee      ${ARCHIVO} (generador sembrado, seed 42)`);
-console.log(`  escribe  ${SALIDA}/ (se borra al terminar)`);
+console.log(`  escribe  ${SALIDA}/ (perfil del navegador y descargas; se borra al terminar)`);
 
 async function huella(ruta) {
   const hash = createHash("sha256");
@@ -83,9 +90,11 @@ if (!(await escucha())) {
     await new Promise((r) => setTimeout(r, 200));
 }
 
-const servidor = await chromium.launchServer();
-const pid = servidor.process().pid;
-const nav = await chromium.connect(servidor.wsEndpoint());
+const nav = await chromium.launchPersistentContext(PERFIL, {
+  locale: "es-CO",
+  acceptDownloads: true,
+});
+const propios = new Set(servidorPropio ? [String(servidorPropio.pid)] : []);
 
 const hijosDe = (p) => {
   try {
@@ -100,7 +109,15 @@ const hijosDe = (p) => {
 let picoDelPaso = 0;
 let picoTotal = 0;
 const muestreo = setInterval(() => {
-  for (const h of hijosDe(pid).flatMap((h) => [h, ...hijosDe(h)])) {
+  // Todo lo que cuelga de este proceso salvo el `next start` propio: el navegador y sus hijos.
+  const pendientes = hijosDe(process.pid).filter((h) => !propios.has(h));
+  const delNavegador = [];
+  while (pendientes.length) {
+    const h = pendientes.pop();
+    delNavegador.push(h);
+    pendientes.push(...hijosDe(h));
+  }
+  for (const h of delNavegador) {
     try {
       const rss = Number(
         execFileSync("ps", ["-o", "rss=", "-p", h], { encoding: "utf8" }).trim(),
@@ -129,8 +146,7 @@ const sinSelector = (pagina) =>
 let codigo = 0;
 try {
   // ── La ida ────────────────────────────────────────────────────────────────────────────────────
-  const contextoA = await nav.newContext({ locale: "es-CO", acceptDownloads: true });
-  const page = await contextoA.newPage();
+  const page = await nav.newPage();
   await sinSelector(page);
   await page.goto(BASE + "/");
   await page.setInputFiles("#archivo", ARCHIVO);
@@ -143,6 +159,14 @@ try {
   await page.getByRole("link", { name: "Transformar este archivo" }).click();
   await page.waitForURL("**/transformar");
   await page.getByRole("button", { name: /Habeas Data/ }).first().click();
+  // Habeas Data no deja ninguna columna con bóveda, y sin bóveda no hay regreso. `nombre_completo`
+  // tiene pocos distintos (325 en 500 000 filas): su bóveda cabe en alto volumen.
+  const tecnica = page.getByLabel("Técnica para la columna nombre_completo");
+  await tecnica.selectOption("seudonimizar");
+  await tecnica
+    .locator("xpath=ancestor::*[.//input[@type='checkbox']][1]")
+    .getByRole("checkbox")
+    .check();
   await page.getByLabel("Frase de paso del proyecto").fill(FRASE_DE_LLAVE);
   await page.getByRole("button", { name: "Derivar la llave" }).click();
   await page.getByRole("heading", { name: "Llave lista" }).waitFor({ timeout: MINUTOS });
@@ -178,12 +202,11 @@ try {
   ]);
   const boveda = join(SALIDA, "boveda.velo");
   await descargaVelo.saveAs(boveda);
-  await contextoA.close();
+  await page.close();
   marca("bóveda y descargas");
 
   // ── El regreso, en otra sesión ────────────────────────────────────────────────────────────────
-  const contextoB = await nav.newContext({ locale: "es-CO", acceptDownloads: true });
-  const paginaB = await contextoB.newPage();
+  const paginaB = await nav.newPage();
   await sinSelector(paginaB);
   await paginaB.goto(BASE + "/regreso");
   await paginaB.getByLabel("Elegir el archivo de bóveda").setInputFiles(boveda);
@@ -207,7 +230,7 @@ try {
   const [descargaB] = await Promise.all([paginaB.waitForEvent("download"), guardarB.click()]);
   const restaurado = join(SALIDA, "restaurado.csv");
   await descargaB.saveAs(restaurado);
-  await contextoB.close();
+  await paginaB.close();
 
   const igual = (await huella(restaurado)) === huellaOriginal;
   console.log(`regreso byte a byte igual al original: ${igual ? "sí" : "NO"}`);
@@ -220,7 +243,6 @@ try {
   console.log(`PICO RSS del proceso más pesado: ${Math.round(picoTotal / 1024)} MB`);
   console.log(JSON.stringify({ filas: FILAS, pasos: filas, picoMb: Math.round(picoTotal / 1024) }));
   await nav.close();
-  await servidor.close();
   if (servidorPropio) process.kill(-servidorPropio.pid);
   rmSync(SALIDA, { recursive: true, force: true });
 }
