@@ -10,10 +10,12 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --coverage",
+    "test:puente": "vitest run -c vitest.puente.config.ts",
     "test:e2e": "playwright test --pass-with-no-tests",
     "gate:anti-ia": "node scripts/gate-anti-ia.mjs",
     "kit:generar": "node docs/kit-de-prueba/generador.mjs",
     "velo": "tsx velo-local/velo.ts",
+    "kit:base": "node docs/kit-de-prueba/kit-base.mjs",
     "prepare": "git config core.hooksPath githooks"
   },
   "dependencies": {
