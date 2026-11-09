@@ -1038,11 +1038,14 @@ N” instead of a false figure, and the column comes out untouched.
   to **your browser's download, in chunks and without building it whole in the tab's memory**: the
   file is saved in your downloads folder while Velo writes it, and the screen says “Sent to your
   browser's download: …”. Underneath there is a _service worker_ of Velo's own that serves only the
-  address of that download: **it stores nothing in the browser, requests nothing from the network
+  address of that download: **it stores no data, requests nothing from the network
   and sees only what Velo hands it**, which is the already-anonymized file, the same bytes that
-  would be saved any other way. The screen cannot know when the browser finishes writing: **check
-  that the download has finished before closing the tab.** If you cancel the download halfway, Velo
-  notices and says “The file could not be written”.
+  would be saved any other way. The only thing left in your browser is the registration of the
+  _service worker_ itself (a Velo file, with none of your data), which you can remove from the
+  browser's settings. The screen cannot know when the browser finishes writing: **check
+  that the download has finished before closing the tab.** If you cancel the download halfway and your browser reports the
+  cancellation, Velo notices and says “The file could not be written”; this was not tested in a real
+  browser.
 - **If your browser does not allow that service worker** (a private window that blocks it, a company
   policy, a very old browser), Velo falls back to **parts**: it builds the CSV in memory and, if it
   weighs more than 256 MB, hands it over **cut into parts** —**“Save part 1 of 5”**, and so on—,

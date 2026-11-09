@@ -97,9 +97,10 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   JAMIA 2009, [ADR-013](decisions/013-generalizacion-optima.md)): el otro camino hacia el k. Cada
   columna sube por su **escalera** hasta un nivel, **el mismo en todo el archivo**, y de todas las
   combinaciones se elige la que cumple el k perdiendo menos información (medida en bits), sin borrar
-  filas y con una ℓ distinta opcional. Trae escaleras de fábrica para Colombia —municipio →
+  filas salvo el **tope de supresión** que tú pidas (Sprint 011; por omisión, 0) y con una ℓ distinta
+  opcional. Trae escaleras de fábrica para Colombia —municipio →
   departamento → región (DIVIPOLA del DANE, regiones de la Ley 2056 de 2020), edad en quinquenios y
-  grandes grupos (proyecciones del DANE), actividad económica CIIU Rev. 4 A.C.— y otras genéricas
+  grandes grupos (proyecciones del DANE), actividad económica CIIU Rev. 4 o Rev. 5 A.C.— y otras genéricas
   (rangos, fechas, prefijos). Compara lado a lado con Mondrian, y el certificado cuenta cómo se llegó
   al k, con la fuente y la fecha de cada escalera de fábrica. Una retícula de más de 20.000
   combinaciones no se recorre: las columnas salen intactas y el balance lo dice primero.
@@ -145,12 +146,15 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
 - **Archivo anonimizado** (un CSV, o un JSON en la forma en que entró) escrito por el navegador
   —nunca por un servidor— y su **reporte del tratamiento**, que declara qué se le hizo y que su
   huella es la del archivo que _entró_.
-- **Limpieza de metadatos de PDF, JPEG, PNG, WebP y HEIC** (las fotos de iPhone, desde el
-  Sprint 007): Velo enseña lo que el archivo dice de sí mismo (autor, programa, fechas, GPS,
+- **Limpieza de metadatos de PDF, JPEG, PNG, WebP, HEIC y AVIF** (las fotos de iPhone, desde el
+  Sprint 007; el AVIF, las secuencias de HEIC y el video de una Live Photo, desde el Sprint 011):
+  Velo enseña lo que el archivo dice de sí mismo (autor, programa, fechas, GPS,
   identificadores, las versiones anteriores de un PDF) con muestras enmascaradas, y entrega una
   copia sin eso y un certificado con las dos huellas. Un HEIC sigue siendo HEIC —Velo no lo
-  convierte— y sus píxeles salen idénticos; las Live Photos y otras piezas que no sabe reescribir
-  se rechazan diciéndolo, en vez de entregar un archivo roto. Limpia metadatos, no el texto de las
+  convierte— y sus píxeles salen idénticos. Las secuencias y el `.mov` se limpian en su lugar, y de
+  una Live Photo el video conserva el identificador de su pareja (el certificado lo dice; la foto,
+  sin él, ya no se empareja). Las piezas que no sabe reescribir se rechazan diciéndolo, en vez de
+  entregar un archivo roto. Limpia metadatos, no el texto de las
   páginas ni lo que se ve en una foto, y lo dice antes que nada.
 
 Rendimiento medido: **500.000 filas × 24 columnas (130 MB) en unos 5 segundos** para el diagnóstico

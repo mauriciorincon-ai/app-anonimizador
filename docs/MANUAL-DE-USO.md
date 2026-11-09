@@ -1028,11 +1028,14 @@ vez de una cifra falsa, y la columna sale intacta.
   tu navegador, por trozos y sin armarlo entero en la memoria de la pestaña**: el archivo se va
   guardando en tu carpeta de descargas mientras Velo lo escribe, y la pantalla dice «Enviado a la
   descarga de tu navegador: …». Por debajo hay un _service worker_ propio de Velo, que solo atiende
-  la dirección de esa descarga: **no guarda nada en el navegador, no pide nada a la red y no ve más
+  la dirección de esa descarga: **no guarda ningún dato, no pide nada a la red y no ve más
   que lo que Velo le pasa**, que es el archivo ya anonimizado, los mismos bytes que se guardarían de
-  cualquier otra forma. La pantalla no puede saber cuándo termina de escribir el navegador:
+  cualquier otra forma. Lo único que queda en tu navegador es el registro del propio _service
+  worker_ (un archivo de Velo, sin datos tuyos), que puedes quitar desde la configuración del
+  navegador. La pantalla no puede saber cuándo termina de escribir el navegador:
   **revisa que la descarga haya terminado antes de cerrar la pestaña.** Si cancelas la descarga a
-  la mitad, Velo lo nota y dice «No se pudo escribir el archivo».
+  la mitad y tu navegador avisa de la cancelación, Velo lo nota y dice «No se pudo escribir el
+  archivo»; no se probó en un navegador real.
 - **Si tu navegador no permite ese service worker** (una ventana privada que lo bloquea, una
   política de empresa, un navegador muy antiguo), Velo cae al **respaldo por partes**: arma el CSV
   en la memoria y, si pesa más de 256 MB, lo entrega **cortado en partes** —**«Guardar la parte 1
