@@ -14,13 +14,21 @@
 /** Cuánto se espera a que el service worker diga que atendió la descarga. */
 export const ESPERA_DEL_SERVICE_WORKER_MS = 5_000;
 
+/**
+ * Cada cuánto la página le manda un latido al service worker mientras dura la descarga. Firefox apaga
+ * un service worker tras unos 30 s sin eventos, y los mensajes del canal con el worker no cuentan:
+ * un archivo de ~400 MB, que tarda más que eso en salir, se quedaba a medias (medido en el S11). Un
+ * mensaje al service worker sí es un evento y reinicia ese reloj.
+ */
+export const LATIDO_DEL_SERVICE_WORKER_MS = 10_000;
+
 const SCRIPT = "/velo-descarga-sw.js";
 const AMBITO = "/descarga/";
 
 export interface DescargaAbierta {
   /** El extremo del canal que se le entrega al worker (transferible). */
   readonly puerto: MessagePort;
-  /** Quita el marco de la descarga. Se llama al terminar o al fallar. */
+  /** Quita el marco de la descarga y detiene el latido. Se llama al soltar el archivo o al fallar. */
   cerrar(): void;
 }
 
@@ -66,7 +74,14 @@ export async function abrirDescargaEnFlujo(
     marco.setAttribute("aria-hidden", "true");
     marco.tabIndex = -1;
     marco.src = `${AMBITO}${id}`;
-    const cerrar = () => marco.remove();
+    const latido = setInterval(
+      () => servidor.postMessage({ tipo: "latido" }),
+      LATIDO_DEL_SERVICE_WORKER_MS,
+    );
+    const cerrar = () => {
+      clearInterval(latido);
+      marco.remove();
+    };
     document.body.append(marco);
 
     const servido = await new Promise<boolean>((resolver) => {

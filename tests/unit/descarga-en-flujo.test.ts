@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   abrirDescargaEnFlujo,
   ESPERA_DEL_SERVICE_WORKER_MS,
+  LATIDO_DEL_SERVICE_WORKER_MS,
 } from "@/lib/descarga-en-flujo";
 
 type Estado = "installing" | "installed" | "activated" | "redundant";
@@ -90,6 +91,30 @@ describe("abrirDescargaEnFlujo", () => {
     expect(document.querySelector("iframe")).toBeNull();
     abierta!.puerto.close();
     puertos[0].close();
+  });
+
+  it("le manda un latido al service worker mientras dura la descarga y lo detiene al cerrar", async () => {
+    const sw = new ServiceWorkerFalso("activated");
+    instalar({ installing: null, waiting: null, active: sw });
+    const intervalos = vi.spyOn(globalThis, "setInterval");
+    const limpiezas = vi.spyOn(globalThis, "clearInterval");
+    const promesa = abrirDescargaEnFlujo(2_000);
+    await esperar(20);
+    sw.mensajes[0].puertos[0].postMessage({ tipo: "servido" });
+    const abierta = await promesa;
+
+    const llamada = intervalos.mock.calls.find(
+      ([, ms]) => ms === LATIDO_DEL_SERVICE_WORKER_MS,
+    );
+    expect(llamada).toBeDefined();
+    (llamada![0] as () => void)();
+    expect(sw.mensajes.map((m) => m.datos)).toContainEqual({ tipo: "latido" });
+
+    const antes = limpiezas.mock.calls.length;
+    abierta!.cerrar();
+    expect(limpiezas.mock.calls.length).toBeGreaterThan(antes);
+    abierta!.puerto.close();
+    sw.mensajes[0].puertos[0].close();
   });
 
   it("espera a que el service worker termine de activarse", async () => {

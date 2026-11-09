@@ -28,6 +28,8 @@ self.addEventListener("activate", (evento) => {
 // sabe la página (el worker los calcula): llegan por el canal, en el mensaje «adelante».
 self.addEventListener("message", (evento) => {
   const datos = evento.data;
+  // «latido»: la página lo manda cada pocos segundos para que el navegador no apague este service
+  // worker a mitad de una descarga larga. Recibirlo es todo lo que hace falta.
   if (!datos || datos.tipo !== "abrir" || !evento.ports[0]) return;
   abiertas.set(String(datos.id), { puerto: evento.ports[0] });
 });
