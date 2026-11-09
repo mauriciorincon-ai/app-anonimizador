@@ -152,7 +152,7 @@ export function ZonaDeCarga({
         <input
           id="archivo"
           type="file"
-          accept=".csv,.xlsx,.xls,text/csv,.json,.jsonl,.ndjson,application/json,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+          accept=".csv,.xlsx,.xls,text/csv,.json,.jsonl,.ndjson,application/json,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.mov,application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif,video/quicktime"
           className="peer sr-only"
           onChange={(e) => {
             const archivo = e.target.files?.[0];

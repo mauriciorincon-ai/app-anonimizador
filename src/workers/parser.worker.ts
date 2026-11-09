@@ -29,7 +29,11 @@ import {
   type EntradaDeBoveda,
 } from "@/engine/boveda";
 import { clasificar, type Diagnostico } from "@/engine/clasificador";
-import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
+import {
+  ConstructorColumnar,
+  quitarFilas,
+  type TablaColumnar,
+} from "@/engine/columnar";
 import { filasDeCsv, nombreDelArchivoAnonimizado } from "@/engine/csv";
 import { medirDiversidad } from "@/engine/diversidad";
 import { escribirJson } from "@/engine/json/escritor";
@@ -51,6 +55,7 @@ import {
 import { generalizarOptimo, resolverDiversidad } from "@/engine/optima";
 import { anonimizarConMondrian } from "@/engine/mondrian";
 import { nombresDeNiveles } from "@/engine/jerarquias";
+import { conRevisionesDeLaTabla } from "@/engine/jerarquias/fabrica";
 import {
   columnasDeMondrian,
   hashDePolitica,
@@ -116,7 +121,11 @@ import {
   type PlanDeTransformacion,
 } from "./alto-volumen";
 import { lotesDeCsv } from "./csv";
-import { destinoDe, motivoDeLaEscritura } from "./destino";
+import {
+  destinoDe,
+  motivoDeLaEscritura,
+  PARTE_DE_SALIDA_BYTES,
+} from "./destino";
 import { tablaDeCsv, transformarEnMemoria } from "./en-memoria";
 import { ArchivoCambio, fuenteDeArchivo } from "./json";
 import { abrirJsonPorTrozos } from "./json-por-trozos";
@@ -632,7 +641,7 @@ function diagnosticar(
 
   const inicio = performance.now();
   avisar("clasificando", tabla.filas, archivo.size, archivo.size);
-  const diagnostico = clasificar(tabla);
+  const diagnostico = conRevisionesDeLaTabla(clasificar(tabla), tabla);
   diagnosticoActual = diagnostico;
 
   avisar("midiendo-riesgo", tabla.filas, archivo.size, archivo.size);
@@ -748,6 +757,8 @@ async function transformar(politica: Politica, idioma: Idioma): Promise<void> {
       llave,
       idioma,
       huella,
+      // S11: un JSON se reescribe registro por registro; el tope de supresión no se le aplica.
+      formatoOriginal !== "json",
     );
 
     transformada = resultado.tabla;
@@ -831,6 +842,7 @@ async function transformarAltoVolumen(
       idioma,
       huella,
       {
+        admiteSupresion: estado.salida.extension === "csv",
         alAvanzar: (filas, bytes, total) =>
           avisar("transformando", filas, bytes, total),
       },
@@ -1069,6 +1081,54 @@ function compararSobre(
     },
   );
 
+  // S11: con tope de supresión, la óptima que borra filas al lado de la que no. Se mide sobre lo
+  // que QUEDA; los bits, los de la óptima, que cuentan cada fila borrada como pérdida total.
+  const porcentaje = politica.generalizacion?.supresionMaxima ?? 0;
+  const aplicable = admiteSupresion();
+  let conSupresion: ComparacionDeGeneralizacion["conSupresion"] = null;
+  if (porcentaje > 0) {
+    inicio = performance.now();
+    const conTope = generalizarOptimo(
+      tabla,
+      dimensiones,
+      jerarquias,
+      k,
+      diversidad,
+      suprimidas,
+      { porcentaje, aplicada: aplicable },
+    );
+    const disponibleConTope = conTope.motivo !== "excede-tope";
+    const lado = medirLado(
+      conTope.tabla,
+      conTope.fuera === null ? tabla : quitarFilas(tabla, conTope.fuera),
+      dimensiones,
+      sensibles,
+      conTope.dimensiones.map((n, i) =>
+        disponibleConTope
+          ? nombresDeNiveles(jerarquiaDe(jerarquias, n))[conTope.niveles[i]]
+          : null,
+      ),
+      {
+        disponible: disponibleConTope,
+        motivo: conTope.motivo,
+        alcanzado: conTope.alcanzado,
+        nodosRevisados: conTope.nodosRevisados,
+        nodosEnLaReticula: conTope.nodosEnLaReticula,
+        ms: Math.round(performance.now() - inicio),
+      },
+    );
+    conSupresion = {
+      porcentaje,
+      aplicable,
+      lado: {
+        ...lado,
+        bitsAntes: conTope.bitsAntes,
+        bitsDespues: conTope.bitsDespues,
+        filasQuitadas: conTope.supresion?.filas ?? 0,
+      },
+    };
+  }
+
   const comparacion: ComparacionDeGeneralizacion = {
     kObjetivo: k,
     lObjetivo: optima.lObjetivo,
@@ -1076,20 +1136,34 @@ function compararSobre(
     dimensiones,
     mondrian: ladoMondrian,
     optima: ladoOptima,
+    conSupresion,
   };
   enviar({ tipo: "comparacion", comparacion });
+}
+
+/** S11: ¿el archivo abierto admite el tope de supresión? Un JSON no (ver `optima.ts`). */
+function admiteSupresion(): boolean {
+  return altoVolumen
+    ? altoVolumen.salida.extension === "csv"
+    : formatoOriginal !== "json";
 }
 
 /** Cuántas filas se juntan antes de cerrar un trozo del Blob. */
 const FILAS_POR_TROZO = 20_000;
 
-async function construirArchivo(asa?: FileSystemFileHandle): Promise<void> {
+async function construirArchivo(
+  asa?: FileSystemFileHandle,
+  flujo?: MessagePort,
+  limiteDeParte?: number,
+): Promise<void> {
   if (altoVolumen?.plan) {
     await construirArchivoAltoVolumen(
       altoVolumen.archivo,
       altoVolumen.plan,
       altoVolumen.salida,
       asa,
+      flujo,
+      limiteDeParte,
     );
     return;
   }
@@ -1154,11 +1228,27 @@ async function construirArchivoAltoVolumen(
   plan: PlanDeTransformacion,
   formato: SalidaDeAltoVolumen,
   asa?: FileSystemFileHandle,
+  flujo?: MessagePort,
+  limiteDeParte?: number,
 ): Promise<void> {
   avisar("escribiendo", altoVolumen?.pasada.filas ?? 0, 0, bytesDe(archivo));
   let salida: Awaited<ReturnType<typeof destinoDe>> | null = null;
+  const nombre = nombreDelArchivoAnonimizado(
+    hashDeLaPolitica,
+    formato.extension,
+  );
   try {
-    salida = await destinoDe(asa);
+    salida = await destinoDe(asa, {
+      nombre,
+      mime: formato.mime,
+      flujo,
+      // Sin selector ni service worker, un CSV sale en partes si pasa del límite; un JSON no se
+      // corta (cada registro lleva su estructura) y sigue saliendo en un solo `Blob`.
+      partes:
+        !asa && !flujo && formato.extension === "csv"
+          ? { limite: limiteDeParte ?? PARTE_DE_SALIDA_BYTES }
+          : undefined,
+    });
     await escribirCsv(archivo, plan, salida.destino, {
       formato: formato.formato?.(),
       numericas: formato.numericas,
@@ -1169,7 +1259,7 @@ async function construirArchivoAltoVolumen(
     enviar({
       tipo: "archivo",
       ...cerrado,
-      nombre: nombreDelArchivoAnonimizado(hashDeLaPolitica, formato.extension),
+      nombre,
       proposito: "anonimizado",
     });
   } catch (error) {
@@ -1854,7 +1944,11 @@ alcance.addEventListener("message", (evento: MessageEvent<MensajeAlWorker>) => {
       mensaje.idioma,
     );
   if (mensaje?.tipo === "construir-archivo")
-    void construirArchivo(mensaje.destino);
+    void construirArchivo(
+      mensaje.destino,
+      mensaje.flujo,
+      mensaje.limiteDeParte,
+    );
   if (mensaje?.tipo === "sellar-boveda") void sellar(mensaje.frase);
   if (mensaje?.tipo === "abrir-boveda")
     void abrir(mensaje.archivo, mensaje.frase);

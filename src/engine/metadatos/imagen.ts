@@ -1,7 +1,9 @@
-// Imágenes (S6, HEIC en el S7) — la puerta única al análisis y a la limpieza de JPEG, PNG, WebP y HEIC.
+// Imágenes (S6, HEIC en el S7, AVIF, secuencias y el `.mov` de la Live Photo en el S11) — la puerta
+// única al análisis y a la limpieza de JPEG, PNG, WebP, HEIC, AVIF y MOV.
 //
 // El worker llama aquí con los bytes y el formato que dijo `formatoPorContenido` (los bytes
-// mágicos, no la extensión). Cada formato tiene su lector (`jpeg.ts`, `png.ts`, `webp.ts`); los tres
+// mágicos, no la extensión). Cada formato tiene su lector (`jpeg.ts`, `png.ts`, `webp.ts`, `heic.ts`
+// para HEIC y AVIF fijos, `secuencia.ts` para lo que trae pistas: secuencias y `.mov`); todos
 // comparten el inventario (`inventario.ts`), que es donde se aplican las reglas comunes a todo
 // campo: `MAXIMO_DE_CAMPOS` (los demás se cuentan y se avisa `campos-de-mas`) y el recorte a
 // `LARGO_MAXIMO_DE_VALOR` (`valores-recortados`). Así el tope se aplica MIENTRAS se lee, sin juntar
@@ -12,9 +14,10 @@
 // segunda lectura es la misma que ve el usuario en el certificado: lo que queda es solo lo que se
 // conserva y se declara.
 
-import { analizarHeic, limpiarHeic } from "./heic";
+import { analizarHeic, limpiarHeic, tienePistas } from "./heic";
 import { analizarJpeg, limpiarJpeg } from "./jpeg";
 import { analizarPng, limpiarPng } from "./png";
+import { analizarSecuencia, limpiarSecuencia } from "./secuencia";
 import {
   type AnalisisDeMetadatos,
   ErrorDeMetadatos,
@@ -39,7 +42,12 @@ export function analizarImagen(
     case "webp":
       return analizarWebp(bytes);
     case "heic":
-      return analizarHeic(bytes);
+    case "avif":
+      return tienePistas(bytes)
+        ? analizarSecuencia(bytes, formato)
+        : analizarHeic(bytes, formato);
+    case "mov":
+      return analizarSecuencia(bytes, formato);
   }
 }
 
@@ -52,7 +60,12 @@ function limpiar(bytes: Uint8Array, formato: FormatoDeImagen): Limpieza {
     case "webp":
       return limpiarWebp(bytes);
     case "heic":
-      return limpiarHeic(bytes);
+    case "avif":
+      return tienePistas(bytes)
+        ? limpiarSecuencia(bytes, formato)
+        : limpiarHeic(bytes, formato);
+    case "mov":
+      return limpiarSecuencia(bytes, formato);
   }
 }
 

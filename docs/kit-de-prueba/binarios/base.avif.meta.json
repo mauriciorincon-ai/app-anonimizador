@@ -1,0 +1,10 @@
+{
+  "archivo": "base.avif",
+  "sha256": "4cfe96e93c5a5a4527e50d048def8e36d3723c4c276b92be60659ceded6509b8",
+  "bytes": 558,
+  "que_es": "Una imagen AVIF de 64×48 píxeles con las mismas cuatro bandas verticales de color plano que base.heic (azul, ocre, verde y rojo). Es la base de la que heic.mjs toma el flujo AV1 y sus propiedades para armar las fotos AVIF del kit, y secuencia.mjs las muestras de las secuencias AVIF.",
+  "como_se_hizo": "`sips -s format avif base.heic --out base.avif` en macOS 27.0.1, una sola vez, a partir del base.heic versionado (sha256 cbbd1f1e48499dc311340431f6988791a5dcde1a66d07eccf8f20843a8c36ad5). La CI corre en Linux, que no escribe AVIF con sips: por eso el archivo se versiona en vez de generarse.",
+  "fecha": "2026-11-08",
+  "contenido_verificado": "Cajas ftyp (avif; MiPr avif miaf mif1), meta (hdlr pict sin nombre, dinf, pitm, iinf con un elemento av01 y un elemento Exif, iref cdsc, iprp con colr nclx, clli, ispe, irot, pixi y av1C, iloc) y mdat. El Exif que escribe sips trae solo tres etiquetas técnicas (Orientation, TileWidth 64, TileLength 48): ni fecha, ni programa, ni nombre, ni ubicación. Los generadores toman de aquí solo el flujo AV1 y las propiedades; el Exif no se usa.",
+  "dato_real": false
+}

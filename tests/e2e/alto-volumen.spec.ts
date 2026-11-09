@@ -3,7 +3,7 @@
 // se comprueba al final es lo más fuerte que se puede comprobar: el restaurado es el ORIGINAL, byte
 // a byte. Y en todo el recorrido, la red no ve nada.
 //
-// Va por la vía del `Blob`: el selector de archivo del sistema no se puede automatizar, así que se
+// Va por la vía del `Blob` (S11: sin service worker): el selector de archivo del sistema no se puede automatizar, así que se
 // esconde antes de cargar la página; la vía del archivo elegido va al ensayo, con su prueba a mano.
 
 import { createHash } from "node:crypto";
@@ -55,7 +55,9 @@ test("un CSV de 21 millones de celdas: por pasadas, y vuelve igual al original b
   const origen = new URL(baseURL!).origin;
 
   // ── Sesión 1: anonimizar con una cédula reversible ───────────────────────────────────────────
-  const contextoA = await browser.newContext();
+  // S11: sin service worker, que es la vía del `Blob` que este test recorre. Con él, «Preparar el
+  // archivo» entrega el archivo por la descarga del navegador, y eso lo prueba `descarga-en-flujo`.
+  const contextoA = await browser.newContext({ serviceWorkers: "block" });
   const page = await contextoA.newPage();
   await sinSelector(page);
   const redA = vigilarLaRed(page, origen);

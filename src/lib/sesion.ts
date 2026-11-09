@@ -11,6 +11,10 @@
 // El worker se crea al soltar el archivo y NO antes: si se instanciara al montar la página, el
 // bundle del parser entraría al load inicial y reventaría el presupuesto de Lighthouse.
 
+import {
+  abrirDescargaEnFlujo,
+  type DescargaAbierta,
+} from "@/lib/descarga-en-flujo";
 import { useSyncExternalStore } from "react";
 
 import {
@@ -111,6 +115,21 @@ export interface EstadoDelTaller {
   readonly archivoEnDisco: {
     readonly nombre: string;
     readonly bytes: number;
+    /**
+     * S11: por dónde salió. `selector`: al archivo que el usuario eligió. `descarga`: por el canal
+     * a la descarga del navegador, que lo deja en su carpeta de descargas.
+     */
+    readonly via: "picker" | "download";
+  } | null;
+  /**
+   * S11: el CSV de alto volumen que no cupo en una parte y salió cortado en límites de fila, sin
+   * repetir el encabezado. Cada parte es un asa opaca; `nombre` y `bytes` son los del archivo ENTERO.
+   */
+  readonly archivoEnPartes: {
+    readonly nombre: string;
+    readonly bytes: number;
+    readonly partes: readonly AsaDeArchivo[];
+    readonly manifiesto: AsaDeArchivo;
   } | null;
   /**
    * SHA-256 del archivo anonimizado, calculado en el worker sobre los bytes que forman el `Blob`.
@@ -183,6 +202,9 @@ export function firmaDeComparacion(
       reparto.map((c) => [c, jerarquiaDe(jerarquias, c)]),
     ),
     diversidad: politica.generalizacion?.diversidad ?? null,
+    ...(politica.generalizacion?.supresionMaxima
+      ? { supresion: politica.generalizacion.supresionMaxima }
+      : {}),
   });
 }
 
@@ -238,7 +260,13 @@ export function asaDeArchivo(blob: Blob, nombre: string): AsaDeArchivo {
 
 /** Suelta los bytes de lo preparado. Mientras la URL viva, ocupan memoria (ADR-005). */
 function soltarArchivo(): void {
+  soltarDescarga();
   if (tallerActual.archivo) URL.revokeObjectURL(tallerActual.archivo.url);
+  if (tallerActual.archivoEnPartes) {
+    for (const parte of tallerActual.archivoEnPartes.partes)
+      URL.revokeObjectURL(parte.url);
+    URL.revokeObjectURL(tallerActual.archivoEnPartes.manifiesto.url);
+  }
   if (tallerActual.archivoDeBoveda)
     URL.revokeObjectURL(tallerActual.archivoDeBoveda.url);
   if (tallerActual.limpieza.fase === "hecha")
@@ -252,6 +280,7 @@ const TALLER_VACIO: EstadoDelTaller = {
   etapa: null,
   archivo: null,
   archivoEnDisco: null,
+  archivoEnPartes: null,
   huellaDeSalida: null,
   escrituraFallida: false,
   boveda: { fase: "sin-sellar" },
@@ -336,7 +365,8 @@ export function invalidarTransformacion(): void {
   if (
     tallerActual.transformacion.fase === "sin-hacer" &&
     tallerActual.archivo === null &&
-    tallerActual.archivoEnDisco === null
+    tallerActual.archivoEnDisco === null &&
+    tallerActual.archivoEnPartes === null
   ) {
     return;
   }
@@ -345,6 +375,7 @@ export function invalidarTransformacion(): void {
     transformacion: { fase: "sin-hacer" },
     archivo: null,
     archivoEnDisco: null,
+    archivoEnPartes: null,
     huellaDeSalida: null,
     escrituraFallida: false,
     etapa: null,
@@ -376,6 +407,7 @@ export function transformar(politica: Politica): void {
     transformacion: { fase: "transformando" },
     archivo: null,
     archivoEnDisco: null,
+    archivoEnPartes: null,
     huellaDeSalida: null,
     escrituraFallida: false,
     etapa: "transformando",
@@ -446,14 +478,50 @@ export function pedirEstimacion(poblacion: number | null): void {
  * `destino` (S8): el archivo que el usuario eligió con el selector del sistema, en alto volumen. La
  * página solo pasa el asa: el worker escribe en él, y la página nunca lee lo escrito.
  */
-export function prepararArchivo(destino?: FileSystemFileHandle): void {
+export function prepararArchivo(
+  destino?: FileSystemFileHandle,
+  opciones: { readonly enFlujo?: boolean } = {},
+): void {
   if (!worker) return;
   publicarTaller({ etapa: "escribiendo", escrituraFallida: false });
-  worker.postMessage(
-    destino
-      ? { tipo: "construir-archivo", destino }
-      : { tipo: "construir-archivo" },
-  );
+  if (destino) {
+    worker.postMessage({ tipo: "construir-archivo", destino });
+    return;
+  }
+  // S11: sin selector, un archivo de alto volumen sale por el canal a la descarga del navegador. Si
+  // el service worker no atiende (no existe, está bloqueado, falla), el worker lo corta en partes.
+  // Sin `enFlujo` el mensaje sale en el acto, como siempre.
+  if (!opciones.enFlujo) {
+    worker.postMessage({ tipo: "construir-archivo" });
+    return;
+  }
+  void abrirDescargaEnFlujo().then((descarga) => {
+    if (!worker) {
+      descarga?.cerrar();
+      return;
+    }
+    if (descarga) {
+      soltarDescarga();
+      descargaAbierta = descarga;
+      worker.postMessage(
+        { tipo: "construir-archivo", flujo: descarga.puerto },
+        [descarga.puerto],
+      );
+      return;
+    }
+    worker.postMessage({ tipo: "construir-archivo" });
+  });
+}
+
+/** La descarga en streaming que está en curso: su marco oculto se quita al soltar el archivo. */
+let descargaAbierta: DescargaAbierta | null = null;
+
+function soltarDescarga(): void {
+  // Si el worker murió a medias (se soltó el archivo o se cargó otro), el service worker no se
+  // entera por el canal: se lo dice la página. Una descarga que ya terminó no se toca.
+  descargaAbierta?.cancelar();
+  descargaAbierta?.cerrar();
+  descargaAbierta = null;
 }
 
 /**
@@ -652,9 +720,31 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
       });
       return;
     }
-    if (mensaje.enDisco) {
+    if (mensaje.enDisco || mensaje.enDescarga) {
       publicarTaller({
-        archivoEnDisco: { nombre: mensaje.nombre, bytes: mensaje.bytes },
+        archivoEnDisco: {
+          nombre: mensaje.nombre,
+          bytes: mensaje.bytes,
+          via: mensaje.enDisco ? "picker" : "download",
+        },
+        huellaDeSalida: mensaje.sha256 ?? null,
+        etapa: null,
+      });
+      return;
+    }
+    if (mensaje.partes && mensaje.manifiesto) {
+      publicarTaller({
+        archivoEnPartes: {
+          nombre: mensaje.nombre,
+          bytes: mensaje.bytes,
+          partes: mensaje.partes.map((parte) =>
+            asaDeArchivo(parte.blob, parte.nombre),
+          ),
+          manifiesto: asaDeArchivo(
+            mensaje.manifiesto,
+            mensaje.nombre.replace(/\.[^.]+$/, "") + "-manifiesto.json",
+          ),
+        },
         huellaDeSalida: mensaje.sha256 ?? null,
         etapa: null,
       });
@@ -682,6 +772,7 @@ function recibir(mensaje: MensajeDelWorker, nombre: string): void {
   if (mensaje.tipo === "error" && mensaje.motivo === "escritura-fallida") {
     // S10: no se pudo ESCRIBIR. Antes salía como `lectura-fallida` y tumbaba el informe con la
     // política y la llave; ahora el taller queda como estaba y el botón vuelve a ofrecerse.
+    soltarDescarga();
     publicarTaller({ escrituraFallida: true, etapa: null });
     return;
   }

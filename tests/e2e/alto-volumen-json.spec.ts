@@ -66,7 +66,9 @@ test("un JSON Lines de 21 millones de celdas: por pasadas, y vuelve igual al ori
   const origen = new URL(baseURL!).origin;
 
   // ── Sesión 1: anonimizar con una cédula reversible ───────────────────────────────────────────
-  const contextoA = await browser.newContext();
+  // S11: sin service worker, que es la vía del `Blob` que este test recorre. Con él, «Preparar el
+  // archivo» entrega el archivo por la descarga del navegador, y eso lo prueba `descarga-en-flujo`.
+  const contextoA = await browser.newContext({ serviceWorkers: "block" });
   const page = await contextoA.newPage();
   await sinSelector(page);
   const redA = vigilarLaRed(page, origen);

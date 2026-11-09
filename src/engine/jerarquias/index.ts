@@ -192,6 +192,7 @@ export function nombresDeNiveles(jerarquia: Jerarquia): readonly string[] {
     case "edad-dane":
       return ["valor", "quinquenio", "gran-grupo", "suprimido"];
     case "ciiu":
+    case "ciiu5":
       return ["valor", "grupo", "division", "seccion", "suprimido"];
   }
 }

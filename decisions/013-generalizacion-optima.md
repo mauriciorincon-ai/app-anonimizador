@@ -116,3 +116,21 @@ worker: the main thread is never blocked. At the 20,000-node limit, a few thousa
 - **Computing each level from the original value** — see decision 3: it breaks nesting on files
   that already carry grouped values.
 - **Downloading the factory tables at run time** — the app never uses the network (rule 2).
+
+## Addendum — Sprint 011 (2026-11-08): what changed after the owner's decision
+
+The owner built two of the items above in the H-2 (plan approval "apruebo · 1a"). Decisions 5 and the
+"Deferred" list stay as written for what they described; this is what is true now:
+
+- **Suppression (replaces decision 5 only when the user asks).** `generalizacion.supresionMaxima`
+  (0–100 % of the rows, optional) lets the search drop, from the OUTPUT file only, the rows of classes
+  that miss k or l, up to that cap, when that loses less information. The default is 0 and 0 is
+  normalised away, so a policy without the cap hashes and outputs exactly as before. Velo still never
+  deletes a row on its own, and the original file is never touched. The loss is not monotone in the
+  cap, so the search is a branch-and-bound that stays exact (checked against brute force on seeded
+  tables). A JSON does not admit the cap (each row is a record rewritten in place): it is reported as
+  not applied.
+- **CIIU Rev. 5 A.C.** ships next to Rev. 4 (`ciiu5.json` + `ciiu5.meta.json`, with source, consultation
+  date and SHA-256). The revision is detected from the codes that exist in only one of them, and a
+  selector lets the user override it. DANE's Rev. 4 → Rev. 5 correspondence table is many-to-many, so
+  Velo does not recode between revisions.

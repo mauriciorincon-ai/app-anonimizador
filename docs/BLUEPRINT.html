@@ -874,7 +874,9 @@
               <td>
                 Una petición fuera del propio origen durante el flujo completo
                 con archivo cargado; o un <code>fetch</code>,
-                <code>localStorage</code> o <code>indexedDB</code> en el código.
+                <code>localStorage</code>, <code>indexedDB</code>,
+                <code>caches</code> o <code>CacheStorage</code> en el código
+                (también en el service worker de la descarga).
               </td>
             </tr>
             <tr>
@@ -937,6 +939,26 @@
                 job), Vercel Hobby con producción y previews públicas desde el
                 día 0, cero backend, cero base de datos, cero servicios
                 externos, cero IA. Ningún costo contraído.
+              </td>
+            </tr>
+            <tr>
+              <td>2026-11-08</td>
+              <td>H2 · S011</td>
+              <td>
+                Sin infraestructura nueva ni costo. Un archivo estático más,
+                <code>public/velo-descarga-sw.js</code>: un service worker de un
+                solo oficio, con ámbito <code>/descarga/</code>, que deja salir
+                el CSV grande hacia la carpeta de descargas mientras el worker
+                lo escribe (sin selector de archivo del sistema: Firefox y
+                Safari). <strong>Nota de la regla 7:</strong> es un segundo
+                contexto que ve los bytes de <em>salida</em> —ya anonimizados,
+                los mismos que llevaría el <code>Blob</code>—, nunca los crudos;
+                no guarda nada (ni Cache API ni almacenamiento), no pide nada a
+                la red y la página tampoco los lee: los trozos van por un canal
+                entre el worker y él. Sin service worker, el CSV sale en partes
+                cortadas entre filas, con un manifiesto de huellas. La CSP no
+                cambió (<code>worker-src 'self' blob:</code>,
+                <code>connect-src 'self'</code>).
               </td>
             </tr>
           </tbody>

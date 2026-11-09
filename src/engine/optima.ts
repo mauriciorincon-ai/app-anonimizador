@@ -30,11 +30,22 @@
 // menor suma de niveles → vector lexicográficamente menor.
 //
 // ⚠️ **Lo que este módulo promete y lo que NO.** Cumple k sobre las columnas del reparto, igual que
-// Mondrian (el balance vuelve a medir con todos los cuasi-identificadores). NO suprime filas: OLA lo
-// admite con un tope de supresión, pero Velo no borra registros de nadie por su cuenta (la misma
-// doctrina de Mondrian); si ningún nodo cumple, se aplica el de arriba (todo `*`) y se dice.
+// Mondrian (el balance vuelve a medir con todos los cuasi-identificadores). Sin tope de supresión NO
+// borra ninguna fila: Velo no borra registros de nadie por su cuenta; si ningún nodo cumple, se
+// aplica el de arriba (todo `*`) y se dice.
+//
+// **El tope de supresión (S11)** lo pide el USUARIO en la política (`supresionMaxima`, % de filas),
+// como lo admite OLA. Un nodo cumple si las filas de sus clases que no llegan al k (o a la ℓ) caben
+// en el tope; esas filas salen del archivo de SALIDA, nunca del original, y el certificado dice
+// cuántas y de qué tamaño de clase eran. La monotonía (1) sigue en pie: subir un nivel solo junta
+// clases, así que las filas que fallan solo pueden bajar. La (2) NO: una fila borrada cuenta como
+// pérdida TOTAL (−log₂ P(valor) en cada campo, lo que costaría llevarla a `*`), y subir puede salvar
+// filas y bajar la pérdida. Por eso, con tope, el mínimo no se toma solo entre los nodos k-mínimos:
+// se recorren los que cumplen en orden de su pérdida SIN supresión —un piso de la pérdida real— y
+// se para cuando el piso ya pasa al mejor visto. Un test lo compara con la fuerza bruta.
 
 import {
+  quitarFilas,
   reconstruirColumna,
   type ColumnaColumnar,
   type TablaColumnar,
@@ -95,8 +106,38 @@ export function resolverDiversidad(
 export type MotivoDeLaOptima =
   "sin-dimensiones" | "excede-tope" | "no-alcanzable";
 
+/**
+ * El tope de supresión tal como se aplicó (S11): conteos, nunca valores. `aplicada: false` cuando la
+ * política lo pide y el archivo no lo admite (JSON: cada fila es un registro de una estructura que
+ * Velo reescribe en su lugar, y quitarlo no es quitar una fila).
+ */
+export interface SupresionAplicada {
+  /** El tope que pidió la política, en % de las filas. */
+  readonly porcentaje: number;
+  /** El tope en filas: ⌊filas × porcentaje / 100⌋. */
+  readonly tope: number;
+  /** Las filas que salieron del archivo de salida. */
+  readonly filas: number;
+  /** De qué tamaño de clase eran (en el nodo elegido), de menor a mayor. */
+  readonly porTamano: readonly {
+    readonly tamano: number;
+    readonly filas: number;
+  }[];
+  readonly aplicada: boolean;
+}
+
 export interface ResultadoOptimo {
+  /** La tabla de SALIDA: sin las filas que el tope de supresión quitó. */
   readonly tabla: TablaColumnar;
+  /**
+   * La misma tabla con TODAS las filas, en el orden del archivo: el alto volumen lee sus columnas por
+   * posición absoluta. Sin supresión es `tabla`.
+   */
+  readonly alineada: TablaColumnar;
+  /** 1 = la fila sale; null si no sale ninguna. */
+  readonly fuera: Uint8Array | null;
+  /** null si la política no pidió tope. */
+  readonly supresion: SupresionAplicada | null;
   readonly kObjetivo: number;
   /** La ℓ que se exigió: null si no se pidió, o si no quedó ninguna columna sobre la que exigirla. */
   readonly lObjetivo: number | null;
@@ -145,6 +186,8 @@ export interface GeneralizacionAplicada {
   }[];
   readonly nodosRevisados: number;
   readonly nodosEnLaReticula: number;
+  /** S11: solo si la política pidió tope de supresión (así el certificado de siempre no cambia). */
+  readonly supresion?: SupresionAplicada;
 }
 
 /** Una dimensión, ya proyectada por niveles sobre su diccionario. */
@@ -157,6 +200,11 @@ interface Dimension {
   readonly cardinalidad: readonly number[];
   /** Entropía de la columna en cada nivel, en bits. */
   readonly bits: readonly number[];
+  /**
+   * `informacion[j][codigo]` = −log₂ P(valor del nivel j), sobre el archivo entero. La pérdida de una
+   * fila en el nivel j es informacion[0] − informacion[j]; la de una fila borrada, informacion[0].
+   */
+  readonly informacion: readonly Float64Array[];
 }
 
 function proyectarDimension(
@@ -172,6 +220,7 @@ function proyectarDimension(
   const mapa: Uint32Array[] = [];
   const cardinalidad: number[] = [];
   const bits: number[] = [];
+  const informacion: Float64Array[] = [];
   // Cada nivel sale del anterior, como en `nivelesDe`: el paso se aplica una vez por ETIQUETA
   // distinta del nivel de abajo, no una vez por valor del diccionario.
   let etiquetas: readonly string[] = columna.valores;
@@ -197,22 +246,38 @@ function proyectarDimension(
     for (let c = 0; c < codigos.length; c++)
       cuenta[codigos[c]] += frecuencia[c];
     let h = 0;
-    for (const n of cuenta) {
+    const info = new Float64Array(indice.size);
+    for (let c = 0; c < cuenta.length; c++) {
+      const n = cuenta[c];
       if (n === 0 || filas === 0) continue;
       const p = n / filas;
       h -= p * Math.log2(p);
+      info[c] = -Math.log2(p);
     }
     mapa.push(codigos);
     cardinalidad.push(indice.size);
     bits.push(h);
+    informacion.push(info);
   }
-  return { columna, niveles, mapa, cardinalidad, bits };
+  return { columna, niveles, mapa, cardinalidad, bits, informacion };
 }
 
 /** Lo que se mide de un nodo: el k y la ℓ distinta (la peor de las columnas sensibles). */
 interface Medida {
   readonly k: number;
   readonly l: number | null;
+  /** S11: filas en clases que no llegan al k objetivo (o a la ℓ objetivo). */
+  readonly fuera: number;
+  /** El k y la ℓ de las clases que SÍ llegan: lo que queda si se quitan las otras. */
+  readonly kQueda: number;
+  readonly lQueda: number | null;
+}
+
+/** Las clases de un nodo: la de cada clase base, su tamaño y su peor ℓ. */
+interface ClasesDelNodo {
+  readonly de: Uint32Array;
+  readonly tamano: Float64Array;
+  readonly peorL: Float64Array | null;
 }
 
 /**
@@ -224,6 +289,8 @@ interface Medida {
 class Evaluador {
   private readonly clases: number;
   private readonly tamanos: Uint32Array;
+  /** La clase base de cada fila. */
+  private readonly ids: Uint32Array;
   /** `base[i][clase]` = código base de la dimensión i en esa clase. */
   private readonly base: Uint32Array[];
   /** Por columna sensible: los pares (clase base, código sensible) distintos. */
@@ -236,7 +303,9 @@ class Evaluador {
   constructor(
     private readonly dimensiones: readonly Dimension[],
     sensibles: readonly ColumnaColumnar[],
-    filas: number,
+    private readonly filas: number,
+    private readonly kObjetivo: number,
+    private readonly lObjetivo: number | null,
   ) {
     const { ids, tamanos } = clasesDeEquivalencia(
       dimensiones.map((d) => d.columna),
@@ -244,6 +313,7 @@ class Evaluador {
     );
     this.clases = tamanos.length;
     this.tamanos = tamanos;
+    this.ids = ids;
     this.base = dimensiones.map(() => new Uint32Array(this.clases));
     const visto = new Uint8Array(this.clases);
     for (let f = 0; f < filas; f++) {
@@ -300,15 +370,11 @@ class Evaluador {
     return { de, cuantas };
   }
 
-  medir(nodo: readonly number[]): Medida {
-    if (this.clases === 0) return { k: 0, l: this.pares.length > 0 ? 0 : null };
+  private clasesDe(nodo: readonly number[]): ClasesDelNodo {
     const { de, cuantas } = this.agrupar(nodo);
     const tamano = new Float64Array(cuantas);
     for (let c = 0; c < this.clases; c++) tamano[de[c]] += this.tamanos[c];
-    let k = Number.POSITIVE_INFINITY;
-    for (const t of tamano) if (t < k) k = t;
-
-    let l: number | null = null;
+    let peorL: Float64Array | null = null;
     for (const p of this.pares) {
       const distintos = new Uint32Array(cuantas);
       const vistos = new Set<number>();
@@ -318,11 +384,110 @@ class Evaluador {
         vistos.add(clave);
         distintos[de[p.clase[i]]]++;
       }
-      let peor = Number.POSITIVE_INFINITY;
-      for (const n of distintos) if (n < peor) peor = n;
-      l = l === null ? peor : Math.min(l, peor);
+      if (peorL === null) peorL = Float64Array.from(distintos);
+      else
+        for (let c = 0; c < cuantas; c++)
+          if (distintos[c] < peorL[c]) peorL[c] = distintos[c];
     }
-    return { k, l };
+    return { de, tamano, peorL };
+  }
+
+  /** ¿La clase `c` del nodo se queda corta del k o de la ℓ objetivo? */
+  private falla(clases: ClasesDelNodo, c: number): boolean {
+    return (
+      clases.tamano[c] < this.kObjetivo ||
+      (this.lObjetivo !== null &&
+        clases.peorL !== null &&
+        clases.peorL[c] < this.lObjetivo)
+    );
+  }
+
+  medir(nodo: readonly number[]): Medida {
+    if (this.clases === 0)
+      return {
+        k: 0,
+        l: this.pares.length > 0 ? 0 : null,
+        fuera: 0,
+        kQueda: 0,
+        lQueda: this.pares.length > 0 ? 0 : null,
+      };
+    const clases = this.clasesDe(nodo);
+    const { tamano, peorL } = clases;
+    let k = Number.POSITIVE_INFINITY;
+    for (const t of tamano) if (t < k) k = t;
+    let l: number | null = null;
+    if (peorL !== null) {
+      l = Number.POSITIVE_INFINITY;
+      for (const n of peorL) if (n < l) l = n;
+    }
+    let fuera = 0;
+    let kQueda = Number.POSITIVE_INFINITY;
+    let lQueda = Number.POSITIVE_INFINITY;
+    for (let c = 0; c < tamano.length; c++) {
+      if (this.falla(clases, c)) fuera += tamano[c];
+      else {
+        if (tamano[c] < kQueda) kQueda = tamano[c];
+        if (peorL !== null && peorL[c] < lQueda) lQueda = peorL[c];
+      }
+    }
+    const nada = kQueda === Number.POSITIVE_INFINITY;
+    return {
+      k,
+      l,
+      fuera,
+      kQueda: nada ? 0 : kQueda,
+      lQueda: peorL === null ? null : nada ? 0 : lQueda,
+    };
+  }
+
+  /**
+   * S11: la pérdida del nodo, en bits por fila sumados por campo, con las filas que fallan BORRADAS:
+   * una fila que queda pierde −log₂ P(x | g(x)) = info(x) − info(g(x)) en cada campo; una borrada
+   * pierde info(x) entero. Sin filas borradas es H(X) − H(g(X)), la pérdida de siempre.
+   */
+  perdidaConSupresion(nodo: readonly number[]): number {
+    if (this.clases === 0 || this.filas === 0) return 0;
+    const clases = this.clasesDe(nodo);
+    const fallaDe = new Uint8Array(clases.tamano.length);
+    for (let c = 0; c < fallaDe.length; c++)
+      fallaDe[c] = this.falla(clases, c) ? 1 : 0;
+    let total = 0;
+    for (let c = 0; c < this.clases; c++) {
+      const borrada = fallaDe[clases.de[c]] === 1;
+      let s = 0;
+      this.dimensiones.forEach((d, i) => {
+        const b = this.base[i][c];
+        const base = d.informacion[0][d.mapa[0][b]];
+        s += borrada ? base : base - d.informacion[nodo[i]][d.mapa[nodo[i]][b]];
+      });
+      total += this.tamanos[c] * s;
+    }
+    return total / this.filas;
+  }
+
+  /** S11: qué filas salen en el nodo, y de qué tamaño de clase eran. */
+  filasFuera(nodo: readonly number[]): {
+    fuera: Uint8Array;
+    porTamano: { tamano: number; filas: number }[];
+  } {
+    const clases = this.clasesDe(nodo);
+    const fallaDe = new Uint8Array(clases.tamano.length);
+    const porTamano = new Map<number, number>();
+    for (let c = 0; c < fallaDe.length; c++) {
+      if (!this.falla(clases, c)) continue;
+      fallaDe[c] = 1;
+      const t = clases.tamano[c];
+      porTamano.set(t, (porTamano.get(t) ?? 0) + t);
+    }
+    const fuera = new Uint8Array(this.filas);
+    for (let f = 0; f < this.filas; f++)
+      fuera[f] = fallaDe[clases.de[this.ids[f]]];
+    return {
+      fuera,
+      porTamano: [...porTamano]
+        .sort((a, b) => a[0] - b[0])
+        .map(([tamano, filas]) => ({ tamano, filas })),
+    };
   }
 }
 
@@ -394,6 +559,12 @@ interface Busqueda {
   readonly elegido: readonly number[];
   readonly medida: Medida;
   readonly nodosRevisados: number;
+  /** S11: las filas que salen en el nodo elegido, o null si no sale ninguna. */
+  readonly quitadas: {
+    readonly fuera: Uint8Array;
+    readonly porTamano: readonly { tamano: number; filas: number }[];
+    readonly perdida: number;
+  } | null;
 }
 
 /**
@@ -420,12 +591,13 @@ function buscarElNodo(
   kObjetivo: number,
   lObjetivo: number | null,
   escaleras: string,
+  tope: number,
 ): Busqueda {
   const columnas: readonly object[] = [
     ...dimensiones.map((d) => d.columna),
     ...sensibles,
   ];
-  const clave = JSON.stringify([filas, kObjetivo, lObjetivo, escaleras]);
+  const clave = JSON.stringify([filas, kObjetivo, lObjetivo, escaleras, tope]);
   const guardadas = BUSQUEDAS.get(dimensiones[0].columna);
   const hallada = guardadas?.find(
     (g) =>
@@ -436,10 +608,19 @@ function buscarElNodo(
   if (hallada) return hallada.busqueda;
 
   recorridos.reticulas++;
-  const evaluador = new Evaluador(dimensiones, sensibles, filas);
+  const evaluador = new Evaluador(
+    dimensiones,
+    sensibles,
+    filas,
+    kObjetivo,
+    lObjetivo,
+  );
   const cache = new Map<string, Medida>();
+  // Sin tope, la condición de siempre; con tope, que lo que falla quepa en él (con 0 es la misma).
   const cumple = (m: Medida) =>
-    m.k >= kObjetivo && (lObjetivo === null || (m.l ?? 0) >= lObjetivo);
+    tope === 0
+      ? m.k >= kObjetivo && (lObjetivo === null || (m.l ?? 0) >= lObjetivo)
+      : m.fuera <= tope;
   const medir = (nodo: readonly number[]): Medida => {
     const clave = nodo.join(",");
     let m = cache.get(clave);
@@ -490,6 +671,37 @@ function buscarElNodo(
     agregarMinimo(t);
   };
 
+  const perdida = (n: readonly number[]) =>
+    dimensiones.reduce((s, d, i) => s + (d.bits[0] - d.bits[n[i]]), 0);
+
+  /**
+   * S11, con tope: el de menor pérdida REAL entre todos los que cumplen. La pérdida sin supresión
+   * (`perdida`) es un piso de la real —una fila borrada pierde al menos lo que perdería quedándose—,
+   * así que se recorren los nodos por ese piso y se para cuando pasa al mejor visto: lo que queda
+   * por recorrer ya no puede ganar. Cumple todo nodo por encima de un mínimo (monotonía 1).
+   */
+  const elMejorConTope = (
+    desde: readonly (readonly number[])[],
+  ): readonly number[] => {
+    const real = (nodo: readonly number[]) => {
+      medir(nodo);
+      return { nodo, perdida: evaluador.perdidaConSupresion(nodo) };
+    };
+    let mejor = desde.map(real).sort(compararNodos)[0];
+    const candidatos: { nodo: readonly number[]; perdida: number }[] = [];
+    for (let h = 0; h <= suma(alturas); h++)
+      for (const nodo of nodosAAltura(abajo, arriba, h))
+        candidatos.push({ nodo, perdida: perdida(nodo) });
+    candidatos.sort(compararNodos);
+    for (const c of candidatos) {
+      if (c.perdida > mejor.perdida + EMPATE_EN_BITS) break;
+      if (!desde.some((m) => bajoDe(m, c.nodo))) continue;
+      const otro = real(c.nodo);
+      if (compararNodos(otro, mejor) < 0) mejor = otro;
+    }
+    return mejor.nodo;
+  };
+
   const abajo = alturas.map(() => 0);
   const arriba = [...alturas];
   let elegido: readonly number[];
@@ -497,18 +709,31 @@ function buscarElNodo(
     // Ni todo en `*` cumple (menos filas que k, o una ℓ imposible): se aplica lo más que se puede.
     elegido = arriba;
   } else if (revisar(abajo)) {
-    elegido = abajo;
+    elegido = tope === 0 ? abajo : elMejorConTope([abajo]);
   } else {
     kMin(abajo, arriba);
-    const perdida = (n: readonly number[]) =>
-      dimensiones.reduce((s, d, i) => s + (d.bits[0] - d.bits[n[i]]), 0);
-    elegido = minimos
-      .map((nodo) => ({ nodo, perdida: perdida(nodo) }))
-      .sort(compararNodos)[0].nodo;
+    elegido =
+      tope === 0
+        ? minimos
+            .map((nodo) => ({ nodo, perdida: perdida(nodo) }))
+            .sort(compararNodos)[0].nodo
+        : elMejorConTope(minimos);
   }
 
   const medida = medir(elegido);
-  const busqueda: Busqueda = { elegido, medida, nodosRevisados: cache.size };
+  const quitadas =
+    tope > 0 && cumple(medida) && medida.fuera > 0
+      ? {
+          ...evaluador.filasFuera(elegido),
+          perdida: evaluador.perdidaConSupresion(elegido),
+        }
+      : null;
+  const busqueda: Busqueda = {
+    elegido,
+    medida,
+    nodosRevisados: cache.size,
+    quitadas,
+  };
   const lista = guardadas ?? [];
   lista.push({ clave, columnas, busqueda });
   BUSQUEDAS.set(dimensiones[0].columna, lista);
@@ -519,6 +744,9 @@ function buscarElNodo(
  * Generaliza las `dimensiones` al nodo óptimo de su retícula: el que cumple `kObjetivo` (y la ℓ
  * pedida) perdiendo menos bits. Las columnas que no están en `jerarquias` suben por la jerarquía de
  * solo supresión (el valor o `*`): un reparto con una columna sin escalera sigue siendo un reparto.
+ *
+ * `supresion` (S11): el tope de la política, en % de filas, y si el archivo lo admite. Con él, las
+ * filas de las clases que no llegan salen de `tabla` (no de `alineada`).
  */
 export function generalizarOptimo(
   tabla: TablaColumnar,
@@ -527,6 +755,10 @@ export function generalizarOptimo(
   kObjetivo: number,
   diversidad: DiversidadPedida | null,
   suprimidas: ReadonlySet<string> = new Set(),
+  supresion: {
+    readonly porcentaje: number;
+    readonly aplicada: boolean;
+  } | null = null,
 ): ResultadoOptimo {
   const pedidas = new Set(nombresDeDimension);
   const columnas = tabla.columnas.filter((c) => pedidas.has(c.nombre));
@@ -549,8 +781,30 @@ export function generalizarOptimo(
   // para todo nodo y subía todo a `*`.
   const lObjetivo = sensibles.length > 0 ? (diversidad?.l ?? null) : null;
 
+  // El tope en filas. Pedido y no admitido (JSON), es 0: no se quita nada, y se dice.
+  const porcentaje = supresion?.porcentaje ?? 0;
+  const tope =
+    supresion?.aplicada === true
+      ? Math.floor((tabla.filas * porcentaje) / 100)
+      : 0;
+  const supresionAplicada = (
+    porTamano: readonly { tamano: number; filas: number }[],
+  ): SupresionAplicada | null =>
+    porcentaje > 0
+      ? {
+          porcentaje,
+          tope,
+          filas: porTamano.reduce((s, t) => s + t.filas, 0),
+          porTamano,
+          aplicada: supresion?.aplicada === true,
+        }
+      : null;
+
   const sinCambio = (motivo: MotivoDeLaOptima): ResultadoOptimo => ({
     tabla,
+    alineada: tabla,
+    fuera: null,
+    supresion: supresionAplicada([]),
     kObjetivo,
     lObjetivo,
     columnasSensibles: resueltas.columnas,
@@ -572,7 +826,7 @@ export function generalizarOptimo(
     return sinCambio("sin-dimensiones");
   if (nodosEnLaReticula > TOPE_DE_NODOS) return sinCambio("excede-tope");
 
-  const { elegido, medida, nodosRevisados } = buscarElNodo(
+  const { elegido, medida, nodosRevisados, quitadas } = buscarElNodo(
     dimensiones,
     sensibles,
     tabla.filas,
@@ -580,6 +834,7 @@ export function generalizarOptimo(
     kObjetivo,
     lObjetivo,
     JSON.stringify(columnas.map((c) => jerarquiaDe(jerarquias, c.nombre))),
+    tope,
   );
   const generalizadas = new Map(
     dimensiones.map((d, i) => [
@@ -590,27 +845,37 @@ export function generalizarOptimo(
       ),
     ]),
   );
+  const alineada: TablaColumnar = {
+    columnas: tabla.columnas.map((c) => generalizadas.get(c.nombre) ?? c),
+    filas: tabla.filas,
+  };
   const alcanzado =
-    medida.k >= kObjetivo &&
-    (lObjetivo === null || (medida.l ?? 0) >= lObjetivo);
+    tope === 0
+      ? medida.k >= kObjetivo &&
+        (lObjetivo === null || (medida.l ?? 0) >= lObjetivo)
+      : medida.fuera <= tope;
+  // Con filas quitadas, el k y la ℓ son los de lo que QUEDA, que es lo que lleva el archivo.
+  const conQuitadas = quitadas !== null;
   return {
-    tabla: {
-      columnas: tabla.columnas.map((c) => generalizadas.get(c.nombre) ?? c),
-      filas: tabla.filas,
-    },
+    tabla: conQuitadas ? quitarFilas(alineada, quitadas.fuera) : alineada,
+    alineada,
+    fuera: quitadas?.fuera ?? null,
+    supresion: supresionAplicada(quitadas?.porTamano ?? []),
     kObjetivo,
     lObjetivo,
     columnasSensibles: resueltas.columnas,
     lDescartadas: resueltas.descartadas,
-    kAlcanzado: medida.k,
-    lAlcanzado: medida.l,
+    kAlcanzado: conQuitadas ? medida.kQueda : medida.k,
+    lAlcanzado: conQuitadas ? medida.lQueda : medida.l,
     alcanzado,
     motivo: alcanzado ? null : "no-alcanzable",
     dimensiones: columnas.map((c) => c.nombre),
     niveles: [...elegido],
     alturas,
     bitsAntes,
-    bitsDespues: dimensiones.reduce((s, d, i) => s + d.bits[elegido[i]], 0),
+    bitsDespues: conQuitadas
+      ? bitsAntes - quitadas.perdida
+      : dimensiones.reduce((s, d, i) => s + d.bits[elegido[i]], 0),
     nodosRevisados,
     nodosEnLaReticula,
   };
@@ -641,5 +906,6 @@ export function generalizacionAplicada(
     }),
     nodosRevisados: optima.nodosRevisados,
     nodosEnLaReticula: optima.nodosEnLaReticula,
+    ...(optima.supresion ? { supresion: optima.supresion } : {}),
   };
 }

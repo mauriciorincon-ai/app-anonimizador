@@ -359,8 +359,17 @@ describe("una limpieza de metadatos en la bitácora (S6)", () => {
   it("un formato que Velo no limpia invalida el archivo", () => {
     const texto = serializarBitacora(
       anadirEntrada(bitacoraVacia(), limpieza),
-    ).replace('"jpeg"', '"avif"');
+    ).replace('"jpeg"', '"tiff"');
     expect(deserializarBitacora(texto).ok).toBe(false);
+  });
+
+  it("AVIF y MOV (S11) sí son formatos de una limpieza", () => {
+    for (const formato of ["avif", "mov"]) {
+      const texto = serializarBitacora(
+        anadirEntrada(bitacoraVacia(), limpieza),
+      ).replace('"jpeg"', `"${formato}"`);
+      expect(deserializarBitacora(texto).ok, formato).toBe(true);
+    }
   });
 });
 

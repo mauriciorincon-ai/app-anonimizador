@@ -1,13 +1,15 @@
-// HEIC — las fotos del celular: leer lo que dicen de sí mismas y escribir una copia que ya no lo diga.
+// HEIC y AVIF — las fotos del celular: leer lo que dicen de sí mismas y escribir una copia que ya no
+// lo diga.
 //
-// Un HEIC es un HEIF (ISO/IEC 23008-12) con imágenes HEVC, y un HEIF es un contenedor ISO BMFF
-// (ISO/IEC 14496-12): una sucesión de cajas, cada una con su tamaño (4 bytes, big endian; `1` = el
-// tamaño real va en 8 bytes a continuación; `0` = hasta el final) y su código de cuatro caracteres.
-// Lo que importa vive dentro de la caja `meta`:
+// Un HEIC es un HEIF (ISO/IEC 23008-12) con imágenes HEVC; un AVIF (AV1 Image File Format, AOM
+// v1.1.0) es el MISMO contenedor con imágenes AV1 (`av01`, configuradas por `av1C`). Y un HEIF es un
+// contenedor ISO BMFF (ISO/IEC 14496-12): una sucesión de cajas, cada una con su tamaño (4 bytes,
+// big endian; `1` = el tamaño real va en 8 bytes a continuación; `0` = hasta el final) y su código
+// de cuatro caracteres. Lo que importa vive dentro de la caja `meta`:
 //
-//   · `iinf` lista los ELEMENTOS (`infe`): la imagen (`hvc1`), sus teselas, la cuadrícula que las
-//     junta (`grid`), la miniatura, los mapas auxiliares… y los METADATOS, que en HEIF son elementos
-//     como cualquier otro: `Exif` (un TIFF) y `mime` con `application/rdf+xml` (XMP).
+//   · `iinf` lista los ELEMENTOS (`infe`): la imagen (`hvc1` o `av01`), sus teselas, la cuadrícula
+//     que las junta (`grid`), la miniatura, los mapas auxiliares… y los METADATOS, que en HEIF son
+//     elementos como cualquier otro: `Exif` (un TIFF) y `mime` con `application/rdf+xml` (XMP).
 //   · `iloc` dice dónde están los bytes de cada elemento: desplazamientos ABSOLUTOS en el archivo
 //     (casi siempre dentro de `mdat`) o relativos a `idat`.
 //   · `iref` los relaciona (`cdsc`: «este EXIF describe aquella imagen»; `thmb`, `dimg`, `auxl`).
@@ -17,17 +19,21 @@
 // imagen y las propiedades que hacen falta para decodificarla y verla bien —la orientación incluida,
 // que en HEIF vive en `irot`/`imir` y no en el EXIF, así que aquí no hace falta un EXIF mínimo—, y
 // todo lo demás se va, también lo que Velo no conoce. Como quitar un elemento cambia dónde quedan
-// los demás, la copia se REESCRIBE: `ftyp` tal cual, una `meta` nueva y un `mdat` nuevo con solo los
-// bytes de los elementos conservados, en su orden original, e `iloc` con los desplazamientos
-// recalculados. Los bytes HEVC —los píxeles— se copian sin tocar; Velo no decodifica la imagen.
+// los demás, la copia de una foto FIJA se REESCRIBE: `ftyp` tal cual, una `meta` nueva y un `mdat`
+// nuevo con solo los bytes de los elementos conservados, en su orden original, e `iloc` con los
+// desplazamientos recalculados. Los bytes HEVC o AV1 —los píxeles— se copian sin tocar; Velo no
+// decodifica la imagen.
+//
+// Una secuencia de imágenes (`moov`, con pistas) NO se rearma: sus tablas de muestras apuntan a
+// desplazamientos absolutos y moverlos es la manera de romperla. La limpia `secuencia.ts`, en su
+// lugar, con lo que se exporta de aquí (las cajas, la `meta` y su copia del mismo tamaño).
 //
 // Lo que Velo no sabe reescribir sin romperlo se RECHAZA con su nombre (`imagen-no-soportada`) en vez
-// de entregar un archivo dañado: secuencias y Live Photos (`moov`), elementos protegidos, datos que
-// viven fuera del archivo, elementos construidos a partir de otros (`construction_method` 2) y
-// propiedades desconocidas que el archivo declara esenciales. El modelo y sus límites:
-// `decisions/012-metadatos.md`.
+// de entregar un archivo dañado: elementos protegidos, datos que viven fuera del archivo, elementos
+// construidos a partir de otros (`construction_method` 2) y propiedades desconocidas que el archivo
+// declara esenciales. El modelo y sus límites: `decisions/012-metadatos.md`.
 
-import { MARCAS_HEIC } from "./deteccion";
+import { MARCAS_DEL_FORMATO } from "./deteccion";
 import { anotarExif, sinPrefijoExif } from "./exif";
 import { Inventario } from "./inventario";
 import {
@@ -44,16 +50,22 @@ import {
 import type {
   AnalisisDeMetadatos,
   ClaseDeElemento,
+  FormatoBmff,
+  FormatoDeImagen,
   Limpieza,
   MotivoDeMetadatos,
 } from "./tipos";
 import { LARGO_MAXIMO_DE_XMP, leerXmp } from "./xmp";
 
-const NO_SOPORTADA: MotivoDeMetadatos = "imagen-no-soportada";
+export const NO_SOPORTADA: MotivoDeMetadatos = "imagen-no-soportada";
+
+/** Los formatos de la familia HEIF que limpia este archivo: la foto fija del celular y su par AV1. */
+export type FormatoHeif = Extract<FormatoDeImagen, "heic" | "avif">;
 
 /** Elementos que SON la imagen (o la componen): se conservan con sus bytes. */
 const ELEMENTOS_DE_IMAGEN = new Set([
   "hvc1",
+  "av01",
   "hvt1",
   "grid",
   "iden",
@@ -65,6 +77,11 @@ const ELEMENTOS_DE_IMAGEN = new Set([
 /** Propiedades que hacen falta para decodificar la imagen y verla como se tomó. */
 const PROPIEDADES_QUE_SE_CONSERVAN = new Set([
   "hvcC",
+  // AVIF (AV1 Image File Format, AOM v1.1.0, 2.2.1 y 4): la configuración AV1, el punto de operación
+  // y la capa que se muestra.
+  "av1C",
+  "a1op",
+  "a1lx",
   "ispe",
   "irot",
   "imir",
@@ -99,7 +116,7 @@ const MIME_XMP = "application/rdf+xml";
 
 // ── Cajas ───────────────────────────────────────────────────────────────────────────────────────
 
-interface Caja {
+export interface Caja {
   readonly tipo: string;
   readonly desde: number;
   /** Donde empiezan sus datos: tras el tamaño, el código y, si lo hay, el tamaño largo. */
@@ -107,7 +124,7 @@ interface Caja {
   readonly hasta: number;
 }
 
-function codigoEn(bytes: Uint8Array, pos: number): string {
+export function codigoEn(bytes: Uint8Array, pos: number): string {
   const c = tramo(bytes, pos, 4);
   return String.fromCharCode(c[0], c[1], c[2], c[3]);
 }
@@ -120,7 +137,16 @@ function pareceCodigo(bytes: Uint8Array, pos: number): boolean {
   return true;
 }
 
-function leerCaja(bytes: Uint8Array, pos: number, fin: number): Caja {
+/**
+ * Una caja en `pos`. El tamaño 0 («hasta el final del archivo») solo vale arriba del todo (ISO/IEC
+ * 14496-12 § 4.2): dentro de otra caja, una que se estira hasta el final se traga a sus hermanas.
+ */
+export function leerCaja(
+  bytes: Uint8Array,
+  pos: number,
+  fin: number,
+  superior = false,
+): Caja {
   const tamano = u32be(bytes, pos);
   const tipo = codigoEn(bytes, pos + 4);
   let datos = pos + 8;
@@ -130,14 +156,16 @@ function leerCaja(bytes: Uint8Array, pos: number, fin: number): Caja {
     if (u32be(bytes, pos + 8) !== 0) fallar();
     datos = pos + 16;
     hasta = pos + u32be(bytes, pos + 12);
-  } else if (tamano === 0) hasta = fin;
-  else hasta = pos + tamano;
+  } else if (tamano === 0) {
+    if (!superior) fallar();
+    hasta = fin;
+  } else hasta = pos + tamano;
   if (!(hasta >= datos && hasta <= fin)) fallar();
   return { tipo, desde: pos, datos, hasta };
 }
 
 /** Las cajas que hay entre `desde` y `hasta`, que tienen que llenar el tramo exacto. */
-function hijos(bytes: Uint8Array, desde: number, hasta: number): Caja[] {
+export function hijos(bytes: Uint8Array, desde: number, hasta: number): Caja[] {
   const lista: Caja[] = [];
   for (let pos = desde; pos < hasta;) {
     const caja = leerCaja(bytes, pos, hasta);
@@ -149,12 +177,12 @@ function hijos(bytes: Uint8Array, desde: number, hasta: number): Caja[] {
 }
 
 /** Los datos de una caja, como vista: cada lectura de adentro queda acotada a la caja. */
-function cuerpo(bytes: Uint8Array, caja: Caja): Uint8Array {
+export function cuerpo(bytes: Uint8Array, caja: Caja): Uint8Array {
   return bytes.subarray(caja.datos, caja.hasta);
 }
 
 /** Un texto terminado en `\0` (o en el final de la caja, que algunos programas no cierran). */
-function textoNulo(
+export function textoNulo(
   datos: Uint8Array,
   pos: number,
 ): { bytes: Uint8Array; fin: number } {
@@ -188,7 +216,7 @@ interface ElementoHeif {
   readonly caja: Caja;
 }
 
-interface Tramo {
+export interface Tramo {
   readonly desplazamiento: number;
   readonly largo: number;
 }
@@ -221,11 +249,8 @@ interface Ipma {
   }[];
 }
 
-interface Heif {
-  readonly ftyp: Caja;
-  readonly superiores: readonly Caja[];
-  /** Donde termina la última caja que se pudo leer. Lo que sigue son bytes sobrantes. */
-  readonly fin: number;
+/** Lo que se lee de la caja `meta` de arriba. */
+export interface MetaHeif {
   readonly hijosDeMeta: readonly Caja[];
   readonly hdlrNombre: number;
   readonly drefConTexto: number;
@@ -240,6 +265,13 @@ interface Heif {
   readonly propiedades: readonly Caja[];
   readonly ipmas: readonly Ipma[];
   readonly idat: Caja | null;
+}
+
+interface Heif extends MetaHeif {
+  readonly ftyp: Caja;
+  readonly superiores: readonly Caja[];
+  /** Donde termina la última caja que se pudo leer. Lo que sigue son bytes sobrantes. */
+  readonly fin: number;
 }
 
 function leerHdlr(bytes: Uint8Array, caja: Caja): number {
@@ -435,21 +467,31 @@ function leerIpma(bytes: Uint8Array, caja: Caja): Ipma {
   return { version, banderas, entradas };
 }
 
-function leerFtyp(bytes: Uint8Array, caja: Caja): void {
+/** El `ftyp` tiene que decir el formato que dijo `formatoPorContenido`: la limpieza no adivina. */
+export function leerFtyp(
+  bytes: Uint8Array,
+  caja: Caja,
+  formato: FormatoBmff,
+): void {
   const d = cuerpo(bytes, caja);
   if (d.length < 8) fallar();
   const marcas = [codigoEn(d, 0)];
   for (let p = 8; p + 4 <= d.length; p += 4) marcas.push(codigoEn(d, p));
-  if (!marcas.some((m) => MARCAS_HEIC.has(m))) fallar();
+  const delFormato = MARCAS_DEL_FORMATO[formato];
+  if (!marcas.some((m) => delFormato.has(m))) fallar();
 }
 
-function leerHeif(bytes: Uint8Array): Heif {
+/** Las cajas de arriba, hasta la última que se pudo leer; lo que sigue son bytes sobrantes. */
+export function leerSuperiores(bytes: Uint8Array): {
+  superiores: Caja[];
+  fin: number;
+} {
   const superiores: Caja[] = [];
   let pos = 0;
   while (pos + 8 <= bytes.length && pareceCodigo(bytes, pos + 4)) {
     let caja: Caja;
     try {
-      caja = leerCaja(bytes, pos, bytes.length);
+      caja = leerCaja(bytes, pos, bytes.length, true);
     } catch {
       // Una cabecera que no cuadra después de la última caja buena: son bytes sobrantes.
       break;
@@ -458,16 +500,28 @@ function leerHeif(bytes: Uint8Array): Heif {
     pos = caja.hasta;
     if (superiores.length > MAXIMO_DE_CAJAS) fallar(NO_SOPORTADA);
   }
-  const fin = pos;
+  return { superiores, fin: pos };
+}
 
+/** ¿Trae pistas? Una secuencia de imágenes o el video de una Live Photo: `secuencia.ts`. */
+export function tienePistas(bytes: Uint8Array): boolean {
+  return leerSuperiores(bytes).superiores.some((c) => c.tipo === "moov");
+}
+
+function leerHeif(bytes: Uint8Array, formato: FormatoHeif): Heif {
+  const { superiores, fin } = leerSuperiores(bytes);
   const ftyp = superiores[0];
   if (!ftyp || ftyp.tipo !== "ftyp") fallar();
-  leerFtyp(bytes, ftyp);
-  // Una secuencia de imágenes o una Live Photo trae pistas (`moov`): eso no es una foto fija.
+  leerFtyp(bytes, ftyp, formato);
+  // Con pistas (`moov`) la copia no se rearma: se limpia en su lugar (`secuencia.ts`).
   if (superiores.some((c) => c.tipo === "moov")) fallar(NO_SOPORTADA);
   const metas = superiores.filter((c) => c.tipo === "meta");
   if (metas.length !== 1) fallar();
-  const meta = metas[0];
+  return { ftyp, superiores, fin, ...leerMeta(bytes, metas[0]) };
+}
+
+/** La caja `meta` de una foto HEIF: sus elementos, dónde están y qué propiedades tienen. */
+export function leerMeta(bytes: Uint8Array, meta: Caja): MetaHeif {
   if (u8(bytes, meta.datos) !== 0) fallar();
 
   const hijosDeMeta = hijos(bytes, meta.datos + 4, meta.hasta);
@@ -515,9 +569,6 @@ function leerHeif(bytes: Uint8Array): Heif {
   }
 
   return {
-    ftyp,
-    superiores,
-    fin,
     hijosDeMeta,
     hdlrNombre: leerHdlr(bytes, hdlr),
     drefConTexto: dref.conTexto,
@@ -564,23 +615,28 @@ function destinoDeMetadato(e: ElementoHeif): Quitado {
   };
 }
 
-interface Plan {
-  readonly heif: Heif;
+/** Lo que se decide de una `meta`: qué elementos y qué propiedades se quedan. */
+export interface PlanDeMeta {
+  readonly meta: MetaHeif;
   /** Los elementos que se quedan, por id. */
   readonly conservados: ReadonlySet<number>;
   /** Las propiedades que se quedan: índice viejo (desde 1) → índice nuevo (desde 1). */
   readonly propiedadNueva: ReadonlyMap<number, number>;
+}
+
+interface Plan extends PlanDeMeta {
+  readonly heif: Heif;
   readonly analisis: AnalisisDeMetadatos;
 }
 
 /** Las referencias de `dref` que apuntan a ESTE archivo: 0 siempre; las demás, si son `url ` propias. */
-function referenciaPropia(heif: Heif, referencia: number): boolean {
+function referenciaPropia(heif: MetaHeif, referencia: number): boolean {
   return referencia === 0 || heif.drefPropias[referencia - 1] === true;
 }
 
 function bytesDeUbicacion(
   bytes: Uint8Array,
-  heif: Heif,
+  heif: MetaHeif,
   u: Ubicacion,
 ): Uint8Array | null {
   if (u.metodo >= 2 || !referenciaPropia(heif, u.referencia)) return null;
@@ -606,9 +662,15 @@ function bytesDeUbicacion(
   return junto;
 }
 
-function planear(bytes: Uint8Array): Plan {
-  const heif = leerHeif(bytes);
-  const inventario = new Inventario();
+/**
+ * Qué elementos y qué propiedades de una `meta` se quedan, y qué dice lo que se va. Lo comparten la
+ * foto fija (que se rearma) y la foto que viaja con una secuencia (que se reescribe en su sitio).
+ */
+export function planearMeta(
+  bytes: Uint8Array,
+  heif: MetaHeif,
+  inventario: Inventario,
+): PlanDeMeta {
   const ubicacionDe = new Map(heif.ubicaciones.map((u) => [u.id, u]));
 
   // 1. Qué elementos se quedan: los de imagen, y solo si nada de lo que necesitan se va.
@@ -703,6 +765,28 @@ function planear(bytes: Uint8Array): Plan {
     }
   }
 
+  return { meta: heif, conservados, propiedadNueva };
+}
+
+/** Las cajas de `meta` que no se reescriben, y el texto de `hdlr` y de `dref`. */
+export function anotarCajasDeMeta(heif: MetaHeif, inventario: Inventario): void {
+  for (const c of heif.hijosDeMeta)
+    if (!HIJOS_DE_META.has(c.tipo))
+      inventario.quitar(
+        "auxiliar",
+        nombreTecnico(ascii(c.tipo)),
+        c.hasta - c.desde,
+      );
+  if (heif.hdlrNombre > 0) inventario.quitar("texto", "hdlr", heif.hdlrNombre);
+  if (heif.drefConTexto > 0)
+    inventario.quitar("texto", "dref", heif.drefConTexto);
+}
+
+function planear(bytes: Uint8Array, formato: FormatoHeif): Plan {
+  const heif = leerHeif(bytes, formato);
+  const inventario = new Inventario();
+  const planDeMeta = planearMeta(bytes, heif, inventario);
+
   // 6. Cajas: las de arriba que no son la foto, las de `meta` que no se reescriben, y el texto de
   // `hdlr` y de `dref`.
   let enMdat = 0;
@@ -718,16 +802,7 @@ function planear(bytes: Uint8Array): Plan {
       c.hasta - c.desde,
     );
   }
-  for (const c of heif.hijosDeMeta)
-    if (!HIJOS_DE_META.has(c.tipo))
-      inventario.quitar(
-        "auxiliar",
-        nombreTecnico(ascii(c.tipo)),
-        c.hasta - c.desde,
-      );
-  if (heif.hdlrNombre > 0) inventario.quitar("texto", "hdlr", heif.hdlrNombre);
-  if (heif.drefConTexto > 0)
-    inventario.quitar("texto", "dref", heif.drefConTexto);
+  anotarCajasDeMeta(heif, inventario);
 
   // 7. Bytes que ningún elemento usa: dentro de `mdat` y de `idat` (lo que quedó de una edición,
   // por ejemplo), y después de la última caja.
@@ -746,12 +821,7 @@ function planear(bytes: Uint8Array): Plan {
   if (heif.fin < bytes.length)
     inventario.quitar("bytes-sobrantes", "BMFF", bytes.length - heif.fin);
 
-  return {
-    heif,
-    conservados,
-    propiedadNueva,
-    analisis: inventario.cerrar("heic"),
-  };
+  return { ...planDeMeta, heif, analisis: inventario.cerrar(formato) };
 }
 
 /** Hijos de `meta` que la copia lleva (reescritos o tal cual). Los demás se quitan. */
@@ -789,7 +859,7 @@ function leerUdes(inventario: Inventario, d: Uint8Array): void {
 // ── La copia limpia ─────────────────────────────────────────────────────────────────────────────
 
 /** Bytes que crecen: la `meta` es pequeña (cientos de bytes, algunos KB con un perfil ICC). */
-class Bytes {
+export class Bytes {
   private readonly trozos: Uint8Array[] = [];
   private total = 0;
 
@@ -840,7 +910,7 @@ class Bytes {
   }
 }
 
-function caja(tipo: string, contenido: Bytes): Uint8Array {
+export function caja(tipo: string, contenido: Bytes): Uint8Array {
   return new Bytes()
     .u32(8 + contenido.largo)
     .agregar(ascii(tipo))
@@ -857,11 +927,11 @@ interface Ubicada {
 /** La `meta` nueva. `ubicadas` trae ya los desplazamientos de la copia. */
 function escribirMeta(
   bytes: Uint8Array,
-  plan: Plan,
+  plan: PlanDeMeta,
   ubicadas: readonly Ubicada[],
   idatNuevo: Uint8Array | null,
 ): Uint8Array {
-  const { heif, conservados, propiedadNueva } = plan;
+  const { meta: heif, conservados, propiedadNueva } = plan;
   const hijosNuevos = new Bytes();
 
   for (const c of heif.hijosDeMeta) {
@@ -980,27 +1050,78 @@ function escribirMeta(
   );
 }
 
+/** `idat` nuevo: solo los tramos de los elementos conservados, en su orden. */
+function rehacerIdat(
+  bytes: Uint8Array,
+  heif: MetaHeif,
+  vivas: readonly Ubicacion[],
+): { idatNuevo: Uint8Array | null; enIdat: Map<Ubicacion, Tramo[]> } {
+  const enIdat = new Map<Ubicacion, Tramo[]>();
+  if (!vivas.some((u) => u.metodo === 1)) return { idatNuevo: null, enIdat };
+  const idat = new Bytes();
+  const datosDeIdat = cuerpo(bytes, heif.idat!);
+  for (const u of vivas) {
+    if (u.metodo !== 1) continue;
+    const nuevos: Tramo[] = [];
+    for (const t of u.tramos) {
+      nuevos.push({ desplazamiento: idat.largo, largo: t.largo });
+      idat.agregar(tramo(datosDeIdat, t.desplazamiento, t.largo));
+    }
+    enIdat.set(u, nuevos);
+  }
+  return { idatNuevo: idat.resultado(), enIdat };
+}
+
+/**
+ * Los tramos (absolutos, en el archivo) de los elementos de una `meta`: de todos, o solo de los que
+ * se quedan. La limpieza en su lugar los necesita para saber qué bytes del `mdat` tienen dueño.
+ */
+export function tramosEnElArchivo(
+  plan: PlanDeMeta,
+  soloConservados: boolean,
+): Tramo[] {
+  const lista: Tramo[] = [];
+  for (const u of plan.meta.ubicaciones) {
+    if (u.metodo !== 0 || !referenciaPropia(plan.meta, u.referencia)) continue;
+    if (soloConservados && !plan.conservados.has(u.id)) continue;
+    lista.push(...u.tramos);
+  }
+  return lista;
+}
+
+/**
+ * La `meta` limpia del MISMO tamaño que la original, para escribirla en su sitio sin mover un byte
+ * del resto del archivo: los desplazamientos de `iloc` no cambian (el `mdat` se queda donde está) y
+ * lo que sobra se rellena con una caja `free` de ceros. Si la limpia no cabe, o deja un hueco de
+ * menos de 8 bytes —lo mínimo que mide una caja—, no se adivina: `imagen-no-soportada`.
+ */
+export function metaEnSuSitio(
+  bytes: Uint8Array,
+  plan: PlanDeMeta,
+  largo: number,
+): Uint8Array {
+  const vivas = plan.meta.ubicaciones.filter((u) => plan.conservados.has(u.id));
+  const { idatNuevo, enIdat } = rehacerIdat(bytes, plan.meta, vivas);
+  const ubicadas: Ubicada[] = vivas.map((u) => ({
+    id: u.id,
+    metodo: u.metodo,
+    tramos: u.metodo === 1 ? enIdat.get(u)! : u.tramos,
+  }));
+  const meta = escribirMeta(bytes, plan, ubicadas, idatNuevo);
+  const hueco = largo - meta.length;
+  if (hueco < 0 || (hueco > 0 && hueco < 8)) fallar(NO_SOPORTADA);
+  const salida = new Uint8Array(largo);
+  salida.set(meta, 0);
+  if (hueco > 0) {
+    salida.set(new Bytes().u32(hueco).agregar(ascii("free")).resultado(), meta.length);
+  }
+  return salida;
+}
+
 function escribir(bytes: Uint8Array, plan: Plan): Uint8Array {
   const { heif, conservados } = plan;
   const vivas = heif.ubicaciones.filter((u) => conservados.has(u.id));
-
-  // `idat` nuevo: solo los tramos de los elementos conservados, en su orden.
-  let idatNuevo: Uint8Array | null = null;
-  const enIdat = new Map<Ubicacion, Tramo[]>();
-  if (vivas.some((u) => u.metodo === 1)) {
-    const idat = new Bytes();
-    const datosDeIdat = cuerpo(bytes, heif.idat!);
-    for (const u of vivas) {
-      if (u.metodo !== 1) continue;
-      const nuevos: Tramo[] = [];
-      for (const t of u.tramos) {
-        nuevos.push({ desplazamiento: idat.largo, largo: t.largo });
-        idat.agregar(tramo(datosDeIdat, t.desplazamiento, t.largo));
-      }
-      enIdat.set(u, nuevos);
-    }
-    idatNuevo = idat.resultado();
-  }
+  const { idatNuevo, enIdat } = rehacerIdat(bytes, heif, vivas);
 
   // `mdat` nuevo: los tramos en el ORDEN en que estaban en el archivo (desempate: orden de `iloc`).
   const enArchivo: { u: Ubicacion; e: number; t: Tramo; orden: number }[] = [];
@@ -1053,12 +1174,18 @@ function escribir(bytes: Uint8Array, plan: Plan): Uint8Array {
   return salida;
 }
 
-export function analizarHeic(bytes: Uint8Array): AnalisisDeMetadatos {
-  return planear(bytes).analisis;
+export function analizarHeic(
+  bytes: Uint8Array,
+  formato: FormatoHeif = "heic",
+): AnalisisDeMetadatos {
+  return planear(bytes, formato).analisis;
 }
 
-export function limpiarHeic(bytes: Uint8Array): Limpieza {
-  const plan = planear(bytes);
+export function limpiarHeic(
+  bytes: Uint8Array,
+  formato: FormatoHeif = "heic",
+): Limpieza {
+  const plan = planear(bytes, formato);
   return {
     bytes: escribir(bytes, plan),
     quitados: plan.analisis.quitables,

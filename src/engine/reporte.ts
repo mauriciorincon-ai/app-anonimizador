@@ -19,6 +19,7 @@
 // columna llamada `<script>` no puede convertirse en un script.
 
 import {
+  cifraPedida,
   epsilon as epsilonEnTexto,
   numero,
   porcentaje,
@@ -633,6 +634,35 @@ function seccionDeLaGeneralizacion(
       ? ""
       : `<p>${h(G.lDescartadas, idioma, { columnas_html: listaDeCodigo(g.lDescartadas) })}</p>`;
   const diversidad = exigida + descartada;
+  // S11: el tope de supresión, solo si la política lo pidió. Conteos, nunca valores.
+  const s = g.supresion;
+  const supresion =
+    s === undefined
+      ? ""
+      : `<p>${
+          !s.aplicada
+            ? h(G.supresionNoAplicada, idioma, {
+                porcentaje: cifraPedida(s.porcentaje, idioma),
+              })
+            : s.filas === 0
+              ? h(G.supresionNinguna, idioma, {
+                  porcentaje: cifraPedida(s.porcentaje, idioma),
+                  tope: numero(s.tope, idioma),
+                })
+              : h(G.supresion, idioma, {
+                  porcentaje: cifraPedida(s.porcentaje, idioma),
+                  tope: numero(s.tope, idioma),
+                  filas: numero(s.filas, idioma),
+                  detalle_html: s.porTamano
+                    .map((t) =>
+                      h(G.porTamano, idioma, {
+                        filas: numero(t.filas, idioma),
+                        tamano: numero(t.tamano, idioma),
+                      }),
+                    )
+                    .join(" · "),
+                })
+        }</p>`;
 
   return `<section>
 <p class="etiqueta">${h(G.etiqueta, idioma)}</p>
@@ -642,7 +672,7 @@ function seccionDeLaGeneralizacion(
     revisadas: numero(g.nodosRevisados, idioma),
   })}</p>
 <p>${h(G.k, idioma, { objetivo: g.kObjetivo, alcanzado: g.kAlcanzado })}</p>
-${diversidad}
+${diversidad}${supresion}
 <table style="margin-top:16px">
 <thead><tr><th>${h(G.encabezados.columna, idioma)}</th><th>${h(G.encabezados.escalera, idioma)}</th><th>${h(G.encabezados.nivel, idioma)}</th></tr></thead>
 <tbody>${filas}</tbody></table>

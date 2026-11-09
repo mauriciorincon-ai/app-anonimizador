@@ -598,3 +598,283 @@ describe("la ℓ y las columnas sensibles que la política suprime", () => {
     expect(conservada.lAlcanzado).toBeGreaterThanOrEqual(2);
   });
 });
+
+// ── S11: el tope de supresión ───────────────────────────────────────────────────────────────────
+//
+// Con tope, la pérdida deja de ser monótona (una fila borrada pierde todo, y subir puede salvarla):
+// el óptimo ya no se toma solo entre los k-mínimos. La referencia es otra fuerza bruta, escrita aparte
+// y sin nada del motor: cada nodo medido sobre las filas, las que fallan borradas y contadas como
+// pérdida total, y el mejor por el mismo desempate.
+
+function fuerzaBrutaConTope(
+  encabezado: readonly string[],
+  filas: readonly string[][],
+  dimensiones: readonly string[],
+  jerarquias: Readonly<Record<string, Jerarquia>>,
+  k: number,
+  diversidad: DiversidadPedida | null,
+  tope: number,
+): { nodo: number[]; fuera: boolean[]; cumple: boolean } {
+  const indices = dimensiones.map((d) => encabezado.indexOf(d));
+  const sensibles = (diversidad?.columnas ?? []).map((c) =>
+    encabezado.indexOf(c),
+  );
+  const niveles = dimensiones.map((d) =>
+    nivelesDe(jerarquias[d] ?? { tipo: "supresion" }),
+  );
+  const alturas = niveles.map((n) => n.length - 1);
+  const originales = indices.map((i) => filas.map((f) => f[i] ?? ""));
+  const N = filas.length;
+  const cuenta = (valores: readonly string[]) => {
+    const m = new Map<string, number>();
+    for (const v of valores) m.set(v, (m.get(v) ?? 0) + 1);
+    return m;
+  };
+  const frecuencias = originales.map(cuenta);
+
+  const medir = (nodo: readonly number[]) => {
+    const generalizadas = niveles.map((n, i) => originales[i].map(n[nodo[i]]));
+    const claves = filas.map((_, r) =>
+      JSON.stringify(generalizadas.map((g) => g[r])),
+    );
+    const clases = new Map<string, { n: number; sensibles: Set<string>[] }>();
+    filas.forEach((fila, r) => {
+      let clase = clases.get(claves[r]);
+      if (!clase) {
+        clase = { n: 0, sensibles: sensibles.map(() => new Set()) };
+        clases.set(claves[r], clase);
+      }
+      clase.n++;
+      sensibles.forEach((s, j) => clase!.sensibles[j].add(fila[s] ?? ""));
+    });
+    const falla = (c: { n: number; sensibles: Set<string>[] }) =>
+      c.n < k ||
+      (diversidad !== null && c.sensibles.some((s) => s.size < diversidad.l));
+    const fuera = claves.map((c) => falla(clases.get(c)!));
+    const generalizadasCuenta = generalizadas.map(cuenta);
+    let perdida = 0;
+    for (let r = 0; r < N; r++)
+      for (let i = 0; i < indices.length; i++) {
+        const x = originales[i][r];
+        const px = frecuencias[i].get(x)! / N;
+        perdida += fuera[r]
+          ? -Math.log2(px)
+          : -Math.log2(
+              frecuencias[i].get(x)! /
+                generalizadasCuenta[i].get(generalizadas[i][r])!,
+            );
+      }
+    return { fuera, perdida: perdida / N };
+  };
+
+  const nodos: number[][] = [];
+  const recorrer = (i: number, actual: number[]) => {
+    if (i === alturas.length) return void nodos.push([...actual]);
+    for (let v = 0; v <= alturas[i]; v++) recorrer(i + 1, [...actual, v]);
+  };
+  recorrer(0, []);
+
+  let mejor: { nodo: number[]; perdida: number; fuera: boolean[] } | null =
+    null;
+  for (const nodo of nodos) {
+    const m = medir(nodo);
+    if (m.fuera.filter(Boolean).length > tope) continue;
+    const candidato = { nodo, perdida: m.perdida, fuera: m.fuera };
+    if (mejor === null || compararNodos(candidato, mejor) < 0)
+      mejor = candidato;
+  }
+  if (mejor) return { nodo: mejor.nodo, fuera: mejor.fuera, cumple: true };
+  return { nodo: alturas, fuera: filas.map(() => false), cumple: false };
+}
+
+describe("S11 · el tope de supresión en la óptima", () => {
+  for (const conL of [false, true]) {
+    it(`es el de la fuerza bruta en 60 tablas sembradas ${conL ? "con ℓ = 2" : "sin ℓ"}: mismo nodo, mismas filas fuera`, () => {
+      let conFilasFuera = 0;
+      let distintoDelSinTope = 0;
+      for (let semilla = 1; semilla <= 60; semilla++) {
+        const c = caso(semilla + (conL ? 3000 : 2000), conL);
+        const tabla = tablaDe(c.encabezado, c.filas);
+        const porcentaje = [5, 10, 25][semilla % 3];
+        const tope = Math.floor((c.filas.length * porcentaje) / 100);
+        const ola = generalizarOptimo(
+          tabla,
+          c.dimensiones,
+          ESCALERAS,
+          c.k,
+          c.diversidad,
+          new Set(),
+          { porcentaje, aplicada: true },
+        );
+        const referencia = fuerzaBrutaConTope(
+          c.encabezado,
+          c.filas,
+          c.dimensiones,
+          ESCALERAS,
+          c.k,
+          c.diversidad,
+          tope,
+        );
+        expect(ola.niveles, `semilla ${c.semilla}`).toEqual(referencia.nodo);
+        expect(ola.alcanzado, `semilla ${c.semilla}`).toBe(referencia.cumple);
+        const quitadas = referencia.fuera.filter(Boolean).length;
+        expect(ola.supresion?.filas ?? 0, `semilla ${c.semilla}`).toBe(
+          quitadas,
+        );
+        expect(ola.supresion?.tope).toBe(tope);
+        expect(ola.tabla.filas).toBe(c.filas.length - quitadas);
+        expect(ola.alineada.filas).toBe(c.filas.length);
+        if (quitadas > 0) {
+          conFilasFuera++;
+          expect(Array.from(ola.fuera!).map(Boolean)).toEqual(referencia.fuera);
+          // Lo que queda llega al k: es lo que el archivo lleva.
+          expect(ola.kAlcanzado).toBeGreaterThanOrEqual(c.k);
+          // Las filas que quedan, en su orden, con su valor generalizado.
+          const quedan = c.filas.flatMap((_, r) =>
+            referencia.fuera[r] ? [] : [r],
+          );
+          for (const columna of ola.tabla.columnas) {
+            const alineada = ola.alineada.columnas.find(
+              (a) => a.nombre === columna.nombre,
+            )!;
+            expect(
+              Array.from(columna.codigos, (x) => columna.valores[x]),
+            ).toEqual(quedan.map((r) => alineada.valores[alineada.codigos[r]]));
+          }
+        } else expect(ola.fuera).toBeNull();
+        const sinTope = generalizarOptimo(
+          tabla,
+          c.dimensiones,
+          ESCALERAS,
+          c.k,
+          c.diversidad,
+        );
+        if (sinTope.niveles.join() !== ola.niveles.join()) distintoDelSinTope++;
+      }
+      // Que la prueba pruebe algo: casos que de verdad borran y que cambian de nodo.
+      expect(conFilasFuera).toBeGreaterThan(10);
+      expect(distintoDelSinTope).toBeGreaterThan(5);
+    });
+  }
+
+  it("con tope 0, o sin tope, es exactamente la óptima de siempre", () => {
+    for (let semilla = 1; semilla <= 20; semilla++) {
+      const c = caso(semilla + 4000, semilla % 2 === 0);
+      const tabla = tablaDe(c.encabezado, c.filas);
+      const siempre = generalizarOptimo(
+        tabla,
+        c.dimensiones,
+        ESCALERAS,
+        c.k,
+        c.diversidad,
+      );
+      const conCero = generalizarOptimo(
+        tabla,
+        c.dimensiones,
+        ESCALERAS,
+        c.k,
+        c.diversidad,
+        new Set(),
+        { porcentaje: 0, aplicada: true },
+      );
+      expect(conCero.niveles).toEqual(siempre.niveles);
+      expect(conCero.fuera).toBeNull();
+      expect(conCero.supresion).toBeNull();
+      expect(conCero.tabla).toBe(conCero.alineada);
+      expect(conCero.bitsDespues).toBe(siempre.bitsDespues);
+      expect(conCero.kAlcanzado).toBe(siempre.kAlcanzado);
+    }
+  });
+
+  it("pedido en un archivo que no lo admite (JSON), no borra nada y lo dice", () => {
+    const c = caso(2003, false);
+    const tabla = tablaDe(c.encabezado, c.filas);
+    const r = generalizarOptimo(
+      tabla,
+      c.dimensiones,
+      ESCALERAS,
+      c.k,
+      null,
+      new Set(),
+      { porcentaje: 25, aplicada: false },
+    );
+    const siempre = generalizarOptimo(
+      tabla,
+      c.dimensiones,
+      ESCALERAS,
+      c.k,
+      null,
+    );
+    expect(r.niveles).toEqual(siempre.niveles);
+    expect(r.fuera).toBeNull();
+    expect(r.supresion).toEqual({
+      porcentaje: 25,
+      tope: 0,
+      filas: 0,
+      porTamano: [],
+      aplicada: false,
+    });
+  });
+
+  it("aplicarPolitica: las filas salen de la SALIDA, el certificado dice cuántas y de qué tamaño", async () => {
+    // 18 edades en 3 bloques de 6 y 2 edades sueltas lejos: con k = 3 sin tope sube a 20 años; con
+    // el 10 % de tope (2 filas) se queda en 5 años y salen las 2 sueltas.
+    const edades = [
+      ...Array.from({ length: 6 }, () => "21"),
+      ...Array.from({ length: 6 }, () => "32"),
+      ...Array.from({ length: 6 }, () => "43"),
+      "58",
+      "77",
+    ];
+    const original = tablaDe(
+      ["edad", "nota"],
+      edades.map((e, i) => [e, `n${i}`]),
+    );
+    const politica: Politica = {
+      version: 1,
+      origen: "manual",
+      kObjetivo: 3,
+      reglas: [
+        { columna: "edad", tecnica: { tipo: "generalizar-automatico" } },
+      ],
+      generalizacion: {
+        algoritmo: "optima",
+        jerarquias: { edad: { tipo: "rango", amplitudes: [5, 10, 20, 40] } },
+        supresionMaxima: 10,
+      },
+    };
+    const con = await aplicarPolitica(original, politica, null, "es");
+    expect(con.tabla.filas).toBe(18);
+    expect(con.alineada.filas).toBe(20);
+    expect(Array.from(con.fuera!)).toEqual([...new Array(18).fill(0), 1, 1]);
+    // El original no se toca.
+    expect(original.filas).toBe(20);
+    const nota = con.tabla.columnas.find((c) => c.nombre === "nota")!;
+    expect(nota.valores).not.toContain("n18");
+    expect(nota.valores).not.toContain("n19");
+    expect(
+      generalizacionAplicada(con.optima!, politica.generalizacion!).supresion,
+    ).toEqual({
+      porcentaje: 10,
+      tope: 2,
+      filas: 2,
+      porTamano: [{ tamano: 1, filas: 2 }],
+      aplicada: true,
+    });
+    const sin = await aplicarPolitica(
+      original,
+      {
+        ...politica,
+        generalizacion: { ...politica.generalizacion!, supresionMaxima: 0 },
+      },
+      null,
+      "es",
+    );
+    expect(sin.fuera).toBeNull();
+    expect(sin.tabla.filas).toBe(20);
+    expect(sin.optima!.niveles[0]).toBeGreaterThan(con.optima!.niveles[0]);
+    expect(
+      generalizacionAplicada(sin.optima!, politica.generalizacion!),
+    ).not.toHaveProperty("supresion");
+  });
+});

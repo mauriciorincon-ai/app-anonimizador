@@ -62,6 +62,8 @@ const FIXTURES: readonly Fixture[] = [
   // El europeo (S8): un identificador nacional de cada país con control oficial, campos personales
   // con nombres en otras lenguas, un dato del art. 9 y uno del art. 10. Todo sintético.
   { perfil: "europeo", filas: 1_500, seed: 42, formato: "csv" },
+  // La CIIU Rev. 5 y el tope de supresión (S11), para el gate «local = navegador» y su e2e.
+  { perfil: "jerarquias-rev5", filas: 1_500, seed: 42, formato: "csv" },
   // JSON, el tercer formato. Un objeto anidado en las dos formas (arreglo y JSON Lines, el mismo
   // dato), uno con listas que Velo debe declarar «no tratadas» y uno heterogéneo (claves que
   // faltan, tipos mezclados, `__proto__`, un número mayor que 2⁵³). Solo existen en json/jsonl.
@@ -120,6 +122,10 @@ export const FIXTURE_JPEG = join(DIRECTORIO_DE_FIXTURES, "foto-s42.jpg");
 export const FIXTURE_PNG = join(DIRECTORIO_DE_FIXTURES, "foto-s42.png");
 export const FIXTURE_WEBP = join(DIRECTORIO_DE_FIXTURES, "foto-s42.webp");
 export const FIXTURE_HEIC = join(DIRECTORIO_DE_FIXTURES, "foto-s42.heic");
+/** La misma foto en AVIF (S11): el flujo AV1 de `base.avif` con los metadatos falsos de siempre. */
+export const FIXTURE_AVIF = join(DIRECTORIO_DE_FIXTURES, "foto-s42.avif");
+/** El video de una Live Photo (S11): ubicación en `ilst`, en `udta` y en una pista `mebx`. */
+export const FIXTURE_MOV = join(DIRECTORIO_DE_FIXTURES, "live-photo-s42.mov");
 /** Dos revisiones: el Author de la primera sigue en los bytes aunque la segunda lo reemplace. */
 export const FIXTURE_PDF = join(DIRECTORIO_DE_FIXTURES, "documento-s42.pdf");
 /** El trailer trae `/Encrypt`: Velo lo reconoce y se niega a limpiarlo. */
@@ -134,7 +140,7 @@ export const FIXTURE_PDF_FIRMADO = join(
 );
 
 interface FixtureBinario {
-  formato: "jpeg" | "png" | "webp" | "heic" | "pdf";
+  formato: "jpeg" | "png" | "webp" | "heic" | "avif" | "mov" | "pdf";
   /** Solo el PDF tiene perfiles (`simple` · `con-revisiones` · `cifrado` · `firmado`). */
   perfil?: string;
   seed: number;
@@ -146,6 +152,8 @@ const FIXTURES_BINARIOS: readonly FixtureBinario[] = [
   { formato: "png", seed: 42, destino: FIXTURE_PNG },
   { formato: "webp", seed: 42, destino: FIXTURE_WEBP },
   { formato: "heic", seed: 42, destino: FIXTURE_HEIC },
+  { formato: "avif", seed: 42, destino: FIXTURE_AVIF },
+  { formato: "mov", seed: 42, destino: FIXTURE_MOV },
   { formato: "pdf", perfil: "con-revisiones", seed: 42, destino: FIXTURE_PDF },
   { formato: "pdf", perfil: "cifrado", seed: 42, destino: FIXTURE_PDF_CIFRADO },
   { formato: "pdf", perfil: "firmado", seed: 42, destino: FIXTURE_PDF_FIRMADO },

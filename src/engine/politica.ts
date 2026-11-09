@@ -237,6 +237,8 @@ const jerarquiaSchema = z.discriminatedUnion("tipo", [
   z.object({ tipo: z.literal("divipola") }),
   z.object({ tipo: z.literal("edad-dane") }),
   z.object({ tipo: z.literal("ciiu") }),
+  // S11: la CIIU Rev. 5 A.C. junto a la Rev. 4, que sigue vigente en la transición.
+  z.object({ tipo: z.literal("ciiu5") }),
 ]);
 
 export type JerarquiaDeLaPolitica = z.infer<typeof jerarquiaSchema>;
@@ -282,6 +284,13 @@ const generalizacionSchema = z.object({
       columnas: z.array(z.string().min(1)).min(1),
     })
     .optional(),
+  /**
+   * S11: el tope de supresión, en % de las filas del archivo. Un nodo cumple si las filas de sus
+   * clases que no llegan al k (o a la ℓ) caben en el tope, y esas filas salen del ARCHIVO DE SALIDA
+   * —nunca del original—. Ausente o 0 es lo de siempre (no se borra nada): 0 se normaliza fuera, así
+   * que no cambia el hash de ninguna política.
+   */
+  supresionMaxima: z.number().min(0).max(100).optional(),
 });
 
 export type GeneralizacionOptima = z.infer<typeof generalizacionSchema>;
@@ -379,6 +388,9 @@ function generalizacionNormalizada(
     jerarquias,
     ...(generalizacion.diversidad && columnas.length > 0
       ? { diversidad: { l: generalizacion.diversidad.l, columnas } }
+      : {}),
+    ...(generalizacion.supresionMaxima
+      ? { supresionMaxima: generalizacion.supresionMaxima }
       : {}),
   };
 }

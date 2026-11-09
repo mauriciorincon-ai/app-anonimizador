@@ -20,6 +20,7 @@ export const ESCALERAS = {
   divipola: { tipo: "divipola" },
   "edad-dane": { tipo: "edad-dane" },
   ciiu: { tipo: "ciiu" },
+  ciiu5: { tipo: "ciiu5" },
 } as const satisfies Record<string, JerarquiaDeLaPolitica>;
 
 export type ClaveDeEscalera = keyof typeof ESCALERAS;
@@ -39,16 +40,26 @@ function plano(nombre: string): string {
   return nombre.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-/** La escalera que se propone para una columna. Ver el encabezado: tipo y nombre, nunca valores. */
+/** ¿Es una columna de actividad económica, por su nombre? La CIIU se propone solo así. */
+export function esColumnaCiiu(nombre: string): boolean {
+  return /ciiu|actividad.?econ/.test(plano(nombre));
+}
+
+/**
+ * La escalera que se propone para una columna. Ver el encabezado: tipo y nombre, nunca valores; la
+ * revisión de la CIIU, de los CONTEOS que el worker hizo (`revisionCiiu`). Si los exclusivos no
+ * deciden, se propone la Rev. 4 A.C. y la pantalla lo dice.
+ */
 export function escaleraSugerida(
-  columna: Pick<HallazgoDeColumna, "nombre" | "tipo">,
+  columna: Pick<HallazgoDeColumna, "nombre" | "tipo" | "revisionCiiu">,
 ): ClaveDeEscalera {
   const n = plano(columna.nombre);
   if (/\bedad\b|edad/.test(n) && columna.tipo !== "fecha") return "edad-dane";
   if (columna.tipo === "fecha" || /fecha|nacimiento/.test(n)) return "fecha";
   if (/municipio|ciudad|departamento|divipola|cod(?:igo)?.?dane/.test(n))
     return "divipola";
-  if (/ciiu|actividad.?econ/.test(n)) return "ciiu";
+  if (esColumnaCiiu(columna.nombre))
+    return columna.revisionCiiu?.revision === "ciiu5" ? "ciiu5" : "ciiu";
   if (columna.tipo === "numero") return "rango-5";
   return "supresion";
 }

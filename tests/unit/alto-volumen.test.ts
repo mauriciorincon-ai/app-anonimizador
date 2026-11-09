@@ -169,6 +169,12 @@ const OPTIMA: Politica = {
   },
 };
 
+// S11: las filas que el tope saca no se escriben en la pasada C ni se miden en la M.
+const CON_TOPE: Politica = {
+  ...OPTIMA,
+  generalizacion: { ...OPTIMA.generalizacion!, supresionMaxima: 4 },
+};
+
 const IDENTIDAD = {
   huellaDeLlave: "0123456789ab",
   salDeLlave: "c2FsLWRlLXBydWViYQ==",
@@ -249,6 +255,11 @@ describe("por trozos = en memoria, byte a byte (CSV)", () => {
     ["Mondrian", MONDRIAN, BAJOS],
     ["Mondrian en inglés", MONDRIAN, BAJOS, "en"],
     ["la óptima con ℓ sobre una sensible transformada", OPTIMA, BAJOS],
+    [
+      "S11 · la óptima con tope de supresión (filas que salen)",
+      CON_TOPE,
+      BAJOS,
+    ],
   ];
 
   for (const [nombre, politica, topes, idioma] of casos)
@@ -293,6 +304,13 @@ describe("por trozos = en memoria, byte a byte (CSV)", () => {
       expect(r.plan.reparto?.optima?.niveles ?? null).toEqual(
         r.enMemoria.optima?.niveles ?? null,
       );
+      expect(r.plan.filasQueQuedan).toBe(r.enMemoria.tabla.filas);
+      if (politica === CON_TOPE) {
+        // Que el caso pruebe algo: el tope de verdad sacó filas, y la medida las dejó fuera.
+        expect(r.enMemoria.optima?.supresion?.filas ?? 0).toBeGreaterThan(0);
+        expect(r.enMemoria.tabla.filas).toBeLessThan(r.tabla.filas);
+        expect(r.medida.transformadaQi.filas).toBe(r.enMemoria.tabla.filas);
+      }
     });
 
   // S8 (ADR-016): los seudónimos con formato europeo salen del mismo `transformarDiccionario`, así que

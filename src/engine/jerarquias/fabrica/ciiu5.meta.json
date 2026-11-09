@@ -1,0 +1,40 @@
+{
+  "jerarquia": "ciiu5",
+  "descripcion": "CIIU Rev. 5 adaptada para Colombia (CIIU Rev. 5 A.C.): sections A-V, the divisions (2 digits) each section contains, and the 4-digit classes. Same shape as ciiu.json (Rev. 4 A.C.), which stays alongside it: both revisions keep circulating during the transition period of Resolución 992 de 2026.",
+  "fuentes": [
+    {
+      "editor": "DANE (Departamento Administrativo Nacional de Estadística)",
+      "titulo": "Clasificación Industrial Internacional Uniforme de todas las actividades económicas Revisión 5 Adaptada para Colombia (CIIU Rev. 5 A.C.) — Estructura detallada (Excel), established by Resolución 992 de 2026 (6 de agosto de 2026)",
+      "url": "https://www.dane.gov.co/files/sen/nomenclatura/ciiu/CIIU_5_AC_Estructura_detallada.xlsx",
+      "fecha_de_consulta": "2026-11-08",
+      "archivo": "CIIU_5_AC_Estructura_detallada.xlsx",
+      "sha256": "ef5e93f0246d7c3efb74caf5dfa6888fe4c1e7fe196b6a7dd5e144908bd18b16",
+      "que_se_tomo": "The single worksheet 'CIIU 5 A.C.': from the header row ('Categoría' · 'CIIU Rev. 5 A.C. Código, incluida la sección' · 'CIIU Rev 5 A.C. Código' · 'CIIU Rev 5 A.C. Título') down, column A names the category (Sección, División, Grupo, Clase) and column B gives the code with its section letter (A, A01, A011, A0111). Column C (the code without the letter) is only checked against column B. Titles (column D) are not used. The same file, with the same SHA-256, was already downloaded on 2026-11-02 and cited in ciiu.meta.json as a reference.",
+      "version_de_la_fuente": "CIIU Rev. 5 A.C., the classification in force since Resolución 992 de 2026 (DANE), which repeals Resolución 2306 de 2022 (Rev. 4 A.C.) and gives implementers up to two years to move to it."
+    },
+    {
+      "editor": "DANE (Departamento Administrativo Nacional de Estadística)",
+      "titulo": "Tabla correlativa CIIU Rev. 4 A.C. (2022) vs. CIIU Rev. 5 A.C. (anexo DIRPEN, 'Fecha de publicación: 15 de septiembre de 2026')",
+      "url": "https://www.dane.gov.co/files/sen/nomenclatura/tablasCorrelativas/anex-DIRPEN-CIIU4AC2022vsCIIU5AC-sep2026.xlsx",
+      "fecha_de_consulta": "2026-11-08",
+      "archivo": "anex-DIRPEN-CIIU4AC2022vsCIIU5AC-sep2026.xlsx",
+      "sha256": "c6df988c4ce7fea5717f7eb41e07bbe1be84fe0df311132202349a47a7bae7f2",
+      "que_se_tomo": "Nothing is derived from it, and it is not read by the script. It was read to decide whether Velo could recode a Rev. 4 class into Rev. 5: its 809 rows relate the two revisions many-to-many (a Rev. 4 class splits into several Rev. 5 classes and several Rev. 4 classes merge into one), so a Rev. 4 code has no single Rev. 5 code and recoding would mean choosing one, which is inventing data. Velo therefore generalizes each column with the ladder of the revision it is written in and never translates between them."
+    }
+  ],
+  "derivado": {
+    "archivo": "ciiu5.json",
+    "sha256": "0a32b62f2a9483c3d931e7a0327b9c8113d5b7f2b24bee2af7440a4788edf966",
+    "como": "Produced by `node scripts/jerarquias/derivar.mjs <sources-dir> --solo ciiu5` (scripts/jerarquias/derivar.mjs, Node built-ins only), which reads CIIU_5_AC_Estructura_detallada.xlsx with the same minimal ZIP reader as the Rev. 4 table. secciones = [letter, first division, last division] for each 'Sección' row, the section of every code being the letter of its column B; clases = every 'Clase' code without its letter, sorted (plain string order). JSON.stringify on one line plus a trailing newline, UTF-8 without BOM. The script throws if: the header row changes, a category is unknown, a code does not have the length of its category, columns B and C disagree, sections are not A..V in order, a code is not under the section, division or group above it, a division or class repeats, the divisions of a section are not contiguous, or the sections are not 22."
+  },
+  "conteos": {
+    "secciones": 22,
+    "divisiones": 87,
+    "grupos": 266,
+    "clases": 544
+  },
+  "notas": [
+    "Rev. 4 A.C. and Rev. 5 A.C. share 436 of their four-digit class codes; 66 exist only in Rev. 4 (e.g. 4511, 4520) and 108 only in Rev. 5 (e.g. 0330, 2611). Of the 436 shared codes, 118 fall in a different section letter in each revision (Rev. 4's section J, divisions 58-63, splits into Rev. 5's J 58-60 and K 61-63, so every section from division 61 onward moves one letter, ending at V), so the revision a column is written in matters: the same code may climb to a different section.",
+    "Velo proposes the revision from the codes a column holds, counted in the worker: codes that exist only in one revision decide; if every code exists in both, or there are codes exclusive to each, the proposal stays Rev. 4 A.C. and the screen says so, and the user picks the ladder."
+  ]
+}

@@ -8,6 +8,8 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { contieneCentinela } from "../../docs/kit-de-prueba/binarios/comun.mjs";
+import { generarSecuencia } from "../../docs/kit-de-prueba/binarios/secuencia.mjs";
 import {
   analizarImagen,
   limpiarImagen,
@@ -299,6 +301,41 @@ describe("bytes cambiados al azar (semilla fija)", () => {
         }
     });
   }
+});
+
+describe("el video de una Live Photo, cambiado al azar (S11)", () => {
+  // Limpiar EN SU LUGAR deja a la vista todo lo que no se reconoce: una caja agrandada, un tamaño
+  // en 0 o una tabla que no cuadra no pueden colar nada. O un error con nombre, o una copia que
+  // pasó su poscomprobación, no trae la ubicación y no cambia al limpiarla otra vez.
+  const kit = generarSecuencia({ semilla: 11, formato: "mov" });
+  const bytes = Uint8Array.from(kit.bytes);
+  const [ubicacion] = kit.centinelas;
+
+  it("400 mutaciones de 1 a 4 bytes: error con nombre o copia limpia y estable", () => {
+    const azar = lcg(0x5e111 + bytes.length);
+    let limpias = 0;
+    for (let n = 0; n < 400; n++) {
+      const mutado = bytes.slice();
+      const cambios = 1 + (azar() % 4);
+      for (let k = 0; k < cambios; k++)
+        mutado[azar() % mutado.length] = azar() & 0xff;
+      let limpia: Uint8Array;
+      try {
+        limpia = limpiarImagen(mutado, "mov").bytes;
+      } catch (error) {
+        expect(error).toBeInstanceOf(ErrorDeMetadatos);
+        expect(["imagen-ilegible", "imagen-no-soportada"]).toContain(
+          (error as ErrorDeMetadatos).motivo,
+        );
+        continue;
+      }
+      limpias++;
+      expect(contieneCentinela(limpia, ubicacion), `mutación ${n}`).toBe(false);
+      expect(limpiarImagen(limpia, "mov").bytes).toEqual(limpia);
+    }
+    // Que la prueba mida algo: buena parte de las mutaciones caen en muestras y siguen limpiables.
+    expect(limpias).toBeGreaterThan(50);
+  });
 });
 
 describe("estructuras que buscan cuelgues", () => {

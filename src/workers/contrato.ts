@@ -73,8 +73,21 @@ export type MensajeAlWorker =
    * `destino` (S8, alto volumen): el archivo que el usuario eligió en el selector del sistema. El
    * worker escribe en él y la página no lee nada: pasa el asa y recibe la huella. Sin `destino`, el
    * archivo vuelve como `Blob`, como siempre.
+   *
+   * `flujo` (S11, alto volumen sin selector): el extremo de un canal cuyo otro extremo tiene el
+   * service worker de la descarga (`public/velo-descarga-sw.js`). El worker escribe los trozos por
+   * ahí, uno por vez, y la página no ve un solo byte. **Regla 7, con una nota:** el service worker
+   * es un SEGUNDO contexto que sí ve los bytes de SALIDA (ya anonimizados: los mismos que llevaría
+   * el `Blob`), nunca los crudos; no guarda nada, no pide nada a la red y no importa otros scripts
+   * (`tests/unit/privacidad.test.ts` barre su archivo). `limiteDeParte` solo lo cambian las pruebas:
+   * es el tamaño de las partes del respaldo, cuando no hay ni selector ni service worker.
    */
-  | { tipo: "construir-archivo"; destino?: FileSystemFileHandle }
+  | {
+      tipo: "construir-archivo";
+      destino?: FileSystemFileHandle;
+      flujo?: MessagePort;
+      limiteDeParte?: number;
+    }
   /**
    * Sella la bóveda del tratamiento que se acaba de hacer. La frase de paso entra y **no vuelve a
    * salir**, igual que la de la llave: se deriva aquí, se usa aquí y muere con el worker.
@@ -484,6 +497,8 @@ export interface LadoDeLaComparacion {
   readonly nodosRevisados: number | null;
   readonly nodosEnLaReticula: number | null;
   readonly ms: number;
+  /** S11, solo el lado con tope de supresión: cuántas filas saldrían del archivo. */
+  readonly filasQuitadas?: number;
 }
 
 export interface ComparacionDeGeneralizacion {
@@ -493,7 +508,18 @@ export interface ComparacionDeGeneralizacion {
   readonly lDescartadas: readonly string[];
   readonly dimensiones: readonly string[];
   readonly mondrian: LadoDeLaComparacion;
+  /** La óptima SIN borrar filas. */
   readonly optima: LadoDeLaComparacion;
+  /**
+   * S11: la óptima con el tope de supresión de la política, lado a lado con la de sin borrar. null
+   * si la política no pide tope.
+   */
+  readonly conSupresion: {
+    readonly porcentaje: number;
+    /** false en un JSON: el tope no se aplicaría (ver `optima.ts`). */
+    readonly aplicable: boolean;
+    readonly lado: LadoDeLaComparacion;
+  } | null;
 }
 
 export type MensajeDelWorker =
@@ -534,6 +560,23 @@ export type MensajeDelWorker =
        */
       blob?: Blob;
       enDisco?: true;
+      /**
+       * S11: el archivo salió por el canal hacia la descarga del navegador, sin juntarse en ningún
+       * `Blob`: como `enDisco`, no hay nada que la página guarde, y los bytes no pasaron por ella.
+       */
+      enDescarga?: true;
+      /**
+       * S11: el CSV de alto volumen que no cupo en una parte, cortado en límites de fila SIN repetir
+       * el encabezado: pegadas en orden dan los bytes del archivo único. Cada parte es un `Blob`
+       * opaco con su nombre y su huella; el `manifiesto` es el `Blob` que las lista.
+       */
+      partes?: readonly {
+        readonly blob: Blob;
+        readonly nombre: string;
+        readonly bytes: number;
+        readonly sha256: string;
+      }[];
+      manifiesto?: Blob;
       nombre: string;
       bytes: number;
       proposito: PropositoDelArchivo;

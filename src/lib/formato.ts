@@ -23,10 +23,20 @@ export const NOMBRE_DEL_FORMATO: Readonly<Record<FormatoBinario, string>> = {
   png: "PNG",
   webp: "WebP",
   heic: "HEIC",
+  avif: "AVIF",
+  mov: "MOV",
 };
 
 export function numero(valor: number, idioma: Idioma): string {
   return formatoNumerico(idioma, { maximumFractionDigits: 0 }).format(valor);
+}
+
+/**
+ * Una cifra que el USUARIO escribió (el tope de supresión, S11), con sus decimales: «2,5 %» pedido
+ * no se puede leer «3 %» en el certificado. Hasta seis decimales, sin ceros de relleno.
+ */
+export function cifraPedida(valor: number, idioma: Idioma): string {
+  return formatoNumerico(idioma, { maximumFractionDigits: 6 }).format(valor);
 }
 
 /**

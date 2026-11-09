@@ -1,10 +1,12 @@
-// HEIC sintético con metadatos falsos — para probar la limpieza, no para parecer una foto.
+// HEIC y AVIF sintéticos con metadatos falsos — para probar la limpieza, no para parecer una foto.
 //
 // Los píxeles no se inventan: un flujo HEVC no se escribe a mano como un VP8L de un color. Salen de
 // `base.heic`, una imagen de cuatro bandas de color plano hecha UNA vez con `sips` en un Mac y
 // versionada junto a su `.meta.json` (cómo se hizo, fecha y sha256): la CI es Linux y no escribe HEIC.
 // De ahí se toman el flujo HEVC y sus propiedades (`hvcC`, `ispe`, `colr`, `irot`, `pixi`); TODO lo
-// demás —la estructura entera del contenedor y cada metadato— se escribe aquí, a mano:
+// demás —la estructura entera del contenedor y cada metadato— se escribe aquí, a mano. El AVIF
+// (S11) es el mismo contenedor con el flujo AV1 y la `av1C` de `base.avif`, hecho igual desde
+// `base.heic` y versionado con su `.meta.json`:
 //
 //   · un elemento `Exif` (con los 4 bytes de desplazamiento y `Exif\0\0`, como lo guarda Apple) con
 //     autoría, cédula sintética y GPS;
@@ -31,13 +33,15 @@ import {
 } from "./comun.mjs";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
-const RUTA_BASE = join(AQUI, "base.heic");
-const META_BASE = JSON.parse(
-  readFileSync(join(AQUI, "base.heic.meta.json"), "utf8"),
-);
+
+/** Lo que cambia entre HEIC y AVIF: la base, el tipo de elemento, su configuración y las marcas. */
+export const CODECS = {
+  heic: { base: "base.heic", elemento: "hvc1", configuracion: "hvcC", marcas: "mif1heicmiaf" },
+  avif: { base: "base.avif", elemento: "av01", configuracion: "av1C", marcas: "mif1avifmiaf" },
+};
 
 /** Cajas hijas entre `desde` y `hasta` de un búfer (sin tamaños de 64 bits más allá de 4 GiB). */
-function cajas(b, desde, hasta) {
+export function cajas(b, desde, hasta) {
   const lista = [];
   for (let p = desde; p < hasta; ) {
     let tamano = b.readUInt32BE(p);
@@ -53,14 +57,14 @@ function cajas(b, desde, hasta) {
   return lista;
 }
 
-/** Lo que se toma de `base.heic`: el flujo HEVC del elemento primario y sus propiedades. */
-function leerBase() {
-  const b = readFileSync(RUTA_BASE);
+/** Lo que se toma de la base: el flujo HEVC o AV1 del elemento primario y sus propiedades. */
+export function leerBase(formato = "heic") {
+  const nombre = CODECS[formato].base;
+  const b = readFileSync(join(AQUI, nombre));
+  const esperada = JSON.parse(readFileSync(join(AQUI, `${nombre}.meta.json`), "utf8")).sha256;
   const huella = createHash("sha256").update(b).digest("hex");
-  if (huella !== META_BASE.sha256)
-    throw new Error(
-      `base.heic no coincide con su .meta.json (${huella} ≠ ${META_BASE.sha256})`,
-    );
+  if (huella !== esperada)
+    throw new Error(`${nombre} no coincide con su .meta.json (${huella} ≠ ${esperada})`);
   const meta = cajas(b, 0, b.length).find((c) => c.tipo === "meta");
   const hijos = cajas(b, meta.datos + 4, meta.hasta);
   const iprp = hijos.find((c) => c.tipo === "iprp");
@@ -71,17 +75,18 @@ function leerBase() {
       b.subarray(c.desde, c.hasta),
     ]),
   );
-  // `iloc` de la base: versión 0, desplazamiento y largo de 4 bytes, un elemento, una extensión.
+  // `iloc` de la base: versión 0, desplazamiento y largo de 4 bytes, una extensión por elemento; el
+  // primero es la imagen (en `base.avif` le sigue el Exif de sips, que no se usa).
   const iloc = hijos.find((c) => c.tipo === "iloc");
   const tamanos = b.readUInt16BE(iloc.datos + 4);
-  if (tamanos !== 0x4400 || b.readUInt16BE(iloc.datos + 6) !== 1)
-    throw new Error("base.heic: iloc con una forma que este generador no espera");
+  if (tamanos !== 0x4400 || b.readUInt16BE(iloc.datos + 8) !== 1 || b.readUInt16BE(iloc.datos + 12) !== 1)
+    throw new Error(`${nombre}: iloc con una forma que este generador no espera`);
   const desplazamiento = b.readUInt32BE(iloc.datos + 14);
   const largo = b.readUInt32BE(iloc.datos + 18);
   return { propiedades, hevc: b.subarray(desplazamiento, desplazamiento + largo) };
 }
 
-function caja(tipo, ...partes) {
+export function caja(tipo, ...partes) {
   const cuerpo = Buffer.concat(partes);
   const cabecera = Buffer.alloc(8);
   cabecera.writeUInt32BE(8 + cuerpo.length, 0);
@@ -89,23 +94,23 @@ function caja(tipo, ...partes) {
   return Buffer.concat([cabecera, cuerpo]);
 }
 
-function completa(version, banderas) {
+export function completa(version, banderas) {
   const b = Buffer.alloc(4);
   b.writeUInt32BE(((version << 24) | banderas) >>> 0, 0);
   return b;
 }
 
-const u16 = (v) => {
+export const u16 = (v) => {
   const b = Buffer.alloc(2);
   b.writeUInt16BE(v, 0);
   return b;
 };
-const u32 = (v) => {
+export const u32 = (v) => {
   const b = Buffer.alloc(4);
   b.writeUInt32BE(v, 0);
   return b;
 };
-const texto = (t) => Buffer.from(`${t}\0`, "utf8");
+export const texto = (t) => Buffer.from(`${t}\0`, "utf8");
 
 /** `infe` versión 2: id de 16 bits, sin protección, tipo, nombre y (para `mime`) el tipo de contenido. */
 function infe(id, tipo, nombre, contenido) {
@@ -121,13 +126,14 @@ function infe(id, tipo, nombre, contenido) {
 }
 
 /**
- * Genera un HEIC con metadatos falsos.
+ * Genera un HEIC (o, con `formato: "avif"`, un AVIF) con metadatos falsos.
  *
- * @param {{ semilla: number }} opciones
+ * @param {{ semilla: number, formato?: "heic" | "avif" }} opciones
  * @returns {{ bytes: Buffer, centinelas: string[], detalle: import("./comun.mjs").DetalleDeImagen }}
  */
-export function generarHeic({ semilla }) {
-  const { propiedades, hevc } = leerBase();
+export function generarHeic({ semilla, formato = "heic" }) {
+  const codec = CODECS[formato];
+  const { propiedades, hevc } = leerBase(formato);
   const ficha = crearFicha(semilla);
   const registro = crearRegistro();
 
@@ -168,10 +174,10 @@ export function generarHeic({ semilla }) {
     "latin1",
   );
 
-  // Propiedades: 1 hvcC · 2 ispe · 3 colr · 4 irot · 5 pixi · 6 udes. Las esenciales llevan 0x80.
+  // Propiedades: 1 hvcC (o av1C) · 2 ispe · 3 colr · 4 irot · 5 pixi · 6 udes. Las esenciales llevan 0x80.
   const ipco = caja(
     "ipco",
-    propiedades.hvcC,
+    propiedades[codec.configuracion],
     propiedades.ispe,
     propiedades.colr,
     propiedades.irot,
@@ -198,9 +204,9 @@ export function generarHeic({ semilla }) {
 
   const ftyp = caja(
     "ftyp",
-    Buffer.from("heic", "latin1"),
+    Buffer.from(formato, "latin1"),
     u32(0),
-    Buffer.from("mif1heicmiaf", "latin1"),
+    Buffer.from(codec.marcas, "latin1"),
   );
   const metaCon = (base) => {
     let p = base;
@@ -226,10 +232,10 @@ export function generarHeic({ semilla }) {
         "iinf",
         completa(0, 0),
         u16(4),
-        infe(1, "hvc1", nombreDelElemento),
+        infe(1, codec.elemento, nombreDelElemento),
         infe(2, "Exif", ""),
         infe(3, "mime", "", "application/rdf+xml"),
-        infe(4, "hvc1", ""),
+        infe(4, codec.elemento, ""),
       ),
       caja(
         "iref",
@@ -271,4 +277,9 @@ export function generarHeic({ semilla }) {
       alto: 48,
     },
   };
+}
+
+/** Un AVIF con los mismos metadatos falsos que el HEIC: el mismo contenedor, con el flujo AV1. */
+export function generarAvif({ semilla }) {
+  return generarHeic({ semilla, formato: "avif" });
 }

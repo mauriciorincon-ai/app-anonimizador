@@ -418,7 +418,7 @@ describe("JSON en la zona de carga (S6)", () => {
 });
 
 describe("PDF e imágenes en la zona de carga (S6)", () => {
-  it("el selector de archivos acepta PDF, JPEG, PNG, WebP y HEIC además de las tablas", () => {
+  it("el selector de archivos acepta PDF, JPEG, PNG, WebP, HEIC, AVIF y MOV además de las tablas", () => {
     montar({ fase: "vacio" });
     const accept = screen
       .getByLabelText("Elegir archivo")
@@ -433,11 +433,15 @@ describe("PDF e imágenes en la zona de carga (S6)", () => {
       ".webp",
       ".heic",
       ".heif",
+      ".avif",
+      ".mov",
       "application/pdf",
       "image/jpeg",
       "image/png",
       "image/webp",
       "image/heic",
+      "image/avif",
+      "video/quicktime",
     ])
       expect(accept).toContain(admitido);
   });
@@ -445,7 +449,7 @@ describe("PDF e imágenes en la zona de carga (S6)", () => {
   it("la pista nombra el PDF y las imágenes con SU tope, aparte del de Excel", () => {
     montar({ fase: "vacio" });
     expect(screen.getByText(/hasta 150 MB/)).toHaveTextContent(
-      "También limpia los metadatos de un PDF (hasta 50 MB) o de una imagen JPEG, PNG, WebP o HEIC (hasta 100 MB).",
+      "También limpia los metadatos de un PDF (hasta 50 MB), de una imagen JPEG, PNG, WebP, HEIC o AVIF, o del video de una Live Photo (hasta 100 MB).",
     );
   });
 
@@ -453,7 +457,7 @@ describe("PDF e imágenes en la zona de carga (S6)", () => {
     fijarIdioma("en");
     montar({ fase: "vacio" });
     expect(screen.getByText(/up to 150 MB/)).toHaveTextContent(
-      "Velo also cleans the metadata of a PDF (up to 50 MB) or of a JPEG, PNG, WebP or HEIC image (up to 100 MB).",
+      "Velo also cleans the metadata of a PDF (up to 50 MB), of a JPEG, PNG, WebP, HEIC or AVIF image, or of a Live Photo's video (up to 100 MB).",
     );
   });
 
@@ -476,7 +480,7 @@ describe("PDF e imágenes en la zona de carga (S6)", () => {
       nombre: "notas.txt",
     });
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "limpia los metadatos de PDF (.pdf) e imágenes (.jpg, .png, .webp, .heic)",
+      "limpia los metadatos de PDF (.pdf), de imágenes (.jpg, .png, .webp, .heic, .avif) y del video de una Live Photo (.mov)",
     );
   });
 
@@ -576,22 +580,22 @@ describe("PDF e imágenes en la zona de carga (S6)", () => {
       motivo: "imagen-ilegible",
       es: [
         "No se pudo leer esa imagen",
-        /Velo lee JPEG, PNG, WebP y HEIC.*expórtala de nuevo/,
+        /Velo lee JPEG, PNG, WebP, HEIC, AVIF y el video de una Live Photo \(MOV\).*expórtala de nuevo/,
       ],
       en: [
         "That image could not be read",
-        /Velo reads JPEG, PNG, WebP and HEIC.*export it again/,
+        /Velo reads JPEG, PNG, WebP, HEIC, AVIF and a Live Photo's video \(MOV\).*export it again/,
       ],
     },
     {
       motivo: "imagen-no-soportada",
       es: [
-        "Esa foto usa una parte del formato que Velo no reescribe",
-        /ráfaga, una Live Photo.*Expórtala como una foto fija/,
+        "Ese archivo usa una parte del formato que Velo no reescribe",
+        /fragmentado.*otro archivo.*Expórtala de nuevo/,
       ],
       en: [
-        "That photo uses a part of the format Velo does not rewrite",
-        /burst, a Live Photo.*Export it as a still photo/,
+        "That file uses a part of the format Velo does not rewrite",
+        /fragmented.*another file.*Export it again/,
       ],
     },
     {

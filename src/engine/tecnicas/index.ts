@@ -48,7 +48,16 @@ export interface ColisionEnColumna {
 }
 
 export interface TablaTransformada {
+  /** La tabla de SALIDA: sin las filas que el tope de supresión de la óptima quitó (S11). */
   readonly tabla: TablaColumnar;
+  /**
+   * Las mismas columnas con TODAS las filas, en el orden de la entrada: lo que se compara fila a
+   * fila con el original (la vista previa, la utilidad) y lo que el alto volumen lee por posición.
+   * Sin supresión es `tabla`.
+   */
+  readonly alineada: TablaColumnar;
+  /** 1 = la fila sale del archivo; null si no sale ninguna. */
+  readonly fuera: Uint8Array | null;
   /** Columnas que ya no están en el archivo de salida. */
   readonly suprimidas: readonly string[];
   /** Dónde dos valores distintos acabaron con el mismo seudónimo. Vacío es lo normal. */
@@ -185,6 +194,8 @@ export async function aplicarPolitica(
   llave: CryptoKey | null,
   idioma: Idioma,
   huella = "",
+  /** S11: false en un JSON, donde cada fila es un registro de una estructura (ver `optima.ts`). */
+  admiteSupresion = true,
 ): Promise<TablaTransformada> {
   if (requiereLlave(politica) && llave === null) {
     // Invariante del pipeline, no error de usuario: la UI no deja llegar aquí sin llave. Si llega,
@@ -276,6 +287,12 @@ export async function aplicarPolitica(
           politica.generalizacion!.diversidad ?? null,
           // Una sensible que la política suprime ya no está en `transformada`: se dice, no se exige.
           new Set(suprimidas),
+          politica.generalizacion!.supresionMaxima
+            ? {
+                porcentaje: politica.generalizacion!.supresionMaxima,
+                aplicada: admiteSupresion,
+              }
+            : null,
         )
       : null;
   // Una retícula que pasa del tope no se recorre: sus columnas salen intactas, y el balance lo dice
@@ -283,8 +300,11 @@ export async function aplicarPolitica(
   const optimaAplicada =
     optima !== null && optima.motivo !== "excede-tope" ? optima : null;
 
+  const tablaFinal = mondrian?.tabla ?? optimaAplicada?.tabla ?? transformada;
   return {
-    tabla: mondrian?.tabla ?? optimaAplicada?.tabla ?? transformada,
+    tabla: tablaFinal,
+    alineada: optimaAplicada?.alineada ?? tablaFinal,
+    fuera: optimaAplicada?.fuera ?? null,
     suprimidas,
     colisiones,
     pendientesDeMondrian: conReparto ? [] : paraMondrian,
