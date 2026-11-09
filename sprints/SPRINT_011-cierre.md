@@ -5,7 +5,7 @@ hito: H-2
 opened: 2026-11-08
 closed: 2026-11-08
 branch: sprint-011/lo-que-faltaba
-pr: pendiente
+pr: 21
 ---
 
 **Lo que faltaba** · objetivo: las cinco cosas «pendientes del dueño» del manual (AVIF · secuencias HEIC y Live Photo · tope de supresión · CIIU Rev. 5 A.C. · descarga grande en Firefox y Safari) construidas; el manual ya no lista pendientes salvo el pico de memoria.
