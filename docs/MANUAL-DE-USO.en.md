@@ -1088,23 +1088,29 @@ file with the original by its SHA-256 fingerprint. Lowering the memory peak is p
 
 **In Firefox and Safari (no destination picker).** A CSV of **1,000,000 rows × 24 columns**
 (24,000,000 cells, already in high volume), the same policy, in Playwright's Firefox and WebKit
-(Safari's engine, not Safari itself) on the same Mac. One run per cell, with the peak of all the
-browser's processes; they compare the chunked download with the previous way, building the file in
-memory:
+(Safari's engine, not Safari itself) on the same Mac. They compare the chunked download with the
+previous way, building the file in memory. Memory peak of all the browser's processes, per pass (one
+run per cell):
 
-| Browser | How the file leaves  | Memory peak | Write |
-| ------- | -------------------- | ----------- | ----- |
-| Firefox | in chunks (download) | 2.4 GB      | 246 s |
-| Firefox | built in memory      | 2.6 GB      | 251 s |
-| WebKit  | in chunks (download) | 4.0 GB      | 43 s  |
-| WebKit  | built in memory      | 4.8 GB      | 52 s  |
+| Browser | How the file leaves  | Diagnosis | Transform and measure | Write  |
+| ------- | -------------------- | --------- | --------------------- | ------ |
+| Firefox | in chunks (download) | 1.8 GB    | 2.3 GB                | 2.4 GB |
+| Firefox | built in memory      | 1.8 GB    | 2.5 GB                | 2.6 GB |
+| WebKit  | in chunks (download) | 4.0 GB    | 4.0 GB                | 3.9 GB |
+| WebKit  | built in memory      | 4.6 GB    | 4.8 GB                | 3.8 GB |
 
-The chunked download lowers the peak (9% in Firefox, 16% in WebKit) because the output file is no
-longer gathered whole in the tab, **but it is not the big lever**: most of the memory goes to
-reading and transforming the file, and that did not change. The advantage you do notice is another
-one: the file no longer has to fit in the tab's memory to be saved. With a single data point per
-cell, read it as an order of magnitude. Real Safari was not measured: enabling its automation asks
-for the Mac's administrator password, and it stays as a stop for the full rehearsal.
+**The honest reading of that table: at 1,000,000 rows, the chunked download does not lower the
+memory peak in a way you can tell apart from noise.** The first two passes do the same thing with or
+without it and still change between runs (in Firefox, the diagnosis measured between 1.8 and 2.2 GB
+across three identical runs; in WebKit, between 4.0 and 4.6 GB); the difference when writing (2.4
+against 2.6 GB in Firefox) fits inside that variation, and in WebKit the chunked write came out
+_higher_ (3.9 against 3.8 GB). With one run per cell, no improvement is claimed. What does change,
+and is the reason for this path, is that the output file **no longer has to fit in the tab's
+memory** to be saved: that was tested with the 1,000,000-row CSV and with a 421 MB wide one in
+Firefox, and the bytes that come down are the certificate's (Chromium; in real Firefox and Safari,
+see the guide). The measurement with the heartbeat to the service worker was repeated only in
+Firefox; the WebKit one predates it. Real Safari was not measured: enabling its automation asks for
+the Mac's administrator password, and it stays as a stop for the full rehearsal.
 
 **JSON and JSON Lines.** A JSON with more than 20,000,000 cells (records × distinct paths) is also
 read in passes. A first pass discovers the paths —the columns— and the structure without keeping any
@@ -1502,8 +1508,10 @@ the same, byte for byte, as the one that would come out if it fit in memory.
 
 ## What comes next
 
-**Nothing this manual described as future is still pending.** The certificate, the log and the
-estimated risk —the three things promised here— are above, each with its own section.
+**Nothing this manual described as future is still pending, except lowering the memory peak.** The
+certificate, the log and the estimated risk —the three things promised here— are above, each with
+its own section; the memory peak of high volume (4.9 GB at 5,000,000 rows) remains pending the
+owner's decision, not discarded.
 
 What Velo does **not** do today lives in “What Velo does NOT claim” and in the declared limits: it does
 not read databases from the web (only [Velo local](#11-velo-on-your-machine-the-console-databases-and-the-api),

@@ -1079,23 +1079,29 @@ pendiente.
 
 **En Firefox y Safari (sin selector de destino).** Un CSV de **1.000.000 de filas × 24 columnas**
 (24.000.000 de celdas, ya en alto volumen), la misma política, en el Firefox y el WebKit de
-Playwright (el motor de Safari, no Safari mismo) y en el mismo Mac. Una corrida por celda, con el
-pico de todos los procesos del navegador; comparan la descarga por trozos con el camino anterior, el
-de armar el archivo en la memoria:
+Playwright (el motor de Safari, no Safari mismo) y en el mismo Mac. Comparan la descarga por trozos
+con el camino anterior, el de armar el archivo en la memoria. Pico de memoria de todos los procesos
+del navegador, por pasada (una corrida por celda):
 
-| Navegador | Cómo sale el archivo  | Pico de memoria | Escribir |
-| --------- | --------------------- | --------------- | -------- |
-| Firefox   | por trozos (descarga) | 2,4 GB          | 246 s    |
-| Firefox   | armado en la memoria  | 2,6 GB          | 251 s    |
-| WebKit    | por trozos (descarga) | 4,0 GB          | 43 s     |
-| WebKit    | armado en la memoria  | 4,8 GB          | 52 s     |
+| Navegador | Cómo sale el archivo  | Diagnóstico | Transformar y medir | Escribir |
+| --------- | --------------------- | ----------- | ------------------- | -------- |
+| Firefox   | por trozos (descarga) | 1,8 GB      | 2,3 GB              | 2,4 GB   |
+| Firefox   | armado en la memoria  | 1,8 GB      | 2,5 GB              | 2,6 GB   |
+| WebKit    | por trozos (descarga) | 4,0 GB      | 4,0 GB              | 3,9 GB   |
+| WebKit    | armado en la memoria  | 4,6 GB      | 4,8 GB              | 3,8 GB   |
 
-La descarga por trozos baja el pico (9 % en Firefox, 16 % en WebKit) porque ya no se junta el
-archivo de salida entero en la pestaña, **pero no es la gran palanca**: la mayor parte de la memoria
-la pide leer y transformar el archivo, y eso no cambió. La ventaja que sí se nota es otra: el
-archivo ya no tiene que caber en la memoria de la pestaña para poder guardarse. Con un solo dato
-por celda, tómalo como orden de magnitud. Safari de verdad no se midió: habilitar su automatización
-pide la contraseña de administrador del Mac, y queda como parada del ensayo general.
+**Lo honesto de esa tabla: a 1.000.000 de filas, la descarga por trozos no baja el pico de memoria
+de forma que se pueda distinguir del ruido.** Las dos primeras pasadas hacen lo mismo con o sin ella
+y aun así cambian entre corridas (en Firefox, el diagnóstico midió entre 1,8 y 2,2 GB en tres
+corridas iguales; en WebKit, entre 4,0 y 4,6 GB); la diferencia al escribir (2,4 contra 2,6 GB en
+Firefox) cabe en esa variación, y en WebKit la escritura por trozos salió _más_ alta (3,9 contra 3,8
+GB). Con una sola corrida por celda no se afirma una mejora. Lo que sí cambia, y es el motivo de
+este camino, es que el archivo de salida **ya no tiene que caber en la memoria de la pestaña**
+para poder guardarse: eso se probó con el CSV de 1.000.000 de filas y con uno ancho de 421 MB en
+Firefox, y los bytes que bajan son los del certificado (Chromium; en Firefox y Safari de verdad,
+ver la guía). La medida con el latido al _service worker_ solo se repitió en Firefox; la de WebKit
+es anterior. Safari de verdad no se midió: habilitar su automatización pide la contraseña de
+administrador del Mac, y queda como parada del ensayo general.
 
 **JSON y JSON Lines.** Un JSON con más de 20.000.000 de celdas (registros × rutas distintas)
 también se lee por pasadas. Una primera pasada descubre las rutas —las columnas— y la estructura sin
@@ -1491,8 +1497,10 @@ sale es el mismo, byte por byte, que saldría si cupiera en memoria.
 
 ## Lo que viene
 
-**Nada de lo que este manual describía como futuro sigue pendiente.** El certificado, la bitácora y
-el riesgo estimado —las tres cosas que aquí se prometieron— están arriba, cada una con su sección.
+**Nada de lo que este manual describía como futuro sigue pendiente, salvo bajar el pico de memoria.** El
+certificado, la bitácora y el riesgo estimado —las tres cosas que aquí se prometieron— están arriba,
+cada una con su sección; el pico de memoria del alto volumen (4,9 GB a 5.000.000 de filas) sigue
+pendiente de decisión del dueño, no descartado.
 
 Lo que Velo **no** hace hoy vive en «Lo que Velo NO afirma» y en los topes declarados: no lee bases
 de datos desde la web (solo [Velo local](#11-velo-en-tu-equipo-la-consola-las-bases-de-datos-y-la-api),

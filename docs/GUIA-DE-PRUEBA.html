@@ -4203,13 +4203,15 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
           <p>
             <strong>Pendiente de decisión del dueño (no descartado):</strong>
             bajar el pico de memoria (4,9 GB a 5 millones de filas). En Firefox
-            y WebKit, con 1 millón de filas, la descarga por trozos lo baja 9 y
-            16 %: lo grande es leer y transformar, no guardar (cifras en el
-            manual, sección 9). Desde el S9, un JSON de más de 20 millones de
-            celdas también se lee por pasadas (bloque <strong>AJ</strong>). Y
-            hay límites que no son una decisión: Excel conserva su tope de 150
-            MB, el archivo restaurado se arma en memoria, y en este modo no se
-            miden la utilidad ni las colisiones de seudónimo.
+            y WebKit, con 1 millón de filas, la descarga por trozos no baja el
+            pico de forma distinguible del ruido (una corrida por celda; cifras
+            por pasada en el manual, sección 9): lo que cambia es que el archivo
+            ya no tiene que caber en la pestaña. Desde el S9, un JSON de más de
+            20 millones de celdas también se lee por pasadas (bloque
+            <strong>AJ</strong>). Y hay límites que no son una decisión: Excel
+            conserva su tope de 150 MB, el archivo restaurado se arma en
+            memoria, y en este modo no se miden la utilidad ni las colisiones de
+            seudónimo.
           </p>
         </div>
         <div class="reportame">
