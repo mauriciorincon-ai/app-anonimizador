@@ -76,7 +76,10 @@ export type MensajeAlWorker =
    *
    * `flujo` (S11, alto volumen sin selector): el extremo de un canal cuyo otro extremo tiene el
    * service worker de la descarga (`public/velo-descarga-sw.js`). El worker escribe los trozos por
-   * ahí, uno por vez, y la página no ve un solo byte. `limiteDeParte` solo lo cambian las pruebas:
+   * ahí, uno por vez, y la página no ve un solo byte. **Regla 7, con una nota:** el service worker
+   * es un SEGUNDO contexto que sí ve los bytes de SALIDA (ya anonimizados: los mismos que llevaría
+   * el `Blob`), nunca los crudos; no guarda nada, no pide nada a la red y no importa otros scripts
+   * (`tests/unit/privacidad.test.ts` barre su archivo). `limiteDeParte` solo lo cambian las pruebas:
    * es el tamaño de las partes del respaldo, cuando no hay ni selector ni service worker.
    */
   | {

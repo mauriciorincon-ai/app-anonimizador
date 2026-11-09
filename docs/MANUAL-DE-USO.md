@@ -1077,6 +1077,26 @@ archivo no se midió a 5.000.000 de filas; sí se probó, ida y vuelta, con uno 
 comparando el restaurado con el original por su huella SHA-256. Bajar el pico de memoria está
 pendiente.
 
+**En Firefox y Safari (sin selector de destino).** Un CSV de **1.000.000 de filas × 24 columnas**
+(24.000.000 de celdas, ya en alto volumen), la misma política, en el Firefox y el WebKit de
+Playwright (el motor de Safari, no Safari mismo) y en el mismo Mac. Una corrida por celda, con el
+pico de todos los procesos del navegador; comparan la descarga por trozos con el camino anterior, el
+de armar el archivo en la memoria:
+
+| Navegador | Cómo sale el archivo  | Pico de memoria | Escribir |
+| --------- | --------------------- | --------------- | -------- |
+| Firefox   | por trozos (descarga) | 2,4 GB          | 246 s    |
+| Firefox   | armado en la memoria  | 2,6 GB          | 251 s    |
+| WebKit    | por trozos (descarga) | 4,0 GB          | 43 s     |
+| WebKit    | armado en la memoria  | 4,8 GB          | 52 s     |
+
+La descarga por trozos baja el pico (9 % en Firefox, 16 % en WebKit) porque ya no se junta el
+archivo de salida entero en la pestaña, **pero no es la gran palanca**: la mayor parte de la memoria
+la pide leer y transformar el archivo, y eso no cambió. La ventaja que sí se nota es otra: el
+archivo ya no tiene que caber en la memoria de la pestaña para poder guardarse. Con un solo dato
+por celda, tómalo como orden de magnitud. Safari de verdad no se midió: habilitar su automatización
+pide la contraseña de administrador del Mac, y queda como parada del ensayo general.
+
 **JSON y JSON Lines.** Un JSON con más de 20.000.000 de celdas (registros × rutas distintas)
 también se lee por pasadas. Una primera pasada descubre las rutas —las columnas— y la estructura sin
 guardar ningún valor; las demás recorren los registros de uno en uno. Lo que sale es el **mismo

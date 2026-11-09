@@ -1086,6 +1086,26 @@ work happens on a separate thread, as always. The return of that file was not me
 5,000,000 rows; it was tested, there and back, with a 21,000,000-cell one, comparing the restored
 file with the original by its SHA-256 fingerprint. Lowering the memory peak is pending.
 
+**In Firefox and Safari (no destination picker).** A CSV of **1,000,000 rows × 24 columns**
+(24,000,000 cells, already in high volume), the same policy, in Playwright's Firefox and WebKit
+(Safari's engine, not Safari itself) on the same Mac. One run per cell, with the peak of all the
+browser's processes; they compare the chunked download with the previous way, building the file in
+memory:
+
+| Browser | How the file leaves  | Memory peak | Write |
+| ------- | -------------------- | ----------- | ----- |
+| Firefox | in chunks (download) | 2.4 GB      | 246 s |
+| Firefox | built in memory      | 2.6 GB      | 251 s |
+| WebKit  | in chunks (download) | 4.0 GB      | 43 s  |
+| WebKit  | built in memory      | 4.8 GB      | 52 s  |
+
+The chunked download lowers the peak (9% in Firefox, 16% in WebKit) because the output file is no
+longer gathered whole in the tab, **but it is not the big lever**: most of the memory goes to
+reading and transforming the file, and that did not change. The advantage you do notice is another
+one: the file no longer has to fit in the tab's memory to be saved. With a single data point per
+cell, read it as an order of magnitude. Real Safari was not measured: enabling its automation asks
+for the Mac's administrator password, and it stays as a stop for the full rehearsal.
+
 **JSON and JSON Lines.** A JSON with more than 20,000,000 cells (records × distinct paths) is also
 read in passes. A first pass discovers the paths —the columns— and the structure without keeping any
 value; the others walk the records one at a time. What comes out is **the same file, byte for

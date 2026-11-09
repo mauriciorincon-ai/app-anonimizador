@@ -47,6 +47,8 @@ const SALIDA = join(TMP, "pico-alto-volumen");
 const PERFIL = join(SALIDA, "perfil");
 // SHA-256 de `generador.mjs --filas 5000000 --seed 42 --perfil clinico` (verificado el 2026-11-08).
 const HUELLAS = {
+  // `--filas 1000000 --seed 42 --perfil clinico` (verificado el 2026-11-08): lo que se mide en Firefox y WebKit.
+  1_000_000: "ef2411b8aa2191ff79314637908585b6703651ed732de599677802c3d8e6ab0a",
   5_000_000: "47f6d50707b3fddc118ce073f3b966c88f879501a93ab251b1d831bdcf70953d",
 };
 const NAVEGADOR = process.env.NAVEGADOR ?? "chromium";
@@ -255,9 +257,23 @@ try {
       page.waitForEvent("download", { timeout: 60 * MINUTOS }),
       page.getByRole("button", { name: "Preparar el archivo" }).click(),
     ]);
-    await page
-      .getByText(/Enviado a la descarga de tu navegador/)
-      .waitFor({ timeout: 60 * MINUTOS });
+    // Si escribir falla, la pantalla lo dice y no hay nada que esperar: se cuenta como fallo, y se
+    // imprime lo que la pantalla decía (una hora de espera no enseña nada).
+    await Promise.race([
+      page
+        .getByText(/Enviado a la descarga de tu navegador/)
+        .waitFor({ timeout: 30 * MINUTOS }),
+      page
+        .getByText("No se pudo escribir el archivo")
+        .waitFor({ timeout: 30 * MINUTOS })
+        .then(() => {
+          throw new Error("la escritura falló: la pantalla dice «No se pudo escribir el archivo»");
+        }),
+    ]).catch(async (error) => {
+      const pantalla = await page.locator("main").innerText().catch(() => "(sin pantalla)");
+      console.error("PANTALLA AL FALLAR:", pantalla.slice(0, 800));
+      throw error;
+    });
     marca("C · escribir (service worker)");
     await descarga.saveAs(anonimizado);
   } else {
