@@ -139,6 +139,17 @@ describe("nada en `src/` puede sacar ni guardar los datos del usuario", () => {
     }
   });
 
+  // S11: registrar un service worker deja un registro en el navegador. Hay UN solo oficio para eso
+  // (la descarga en streaming) y UN solo archivo que lo hace; cualquier otro uso es una decisión.
+  it("`serviceWorker` solo lo toca la descarga en streaming", () => {
+    const culpables = rutas.filter(
+      (ruta) =>
+        /\bserviceWorker\b/.test(sinComentarios(readFileSync(ruta, "utf8"))) &&
+        !ruta.endsWith(join("src", "lib", "descarga-en-flujo.ts")),
+    );
+    expect(culpables.map((r) => r.slice(process.cwd().length + 1))).toEqual([]);
+  });
+
   for (const { patron, porque } of PROHIBIDOS) {
     it(`no usa ${patron.source} — ${porque}`, () => {
       const culpables = rutas.filter((ruta) =>

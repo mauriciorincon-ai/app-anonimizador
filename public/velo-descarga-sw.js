@@ -15,6 +15,8 @@
 
 /** id → { puerto }. Vive en memoria del service worker y se borra al servirse. */
 const abiertas = new Map();
+/** id → lo que corta una descarga en curso; se borra cuando el archivo ya salió entero o se cortó. */
+const enCurso = new Map();
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -28,16 +30,31 @@ self.addEventListener("activate", (evento) => {
 // sabe la página (el worker los calcula): llegan por el canal, en el mensaje «adelante».
 self.addEventListener("message", (evento) => {
   const datos = evento.data;
+  if (!datos) return;
   // «latido»: la página lo manda cada pocos segundos para que el navegador no apague este service
   // worker a mitad de una descarga larga. Recibirlo es todo lo que hace falta.
-  if (!datos || datos.tipo !== "abrir" || !evento.ports[0]) return;
+  if (datos.tipo === "cancelar") {
+    // La página soltó el archivo (o cargó otro) con la descarga a medias: su worker murió sin avisar
+    // y el flujo se quedaría esperando para siempre. Un archivo que ya terminó de escribirse no se toca.
+    const id = String(datos.id);
+    abiertas.get(id)?.puerto.close();
+    abiertas.delete(id);
+    enCurso.get(id)?.();
+    return;
+  }
+  if (datos.tipo !== "abrir" || !evento.ports[0]) return;
   abiertas.set(String(datos.id), { puerto: evento.ports[0] });
 });
 
 /** El nombre en la cabecera: ASCII para los viejos y UTF-8 codificado (RFC 6266) para los demás. */
 function disposicion(nombre) {
   const ascii = nombre.replace(/[^\x20-\x7e]|["\\]/g, "_");
-  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(nombre)}`;
+  // `encodeURIComponent` deja pasar ' ( ) *, que la RFC 5987 pide escapar.
+  const utf8 = encodeURIComponent(nombre).replace(
+    /['()*]/g,
+    (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase(),
+  );
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${utf8}`;
 }
 
 self.addEventListener("fetch", (evento) => {
@@ -54,6 +71,14 @@ self.addEventListener("fetch", (evento) => {
   let adelante = false;
   let esperando = null;
   let responder = null;
+  let terminado = false;
+  enCurso.set(id, () => {
+    if (terminado) return;
+    terminado = true;
+    enCurso.delete(id);
+    control?.error(new Error("descarga cancelada por la página"));
+    puerto.close();
+  });
 
   puerto.onmessage = (mensaje) => {
     const datos = mensaje.data;
@@ -68,9 +93,13 @@ self.addEventListener("fetch", (evento) => {
       if (esperando) esperando();
       esperando = null;
     } else if (datos.tipo === "fin") {
+      terminado = true;
+      enCurso.delete(id);
       control.close();
       puerto.close();
     } else if (datos.tipo === "abortar") {
+      terminado = true;
+      enCurso.delete(id);
       control.error(new Error("descarga abortada"));
       puerto.close();
     }
@@ -90,6 +119,8 @@ self.addEventListener("fetch", (evento) => {
         });
       },
       cancel() {
+        terminado = true;
+        enCurso.delete(id);
         puerto.postMessage({ tipo: "cancelado" });
         puerto.close();
       },

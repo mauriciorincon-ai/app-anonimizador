@@ -117,6 +117,32 @@ describe("abrirDescargaEnFlujo", () => {
     sw.mensajes[0].puertos[0].close();
   });
 
+  it("cancelar() le pide al service worker cortar esa descarga, por su id", async () => {
+    const sw = new ServiceWorkerFalso("activated");
+    instalar({ installing: null, waiting: null, active: sw });
+    const promesa = abrirDescargaEnFlujo(2_000);
+    await esperar(20);
+    const { id } = sw.mensajes[0].datos as { id: string };
+    sw.mensajes[0].puertos[0].postMessage({ tipo: "servido" });
+    const abierta = await promesa;
+
+    abierta!.cancelar();
+    expect(sw.mensajes.map((m) => m.datos)).toContainEqual({
+      tipo: "cancelar",
+      id,
+    });
+    abierta!.cerrar();
+    abierta!.puerto.close();
+    sw.mensajes[0].puertos[0].close();
+  });
+
+  it("un service worker que se queda instalando no deja colgada la salida: devuelve null", async () => {
+    const sw = new ServiceWorkerFalso("installing");
+    instalar({ installing: sw, waiting: null, active: null });
+    expect(await abrirDescargaEnFlujo(40)).toBeNull();
+    expect(sw.mensajes).toHaveLength(0);
+  });
+
   it("espera a que el service worker termine de activarse", async () => {
     const sw = new ServiceWorkerFalso("installing");
     instalar({ installing: sw, waiting: null, active: null });

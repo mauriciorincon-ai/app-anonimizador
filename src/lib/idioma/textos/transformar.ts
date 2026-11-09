@@ -388,11 +388,11 @@ export const TRANSFORMAR = {
         es:
           "Con k = {k}, Velo generaliza esas columnas hasta que nadie quede en un grupo de menos " +
           "de {k} registros. Cuanto más alto el k, menos preciso queda el dato. Si no se puede " +
-          "alcanzar sin borrar filas, Velo lo dice y no borra nada.",
+          "alcanzar sin borrar filas, Velo lo dice y no borra nada (salvo el tope de supresión que pidas en la óptima).",
         en:
           "With k = {k}, Velo generalizes those columns until nobody is left in a group of fewer " +
           "than {k} records. The higher the k, the less precise the data. If it can't be reached " +
-          "without deleting rows, Velo says so and deletes nothing.",
+          "without deleting rows, Velo says so and deletes nothing (except the suppression cap you set in the optimal one).",
       },
     },
     origen: {

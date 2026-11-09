@@ -517,6 +517,9 @@ export function prepararArchivo(
 let descargaAbierta: DescargaAbierta | null = null;
 
 function soltarDescarga(): void {
+  // Si el worker murió a medias (se soltó el archivo o se cargó otro), el service worker no se
+  // entera por el canal: se lo dice la página. Una descarga que ya terminó no se toca.
+  descargaAbierta?.cancelar();
   descargaAbierta?.cerrar();
   descargaAbierta = null;
 }

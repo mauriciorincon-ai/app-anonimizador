@@ -28,6 +28,11 @@ const AMBITO = "/descarga/";
 export interface DescargaAbierta {
   /** El extremo del canal que se le entrega al worker (transferible). */
   readonly puerto: MessagePort;
+  /**
+   * Le dice al service worker que corte la descarga si el archivo todavía no terminó de escribirse
+   * (el worker pudo morir sin avisar). Si ya terminó, no hace nada. Va antes de `cerrar()`.
+   */
+  cancelar(): void;
   /** Quita el marco de la descarga y detiene el latido. Se llama al soltar el archivo o al fallar. */
   cerrar(): void;
 }
@@ -35,11 +40,14 @@ export interface DescargaAbierta {
 /** Espera a que el service worker de la página termine de activarse. */
 async function activo(
   registro: ServiceWorkerRegistration,
+  esperaMs: number,
 ): Promise<ServiceWorker | null> {
   const instalando = registro.installing ?? registro.waiting ?? registro.active;
   if (!instalando) return null;
   if (instalando.state === "activated") return instalando;
   return new Promise((resolver) => {
+    // Un service worker que se queda instalando no puede dejar a la pantalla en «escribiendo».
+    setTimeout(() => resolver(null), esperaMs);
     instalando.addEventListener("statechange", () => {
       if (instalando.state === "activated") resolver(instalando);
       else if (instalando.state === "redundant") resolver(null);
@@ -60,7 +68,7 @@ export async function abrirDescargaEnFlujo(
     const registro = await navigator.serviceWorker.register(SCRIPT, {
       scope: AMBITO,
     });
-    const servidor = await activo(registro);
+    const servidor = await activo(registro, esperaMs);
     if (!servidor) return null;
 
     const canal = new MessageChannel();
@@ -78,6 +86,7 @@ export async function abrirDescargaEnFlujo(
       () => servidor.postMessage({ tipo: "latido" }),
       LATIDO_DEL_SERVICE_WORKER_MS,
     );
+    const cancelar = () => servidor.postMessage({ tipo: "cancelar", id });
     const cerrar = () => {
       clearInterval(latido);
       marco.remove();
@@ -99,7 +108,7 @@ export async function abrirDescargaEnFlujo(
       cerrar();
       return null;
     }
-    return { puerto: canal.port1, cerrar };
+    return { puerto: canal.port1, cancelar, cerrar };
   } catch {
     return null;
   }
