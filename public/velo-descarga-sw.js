@@ -13,8 +13,14 @@
 
 "use strict";
 
-/** id → { puerto }. Vive en memoria del service worker y se borra al servirse. */
+/** id → { puerto, cliente }. Vive en memoria del service worker y se borra al servirse. */
 const abiertas = new Map();
+/**
+ * Los id que ya se sirvieron o se cortaron. Un reintento del navegador a la misma dirección (el
+ * administrador de descargas lo hace al reanudar) no tiene qué servir: los bytes ya salieron. Se
+ * responde con la causa en vez de dejar que la petición caiga a la red, donde sería un 404 mudo.
+ */
+const gastadas = new Set();
 /** id → lo que corta una descarga en curso; se borra cuando el archivo ya salió entero o se cortó. */
 const enCurso = new Map();
 
@@ -37,13 +43,19 @@ self.addEventListener("message", (evento) => {
     // La página soltó el archivo (o cargó otro) con la descarga a medias: su worker murió sin avisar
     // y el flujo se quedaría esperando para siempre. Un archivo que ya terminó de escribirse no se toca.
     const id = String(datos.id);
-    abiertas.get(id)?.puerto.close();
+    const sinPedir = abiertas.get(id);
+    if (sinPedir) gastadas.add(id);
+    sinPedir?.puerto.close();
     abiertas.delete(id);
     enCurso.get(id)?.();
     return;
   }
   if (datos.tipo !== "abrir" || !evento.ports[0]) return;
-  abiertas.set(String(datos.id), { puerto: evento.ports[0] });
+  // `source` es la página que abrió la descarga: es a quien se le avisa cuando termina.
+  abiertas.set(String(datos.id), {
+    puerto: evento.ports[0],
+    cliente: evento.source ?? null,
+  });
 });
 
 /** El nombre en la cabecera: ASCII para los viejos y UTF-8 codificado (RFC 6266) para los demás. */
@@ -62,20 +74,45 @@ self.addEventListener("fetch", (evento) => {
   if (!url.pathname.startsWith("/descarga/")) return;
   const id = decodeURIComponent(url.pathname.slice("/descarga/".length));
   const abierta = abiertas.get(id);
-  // Sin descarga abierta, no se responde: la petición sigue su camino (y el e2e de red la denuncia).
-  if (!abierta) return;
+  if (!abierta) {
+    // Un id que ya se gastó (reintento del navegador, o una descarga que la página cortó) falla con
+    // su causa. Uno que nunca existió no se responde: la petición sigue su camino (y el e2e de red
+    // la denuncia).
+    if (gastadas.has(id))
+      evento.respondWith(
+        new Response(
+          "Esta descarga ya salió o se cortó y no se puede reanudar. Vuelve a generar el archivo.",
+          {
+            status: 410,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "Cache-Control": "no-store",
+            },
+          },
+        ),
+      );
+    return;
+  }
   abiertas.delete(id);
+  gastadas.add(id);
 
-  const { puerto } = abierta;
+  const { puerto, cliente } = abierta;
   let control = null;
   let adelante = false;
   let esperando = null;
   let responder = null;
   let terminado = false;
-  enCurso.set(id, () => {
+  // La descarga se acabó (entera, abortada o cortada): se saca de las que están en curso y se le
+  // avisa a la página, que deja de mandar el latido. El aviso lleva el id y nada más.
+  const concluir = () => {
     if (terminado) return;
     terminado = true;
     enCurso.delete(id);
+    cliente?.postMessage({ tipo: "terminada", id });
+  };
+  enCurso.set(id, () => {
+    if (terminado) return;
+    concluir();
     control?.error(new Error("descarga cancelada por la página"));
     puerto.close();
   });
@@ -93,13 +130,11 @@ self.addEventListener("fetch", (evento) => {
       if (esperando) esperando();
       esperando = null;
     } else if (datos.tipo === "fin") {
-      terminado = true;
-      enCurso.delete(id);
+      concluir();
       control.close();
       puerto.close();
     } else if (datos.tipo === "abortar") {
-      terminado = true;
-      enCurso.delete(id);
+      concluir();
       control.error(new Error("descarga abortada"));
       puerto.close();
     }
@@ -119,8 +154,7 @@ self.addEventListener("fetch", (evento) => {
         });
       },
       cancel() {
-        terminado = true;
-        enCurso.delete(id);
+        concluir();
         puerto.postMessage({ tipo: "cancelado" });
         puerto.close();
       },

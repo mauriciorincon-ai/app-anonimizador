@@ -30,20 +30,31 @@ import {
   construirXmp,
   crearFicha,
   crearRegistro,
+  entrada,
 } from "./comun.mjs";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 
 /** Lo que cambia entre HEIC y AVIF: la base, el tipo de elemento, su configuración y las marcas. */
 export const CODECS = {
-  heic: { base: "base.heic", elemento: "hvc1", configuracion: "hvcC", marcas: "mif1heicmiaf" },
-  avif: { base: "base.avif", elemento: "av01", configuracion: "av1C", marcas: "mif1avifmiaf" },
+  heic: {
+    base: "base.heic",
+    elemento: "hvc1",
+    configuracion: "hvcC",
+    marcas: "mif1heicmiaf",
+  },
+  avif: {
+    base: "base.avif",
+    elemento: "av01",
+    configuracion: "av1C",
+    marcas: "mif1avifmiaf",
+  },
 };
 
 /** Cajas hijas entre `desde` y `hasta` de un búfer (sin tamaños de 64 bits más allá de 4 GiB). */
 export function cajas(b, desde, hasta) {
   const lista = [];
-  for (let p = desde; p < hasta; ) {
+  for (let p = desde; p < hasta;) {
     let tamano = b.readUInt32BE(p);
     const tipo = b.toString("latin1", p + 4, p + 8);
     let datos = p + 8;
@@ -61,10 +72,14 @@ export function cajas(b, desde, hasta) {
 export function leerBase(formato = "heic") {
   const nombre = CODECS[formato].base;
   const b = readFileSync(join(AQUI, nombre));
-  const esperada = JSON.parse(readFileSync(join(AQUI, `${nombre}.meta.json`), "utf8")).sha256;
+  const esperada = JSON.parse(
+    readFileSync(join(AQUI, `${nombre}.meta.json`), "utf8"),
+  ).sha256;
   const huella = createHash("sha256").update(b).digest("hex");
   if (huella !== esperada)
-    throw new Error(`${nombre} no coincide con su .meta.json (${huella} ≠ ${esperada})`);
+    throw new Error(
+      `${nombre} no coincide con su .meta.json (${huella} ≠ ${esperada})`,
+    );
   const meta = cajas(b, 0, b.length).find((c) => c.tipo === "meta");
   const hijos = cajas(b, meta.datos + 4, meta.hasta);
   const iprp = hijos.find((c) => c.tipo === "iprp");
@@ -79,11 +94,20 @@ export function leerBase(formato = "heic") {
   // primero es la imagen (en `base.avif` le sigue el Exif de sips, que no se usa).
   const iloc = hijos.find((c) => c.tipo === "iloc");
   const tamanos = b.readUInt16BE(iloc.datos + 4);
-  if (tamanos !== 0x4400 || b.readUInt16BE(iloc.datos + 8) !== 1 || b.readUInt16BE(iloc.datos + 12) !== 1)
-    throw new Error(`${nombre}: iloc con una forma que este generador no espera`);
+  if (
+    tamanos !== 0x4400 ||
+    b.readUInt16BE(iloc.datos + 8) !== 1 ||
+    b.readUInt16BE(iloc.datos + 12) !== 1
+  )
+    throw new Error(
+      `${nombre}: iloc con una forma que este generador no espera`,
+    );
   const desplazamiento = b.readUInt32BE(iloc.datos + 14);
   const largo = b.readUInt32BE(iloc.datos + 18);
-  return { propiedades, hevc: b.subarray(desplazamiento, desplazamiento + largo) };
+  return {
+    propiedades,
+    hevc: b.subarray(desplazamiento, desplazamiento + largo),
+  };
 }
 
 export function caja(tipo, ...partes) {
@@ -126,18 +150,61 @@ function infe(id, tipo, nombre, contenido) {
 }
 
 /**
+ * La nota del fabricante de Apple (`Apple iOS\0`, versión, orden `MM`, un IFD de 2 entradas) con lo
+ * que una foto de Live Photo guarda dentro: el UUID de contenido (etiqueta 0x0011), el que Fotos usa
+ * para emparejar la foto con su video, y otro identificador (0x0015). Texto falso, sin sentido real.
+ */
+function notaDeApple(uuid, otro) {
+  const cabecera = Buffer.concat([
+    Buffer.from("Apple iOS\0", "latin1"),
+    Buffer.from([0, 1]),
+    Buffer.from("MM", "latin1"),
+  ]);
+  const textos = [uuid, otro].map((t) => Buffer.from(`${t}\0`, "latin1"));
+  const tabla = 2 + 12 * textos.length + 4;
+  const ifd = Buffer.alloc(tabla);
+  ifd.writeUInt16BE(textos.length, 0);
+  let fuera = cabecera.length + tabla;
+  [0x0011, 0x0015].forEach((etiqueta, i) => {
+    const en = 2 + 12 * i;
+    ifd.writeUInt16BE(etiqueta, en);
+    ifd.writeUInt16BE(2, en + 2);
+    ifd.writeUInt32BE(textos[i].length, en + 4);
+    ifd.writeUInt32BE(fuera, en + 8);
+    fuera += textos[i].length;
+  });
+  return Buffer.concat([cabecera, ifd, ...textos]);
+}
+
+/**
  * Genera un HEIC (o, con `formato: "avif"`, un AVIF) con metadatos falsos.
  *
- * @param {{ semilla: number, formato?: "heic" | "avif" }} opciones
- * @returns {{ bytes: Buffer, centinelas: string[], detalle: import("./comun.mjs").DetalleDeImagen }}
+ * Con `livePhoto` el EXIF trae además la nota del fabricante de Apple con el UUID que empareja la
+ * foto con el video de su Live Photo (el mismo que escribe `secuencia.mjs` para esa semilla) y el
+ * resultado lo devuelve en `uuidDePareja`. Sin él, los bytes son los de siempre.
+ *
+ * @param {{ semilla: number, formato?: "heic" | "avif", livePhoto?: boolean }} opciones
+ * @returns {{ bytes: Buffer, centinelas: string[], detalle: import("./comun.mjs").DetalleDeImagen, uuidDePareja?: string }}
  */
-export function generarHeic({ semilla, formato = "heic" }) {
+export function generarHeic({ semilla, formato = "heic", livePhoto = false }) {
   const codec = CODECS[formato];
   const { propiedades, hevc } = leerBase(formato);
   const ficha = crearFicha(semilla);
   const registro = crearRegistro();
 
-  const tiff = construirExif(ficha, registro, { completo: false });
+  const uuidDePareja = ficha.ids.original.toUpperCase();
+  const extrasExif = livePhoto
+    ? [
+        entrada.indefinido(
+          0x927c,
+          notaDeApple(
+            registro.agregar(uuidDePareja),
+            registro.agregar(ficha.ids.instancia),
+          ),
+        ),
+      ]
+    : [];
+  const tiff = construirExif(ficha, registro, { completo: false, extrasExif });
   // ISO/IEC 23008-12, A.2.1: 4 bytes con el desplazamiento hasta la cabecera TIFF; Apple pone
   // `Exif\0\0` en medio y el desplazamiento vale 6.
   const exif = Buffer.concat([u32(6), Buffer.from("Exif\0\0", "latin1"), tiff]);
@@ -212,7 +279,9 @@ export function generarHeic({ semilla, formato = "heic" }) {
     let p = base;
     const extensiones = [];
     for (const d of datos) {
-      extensiones.push(Buffer.concat([u16(d.id), u16(0), u16(1), u32(p), u32(d.bytes.length)]));
+      extensiones.push(
+        Buffer.concat([u16(d.id), u16(0), u16(1), u32(p), u32(d.bytes.length)]),
+      );
       p += d.bytes.length;
     }
     return caja(
@@ -226,7 +295,10 @@ export function generarHeic({ semilla, formato = "heic" }) {
         Buffer.alloc(12),
         texto(nombreDelManejador),
       ),
-      caja("dinf", caja("dref", completa(0, 0), u32(1), caja("url ", completa(0, 1)))),
+      caja(
+        "dinf",
+        caja("dref", completa(0, 0), u32(1), caja("url ", completa(0, 1))),
+      ),
       caja("pitm", completa(0, 0), u16(1)),
       caja(
         "iinf",
@@ -245,7 +317,13 @@ export function generarHeic({ semilla, formato = "heic" }) {
         caja("thmb", u16(4), u16(1), u16(1)),
       ),
       caja("iprp", ipco, ipma),
-      caja("iloc", completa(0, 0), u16(0x4400), u16(datos.length), ...extensiones),
+      caja(
+        "iloc",
+        completa(0, 0),
+        u16(0x4400),
+        u16(datos.length),
+        ...extensiones,
+      ),
     );
   };
 
@@ -266,6 +344,7 @@ export function generarHeic({ semilla, formato = "heic" }) {
   return {
     bytes,
     centinelas: registro.lista,
+    ...(livePhoto ? { uuidDePareja } : {}),
     detalle: {
       autor: ficha.autor.completo,
       cedula: ficha.cedula,

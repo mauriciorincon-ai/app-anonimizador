@@ -889,14 +889,15 @@ la limpieza no depende de ella. Por eso «Velo no encontró campos con nombre» 
   bloques de metadatos: los reemplaza por un bloque vacío **del mismo tamaño**. Se quitan la
   ubicación (también la que viaja como una pista de metadatos con una posición por cuadro, cuyas
   muestras quedan en ceros), la marca y el modelo del equipo, el programa, los títulos y descripciones, el
-  EXIF y el XMP de la secuencia, y las fechas de creación y modificación del
+  EXIF y el XMP de la secuencia, el código de tiempo de una cámara (la hora del día en que empezó
+  a grabar, que pasa a cero, y el rótulo de su carrete), y las fechas de creación y modificación del
   contenedor, que pasan a cero. La copia limpia se reproduce igual: se comprobó decodificando antes
   y después con las herramientas del sistema y comparando cuadro por cuadro, y el resultado es el
   mismo.
 - **La Live Photo, dicha sin adornos.** Una Live Photo son **dos archivos**: la foto y un video corto
   (`.mov`). Cada uno se limpia por separado, y **el número que los empareja se conserva solo en el
   video**: es un identificador al azar, no un dato tuyo. En la foto ese número viaja dentro de la
-  nota privada del fabricante, que se quita con el resto del EXIF. **Consecuencia: la foto y el
+  nota privada del fabricante, que se quita con el resto del EXIF. Se comprobó con una foto sintética que trae esa nota: en la copia limpia no queda ni el número ni la nota. **Consecuencia: la foto y el
   video limpios ya no aparecen juntos como una sola Live Photo en Fotos.** Velo lo avisa en el
   diagnóstico y en el certificado. Si necesitas que sigan emparejados, no los limpies con Velo.
 - **En un PDF** el archivo se **reescribe entero**, y las páginas y su contenido se copian tal cual.
@@ -1034,8 +1035,14 @@ vez de una cifra falsa, y la columna sale intacta.
   worker_ (un archivo de Velo, sin datos tuyos), que puedes quitar desde la configuración del
   navegador. La pantalla no puede saber cuándo termina de escribir el navegador:
   **revisa que la descarga haya terminado antes de cerrar la pestaña.** Si cancelas la descarga a
-  la mitad y tu navegador avisa de la cancelación, Velo lo nota y dice «No se pudo escribir el
-  archivo»; no se probó en un navegador real.
+  la mitad, Velo lo nota, deja de escribir y dice «No se pudo escribir el archivo» (y nombra que
+  pudiste haberla cancelado); no ofrece un archivo a medias y puedes volver a pulsar «Preparar el
+  archivo», que esta vez sale entero. Se probó con un archivo de 100.000 filas, cancelando a la mitad:
+  en Chromium en cada cambio (prueba automática; además, 10 corridas seguidas antes de cerrar el
+  sprint, las 10 bien), y en Firefox y en el WebKit de Playwright con una sonda a mano (en WebKit,
+  6 corridas seguidas con la sonda final, y en las 6 apareció la alerta; una corrida anterior, con
+  una versión previa de la sonda, no llegó a comprobarla y no se investigó).
+  En Safari de verdad no se probó.
 - **Si tu navegador no permite ese service worker** (una ventana privada que lo bloquea, una
   política de empresa, un navegador muy antiguo), Velo cae al **respaldo por partes**: arma el CSV
   en la memoria y, si pesa más de 256 MB, lo entrega **cortado en partes** —**«Guardar la parte 1
@@ -1086,24 +1093,25 @@ Playwright (el motor de Safari, no Safari mismo) y en el mismo Mac. Comparan la 
 con el camino anterior, el de armar el archivo en la memoria. Pico de memoria de todos los procesos
 del navegador, por pasada (una corrida por celda):
 
-| Navegador | Cómo sale el archivo  | Diagnóstico | Transformar y medir | Escribir |
-| --------- | --------------------- | ----------- | ------------------- | -------- |
-| Firefox   | por trozos (descarga) | 1,8 GB      | 2,3 GB              | 2,4 GB   |
-| Firefox   | armado en la memoria  | 1,8 GB      | 2,5 GB              | 2,6 GB   |
-| WebKit    | por trozos (descarga) | 4,0 GB      | 4,0 GB              | 3,9 GB   |
-| WebKit    | armado en la memoria  | 4,6 GB      | 4,8 GB              | 3,8 GB   |
+| Navegador | Cómo sale el archivo   | Diagnóstico | Transformar y medir | Escribir |
+| --------- | ---------------------- | ----------- | ------------------- | -------- |
+| Firefox   | por trozos (descarga)  | 1,8 GB      | 2,3 GB              | 2,4 GB   |
+| Firefox   | armado en la memoria   | 1,8 GB      | 2,5 GB              | 2,6 GB   |
+| WebKit    | por trozos, sin latido | 4,0 GB      | 4,0 GB              | 3,9 GB   |
+| WebKit    | por trozos, con latido | 3,0 GB      | 4,0 GB              | 4,5 GB   |
+| WebKit    | armado en la memoria   | 4,6 GB      | 4,8 GB              | 3,8 GB   |
 
 **Lo honesto de esa tabla: a 1.000.000 de filas, la descarga por trozos no baja el pico de memoria
 de forma que se pueda distinguir del ruido.** Las dos primeras pasadas hacen lo mismo con o sin ella
 y aun así cambian entre corridas (en Firefox, el diagnóstico midió entre 1,8 y 2,2 GB en tres
-corridas iguales; en WebKit, entre 4,0 y 4,6 GB); la diferencia al escribir (2,4 contra 2,6 GB en
-Firefox) cabe en esa variación, y en WebKit la escritura por trozos salió _más_ alta (3,9 contra 3,8
-GB). Con una sola corrida por celda no se afirma una mejora. Lo que sí cambia, y es el motivo de
+corridas iguales; en WebKit, entre 3,0 y 4,6 GB); la diferencia al escribir (2,4 contra 2,6 GB en
+Firefox) cabe en esa variación, y en WebKit la escritura por trozos salió _más_ alta las dos veces
+(3,9 y 4,5 contra 3,8 GB). Con una sola corrida por celda no se afirma una mejora. Lo que sí cambia, y es el motivo de
 este camino, es que el archivo de salida **ya no tiene que caber en la memoria de la pestaña**
 para poder guardarse: eso se probó con el CSV de 1.000.000 de filas y con uno ancho de 421 MB en
 Firefox, y los bytes que bajan son los del certificado (Chromium; en Firefox y Safari de verdad,
-ver la guía). La medida con el latido al _service worker_ solo se repitió en Firefox; la de WebKit
-es anterior. Safari de verdad no se midió: habilitar su automatización pide la contraseña de
+ver la guía). La medida con el latido al _service worker_ se repitió en Firefox y en WebKit (la fila «con latido»
+es la segunda corrida de WebKit; la primera fue antes de que existiera). Safari de verdad no se midió: habilitar su automatización pide la contraseña de
 administrador del Mac, y queda como parada del ensayo general.
 
 **JSON y JSON Lines.** Un JSON con más de 20.000.000 de celdas (registros × rutas distintas)

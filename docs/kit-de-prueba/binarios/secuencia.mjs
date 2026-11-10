@@ -72,15 +72,34 @@ function tkhd(fecha, id, ancho, alto) {
 }
 
 function mdhd(fecha) {
-  return caja("mdhd", completa(0, 0), u32(fecha), u32(fecha), u32(600), u32(1200), u16(0x55c4), u16(0));
+  return caja(
+    "mdhd",
+    completa(0, 0),
+    u32(fecha),
+    u32(fecha),
+    u32(600),
+    u32(1200),
+    u16(0x55c4),
+    u16(0),
+  );
 }
 
 function hdlr(tipo, nombre) {
-  return caja("hdlr", completa(0, 0), u32(0), latin1(tipo), Buffer.alloc(12), texto(nombre));
+  return caja(
+    "hdlr",
+    completa(0, 0),
+    u32(0),
+    latin1(tipo),
+    Buffer.alloc(12),
+    texto(nombre),
+  );
 }
 
 const dinf = () =>
-  caja("dinf", caja("dref", completa(0, 0), u32(1), caja("url ", completa(0, 1))));
+  caja(
+    "dinf",
+    caja("dref", completa(0, 0), u32(1), caja("url ", completa(0, 1))),
+  );
 
 /** Las tablas de una pista con un solo bloque de muestras que empieza en `inicio`. */
 function tablas(descripcion, tamanos, inicio) {
@@ -88,7 +107,13 @@ function tablas(descripcion, tamanos, inicio) {
     caja("stsd", completa(0, 0), u32(1), descripcion),
     caja("stts", completa(0, 0), u32(1), u32(tamanos.length), u32(600)),
     caja("stsc", completa(0, 0), u32(1), u32(1), u32(tamanos.length), u32(1)),
-    caja("stsz", completa(0, 0), u32(0), u32(tamanos.length), ...tamanos.map(u32)),
+    caja(
+      "stsz",
+      completa(0, 0),
+      u32(0),
+      u32(tamanos.length),
+      ...tamanos.map(u32),
+    ),
     caja("stco", completa(0, 0), u32(1), u32(inicio)),
   ];
 }
@@ -154,6 +179,25 @@ function metaQuickTime(nombre, pares) {
   return caja("meta", hdlr("mdta", nombre), keys, caja("ilst", ...items));
 }
 
+/**
+ * Descripción `tmcd` (código de tiempo): 6 reservados, referencia, 18 bytes de la descripción
+ * (escala 30000, 1001 por cuadro, 30 cuadros) y el rótulo del carrete en una caja `name`.
+ */
+function descripcionTmcd(rotulo) {
+  const t = Buffer.from(rotulo, "utf8");
+  return caja(
+    "tmcd",
+    Buffer.alloc(6),
+    u16(1),
+    u32(0),
+    u32(0),
+    u32(30000),
+    u32(1001),
+    Buffer.from([30, 0]),
+    caja("name", u16(t.length), u16(0x15c7), t),
+  );
+}
+
 /** Un texto internacional de `udta` (`©xyz` y compañía): tamaño, idioma y el texto. */
 const textoDeUsuario = (codigo, valor) => {
   const t = Buffer.from(valor, "utf8");
@@ -163,10 +207,21 @@ const textoDeUsuario = (codigo, valor) => {
 /**
  * Genera una secuencia (`heic` o `avif`) o el `.mov` de una Live Photo (`mov`, con flujo HEVC).
  *
- * @param {{ semilla: number, formato: "heic" | "avif" | "mov", conFoto?: boolean }} opciones
+ * `conTimecode` (solo el `.mov`) suma una pista de código de tiempo como la de una cámara: la hora
+ * del día en que empezó a grabar y un rótulo de carrete. Sin él, los bytes son los de siempre.
+ *
+ * @param {{ semilla: number, formato: "heic" | "avif" | "mov", conFoto?: boolean, conTimecode?: boolean }} opciones
  */
-export function generarSecuencia({ semilla, formato, conFoto = false }) {
-  if (conFoto && formato === "mov") throw new Error("un .mov no lleva foto fija");
+export function generarSecuencia({
+  semilla,
+  formato,
+  conFoto = false,
+  conTimecode = false,
+}) {
+  if (conFoto && formato === "mov")
+    throw new Error("un .mov no lleva foto fija");
+  if (conTimecode && formato !== "mov")
+    throw new Error("solo el .mov lleva código de tiempo");
   const codecDe = formato === "avif" ? "avif" : "heic";
   const codec = CODECS[codecDe];
   const { propiedades, hevc } = leerBase(codecDe);
@@ -189,6 +244,9 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
   const desconocida = registro.agregar(`CAJA-DESCONOCIDA-${ficha.serie}`);
   const sinUso = registro.agregar(`MDAT-SIN-USO-${ficha.serie}`);
   const resto = registro.agregar(ficha.resto);
+  const rotuloDeCarrete = conTimecode
+    ? registro.agregar(`CARRETE-${ficha.serie}`)
+    : "";
 
   // `mdat`: dos cuadros, la ubicación, el instante de la foto, los bytes sin dueño y, con la foto
   // fija, su Exif.
@@ -203,7 +261,16 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
       ])
     : Buffer.alloc(0);
   const huerfanos = Buffer.from(`${sinUso}\n`, "latin1");
-  const partes = [...cuadros, muestraUbicacion, muestraInstante, huerfanos, exif];
+  // El código de tiempo: el cuadro 1 080 000 a 30 por segundo es las 10:00:00:00, la hora del día.
+  const muestraTimecode = conTimecode ? u32(1_080_000) : Buffer.alloc(0);
+  const partes = [
+    ...cuadros,
+    muestraUbicacion,
+    muestraInstante,
+    huerfanos,
+    exif,
+    muestraTimecode,
+  ];
 
   const ftyp =
     formato === "mov"
@@ -215,8 +282,15 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
 
   const metaDeFoto = (base) => {
     if (!conFoto) return Buffer.alloc(0);
-    const nombreDelManejador = registro.agregar(`Foto de ${ficha.autor.completo}`);
-    const ipco = caja("ipco", propiedades[codec.configuracion], propiedades.ispe, propiedades.colr);
+    const nombreDelManejador = registro.agregar(
+      `Foto de ${ficha.autor.completo}`,
+    );
+    const ipco = caja(
+      "ipco",
+      propiedades[codec.configuracion],
+      propiedades.ispe,
+      propiedades.colr,
+    );
     const ipma = caja(
       "ipma",
       completa(0, 0),
@@ -225,14 +299,25 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
     );
     const infe = (id, tipo) =>
       caja("infe", completa(2, 0), u16(id), u16(0), latin1(tipo), texto(""));
-    const exifEn = base + cuadros[0].length * 2 + muestraUbicacion.length + muestraInstante.length + huerfanos.length;
+    const exifEn =
+      base +
+      cuadros[0].length * 2 +
+      muestraUbicacion.length +
+      muestraInstante.length +
+      huerfanos.length;
     return caja(
       "meta",
       completa(0, 0),
       hdlr("pict", nombreDelManejador),
       dinf(),
       caja("pitm", completa(0, 0), u16(1)),
-      caja("iinf", completa(0, 0), u16(2), infe(1, codec.elemento), infe(2, "Exif")),
+      caja(
+        "iinf",
+        completa(0, 0),
+        u16(2),
+        infe(1, codec.elemento),
+        infe(2, "Exif"),
+      ),
       caja("iref", completa(0, 0), caja("cdsc", u16(2), u16(1), u16(1))),
       caja("iprp", ipco, ipma),
       caja(
@@ -240,7 +325,13 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
         completa(0, 0),
         u16(0x4400),
         u16(2),
-        Buffer.concat([u16(1), u16(0), u16(1), u32(base), u32(cuadros[0].length)]),
+        Buffer.concat([
+          u16(1),
+          u16(0),
+          u16(1),
+          u32(base),
+          u32(cuadros[0].length),
+        ]),
         Buffer.concat([u16(2), u16(0), u16(1), u32(exifEn), u32(exif.length)]),
       ),
     );
@@ -248,12 +339,18 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
 
   const cajaLibre = caja("free", Buffer.from(libre, "latin1"));
   // La `meta` de la foto no cambia de tamaño con los desplazamientos: se mide con 0.
-  const antes = ftyp.length + ancho.reduce((n, c) => n + c.length, 0) + metaDeFoto(0).length + cajaLibre.length;
+  const antes =
+    ftyp.length +
+    ancho.reduce((n, c) => n + c.length, 0) +
+    metaDeFoto(0).length +
+    cajaLibre.length;
   const inicio = antes + 8;
   const meta = metaDeFoto(inicio);
   const mdat = caja("mdat", ...partes);
   const enUbicacion = inicio + cuadros[0].length * 2;
   const enInstante = enUbicacion + muestraUbicacion.length;
+  const enTimecode =
+    enInstante + muestraInstante.length + huerfanos.length + exif.length;
 
   const pistaDeVideo = caja(
     "trak",
@@ -269,7 +366,11 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
         caja(
           "stbl",
           ...tablas(
-            descripcionDeVideo(codec.elemento, compresor, propiedades[codec.configuracion]),
+            descripcionDeVideo(
+              codec.elemento,
+              compresor,
+              propiedades[codec.configuracion],
+            ),
             cuadros.map((c) => c.length),
             inicio,
           ),
@@ -294,12 +395,50 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
       ),
     );
 
+  const pistaDeTimecode = conTimecode
+    ? [
+        caja(
+          "trak",
+          tkhd(fecha, 4, 0, 0),
+          caja(
+            "mdia",
+            mdhd(fecha),
+            hdlr("tmcd", ""),
+            caja(
+              "minf",
+              caja("gmhd", caja("gmin", completa(0, 0), Buffer.alloc(12))),
+              dinf(),
+              caja(
+                "stbl",
+                ...tablas(
+                  descripcionTmcd(rotuloDeCarrete),
+                  [muestraTimecode.length],
+                  enTimecode,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]
+    : [];
+
   const moov = caja(
     "moov",
     mvhd(fecha),
     pistaDeVideo,
-    pistaMebx(2, "com.apple.quicktime.location.ISO6709", muestraUbicacion, enUbicacion),
-    pistaMebx(3, "com.apple.quicktime.still-image-time", muestraInstante, enInstante),
+    pistaMebx(
+      2,
+      "com.apple.quicktime.location.ISO6709",
+      muestraUbicacion,
+      enUbicacion,
+    ),
+    pistaMebx(
+      3,
+      "com.apple.quicktime.still-image-time",
+      muestraInstante,
+      enInstante,
+    ),
+    ...pistaDeTimecode,
     caja("Xtra", Buffer.from(desconocida, "latin1")),
     metaQuickTime(nombreDeMeta, [
       ["com.apple.quicktime.location.ISO6709", ubicacion],
@@ -332,8 +471,14 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
     uuidDePareja,
     fecha,
     /** Dónde empieza cada cuadro de video en el archivo: la limpieza no puede moverlos. */
-    cuadros: cuadros.map((c, i) => ({ desde: inicio + i * c.length, largo: c.length })),
+    cuadros: cuadros.map((c, i) => ({
+      desde: inicio + i * c.length,
+      largo: c.length,
+    })),
     instante: { desde: enInstante, largo: muestraInstante.length },
+    /** La muestra del código de tiempo (solo con `conTimecode`): 4 bytes, la hora del día. */
+    timecode: { desde: enTimecode, largo: muestraTimecode.length },
+    rotuloDeCarrete,
     ubicacion: { desde: enUbicacion, largo: muestraUbicacion.length },
     detalle: {
       latitud: ficha.gps.latitud,

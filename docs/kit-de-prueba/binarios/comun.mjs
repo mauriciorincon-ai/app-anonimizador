@@ -490,7 +490,14 @@ function entradasDeGps(ficha) {
 export function construirExif(
   ficha,
   registro,
-  { completo = false, orientacion, ancho, alto, miniatura } = {},
+  {
+    completo = false,
+    orientacion,
+    ancho,
+    alto,
+    miniatura,
+    extrasExif = [],
+  } = {},
 ) {
   const f = ficha.fechas;
   const ifd0 = [
@@ -547,6 +554,9 @@ export function construirExif(
       entrada.largo(0xa003, alto),
     );
   }
+
+  // Entradas que una prueba suma al IFD de EXIF (la nota de Apple de una Live Photo, por ejemplo).
+  exif.push(...extrasExif);
 
   return construirTiff({ ifd0, exif, gps: entradasDeGps(ficha), miniatura });
 }

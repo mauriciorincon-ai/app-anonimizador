@@ -4080,7 +4080,14 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil jerarqui
               <strong>«Enviado a la descarga de tu navegador»</strong>. Cuando
               termine, <code>shasum -a 256</code> del archivo bajado aparece en
               el certificado (<code>grep -c</code> da 1 o más) y tiene 100.001
-              líneas. En la pestaña Red no sale nada fuera del propio origen.
+              líneas. En la pestaña Red no sale nada fuera del propio origen. Y
+              una vez más: pulsa «Preparar el archivo» y, cuando el navegador
+              empiece a bajarlo, cancela la descarga en su administrador de
+              descargas. El panel dice
+              <strong>«No se pudo escribir el archivo»</strong> (y nombra que
+              pudiste cancelar la descarga), no ofrece un archivo a medias y
+              «Preparar el archivo» vuelve a estar disponible; al pulsarlo otra
+              vez, el archivo sale entero.
               <span class="origen origen-nuevo">Nuevo · S11</span></label
             >
           </li>

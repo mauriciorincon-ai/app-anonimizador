@@ -961,6 +961,53 @@
                 <code>connect-src 'self'</code>).
               </td>
             </tr>
+            <tr>
+              <td>2026-11-09</td>
+              <td>H2 · S011 (lo construido)</td>
+              <td>
+                Lo que el sprint dejó en el código, sin dependencias ni
+                servicios nuevos y todo dentro del navegador (lo del motor,
+                también en Velo local).
+                <strong>AVIF</strong> como segundo formato HEIF: se rearma por
+                el mismo camino que el HEIC y su flujo AV1 sale idéntico.
+                <strong
+                  >Secuencias HEIC y AVIF y el <code>.mov</code> de una Live
+                  Photo</strong
+                >
+                (<code>src/engine/metadatos/secuencia.ts</code>): se limpian
+                <em>en su lugar</em>, con el mismo largo y cada byte de imagen
+                en su desplazamiento; los metadatos pasan a <code>free</code> o
+                a ceros y los índices de muestras no se tocan. De la pareja de
+                la Live Photo solo el video conserva su UUID; la foto limpia
+                (comprobado con una foto sintética que lleva la nota de Apple)
+                no lleva nada que la empareje.
+                <strong>Tope de supresión</strong> en la generalización óptima
+                (<code>generalizacion.supresionMaxima</code>, 0–100 %): las
+                filas que no llegan a <em>k</em> se quitan de la salida, nunca
+                del original, y con 0 los bytes son los de siempre.
+                <strong>CIIU Rev. 5 A.C.</strong> como archivo de datos con su
+                fuente y su huella (<code>ciiu5.json</code> y
+                <code>ciiu5.meta.json</code>) junto a la Rev. 4, con la revisión
+                detectada dentro del worker. La descarga en flujo, el respaldo
+                por partes y la nota de la regla 7 son los de la fila anterior.
+              </td>
+            </tr>
+            <tr>
+              <td>2026-11-09</td>
+              <td>H2 · S011 (hallazgos pagados)</td>
+              <td>
+                El <code>.mov</code> pierde también su pista de código de tiempo
+                (<code>tmcd</code>: la hora del día en que una cámara empezó a
+                grabar y su rótulo de carrete). El service worker de la descarga
+                contesta con un 410 y su causa a un reintento del navegador
+                sobre una descarga ya servida, en vez de dejarlo caer a la red
+                (mientras siga vivo: si el navegador ya lo apagó por
+                inactividad, el reintento no lo encuentra y recibe el 404 del
+                servidor, sin cuerpo ni datos), y le avisa a la página —solo el
+                id— cuando una descarga termina para que detenga el latido.
+                Sigue sin guardar nada ni pedir nada a la red.
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
