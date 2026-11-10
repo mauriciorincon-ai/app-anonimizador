@@ -5,13 +5,14 @@
 // prueba que sabe pintar lo que el motor produce, que es lo que el usuario va a ver.
 
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { generarFilas } from "../../docs/kit-de-prueba/generador.mjs";
 import { InformeDeDiagnostico } from "@/components/informe-de-diagnostico";
@@ -185,6 +186,52 @@ describe("archivo con datos personales", () => {
     expect(
       within(panel).getByRole("button", { name: "Descargar el reporte" }),
     ).toBeInTheDocument();
+  });
+
+  // S12 (deuda del S10): el `click()` del enlace ocurría tras dos `await` y Safari puede dejar de
+  // contarlo como gesto del usuario. Con el módulo ya cargado (el puntero o el foco lo precargan),
+  // el clic ocurre en el MISMO turno de la pulsación: la aserción va SIN esperar nada.
+  describe("la descarga conserva el gesto del usuario", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+    });
+    const prepararDescarga = () => {
+      vi.stubGlobal(
+        "URL",
+        Object.assign(URL, {
+          createObjectURL: () => "blob:velo/reporte",
+          revokeObjectURL: () => {},
+        }),
+      );
+      return vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+    };
+
+    it("con el módulo precargado, el clic ocurre antes de devolver el control", async () => {
+      const clic = prepararDescarga();
+      render(<InformeDeDiagnostico informe={informe} />);
+      const boton = screen.getByRole("button", {
+        name: "Descargar el reporte",
+      });
+      fireEvent.focus(boton);
+      await act(async () => {
+        await import("@/engine/reporte");
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      fireEvent.click(boton);
+      expect(clic).toHaveBeenCalledOnce();
+    });
+
+    it("sin precarga, descarga igual en cuanto el módulo carga", async () => {
+      const clic = prepararDescarga();
+      render(<InformeDeDiagnostico informe={informe} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: "Descargar el reporte" }),
+      );
+      await waitFor(() => expect(clic).toHaveBeenCalledOnce());
+    });
   });
 
   it("la vista previa se abre y se cierra", async () => {

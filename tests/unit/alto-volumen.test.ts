@@ -675,7 +675,6 @@ describe("lo que no cabe se dice, no se estima ni se escribe a medias", () => {
   describe("RangeError: solo la falta de sitio es «no cabe»", () => {
     const fuenteQueLanza = (error: Error) => ({
       bytes: 0,
-      // eslint-disable-next-line require-yield
       async *lotes(): AsyncGenerator<readonly (readonly string[])[]> {
         throw error;
       },
