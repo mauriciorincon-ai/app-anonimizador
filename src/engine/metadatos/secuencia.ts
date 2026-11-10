@@ -426,7 +426,12 @@ class Recorrido {
         // La `meta` dentro de `udta`: la de iTunes (`mdir`, elementos con código) o la de QuickTime
         // (`mdta`, elementos con el número de su clave en `keys`), que es la que escribe ffmpeg.
         for (const { clave, item } of this.elementosDeIlst(c))
-          this.inventario.campo(clave, "quicktime", revelaDe(clave), this.valorDeIlst(item));
+          this.inventario.campo(
+            clave,
+            "quicktime",
+            revelaDe(clave),
+            this.valorDeIlst(item),
+          );
       }
     }
     this.liberar(caja);
@@ -467,7 +472,8 @@ class Recorrido {
     const keys = hijosDeMeta.find((c) => c.tipo === "keys");
     const nombres = keys ? this.claves(keys) : [];
     return (item) =>
-      nombres[u32be(this.bytes, item.desde + 4) - 1] ?? marcadorDe(this.bytes, item);
+      nombres[u32be(this.bytes, item.desde + 4) - 1] ??
+      marcadorDe(this.bytes, item);
   }
 
   private elementosDeIlst(meta: Caja): { clave: string; item: Caja }[] {
@@ -885,4 +891,3 @@ export function tramosEnCeros(
     })),
   );
 }
-

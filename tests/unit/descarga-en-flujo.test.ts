@@ -132,7 +132,11 @@ describe("abrirDescargaEnFlujo", () => {
 
   it("el latido se detiene cuando el service worker avisa que la descarga terminó, no al soltar el archivo", async () => {
     const sw = new ServiceWorkerFalso("activated");
-    const contenedor = instalar({ installing: null, waiting: null, active: sw });
+    const contenedor = instalar({
+      installing: null,
+      waiting: null,
+      active: sw,
+    });
     const limpiezas = vi.spyOn(globalThis, "clearInterval");
     const promesa = abrirDescargaEnFlujo(2_000);
     await esperar(20);

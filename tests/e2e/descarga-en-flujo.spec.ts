@@ -166,10 +166,14 @@ test.describe("la salida grande sin selector de archivo", () => {
     // El worker se entera por el canal, deja de escribir y la pantalla dice que no se pudo: no se
     // queda en «Escribiendo…» ni ofrece un archivo a medias.
     await expect(
-      page.getByRole("alert").filter({ hasText: "No se pudo escribir el archivo" }),
+      page
+        .getByRole("alert")
+        .filter({ hasText: "No se pudo escribir el archivo" }),
     ).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText(/hayas cancelado la descarga/)).toBeVisible();
-    await expect(page.getByText(/Enviado a la descarga de tu navegador/)).toHaveCount(0);
+    await expect(
+      page.getByText(/Enviado a la descarga de tu navegador/),
+    ).toHaveCount(0);
     await expect(preparar).toBeEnabled();
 
     // Segunda vez: sale entero, y es el archivo que dice el certificado.
@@ -177,7 +181,10 @@ test.describe("la salida grande sin selector de archivo", () => {
       page.waitForEvent("download", { timeout: 120_000 }),
       preparar.click(),
     ]);
-    const ruta = join(DIRECTORIO_DE_FIXTURES, "descarga-cancelada-y-repetida.csv");
+    const ruta = join(
+      DIRECTORIO_DE_FIXTURES,
+      "descarga-cancelada-y-repetida.csv",
+    );
     await entera.saveAs(ruta);
     await expect(
       page.getByText(/Enviado a la descarga de tu navegador/),

@@ -132,8 +132,11 @@ try {
     alerta.waitFor({ timeout: 90_000 }).then(() => "alerta"),
     enviado.waitFor({ timeout: 90_000 }).then(() => "enviado"),
   ]).catch(() => "nada");
-  const dicho = pantalla === "alerta";
   console.log(`       pantalla tras cancelar: ${pantalla}`);
+  anota(
+    pantalla === "alerta",
+    `${NAVEGADOR}: la pantalla dice «No se pudo escribir el archivo» tras cancelar`,
+  );
   anota(
     (await page.getByText(/Enviado a la descarga de tu navegador/).count()) ===
       0,

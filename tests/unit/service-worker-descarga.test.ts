@@ -237,7 +237,10 @@ describe("el service worker de la descarga", () => {
     const aborto = await descargaLista("f2");
     aborto.puerto.onmessage!({ data: { tipo: "abortar" } });
     expect(aborto.cliente.avisos).toEqual([{ tipo: "terminada", id: "f2" }]);
-    await aborto.respuesta.body!.getReader().read().catch(() => {});
+    await aborto.respuesta
+      .body!.getReader()
+      .read()
+      .catch(() => {});
 
     const cancelada = await descargaLista("f3");
     const lector = cancelada.respuesta.body!.getReader();
@@ -259,7 +262,9 @@ describe("el service worker de la descarga", () => {
     const puerto = puertoFalso();
     sw.abrir("s1", puerto);
     const pendiente = sw.pedir("/descarga/s1");
-    puerto.onmessage!({ data: { tipo: "adelante", nombre: "x.csv", mime: "text/csv" } });
+    puerto.onmessage!({
+      data: { tipo: "adelante", nombre: "x.csv", mime: "text/csv" },
+    });
     await pendiente;
     expect(() => puerto.onmessage!({ data: { tipo: "fin" } })).not.toThrow();
   });

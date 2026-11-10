@@ -10,6 +10,7 @@
 // El e2e `descarga-en-flujo.spec.ts` prueba el camino entero en un navegador de verdad.
 
 import { act, render } from "@testing-library/react";
+import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const abrir = vi.hoisted(() => vi.fn());
@@ -51,8 +52,12 @@ class WorkerDeMentira {
 }
 
 let taller: EstadoDelTaller;
+// Se copia afuera en un efecto, no durante el render (`react-hooks/globals`).
 function Sonda() {
-  taller = useTaller();
+  const tallerAhora = useTaller();
+  useEffect(() => {
+    taller = tallerAhora;
+  });
   return null;
 }
 

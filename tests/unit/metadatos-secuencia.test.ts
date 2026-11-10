@@ -465,14 +465,18 @@ describe("un .mov hostil", () => {
     const limpio = limpiarImagen(copia, "mov").bytes;
     for (const c of kit.centinelas)
       expect(contieneCentinela(limpio, c), c).toBe(false);
-    expect(limpio.subarray(mvhd.datos + 100, moov.hasta).every((x) => x === 0)).toBe(true);
+    expect(
+      limpio.subarray(mvhd.datos + 100, moov.hasta).every((x) => x === 0),
+    ).toBe(true);
   });
 
   it("una caja que Velo no conoce dentro de `stbl` se va como las de `moov`", () => {
     const copia = original.slice();
     copia.set(texto("Xtts"), buscar(copia, "stts"));
     const a = analizarImagen(copia, "mov");
-    expect(a.quitables.some((e) => e.clase === "auxiliar" && e.marcador === "Xtts")).toBe(true);
+    expect(
+      a.quitables.some((e) => e.clase === "auxiliar" && e.marcador === "Xtts"),
+    ).toBe(true);
     const limpio = limpiarImagen(copia, "mov").bytes;
     expect(buscar(limpio, "Xtts")).toBe(-1);
   });
@@ -534,9 +538,9 @@ describe("el código de tiempo (`tmcd`) de un .mov de cámara", () => {
     const t = kit.timecode;
     expect(t.largo).toBe(4);
     expect(leer32(original, t.desde)).toBe(1_080_000);
-    expect(limpio.subarray(t.desde, t.desde + t.largo).every((x) => x === 0)).toBe(
-      true,
-    );
+    expect(
+      limpio.subarray(t.desde, t.desde + t.largo).every((x) => x === 0),
+    ).toBe(true);
     expect(kit.rotuloDeCarrete).not.toBe("");
     expect(contieneCentinela(limpio, kit.rotuloDeCarrete)).toBe(false);
     for (const c of kit.centinelas)
@@ -553,9 +557,9 @@ describe("el código de tiempo (`tmcd`) de un .mov de cámara", () => {
         ),
       ).toBe(true);
     const ceros = tramosEnCeros(original, "mov");
-    expect(soloCambiaLoDeclarado(original, limpio, ceros)).toBeGreaterThanOrEqual(
-      2,
-    );
+    expect(
+      soloCambiaLoDeclarado(original, limpio, ceros),
+    ).toBeGreaterThanOrEqual(2);
     const pistas = (b: Uint8Array) =>
       cajasDe(b, camino(b, "moov")!.datos, camino(b, "moov")!.hasta).filter(
         (c) => c.tipo === "trak",
@@ -582,15 +586,14 @@ describe("la foto de una Live Photo, limpiada sola", () => {
   const original = Uint8Array.from(foto.bytes);
   const video = generarSecuencia({ semilla: 42, formato: "mov" });
   const limpia = limpiarImagen(original, "heic").bytes;
-  const videoLimpio = limpiarImagen(
-    Uint8Array.from(video.bytes),
-    "mov",
-  ).bytes;
+  const videoLimpio = limpiarImagen(Uint8Array.from(video.bytes), "mov").bytes;
 
   it("el kit empareja de verdad: foto y video llevan el mismo UUID antes de limpiar", () => {
     expect(foto.uuidDePareja).toBe(video.uuidDePareja);
     expect(buscar(original, foto.uuidDePareja!)).toBeGreaterThan(0);
-    expect(buscar(Uint8Array.from(video.bytes), video.uuidDePareja)).toBeGreaterThan(0);
+    expect(
+      buscar(Uint8Array.from(video.bytes), video.uuidDePareja),
+    ).toBeGreaterThan(0);
   });
 
   it("a la foto limpia no le queda el UUID ni la nota del fabricante ni ningún centinela", () => {

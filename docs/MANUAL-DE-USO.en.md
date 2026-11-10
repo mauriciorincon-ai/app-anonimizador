@@ -897,8 +897,9 @@ and the diagnosis says so.
   metadata blocks: it replaces them with an empty block **of the same size**. What goes is the
   location (including the one that travels as a metadata track with one position per frame, whose
   samples are zeroed), the make and model of the device, the program, titles and descriptions, the
-  EXIF and XMP of the sequence, and the container's creation and modification dates, which are set
-  to zero. The clean copy plays the same: it was checked by decoding before and after with the
+  EXIF and XMP of the sequence, a camera's timecode (the time of day it started recording, which
+  is set to zero, and its reel label), and the container's creation and modification dates, which
+  are set to zero. The clean copy plays the same: it was checked by decoding before and after with the
   system's own tools and comparing frame by frame, and the result is identical.
 - **The Live Photo, said plainly.** A Live Photo is **two files**: the photo and a short video
   (`.mov`). Each is cleaned separately, and **the number that pairs them is kept only in the
@@ -1043,9 +1044,13 @@ N” instead of a false figure, and the column comes out untouched.
   would be saved any other way. The only thing left in your browser is the registration of the
   _service worker_ itself (a Velo file, with none of your data), which you can remove from the
   browser's settings. The screen cannot know when the browser finishes writing: **check
-  that the download has finished before closing the tab.** If you cancel the download halfway and your browser reports the
-  cancellation, Velo notices and says “The file could not be written”; this was not tested in a real
-  browser.
+  that the download has finished before closing the tab.** If you cancel the download halfway, Velo notices, stops
+  writing and says “The file could not be written” (and names a cancelled download as a possible
+  cause); it does not offer a half-written file, and you can press “Prepare the file” again, which
+  this time comes out whole. This was tested with a 100,000-row file, cancelling halfway: in
+  Chromium on every change (automatic test), and in Firefox and Playwright's WebKit with a
+  hand-run probe (in WebKit the alert appeared in 5 of 6 runs; in one it did not and the reason is
+  unknown). Real Safari was not tested.
 - **If your browser does not allow that service worker** (a private window that blocks it, a company
   policy, a very old browser), Velo falls back to **parts**: it builds the CSV in memory and, if it
   weighs more than 256 MB, hands it over **cut into parts** —**“Save part 1 of 5”**, and so on—,
@@ -1095,24 +1100,25 @@ file with the original by its SHA-256 fingerprint. Lowering the memory peak is p
 previous way, building the file in memory. Memory peak of all the browser's processes, per pass (one
 run per cell):
 
-| Browser | How the file leaves  | Diagnosis | Transform and measure | Write  |
-| ------- | -------------------- | --------- | --------------------- | ------ |
-| Firefox | in chunks (download) | 1.8 GB    | 2.3 GB                | 2.4 GB |
-| Firefox | built in memory      | 1.8 GB    | 2.5 GB                | 2.6 GB |
-| WebKit  | in chunks (download) | 4.0 GB    | 4.0 GB                | 3.9 GB |
-| WebKit  | built in memory      | 4.6 GB    | 4.8 GB                | 3.8 GB |
+| Browser | How the file leaves       | Diagnosis | Transform and measure | Write  |
+| ------- | ------------------------- | --------- | --------------------- | ------ |
+| Firefox | in chunks (download)      | 1.8 GB    | 2.3 GB                | 2.4 GB |
+| Firefox | built in memory           | 1.8 GB    | 2.5 GB                | 2.6 GB |
+| WebKit  | in chunks, no heartbeat   | 4.0 GB    | 4.0 GB                | 3.9 GB |
+| WebKit  | in chunks, with heartbeat | 3.0 GB    | 4.0 GB                | 4.5 GB |
+| WebKit  | built in memory           | 4.6 GB    | 4.8 GB                | 3.8 GB |
 
 **The honest reading of that table: at 1,000,000 rows, the chunked download does not lower the
 memory peak in a way you can tell apart from noise.** The first two passes do the same thing with or
 without it and still change between runs (in Firefox, the diagnosis measured between 1.8 and 2.2 GB
-across three identical runs; in WebKit, between 4.0 and 4.6 GB); the difference when writing (2.4
+across three identical runs; in WebKit, between 3.0 and 4.6 GB); the difference when writing (2.4
 against 2.6 GB in Firefox) fits inside that variation, and in WebKit the chunked write came out
-_higher_ (3.9 against 3.8 GB). With one run per cell, no improvement is claimed. What does change,
+_higher_ both times (3.9 and 4.5 against 3.8 GB). With one run per cell, no improvement is claimed. What does change,
 and is the reason for this path, is that the output file **no longer has to fit in the tab's
 memory** to be saved: that was tested with the 1,000,000-row CSV and with a 421 MB wide one in
 Firefox, and the bytes that come down are the certificate's (Chromium; in real Firefox and Safari,
-see the guide). The measurement with the heartbeat to the service worker was repeated only in
-Firefox; the WebKit one predates it. Real Safari was not measured: enabling its automation asks for
+see the guide). The measurement with the heartbeat to the service worker was repeated in Firefox
+and in WebKit (the “with heartbeat” row is WebKit's second run; the first predates it). Real Safari was not measured: enabling its automation asks for
 the Mac's administrator password, and it stays as a stop for the full rehearsal.
 
 **JSON and JSON Lines.** A JSON with more than 20,000,000 cells (records × distinct paths) is also
