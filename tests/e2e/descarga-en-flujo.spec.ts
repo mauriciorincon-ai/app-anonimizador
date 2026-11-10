@@ -5,6 +5,8 @@
 //     comprueba que la respuesta la dio el service worker (si la pidiera el servidor de Next, la
 //     descarga sería un 404 que una lista blanca por ruta dejaría pasar), que la red no ve nada más,
 //     y que los bytes del archivo descargado son los que el worker hasheó (el certificado lo dice).
+//   · Cancelar la descarga a medias (S11, hallazgos): el archivo no sale, la pantalla lo dice, y se
+//     puede volver a preparar: la segunda vez sale entero, con los bytes del certificado.
 //   · Sin service worker (bloqueado): el respaldo por partes. Pegadas en orden dan los mismos bytes,
 //     y la huella del todo y la de cada parte son las del certificado y las del manifiesto.
 //
@@ -135,6 +137,56 @@ test.describe("la salida grande sin selector de archivo", () => {
     expect(delServiceWorker).toEqual([true]);
     expect(pidioElScript).toBe(true);
     expect(sospechosas).toEqual([]);
+    await contexto.close();
+  });
+
+  test("cancelar la descarga a medias: la pantalla lo dice, no queda nada colgado y volver a prepararla sale entera", async ({
+    browser,
+  }) => {
+    const contexto = await browser.newContext({ acceptDownloads: true });
+    const page = await contexto.newPage();
+    await sinSelector(page);
+    const delServiceWorker: boolean[] = [];
+    page.on("response", (respuesta) => {
+      const ruta = new URL(respuesta.url()).pathname;
+      if (ruta.startsWith("/descarga/"))
+        delServiceWorker.push(respuesta.fromServiceWorker());
+    });
+
+    await hastaTransformado(page);
+    const preparar = page.getByRole("button", { name: "Preparar el archivo" });
+
+    // Primera vez: el navegador empieza a bajar y la persona cancela en su administrador de descargas.
+    const [cancelada] = await Promise.all([
+      page.waitForEvent("download", { timeout: 120_000 }),
+      preparar.click(),
+    ]);
+    await cancelada.cancel();
+    expect(await cancelada.failure()).toBe("canceled");
+    // El worker se entera por el canal, deja de escribir y la pantalla dice que no se pudo: no se
+    // queda en «Escribiendo…» ni ofrece un archivo a medias.
+    await expect(
+      page.getByRole("alert").filter({ hasText: "No se pudo escribir el archivo" }),
+    ).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/hayas cancelado la descarga/)).toBeVisible();
+    await expect(page.getByText(/Enviado a la descarga de tu navegador/)).toHaveCount(0);
+    await expect(preparar).toBeEnabled();
+
+    // Segunda vez: sale entero, y es el archivo que dice el certificado.
+    const [entera] = await Promise.all([
+      page.waitForEvent("download", { timeout: 120_000 }),
+      preparar.click(),
+    ]);
+    const ruta = join(DIRECTORIO_DE_FIXTURES, "descarga-cancelada-y-repetida.csv");
+    await entera.saveAs(ruta);
+    await expect(
+      page.getByText(/Enviado a la descarga de tu navegador/),
+    ).toBeVisible({ timeout: 120_000 });
+    const bytes = readFileSync(ruta);
+    expect(await huellaDelCertificado(page)).toContain(sha(bytes));
+    expect(bytes.toString("utf8").split("\n").length - 1).toBe(100_001);
+    // Las dos respuestas las dio el service worker; nada cayó al servidor de Next.
+    expect(delServiceWorker).toEqual([true, true]);
     await contexto.close();
   });
 
