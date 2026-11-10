@@ -164,9 +164,24 @@ export class NoCabeEnAltoVolumen extends Error {
 }
 
 /**
+ * ¿Es este `RangeError` el de la falta de sitio (un `Map`, un arreglo, una cadena o un búfer que no
+ * crece más)? El texto difiere entre motores (V8, SpiderMonkey, JavaScriptCore), así que se
+ * reconocen los de cada uno; un `RangeError` de otra causa (una fecha inválida, un `toFixed` fuera de
+ * rango) es un fallo y no se disfraza de un archivo demasiado grande.
+ */
+export function esFaltaDeCupo(error: unknown): boolean {
+  return (
+    error instanceof RangeError &&
+    /map (maximum|too|is too)|invalid (array|string) length|array buffer allocation|allocation size overflow|out of memory/i.test(
+      error.message,
+    )
+  );
+}
+
+/**
  * Lo que arma una tabla entera, con el `SinCupo` de una columna (o el `RangeError` de un `Map` que
  * pasó de 2²⁴) dicho como lo que no cupo en ESA pasada: ninguna se cae con un error genérico por
- * falta de sitio.
+ * falta de sitio. Cualquier otro error, `RangeError` incluido, sube tal cual.
  */
 async function conCupo<T>(
   motivo: NoCabeEnAltoVolumen["motivo"],
@@ -177,8 +192,7 @@ async function conCupo<T>(
   } catch (error) {
     if (error instanceof SinCupo)
       throw new NoCabeEnAltoVolumen(motivo, error.tope);
-    if (error instanceof RangeError)
-      throw new NoCabeEnAltoVolumen(motivo, 1 << 24);
+    if (esFaltaDeCupo(error)) throw new NoCabeEnAltoVolumen(motivo, 1 << 24);
     throw error;
   }
 }

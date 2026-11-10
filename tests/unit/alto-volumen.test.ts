@@ -32,6 +32,7 @@ import { sha256 } from "@/lib/sha256";
 import {
   balanceDelAltoVolumen,
   escribirCsv,
+  esFaltaDeCupo,
   leerColumnas,
   NoCabeEnAltoVolumen,
   pasadaDeDiagnostico,
@@ -666,6 +667,57 @@ describe("lo que no cabe se dice, no se estima ni se escribe a medias", () => {
         topes: { ...HOLGADOS, distintosEnLaTabla: 50 },
       }),
     ).rejects.toMatchObject({ motivo: "alto-volumen-histograma-no-cabe" });
+  });
+
+  // S12 (deuda del S10): `conCupo` traducía TODO `RangeError` a «no cabe». Solo la falta de sitio lo
+  // es; un `RangeError` de otra causa (una fecha inválida, un `toFixed` fuera de rango) es un fallo
+  // y tiene que verse como tal, no disfrazado de un archivo demasiado grande.
+  describe("RangeError: solo la falta de sitio es «no cabe»", () => {
+    const fuenteQueLanza = (error: Error) => ({
+      bytes: 0,
+      // eslint-disable-next-line require-yield
+      async *lotes(): AsyncGenerator<readonly (readonly string[])[]> {
+        throw error;
+      },
+    });
+
+    it("el RangeError de un Map que pasó de su máximo (texto de V8) es «no cabe»", async () => {
+      const error = await pasadaDeDiagnostico(
+        fuenteQueLanza(new RangeError("Map maximum size exceeded")),
+        { topes: HOLGADOS },
+      ).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(NoCabeEnAltoVolumen);
+      expect(error).toMatchObject({
+        motivo: "alto-volumen-histograma-no-cabe",
+      });
+    });
+
+    it("otro RangeError se relanza tal cual, sin decir «no cabe»", async () => {
+      const ajeno = new RangeError("Invalid time value");
+      const error = await pasadaDeDiagnostico(fuenteQueLanza(ajeno), {
+        topes: HOLGADOS,
+      }).catch((e: unknown) => e);
+      expect(error).toBe(ajeno);
+      expect(error).not.toBeInstanceOf(NoCabeEnAltoVolumen);
+    });
+
+    it("esFaltaDeCupo reconoce los textos de falta de sitio de cada motor y nada más", () => {
+      for (const texto of [
+        "Map maximum size exceeded",
+        "Invalid array length",
+        "Invalid string length",
+        "Array buffer allocation failed",
+        "allocation size overflow",
+      ])
+        expect(esFaltaDeCupo(new RangeError(texto))).toBe(true);
+      for (const texto of [
+        "Invalid time value",
+        "toFixed() digits argument must be between 0 and 100",
+        "",
+      ])
+        expect(esFaltaDeCupo(new RangeError(texto))).toBe(false);
+      expect(esFaltaDeCupo(new Error("Map maximum size exceeded"))).toBe(false);
+    });
   });
 
   it("un archivo que cambió en el disco entre dos pasadas no se escribe", async () => {
