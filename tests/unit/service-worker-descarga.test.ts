@@ -39,6 +39,22 @@ function puertoFalso(): PuertoFalso {
   return p;
 }
 
+/** La página que abrió la descarga: lo único que recibe del service worker son avisos con el id. */
+interface ClienteFalso {
+  avisos: { tipo: string; id: string }[];
+  postMessage(dato: { tipo: string; id: string }): void;
+}
+
+function clienteFalso(): ClienteFalso {
+  const c: ClienteFalso = {
+    avisos: [],
+    postMessage(dato) {
+      c.avisos.push(dato);
+    },
+  };
+  return c;
+}
+
 function nuevoServiceWorker() {
   const oyentes: Record<string, ((e: unknown) => void)[]> = {};
   const self = {
@@ -63,8 +79,12 @@ function nuevoServiceWorker() {
   const disparar = (tipo: string, evento: unknown) =>
     oyentes[tipo].forEach((f) => f(evento));
   return {
-    abrir(id: string, puerto: PuertoFalso) {
-      disparar("message", { data: { tipo: "abrir", id }, ports: [puerto] });
+    abrir(id: string, puerto: PuertoFalso, cliente?: ClienteFalso) {
+      disparar("message", {
+        data: { tipo: "abrir", id },
+        ports: [puerto],
+        source: cliente ?? null,
+      });
     },
     mensaje(datos: unknown) {
       disparar("message", { data: datos, ports: [] });
@@ -94,11 +114,12 @@ const trozo = (puerto: PuertoFalso, bytes: number[]) =>
 async function descargaLista(id = "abc", nombre = "velo-x.csv") {
   const sw = nuevoServiceWorker();
   const puerto = puertoFalso();
-  sw.abrir(id, puerto);
+  const cliente = clienteFalso();
+  sw.abrir(id, puerto, cliente);
   const pendiente = sw.pedir(`/descarga/${id}`);
   puerto.onmessage!({ data: { tipo: "adelante", nombre, mime: "text/csv" } });
   const respuesta = (await pendiente)!;
-  return { sw, puerto, respuesta };
+  return { sw, puerto, respuesta, cliente };
 }
 
 describe("el service worker de la descarga", () => {
@@ -190,8 +211,57 @@ describe("el service worker de la descarga", () => {
     sw.abrir("sin-pedir", puerto);
     sw.mensaje({ tipo: "cancelar", id: "sin-pedir" });
     expect(puerto.cerrado).toBe(true);
-    // Y ya no se sirve.
-    expect(await sw.pedir("/descarga/sin-pedir")).toBeNull();
+    // Y ya no se sirve: si el navegador llega tarde, falla con su causa (no cae a la red).
+    expect((await sw.pedir("/descarga/sin-pedir"))!.status).toBe(410);
+  });
+
+  it("un reintento del navegador a una descarga ya servida falla con su causa, no cae a la red", async () => {
+    const { sw } = await descargaLista("r1");
+    const reintento = await sw.pedir("/descarga/r1");
+    // Antes devolvía `null`: la petición seguía a la red y volvía como un 404 mudo.
+    expect(reintento).not.toBeNull();
+    expect(reintento!.status).toBe(410);
+    expect(reintento!.headers.get("cache-control")).toBe("no-store");
+    expect(reintento!.headers.get("content-disposition")).toBeNull();
+    expect(await reintento!.text()).toContain("no se puede reanudar");
+    // Un id que nunca existió sigue sin responderse.
+    expect(await sw.pedir("/descarga/jamas-abierta")).toBeNull();
+  });
+
+  it("le avisa a la página, con el id y nada más, que la descarga terminó: al fin, al abortar y al cancelar", async () => {
+    const fin = await descargaLista("f1");
+    expect(fin.cliente.avisos).toEqual([]);
+    fin.puerto.onmessage!({ data: { tipo: "fin" } });
+    expect(fin.cliente.avisos).toEqual([{ tipo: "terminada", id: "f1" }]);
+
+    const aborto = await descargaLista("f2");
+    aborto.puerto.onmessage!({ data: { tipo: "abortar" } });
+    expect(aborto.cliente.avisos).toEqual([{ tipo: "terminada", id: "f2" }]);
+    await aborto.respuesta.body!.getReader().read().catch(() => {});
+
+    const cancelada = await descargaLista("f3");
+    const lector = cancelada.respuesta.body!.getReader();
+    void lector.read();
+    await esperar();
+    await lector.cancel();
+    expect(cancelada.cliente.avisos).toEqual([{ tipo: "terminada", id: "f3" }]);
+
+    const cortada = await descargaLista("f4");
+    const lectura = cortada.respuesta.body!.getReader().read();
+    await esperar();
+    cortada.sw.mensaje({ tipo: "cancelar", id: "f4" });
+    await lectura.catch(() => {});
+    expect(cortada.cliente.avisos).toEqual([{ tipo: "terminada", id: "f4" }]);
+  });
+
+  it("sin página a quien avisar (el mensaje no traía fuente) no falla", async () => {
+    const sw = nuevoServiceWorker();
+    const puerto = puertoFalso();
+    sw.abrir("s1", puerto);
+    const pendiente = sw.pedir("/descarga/s1");
+    puerto.onmessage!({ data: { tipo: "adelante", nombre: "x.csv", mime: "text/csv" } });
+    await pendiente;
+    expect(() => puerto.onmessage!({ data: { tipo: "fin" } })).not.toThrow();
   });
 
   it("ignora los latidos y los mensajes que no conoce", () => {

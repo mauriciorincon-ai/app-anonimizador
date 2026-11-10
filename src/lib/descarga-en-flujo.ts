@@ -18,7 +18,8 @@ export const ESPERA_DEL_SERVICE_WORKER_MS = 5_000;
  * Cada cuánto la página le manda un latido al service worker mientras dura la descarga. Firefox apaga
  * un service worker tras unos 30 s sin eventos, y los mensajes del canal con el worker no cuentan:
  * un archivo de ~400 MB, que tarda más que eso en salir, se quedaba a medias (medido en el S11). Un
- * mensaje al service worker sí es un evento y reinicia ese reloj.
+ * mensaje al service worker sí es un evento y reinicia ese reloj. El latido se detiene cuando el
+ * service worker avisa que la descarga terminó (`terminada`), no cuando se suelta el archivo.
  */
 export const LATIDO_DEL_SERVICE_WORKER_MS = 10_000;
 
@@ -33,7 +34,7 @@ export interface DescargaAbierta {
    * (el worker pudo morir sin avisar). Si ya terminó, no hace nada. Va antes de `cerrar()`.
    */
   cancelar(): void;
-  /** Quita el marco de la descarga y detiene el latido. Se llama al soltar el archivo o al fallar. */
+  /** Quita el marco de la descarga y detiene el latido (si no se detuvo ya). Al soltar el archivo o al fallar. */
   cerrar(): void;
 }
 
@@ -73,6 +74,18 @@ export async function abrirDescargaEnFlujo(
 
     const canal = new MessageChannel();
     const id = crypto.randomUUID();
+    // El service worker le avisa a la página (solo el id) cuando la descarga terminó: ahí se
+    // detiene el latido. El oyente va antes de abrir, para no perder el aviso.
+    const detener = () => {
+      clearInterval(latido);
+      navigator.serviceWorker.removeEventListener("message", alAvisar);
+    };
+    const alAvisar = (mensaje: MessageEvent) => {
+      const dato = mensaje.data as { tipo?: string; id?: string } | null;
+      if (dato?.tipo === "terminada" && dato.id === id) detener();
+    };
+    navigator.serviceWorker.addEventListener("message", alAvisar);
+    navigator.serviceWorker.startMessages?.();
     servidor.postMessage({ tipo: "abrir", id }, [canal.port2]);
 
     // La navegación (y no un `<a download>`) es lo que atraviesa el service worker en Chromium y en
@@ -88,7 +101,7 @@ export async function abrirDescargaEnFlujo(
     );
     const cancelar = () => servidor.postMessage({ tipo: "cancelar", id });
     const cerrar = () => {
-      clearInterval(latido);
+      detener();
       marco.remove();
     };
     document.body.append(marco);

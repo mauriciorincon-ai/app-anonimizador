@@ -30,17 +30,30 @@ class ServiceWorkerFalso extends EventTarget {
   }
 }
 
+/** El `navigator.serviceWorker` de la página: registra, y recibe los avisos del service worker. */
+class ContenedorFalso extends EventTarget {
+  register: ReturnType<typeof vi.fn>;
+  constructor(registro: unknown | (() => Promise<unknown>)) {
+    super();
+    this.register = vi.fn(
+      typeof registro === "function"
+        ? (registro as () => Promise<unknown>)
+        : async () => registro,
+    );
+  }
+  /** Lo que el service worker le manda a la página. */
+  avisar(datos: unknown) {
+    this.dispatchEvent(new MessageEvent("message", { data: datos }));
+  }
+}
+
 function instalar(registro: unknown | (() => Promise<unknown>)) {
+  const contenedor = new ContenedorFalso(registro);
   Object.defineProperty(navigator, "serviceWorker", {
     configurable: true,
-    value: {
-      register: vi.fn(
-        typeof registro === "function"
-          ? (registro as () => Promise<unknown>)
-          : async () => registro,
-      ),
-    },
+    value: contenedor,
   });
+  return contenedor;
 }
 
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -113,6 +126,32 @@ describe("abrirDescargaEnFlujo", () => {
     const antes = limpiezas.mock.calls.length;
     abierta!.cerrar();
     expect(limpiezas.mock.calls.length).toBeGreaterThan(antes);
+    abierta!.puerto.close();
+    sw.mensajes[0].puertos[0].close();
+  });
+
+  it("el latido se detiene cuando el service worker avisa que la descarga terminó, no al soltar el archivo", async () => {
+    const sw = new ServiceWorkerFalso("activated");
+    const contenedor = instalar({ installing: null, waiting: null, active: sw });
+    const limpiezas = vi.spyOn(globalThis, "clearInterval");
+    const promesa = abrirDescargaEnFlujo(2_000);
+    await esperar(20);
+    const { id } = sw.mensajes[0].datos as { id: string };
+    sw.mensajes[0].puertos[0].postMessage({ tipo: "servido" });
+    const abierta = await promesa;
+
+    // Un aviso de otra descarga, o de otro tipo, no lo detiene.
+    contenedor.avisar({ tipo: "terminada", id: "otra" });
+    contenedor.avisar({ tipo: "otra-cosa", id });
+    contenedor.avisar(null);
+    expect(limpiezas).not.toHaveBeenCalled();
+
+    contenedor.avisar({ tipo: "terminada", id });
+    expect(limpiezas).toHaveBeenCalledTimes(1);
+    // El marco sigue hasta que se suelte el archivo; soltarlo no vuelve a tocar el latido de más.
+    expect(document.querySelector("iframe")).not.toBeNull();
+    abierta!.cerrar();
+    expect(document.querySelector("iframe")).toBeNull();
     abierta!.puerto.close();
     sw.mensajes[0].puertos[0].close();
   });
