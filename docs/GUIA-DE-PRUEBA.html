@@ -781,8 +781,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
           <li data-origen="heredado">
             <input type="checkbox" id="c4" /><label for="c4"
               >Busca <code>diagnostico</code> y <code>grupo_etnico</code>:
-              categoría <strong>«Dato sensible · art. 5»</strong>, certeza
-              <strong>«Sin confirmar»</strong> y
+              categoría <strong>«Dato sensible (Ley 1581 · RGPD)»</strong>,
+              certeza <strong>«Sin confirmar»</strong> y
               <strong>«sin muestra»</strong> en la última columna. Ningún
               cálculo puede confirmar que un código es un diagnóstico; solo el
               nombre de la columna lo sugiere.
@@ -4176,10 +4176,13 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil jerarqui
               guardar su bóveda en un archivo de alto volumen, y qué hacer (es
               el límite declarado, no un fallo). En el Mac del autor (Chromium,
               producción, guardado por el camino de la memoria) el diagnóstico
-              tardó 109 s, la transformación 283 s y la escritura 267 s, con un
-              pico de 4,9 GB de memoria de la pestaña (un techo, no la memoria
-              viva). Cierra otras pestañas antes y vigila el pico —en Chrome,
-              Shift+Esc abre su administrador de tareas—:
+              tardó 83 s, la transformación 280 s y la escritura 261 s (unos 10
+              minutos), con un pico de 4,5 GB de memoria de la pestaña (un
+              techo, no la memoria viva); el regreso de ese mismo archivo, con
+              su bóveda, tardó otros 3,4 minutos (71 s leyendo el devuelto y 132
+              s restaurando y escribiendo, con picos de 2,5 y 1,3 GB). Cierra
+              otras pestañas antes y vigila el pico —en Chrome, Shift+Esc abre
+              su administrador de tareas—:
               <strong>no debe pasar de los varios GB libres de tu equipo</strong
               >. Con Chrome o Edge, «Elegir dónde guardarlo» evita armar 1,3 GB
               en la memoria. Si tu equipo es más chico y el navegador cierra la
@@ -4213,12 +4216,14 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
         <div class="diferido">
           <p>
             <strong>Pendiente de decisión del dueño (no descartado):</strong>
-            bajar el pico de memoria (4,9 GB a 5 millones de filas). En Firefox
-            y WebKit, con 1 millón de filas, la descarga por trozos no baja el
-            pico de forma distinguible del ruido (una corrida por celda; cifras
-            por pasada en el manual, sección 9): lo que cambia es que el archivo
-            ya no tiene que caber en la pestaña. Desde el S9, un JSON de más de
-            20 millones de celdas también se lee por pasadas (bloque
+            bajar el pico de memoria (4,5 GB a 5 millones de filas; no bajó de
+            forma medible, porque bajarlo a 2,5 GB cambiaría el riesgo exacto
+            por uno estimado). En Firefox y WebKit, con 1 millón de filas, la
+            descarga por trozos no baja el pico de forma distinguible del ruido
+            (una corrida por celda; cifras por pasada en el manual, sección 9):
+            lo que cambia es que el archivo ya no tiene que caber en la pestaña.
+            Desde el S9, un JSON de más de 20 millones de celdas también se lee
+            por pasadas (bloque
             <strong>AJ</strong>). Y hay límites que no son una decisión: Excel
             conserva su tope de 150 MB, el archivo restaurado se arma en
             memoria, y en este modo no se miden la utilidad ni las colisiones de
@@ -4290,22 +4295,22 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               <code>geschlecht</code> y <code>nationalite</code> salen como
               <strong>«Cuasi-identificador»</strong> por el encabezado;
               <code>diagnose</code> y <code>casier_judiciaire</code>, como
-              <strong>«Dato sensible · art. 5»</strong>, y su muestra dice «sin
-              muestra». <code>geschlecht</code>, <code>nationalite</code>,
-              <code>diagnose</code> y <code>casier_judiciaire</code> traen la
-              certeza <strong>«Sin confirmar»</strong>: la conclusión se apoya
-              en el nombre de la columna, no en los valores (la nota cita
+              <strong>«Dato sensible (Ley 1581 · RGPD)»</strong>, y su muestra
+              dice «sin muestra». <code>geschlecht</code>,
+              <code>nationalite</code>, <code>diagnose</code> y
+              <code>casier_judiciaire</code> traen la certeza
+              <strong>«Sin confirmar»</strong>: la conclusión se apoya en el
+              nombre de la columna, no en los valores (la nota cita
               <em>«RGPD art. 9 — salud, origen étnico o racial…»</em> o
               <em
                 >«RGPD art. 10 — los datos de condenas e infracciones
                 penales…»</em
               >). <code>geburtsdatum</code> y <code>code_postal</code> traen
               <strong>«Por su forma»</strong>, porque los valores dan la forma
-              (una fecha, un número) y el encabezado los sube de categoría. Una
-              nota de texto: la insignia «Dato sensible · art. 5» es el nombre
-              de la categoría de Velo (el art. 5 de la ley colombiana); los
-              artículos del RGPD están en la nota de cada columna. Si eso te
-              confunde en un archivo europeo, es un hallazgo de texto.
+              (una fecha, un número) y el encabezado los sube de categoría. La
+              insignia nombra las dos leyes y los artículos están en la nota de
+              cada columna y en el informe descargable (Ley 1581 art. 5, RGPD
+              art. 9 y 10).
               <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
@@ -4470,11 +4475,12 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
                 | grep -c -v -E '^ES[0-9]{22}$'</code
               >
               da <strong>0</strong>. Es un seudónimo que pasa el control general
-              del IBAN (ISO 13616, mod 97-10), no una cuenta real, y no
-              recalcula las claves nacionales que van dentro (el CCC español, la
-              clave RIB francesa): un sistema de destino que las valide lo
-              rechazaría. El ADR-016 y el manual lo declaran; si es tu caso, la
-              salida es un seudónimo hexadecimal o quitar la columna.
+              del IBAN (ISO 13616, mod 97-10), no una cuenta real. En España y
+              Francia recalcula también las claves nacionales que van dentro (el
+              CCC español, la clave RIB francesa); en los demás países no las
+              recalcula, y un sistema de destino que las valide lo rechazaría.
+              El ADR-016 y el manual lo declaran; si es tu caso, la salida es un
+              seudónimo hexadecimal o quitar la columna.
               <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>

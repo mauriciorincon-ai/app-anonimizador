@@ -241,9 +241,9 @@
         Velo — Blueprint de infraestructura <span class="badge">as-built</span>
       </h1>
       <p class="meta">
-        Ciclo: <strong>H1</strong> · Cerrado: <strong>2026-08-15</strong> ·
-        Sprints del ciclo: <strong>S001–S004</strong> · Última actualización:
-        <strong>2026-08-15</strong>
+        Ciclos: <strong>H1</strong> (cerrado <strong>2026-08-15</strong>,
+        S001–S004) y <strong>H2</strong> (construcción cerrada en el S012,
+        S005–S012) · Última actualización: <strong>2026-11-10</strong>
       </p>
       <p class="nota">
         <strong>Entregable obligatorio del CIERRE DE CICLO:</strong> el mapa
@@ -261,11 +261,15 @@
           >Este blueprint es más corto que el de cualquier otra app del
           portafolio, y esa es la noticia.</strong
         >
-        Velo no tiene base de datos, ni backend, ni servicio externo, ni IA.
-        Cada casilla que dice <span class="ninguna">NINGUNO</span> es una
-        decisión con su ADR detrás y, en tres casos, un gate mecánico que la
-        vigila. En un producto cuya promesa es
-        <em>«tus datos no salen de tu navegador»</em>,
+        <strong>La web de Velo</strong> no tiene base de datos, ni backend, ni
+        servicio externo, ni IA. Desde el S009 existe además
+        <strong>Velo local</strong>, un proceso opcional que corre en el equipo
+        de la persona (consola, API y puente a bases de datos, ADR-017): no se
+        despliega en ningún sitio, no es un servidor de Velo y no cambia nada de
+        lo que aquí se declara para la web. Cada casilla que dice
+        <span class="ninguna">NINGUNO</span> es una decisión con su ADR detrás
+        y, en tres casos, un gate mecánico que la vigila. En un producto cuya
+        promesa es <em>«tus datos no salen de tu navegador»</em>,
         <strong
           >la infraestructura que no existe es la que hace la promesa
           cumplible</strong
@@ -277,7 +281,7 @@
         <svg
           viewBox="0 0 960 500"
           role="img"
-          aria-label="Diagrama de infraestructura de Velo: GitHub despliega a Vercel, Vercel sirve la aplicación al navegador de la persona por HTTPS, y todo el procesamiento de datos ocurre dentro de ese navegador. No hay base de datos, ni backend, ni servicios externos, ni IA."
+          aria-label="Diagrama de infraestructura de la web de Velo: GitHub despliega a Vercel, Vercel sirve la aplicación al navegador de la persona por HTTPS, y todo el procesamiento de datos ocurre dentro de ese navegador. No hay base de datos, ni backend, ni servicios externos, ni IA. Velo local, que corre en el equipo de la persona, no aparece en el diagrama porque no forma parte del despliegue."
         >
           <defs>
             <marker
@@ -492,7 +496,7 @@
             y="430"
             text-anchor="middle"
           >
-            Backend / API con datos: NINGUNO
+            Backend en la nube: NINGUNO
           </text>
           <text
             class="detalle-caja detalle-ausencia"
@@ -500,7 +504,7 @@
             y="450"
             text-anchor="middle"
           >
-            sin servidor, sin BD, sin auth
+            la API local no se despliega (ADR-017)
           </text>
           <text
             class="detalle-caja detalle-ausencia"
@@ -606,9 +610,10 @@
                 GitHub <code>mauriciorincon-ai/app-anonimizador</code> (público)
               </td>
               <td>
-                Ruleset <code>main-protegida</code>, activa. Cuatro checks
+                Ruleset <code>main-protegida</code>, activa. Seis checks
                 requeridos: <code>anti-ia</code>, <code>quality</code>,
-                <code>e2e</code>, <code>lighthouse</code>. Además: PR
+                <code>e2e</code>, <code>lighthouse</code>,
+                <code>un-pr-vivo</code> y <code>puente</code>. Además: PR
                 obligatorio, borrado de rama vetado, force-push vetado. Sin push
                 directo a <code>main</code> — también lo bloquea un hook local.
               </td>
@@ -617,16 +622,20 @@
               <td>CI/CD</td>
               <td>GitHub Actions (repo público → minutos gratis sin tope)</td>
               <td>
-                Cuatro jobs. <code>anti-ia</code> corre
-                <strong>solo y primero</strong> (~40 s, sin
+                Seis checks. <code>anti-ia</code> corre
+                <strong>solo y primero</strong> (segundos, sin
                 <code>install</code>: solo lee <code>package.json</code> y el
                 lockfile) para ponerse rojo de inmediato.
-                <code>quality</code> (~1 min): typecheck, lint, tests con
-                cobertura, build, <code>pnpm audit</code>. <code>e2e</code> (~3
-                min) y <code>lighthouse</code> (~3 min) dependen de
-                <code>quality</code>. Vercel despliega por su cuenta en cada
-                push; el gate que importa es el de la ruleset, que impide el
-                merge.
+                <code>quality</code> (~3,5 min): typecheck, lint, tests con
+                cobertura, build, <code>pnpm audit</code>, barrido de enlaces.
+                <code>e2e</code> (~10 min) y <code>lighthouse</code> (~3 min)
+                dependen de <code>quality</code>. <code>puente</code> (~1 min,
+                desde el S009) prueba el puente de Velo local contra PostgreSQL
+                17 y SQL Server 2022 en contenedores de la propia CI, y
+                <code>un-pr-vivo</code> (segundos, desde 2026-11-01) falla si
+                hay un segundo PR abierto sin declararse complementario. Vercel
+                despliega por su cuenta en cada push; el gate que importa es el
+                de la ruleset, que impide el merge.
               </td>
             </tr>
             <tr>
@@ -637,8 +646,9 @@
               <td>
                 Subdominio del hosting
                 <strong>(dato privado — registro en la planeadora)</strong> ·
-                edge <code>iad1</code> (Washington D.C.). Next.js 16.3 App
-                Router, cinco rutas.
+                edge <code>iad1</code> (Washington D.C.). Next.js 16.4 App
+                Router, cinco rutas más <code>/conoce</code> (el brochure
+                estático).
                 <strong>Uso comercial: NO permitido por el plan Hobby</strong> —
                 el día que Velo se cobre, hay que pasar a Pro (US$20/mes). Está
                 declarado aquí para que la decisión sea consciente y no una
@@ -648,8 +658,8 @@
             <tr>
               <td>Base de datos</td>
               <td>
-                <span class="ninguna">NINGUNA</span> — local-first por diseño de
-                producto
+                <span class="ninguna">NINGUNA</span> en la web — local-first por
+                diseño de producto
               </td>
               <td>
                 Lo que en otra app sería una tabla, aquí son
@@ -666,7 +676,11 @@
                 <a href="../decisions/007-la-bitacora-archivo-propio.md"
                   >ADR-007</a
                 >. Sin RLS porque no hay filas ni servidor a los que
-                aplicársela.
+                aplicársela. <strong>Velo local</strong> (ADR-017) sí se conecta
+                a una base —PostgreSQL o SQL Server— pero solo a la que la
+                persona configura (<code>VELO_DB_URL</code> o la consola, jamás
+                un argumento ni un registro), desde su propio equipo, y escribe
+                en una tabla nueva que ella nombra: la de origen no se toca.
               </td>
             </tr>
             <tr>
@@ -700,6 +714,25 @@
               <td>
                 Sin cuentas no hay a quién escribirle, y sin backend no hay
                 quién escriba.
+              </td>
+            </tr>
+            <tr>
+              <td>Velo local (S009, ADR-017)</td>
+              <td>
+                Proceso en el equipo de la persona —Node 22— · sin hosting, sin
+                costo, sin cuenta
+              </td>
+              <td>
+                La consola (<code>pnpm velo …</code>), la API y el puente a
+                bases de datos son el mismo motor sin página. La API escucha
+                solo en <code>127.0.0.1:3301</code>, con un token por arranque y
+                el encabezado <code>Host</code> verificado; sin Sentry ni
+                telemetría; escribe solo donde la persona indica. Lo vigilan
+                <code>tests/unit/privacidad-local.test.ts</code> y, para los
+                mismos bytes que la web,
+                <code>local-igual-navegador.spec.ts</code>. El job
+                <code>puente</code> es lo único de la CI que levanta bases de
+                datos, y son contenedores efímeros del runner.
               </td>
             </tr>
             <tr>
@@ -939,6 +972,25 @@
                 job), Vercel Hobby con producción y previews públicas desde el
                 día 0, cero backend, cero base de datos, cero servicios
                 externos, cero IA. Ningún costo contraído.
+              </td>
+            </tr>
+            <tr>
+              <td>2026-11-10</td>
+              <td>H2 · S005–S010 y S012</td>
+              <td>
+                Lo que el H2 sumó a la infraestructura, sin servicios ni costo
+                nuevos. <strong>S005:</strong> el idioma (ES/EN) vive en memoria
+                y en <code>?lang=</code>, nada en el navegador.
+                <strong>S006–S008:</strong> JSON, limpieza de metadatos, ruido,
+                generalización óptima, RGPD y alto volumen, todo dentro del
+                worker. <strong>S009:</strong> Velo local (consola, API, puente)
+                y el job <code>puente</code> de la CI; ningún despliegue nuevo.
+                <strong>2026-11-01:</strong> el check
+                <code>un-pr-vivo</code> entra a la ruleset.
+                <strong>S010:</strong> sin infraestructura nueva.
+                <strong>S012:</strong> sin infraestructura nueva; el brochure
+                suma una sexta tarjeta con las ocho funcionalidades del roadmap
+                (22 en total).
               </td>
             </tr>
             <tr>
