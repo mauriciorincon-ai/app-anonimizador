@@ -14,6 +14,7 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 const EXPORT = "docs/brochure-export.json";
 const BROCHURE = "docs/BROCHURE.html";
@@ -132,5 +133,156 @@ describe("contrato brochure-export v1.0.0", () => {
     expect(FUGA.test(brochure), "el brochure publica una URL").toBe(false);
     expect(ficha.enlaces.produccion).toBeNull();
     expect(ficha.enlaces.razon).toBeTruthy();
+  });
+});
+
+// ── El esquema de CV Viva ──────────────────────────────────────────────────────────────────────
+//
+// La vitrina valida cada export con un zod estricto
+// (`app-hoja-de-vida/src/lib/vitrina/schemas.ts:154-171`, contrato v1.0.0). Este es su espejo, para
+// que un export que esa vitrina rechazaría falle AQUÍ, antes de entregarlo. Valida forma, no
+// vigencia: las cifras las sostiene cada medición. Si el contrato sube de versión, se actualiza.
+
+const fechaISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const noVacio = z.string().min(1);
+const esquemaDeLaVitrina = z
+  .object({
+    _schema: z.record(z.string(), z.unknown()).optional(),
+    schema_version: z.string().regex(/^\d+\.\d+\.\d+$/),
+    actualizado: fechaISO,
+    app: z
+      .object({
+        slug: z
+          .string()
+          .min(1)
+          .max(60)
+          .regex(/^[a-z0-9-]+$/),
+        nombre: noVacio,
+        ciclo: noVacio,
+        estado: z.enum(["inicial", "sellado"]),
+        sellado_en: fechaISO.nullable(),
+        sprints_cerrados: z.number().int().nonnegative(),
+        version_repo: noVacio,
+      })
+      .strict(),
+    promesa: z
+      .object({
+        tagline: noVacio,
+        intro: noVacio,
+        para_quien: noVacio,
+        diferencial: noVacio,
+      })
+      .strict(),
+    funcionalidades: z
+      .object({
+        total: z.number().int().nonnegative(),
+        fuente_del_conteo: noVacio,
+        descartadas: z
+          .array(
+            z
+              .object({
+                id: noVacio,
+                nombre: noVacio,
+                fecha: fechaISO,
+                razon: noVacio,
+              })
+              .strict(),
+          )
+          .default([]),
+        grupos: z
+          .array(
+            z
+              .object({
+                orden: z.number().int().positive(),
+                estrella: z.boolean(),
+                nombre: noVacio,
+                linea: noVacio,
+                features: z
+                  .array(
+                    z
+                      .object({
+                        id: noVacio,
+                        nombre: noVacio,
+                        que_hace: noVacio,
+                        seccion_manual: noVacio,
+                      })
+                      .strict(),
+                  )
+                  .min(1),
+              })
+              .strict(),
+          )
+          .min(1),
+      })
+      .strict()
+      .superRefine((f, ctx) => {
+        const suma = f.grupos.reduce((acc, g) => acc + g.features.length, 0);
+        if (suma !== f.total)
+          ctx.addIssue({
+            code: "custom",
+            path: ["total"],
+            message: `${f.total} ≠ ${suma}`,
+          });
+      }),
+    metricas: z
+      .array(
+        z
+          .object({
+            clave: noVacio,
+            etiqueta: noVacio,
+            valor: z.number(),
+            unidad: z.string(),
+            fuente: z.enum(["medido", "calculada", "declarado", "estimacion"]),
+            detalle: noVacio,
+          })
+          .strict(),
+      )
+      .min(1),
+    stack: z
+      .array(z.object({ nombre: noVacio, papel: noVacio }).strict())
+      .min(1),
+    privacidad: z.object({ detalle: noVacio }).catchall(z.boolean()),
+    enlaces: z
+      .object({
+        produccion: z.null(),
+        razon: noVacio,
+        repositorio: z.null(),
+        razon_repositorio: noVacio,
+        brochure_archivo: noVacio,
+        brochure_ruta_local: noVacio,
+      })
+      .strict(),
+  })
+  .strict();
+
+describe("el esquema estricto de CV Viva", () => {
+  it("acepta el export tal como está", () => {
+    const resultado = esquemaDeLaVitrina.safeParse(ficha);
+    expect(
+      resultado.success ? [] : resultado.error.issues,
+      "la vitrina rechazaría este export",
+    ).toEqual([]);
+  });
+
+  it("las 22 de la VISION, y ninguna de menos: 14 del MVP y 8 del roadmap", () => {
+    const ids = ficha.funcionalidades.grupos.flatMap((g) =>
+      g.features.map((f) => f.id),
+    );
+    expect(ids.filter((id) => /^C\d+$/.test(id))).toHaveLength(14);
+    expect(ids.filter((id) => /^R\d+$/.test(id))).toHaveLength(8);
+    expect(ficha.funcionalidades.total).toBe(22);
+  });
+
+  it("rechaza un total desincronizado, una métrica sin fuente y un enlace colado", () => {
+    const copia = () =>
+      JSON.parse(JSON.stringify(ficha)) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const total = copia();
+    total.funcionalidades.total += 1;
+    const sinFuente = copia();
+    delete sinFuente.metricas[0].fuente;
+    const enlace = copia();
+    enlace.enlaces.produccion = "https://ejemplo.invalido";
+    for (const roto of [total, sinFuente, enlace])
+      expect(esquemaDeLaVitrina.safeParse(roto).success).toBe(false);
   });
 });

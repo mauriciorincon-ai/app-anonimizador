@@ -12,14 +12,14 @@
     "enlaces.produccion": "null cuando la app no tiene URL pública. `razon` explica por qué, y es lo que la vitrina muestra en lugar del enlace. Nunca se rellena con un enlace de repositorio ni con una promesa."
   },
   "schema_version": "1.0.0",
-  "actualizado": "2026-11-01",
+  "actualizado": "2026-11-10",
   "app": {
     "slug": "anonimizador",
     "nombre": "Velo",
-    "ciclo": "H1",
+    "ciclo": "H2",
     "estado": "inicial",
     "sellado_en": null,
-    "sprints_cerrados": 4,
+    "sprints_cerrados": 11,
     "version_repo": "0.1.0"
   },
   "promesa": {
@@ -29,7 +29,7 @@
     "diferencial": "Las herramientas gratuitas de navegador anonimizan en un solo sentido, y las empresariales cierran el ciclo en servidores ajenos y a precio corporativo. Velo hace el viaje de ida y vuelta sin salir de tu navegador: entregas datos disfrazados y, con tu bóveda cifrada, recuperas los reales. No usa inteligencia artificial, así que el mismo archivo da siempre el mismo resultado, byte por byte."
   },
   "funcionalidades": {
-    "total": 14,
+    "total": 22,
     "fuente_del_conteo": "docs/MANUAL-DE-USO.md",
     "descartadas": [],
     "grupos": [
@@ -156,17 +156,73 @@
             "seccion_manual": "7. La bitácora"
           }
         ]
+      },
+      {
+        "orden": 6,
+        "estrella": false,
+        "nombre": "Más allá de la tabla",
+        "linea": "Más formatos, más técnicas y tu propia máquina: lo que se sumó para el producto completo.",
+        "features": [
+          {
+            "id": "R1",
+            "nombre": "Tablas JSON y JSON Lines",
+            "que_hace": "Un arreglo de objetos o un archivo JSON Lines se abre como una tabla: cada ruta distinta es una columna. Sale el mismo formato que entró, con las claves en su orden y los números exactos; lo que un JSON tiene y una tabla no se avisa, no se inventa.",
+            "seccion_manual": "1. Trae tu tabla · Si tu archivo es un JSON"
+          },
+          {
+            "id": "R2",
+            "nombre": "Limpia los metadatos de PDF e imágenes",
+            "que_hace": "Quita lo que un archivo dice de sí mismo —autor, cámara, ubicación, fechas, versiones anteriores— de PDF, JPEG, PNG, WebP, HEIC, AVIF y del video de una Live Photo, y entrega un certificado de lo que quitó. No toca el texto de las páginas ni lo que se ve en la imagen.",
+            "seccion_manual": "8. PDF e imágenes: limpiar lo que el archivo dice de sí mismo"
+          },
+          {
+            "id": "R3",
+            "nombre": "Generalización óptima con escaleras de fábrica",
+            "que_hace": "Busca la generalización que pierde menos información y aun así llega al k (el algoritmo OLA), con escaleras de fábrica que citan su fuente y un tope de supresión opcional. Las filas suprimidas salen de la copia entregada, nunca del original.",
+            "seccion_manual": "4. Transforma: el taller · Cómo llegar al k: Mondrian o la generalización óptima"
+          },
+          {
+            "id": "R4",
+            "nombre": "Ruido con garantía: privacidad diferencial local",
+            "que_hace": "Tres técnicas agregan un ruido medido a cada celda y la política dice el ε y su alcance. El azar sale de tu llave: el mismo archivo con la misma llave da el mismo ruido, byte por byte. «Garantía» nombra un ε medido; no promete que el archivo sea anónimo.",
+            "seccion_manual": "4. Transforma: el taller · Ruido con garantía: privacidad diferencial local"
+          },
+          {
+            "id": "R5",
+            "nombre": "La política europea: RGPD",
+            "que_hace": "Una política de fábrica para datos europeos: reconoce el DNI y el NIE de España, el NIR de Francia, el codice fiscale, el Steuer-IdNr, el BSN, el PESEL y el IBAN, y suprime las categorías especiales (art. 9) y las condenas (art. 10). Reduce el riesgo y lo mide; no certifica que cumplas el reglamento.",
+            "seccion_manual": "10. La política RGPD"
+          },
+          {
+            "id": "R6",
+            "nombre": "Archivos más grandes que la pestaña",
+            "que_hace": "Un CSV de más de 20 millones de celdas se diagnostica, se anonimiza y vuelve por pasadas, con los mismos bytes que en memoria; un JSON grande también. El riesgo sigue siendo exacto y lo que no cabe en los topes se dice, nunca se estima.",
+            "seccion_manual": "9. Archivos enormes: el modo de alto volumen"
+          },
+          {
+            "id": "R7",
+            "nombre": "Velo en tu equipo: consola y API",
+            "que_hace": "El mismo motor como un proceso en tu máquina: una consola para diagnosticar, anonimizar y restaurar, y una API que escucha solo en 127.0.0.1 con un token por arranque. Sin telemetría, escribe solo donde tú indicas y da los mismos bytes que la web.",
+            "seccion_manual": "11. Velo en tu equipo: la consola, las bases de datos y la API"
+          },
+          {
+            "id": "R8",
+            "nombre": "El puente a tu base de datos",
+            "que_hace": "Velo local lee una tabla de PostgreSQL o de SQL Server, la anonimiza y escribe el resultado en otra tabla que tú nombras. La conexión no viaja en un argumento ni en un registro y la tabla de origen no se toca; la tabla restaurada va en claro y Velo lo avisa.",
+            "seccion_manual": "11. Velo en tu equipo: la consola, las bases de datos y la API"
+          }
+        ]
       }
     ]
   },
   "metricas": [
     {
       "clave": "funcionalidades",
-      "etiqueta": "Funcionalidades del MVP",
-      "valor": 14,
+      "etiqueta": "Funcionalidades",
+      "valor": 22,
       "unidad": "funcionalidades",
       "fuente": "medido",
-      "detalle": "Contadas contra docs/MANUAL-DE-USO.md, con la tabla de mapeo en sprints/ENTREGA-brochure-summary.md. El brochure y la ruta /conoce documentan la app y no se cuentan a sí mismos."
+      "detalle": "Las 22 de la VISION v1.0.0, todas construidas: 14 del MVP y 8 del roadmap (JSON, metadatos de PDF e imágenes, generalización óptima, ruido con garantía, RGPD, alto volumen, Velo local y puente a bases de datos). Contadas contra docs/MANUAL-DE-USO.md y su equivalente en inglés; la tabla de mapeo del MVP está en sprints/ENTREGA-brochure-summary.md. El brochure y la ruta /conoce documentan la app y no se cuentan a sí mismos."
     },
     {
       "clave": "pantallas",
@@ -179,34 +235,34 @@
     {
       "clave": "pruebas_unitarias",
       "etiqueta": "Pruebas unitarias y de integración",
-      "valor": 964,
+      "valor": 2625,
       "unidad": "pruebas",
       "fuente": "medido",
-      "detalle": "Salida de `pnpm test` el 2026-11-01: 964 pruebas en 52 archivos. Un archivo y una prueba quedan omitidos por diseño."
+      "detalle": "Salida de `pnpm test` el 2026-11-10: 2.625 pruebas pasan en 115 archivos, y un archivo con una prueba queda omitido por diseño."
     },
     {
       "clave": "pruebas_e2e",
       "etiqueta": "Pruebas de extremo a extremo",
-      "valor": 203,
+      "valor": 290,
       "unidad": "pruebas",
       "fuente": "medido",
-      "detalle": "Salida de `pnpm test:e2e` el 2026-11-01 sobre el árbol del Sprint 005: 203 pasan y 3 se omiten por diseño (206 declaradas), porque el archivo de 500.000 filas y la bitácora de 2.000 entradas solo corren en escritorio. En escritorio y móvil, incluidas axe en los dos temas y en los dos idiomas, la garantía de red, las del despliegue por recorrido del brochure —entre ellas la que exige que la página no mueva el scroll por su cuenta— y las del cambio de idioma: el conmutador, `?lang=`, sin una sola petición y sin nada guardado en el navegador."
+      "detalle": "Salida de `playwright test --list` el 2026-11-10: 290 pruebas declaradas en 21 archivos, en escritorio y móvil. Incluyen axe en los dos temas y en los dos idiomas, la garantía de red, el recorrido completo en inglés que falla ante una sola palabra en español, las del despliegue por recorrido del brochure y las del cambio de idioma: el conmutador, `?lang=`, sin una sola petición y sin nada guardado en el navegador. Algunas solo corren en escritorio por el tamaño de sus archivos."
     },
     {
       "clave": "cobertura_lineas",
       "etiqueta": "Cobertura de líneas",
-      "valor": 95.89,
+      "valor": 97.33,
       "unidad": "%",
       "fuente": "medido",
-      "detalle": "v8 sobre src/engine y src/lib, con umbral de 80 % por glob en vitest.config.ts. 1.705 de 1.778 líneas, medidas el 2026-11-01."
+      "detalle": "v8 sobre src/engine y src/lib, con umbral de 80 % por glob en vitest.config.ts. 4.731 de 4.861 líneas con sentencias, medidas el 2026-11-10."
     },
     {
       "clave": "dependencias_runtime",
       "etiqueta": "Dependencias en tiempo de ejecución",
-      "valor": 8,
+      "valor": 13,
       "unidad": "paquetes",
       "fuente": "medido",
-      "detalle": "next, react, react-dom, papaparse, xlsx, zod, pino y @sentry/nextjs. Ninguna es un SDK de IA generativa, y un job del CI audita package.json y el lockfile contra tres familias vetadas: una dependencia transitiva cuenta igual que una directa."
+      "detalle": "En `dependencies`: next, react, react-dom, papaparse, xlsx, zod, pino y @sentry/nextjs para la web; pdf-lib para los metadatos de PDF; pg y mssql para Velo local; y @electric-sql/pglite y su socket, que solo sirven a la base de prueba del kit. Ninguna es un SDK de IA generativa, y un job del CI audita package.json y el lockfile contra tres familias vetadas: una dependencia transitiva cuenta igual que una directa."
     },
     {
       "clave": "llamadas_de_red_con_datos",
@@ -222,7 +278,7 @@
       "valor": 0,
       "unidad": "servicios",
       "fuente": "medido",
-      "detalle": "Sin base de datos, sin API con datos y sin proveedor externo. El hosting sirve la aplicación; los datos viven y mueren en la pestaña, y al recargar no queda nada."
+      "detalle": "Sin base de datos, sin API con datos y sin proveedor externo. El hosting sirve la aplicación; los datos viven y mueren en la pestaña, y al recargar no queda nada. Velo local (la consola y la API) corre en el equipo del usuario, solo en 127.0.0.1, y no se despliega."
     },
     {
       "clave": "costo_operacion_mensual",
@@ -234,27 +290,27 @@
     },
     {
       "clave": "filas_procesadas",
-      "etiqueta": "Filas procesadas sin bloquear la pestaña",
-      "valor": 500000,
+      "etiqueta": "Filas procesadas de punta a punta",
+      "valor": 5000000,
       "unidad": "filas",
       "fuente": "medido",
-      "detalle": "500.000 filas por 24 columnas —unos 130 MB— en unos pocos segundos y con cero tareas largas en el hilo principal, medido por un e2e permanente. El trabajo pesado ocurre en un hilo aparte."
+      "detalle": "5.000.000 de filas por 24 columnas —1,36 GB— en Chromium: la ida en unos 10 minutos y el regreso con su bóveda en 3,4, con el trabajo pesado en un hilo aparte y el riesgo exacto. Medido con tests/medicion/pico-alto-volumen.mjs. Hasta 500.000 filas, un e2e permanente mide además que no haya tareas largas en el hilo principal."
     },
     {
       "clave": "peso_brochure",
       "etiqueta": "Peso de este brochure",
-      "valor": 526384,
+      "valor": 541439,
       "unidad": "bytes",
       "fuente": "medido",
-      "detalle": "Archivo autocontenido, sin una sola petición externa. `wc -c docs/BROCHURE.html` el 2026-11-01. Subió desde 484.920 por el diccionario en inglés (unos 33 KB) y el conmutador de idioma. De esos bytes, 360 KB son las diez capturas de la app —cinco pantallas en tema claro y oscuro, en WebP dentro de `data:` URI—: es lo que cuesta que el brochure enseñe el producto y siga abriéndose con doble clic sin internet. No embebe tipografías: usa las del sistema."
+      "detalle": "Archivo autocontenido, sin una sola petición externa. `wc -c docs/BROCHURE.html` el 2026-11-10. Subió desde 526.384 por la sexta tarjeta, con las ocho funcionalidades que se sumaron al MVP, y por su texto en inglés. De esos bytes, 360 KB son las diez capturas de la app —cinco pantallas en tema claro y oscuro, en WebP dentro de `data:` URI—: es lo que cuesta que el brochure enseñe el producto y siga abriéndose con doble clic sin internet. No embebe tipografías: usa las del sistema."
     },
     {
       "clave": "decisiones_registradas",
       "etiqueta": "Decisiones de arquitectura registradas",
-      "valor": 9,
+      "valor": 17,
       "unidad": "ADR",
       "fuente": "medido",
-      "detalle": "Archivos de decisions/, desde «cero IA generativa» hasta «Velo en dos idiomas: los motores nombran, la interfaz dice»."
+      "detalle": "Archivos de decisions/, desde «cero IA generativa» hasta «Velo local: el mismo motor como un proceso en el equipo del usuario»."
     }
   ],
   "stack": [

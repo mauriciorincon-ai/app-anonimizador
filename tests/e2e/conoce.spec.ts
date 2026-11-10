@@ -82,10 +82,10 @@ test("llegan cerradas, cada una se despliega en su turno y quedar atrás las rec
 }) => {
   await page.goto("/conoce");
   const botones = page.locator(".tarjeta-boton");
-  await expect(botones).toHaveCount(5);
+  await expect(botones).toHaveCount(6);
 
   // Al primer frame, ninguna abierta: nadie lee lo que no pidió.
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     await expect(botones.nth(i)).toHaveAttribute("aria-expanded", "false");
   }
 
@@ -119,7 +119,7 @@ test("llegan cerradas, cada una se despliega en su turno y quedar atrás las rec
 
   // Y subiendo, volver al principio encuentra la página como estaba.
   await recorrer(page, "arriba");
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     await expect(
       botones.nth(i),
       `la tarjeta ${i + 1} siguió abierta al subir`,
@@ -224,7 +224,7 @@ test("una tarjeta que se despliega no mueve su propia cabecera", async ({
   const botones = page.locator(".tarjeta-boton");
   const tarjetas = page.locator(".tarjeta");
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     const boton = botones.nth(i);
     await boton.scrollIntoViewIfNeeded();
     // La tarjeta pudo entrar con su coreografía (18 px de `alzar`) y el recorrido pudo
@@ -573,14 +573,15 @@ test.describe("con prefers-reduced-motion", () => {
       "1",
     );
 
-    // Las cinco tarjetas y sus títulos, sin un solo frame de movimiento.
-    await expect(page.locator(".tarjeta")).toHaveCount(5);
+    // Las seis tarjetas y sus títulos, sin un solo frame de movimiento.
+    await expect(page.locator(".tarjeta")).toHaveCount(6);
     for (const titulo of [
       "Descubre quién queda expuesto",
       "Tú decides el tratamiento",
       "Disfraza sin romper los datos",
       "Mide el riesgo con cifras exactas",
       "Entrega, recupera y deja constancia",
+      "Más allá de la tabla",
     ]) {
       await expect(
         page.getByText(titulo, { exact: false }).first(),
@@ -613,7 +614,7 @@ test.describe("con prefers-reduced-motion", () => {
     await expect(page.locator(".viaje-animado")).toBeHidden();
 
     // El conteo del pie, quieto desde el primer byte.
-    await expect(page.locator("#conteo")).toHaveText("14");
+    await expect(page.locator("#conteo")).toHaveText("22");
   });
 });
 
@@ -635,9 +636,9 @@ test("el mapa enlaza rutas que existen de verdad", async ({
 
 test("el pie declara el conteo y el estado del brochure", async ({ page }) => {
   await page.goto("/conoce");
-  await expect(page.locator("#conteo")).toHaveText("14");
+  await expect(page.locator("#conteo")).toHaveText("22");
   await expect(page.locator("footer .sr-only")).toHaveText(
-    "14 funcionalidades",
+    "22 funcionalidades",
   );
   await expect(page.getByText(/Brochure inicial/)).toBeVisible();
 });
@@ -716,8 +717,8 @@ test("?lang=en abre en inglés: titular, html[lang], título de la pestaña y co
   await expect(
     page.locator(".tarjeta").first().locator(".detalle"),
   ).toHaveAttribute("aria-label", "Find out who is exposed — details");
-  await expect(page.locator("footer .sr-only")).toHaveText("14 features");
-  await expect(page.locator("#conteo")).toHaveText("14");
+  await expect(page.locator("footer .sr-only")).toHaveText("22 features");
+  await expect(page.locator("#conteo")).toHaveText("22");
 
   // El conmutador dice dónde se está con tres señales a la vez: aria-pressed, subrayado y peso.
   const grupo = page.getByRole("group", { name: "Idioma · Language" });
@@ -816,8 +817,8 @@ test("cambiar de idioma no mueve la composición ni el funcionamiento de las tar
   // Y las tarjetas siguen respondiendo igual en inglés: cerradas al llegar, y el toque abre.
   await page.getByRole("button", { name: "English" }).click();
   const botones = page.locator(".tarjeta-boton");
-  await expect(botones).toHaveCount(5);
-  for (let i = 0; i < 5; i++) {
+  await expect(botones).toHaveCount(6);
+  for (let i = 0; i < 6; i++) {
     await expect(botones.nth(i)).toHaveAttribute("aria-expanded", "false");
   }
   await botones.nth(2).click();
@@ -876,13 +877,14 @@ test.describe("en inglés, con prefers-reduced-motion", () => {
         ),
     ).toBe(true);
 
-    await expect(page.locator(".tarjeta")).toHaveCount(5);
+    await expect(page.locator(".tarjeta")).toHaveCount(6);
     for (const titulo of [
       "Find out who is exposed",
       "You decide the treatment",
       "Disguise the data without breaking it",
       "Measure risk with exact figures",
       "Deliver, recover and keep a record",
+      "Beyond the table",
     ]) {
       await expect(
         page.getByText(titulo, { exact: false }).first(),
@@ -918,8 +920,8 @@ test.describe("en inglés, con prefers-reduced-motion", () => {
     await expect(page.locator(".viaje-animado")).toBeHidden();
 
     // El conteo del pie, quieto desde el primer byte, y su texto accesible en inglés.
-    await expect(page.locator("#conteo")).toHaveText("14");
-    await expect(page.locator("footer .sr-only")).toHaveText("14 features");
+    await expect(page.locator("#conteo")).toHaveText("22");
+    await expect(page.locator("footer .sr-only")).toHaveText("22 features");
     await expect(page.getByText(/Initial brochure/)).toBeVisible();
   });
 });
