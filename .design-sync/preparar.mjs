@@ -24,6 +24,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -66,13 +67,35 @@ const PRIMITIVAS = [
   "zona-de-carga.tsx",
   "iconos.tsx",
 ];
+// Desde el S5 (bilingüe) las primitivas piden su texto a `./texto` (`Rico`, `useT`): un ayudante sin
+// vista, no una primitiva. Se conserva al podar, pero en la copia se MUDA a `src/lib/`: dentro de
+// `srcDir` el converter lo contaría como componentes nuevos (`Rico`, `RicoMensaje`) sin tarjeta.
+const AYUDANTE = "texto.tsx";
 const dirComponentes = join(PKG, "src/components");
 let podados = 0;
 for (const archivo of readdirSync(dirComponentes)) {
-  if (PRIMITIVAS.includes(archivo)) continue;
+  if (PRIMITIVAS.includes(archivo) || archivo === AYUDANTE) continue;
   rmSync(join(dirComponentes, archivo), { recursive: true, force: true });
   podados++;
 }
+renameSync(
+  join(dirComponentes, AYUDANTE),
+  join(PKG, "src/lib", "texto-ds.tsx"),
+);
+for (const archivo of PRIMITIVAS) {
+  const ruta = join(dirComponentes, archivo);
+  const fuente = readFileSync(ruta, "utf8");
+  writeFileSync(
+    ruta,
+    fuente.replace(
+      /(["'])(?:\.\/|@\/components\/)texto\1/g,
+      "$1@/lib/texto-ds$1",
+    ),
+  );
+}
+console.log(
+  `  ${podados} archivos de components/ podados; ${AYUDANTE} mudado a lib/`,
+);
 // `src/app/` no aporta componentes (el scan está acotado a `src/components`) y sí trae next/font.
 rmSync(join(PKG, "src/app"), { recursive: true, force: true });
 

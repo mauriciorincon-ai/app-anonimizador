@@ -46,6 +46,9 @@
     },
     "InsigniaDeCerteza": {
       "cardMode": "column"
+    },
+    "InsigniaDeCategoria": {
+      "cardMode": "column"
     }
   },
   "readmeHeader": ".design-sync/conventions.md"
