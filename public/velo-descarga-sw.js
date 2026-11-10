@@ -105,6 +105,7 @@ self.addEventListener("fetch", (evento) => {
   // La descarga se acabó (entera, abortada o cortada): se saca de las que están en curso y se le
   // avisa a la página, que deja de mandar el latido. El aviso lleva el id y nada más.
   const concluir = () => {
+    if (terminado) return;
     terminado = true;
     enCurso.delete(id);
     cliente?.postMessage({ tipo: "terminada", id });

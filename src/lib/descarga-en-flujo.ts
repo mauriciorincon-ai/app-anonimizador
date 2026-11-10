@@ -65,6 +65,7 @@ export async function abrirDescargaEnFlujo(
 ): Promise<DescargaAbierta | null> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
     return null;
+  let deshacer = () => {};
   try {
     const registro = await navigator.serviceWorker.register(SCRIPT, {
       scope: AMBITO,
@@ -74,6 +75,10 @@ export async function abrirDescargaEnFlujo(
 
     const canal = new MessageChannel();
     const id = crypto.randomUUID();
+    const latido = setInterval(
+      () => servidor.postMessage({ tipo: "latido" }),
+      LATIDO_DEL_SERVICE_WORKER_MS,
+    );
     // El service worker le avisa a la página (solo el id) cuando la descarga terminó: ahí se
     // detiene el latido. El oyente va antes de abrir, para no perder el aviso.
     const detener = () => {
@@ -84,6 +89,8 @@ export async function abrirDescargaEnFlujo(
       const dato = mensaje.data as { tipo?: string; id?: string } | null;
       if (dato?.tipo === "terminada" && dato.id === id) detener();
     };
+    // Si algo lanza de aquí en adelante, el `catch` deshace lo que ya estaba puesto.
+    deshacer = detener;
     navigator.serviceWorker.addEventListener("message", alAvisar);
     navigator.serviceWorker.startMessages?.();
     servidor.postMessage({ tipo: "abrir", id }, [canal.port2]);
@@ -95,15 +102,12 @@ export async function abrirDescargaEnFlujo(
     marco.setAttribute("aria-hidden", "true");
     marco.tabIndex = -1;
     marco.src = `${AMBITO}${id}`;
-    const latido = setInterval(
-      () => servidor.postMessage({ tipo: "latido" }),
-      LATIDO_DEL_SERVICE_WORKER_MS,
-    );
     const cancelar = () => servidor.postMessage({ tipo: "cancelar", id });
     const cerrar = () => {
       detener();
       marco.remove();
     };
+    deshacer = cerrar;
     document.body.append(marco);
 
     const servido = await new Promise<boolean>((resolver) => {
@@ -123,6 +127,7 @@ export async function abrirDescargaEnFlujo(
     }
     return { puerto: canal.port1, cancelar, cerrar };
   } catch {
+    deshacer();
     return null;
   }
 }

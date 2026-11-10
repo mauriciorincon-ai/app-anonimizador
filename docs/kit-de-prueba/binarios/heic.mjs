@@ -37,14 +37,24 @@ const AQUI = dirname(fileURLToPath(import.meta.url));
 
 /** Lo que cambia entre HEIC y AVIF: la base, el tipo de elemento, su configuración y las marcas. */
 export const CODECS = {
-  heic: { base: "base.heic", elemento: "hvc1", configuracion: "hvcC", marcas: "mif1heicmiaf" },
-  avif: { base: "base.avif", elemento: "av01", configuracion: "av1C", marcas: "mif1avifmiaf" },
+  heic: {
+    base: "base.heic",
+    elemento: "hvc1",
+    configuracion: "hvcC",
+    marcas: "mif1heicmiaf",
+  },
+  avif: {
+    base: "base.avif",
+    elemento: "av01",
+    configuracion: "av1C",
+    marcas: "mif1avifmiaf",
+  },
 };
 
 /** Cajas hijas entre `desde` y `hasta` de un búfer (sin tamaños de 64 bits más allá de 4 GiB). */
 export function cajas(b, desde, hasta) {
   const lista = [];
-  for (let p = desde; p < hasta; ) {
+  for (let p = desde; p < hasta;) {
     let tamano = b.readUInt32BE(p);
     const tipo = b.toString("latin1", p + 4, p + 8);
     let datos = p + 8;
@@ -62,10 +72,14 @@ export function cajas(b, desde, hasta) {
 export function leerBase(formato = "heic") {
   const nombre = CODECS[formato].base;
   const b = readFileSync(join(AQUI, nombre));
-  const esperada = JSON.parse(readFileSync(join(AQUI, `${nombre}.meta.json`), "utf8")).sha256;
+  const esperada = JSON.parse(
+    readFileSync(join(AQUI, `${nombre}.meta.json`), "utf8"),
+  ).sha256;
   const huella = createHash("sha256").update(b).digest("hex");
   if (huella !== esperada)
-    throw new Error(`${nombre} no coincide con su .meta.json (${huella} ≠ ${esperada})`);
+    throw new Error(
+      `${nombre} no coincide con su .meta.json (${huella} ≠ ${esperada})`,
+    );
   const meta = cajas(b, 0, b.length).find((c) => c.tipo === "meta");
   const hijos = cajas(b, meta.datos + 4, meta.hasta);
   const iprp = hijos.find((c) => c.tipo === "iprp");
@@ -80,11 +94,20 @@ export function leerBase(formato = "heic") {
   // primero es la imagen (en `base.avif` le sigue el Exif de sips, que no se usa).
   const iloc = hijos.find((c) => c.tipo === "iloc");
   const tamanos = b.readUInt16BE(iloc.datos + 4);
-  if (tamanos !== 0x4400 || b.readUInt16BE(iloc.datos + 8) !== 1 || b.readUInt16BE(iloc.datos + 12) !== 1)
-    throw new Error(`${nombre}: iloc con una forma que este generador no espera`);
+  if (
+    tamanos !== 0x4400 ||
+    b.readUInt16BE(iloc.datos + 8) !== 1 ||
+    b.readUInt16BE(iloc.datos + 12) !== 1
+  )
+    throw new Error(
+      `${nombre}: iloc con una forma que este generador no espera`,
+    );
   const desplazamiento = b.readUInt32BE(iloc.datos + 14);
   const largo = b.readUInt32BE(iloc.datos + 18);
-  return { propiedades, hevc: b.subarray(desplazamiento, desplazamiento + largo) };
+  return {
+    propiedades,
+    hevc: b.subarray(desplazamiento, desplazamiento + largo),
+  };
 }
 
 export function caja(tipo, ...partes) {
@@ -132,7 +155,11 @@ function infe(id, tipo, nombre, contenido) {
  * para emparejar la foto con su video, y otro identificador (0x0015). Texto falso, sin sentido real.
  */
 function notaDeApple(uuid, otro) {
-  const cabecera = Buffer.concat([Buffer.from("Apple iOS\0", "latin1"), Buffer.from([0, 1]), Buffer.from("MM", "latin1")]);
+  const cabecera = Buffer.concat([
+    Buffer.from("Apple iOS\0", "latin1"),
+    Buffer.from([0, 1]),
+    Buffer.from("MM", "latin1"),
+  ]);
   const textos = [uuid, otro].map((t) => Buffer.from(`${t}\0`, "latin1"));
   const tabla = 2 + 12 * textos.length + 4;
   const ifd = Buffer.alloc(tabla);
@@ -170,7 +197,10 @@ export function generarHeic({ semilla, formato = "heic", livePhoto = false }) {
     ? [
         entrada.indefinido(
           0x927c,
-          notaDeApple(registro.agregar(uuidDePareja), registro.agregar(ficha.ids.instancia)),
+          notaDeApple(
+            registro.agregar(uuidDePareja),
+            registro.agregar(ficha.ids.instancia),
+          ),
         ),
       ]
     : [];
@@ -249,7 +279,9 @@ export function generarHeic({ semilla, formato = "heic", livePhoto = false }) {
     let p = base;
     const extensiones = [];
     for (const d of datos) {
-      extensiones.push(Buffer.concat([u16(d.id), u16(0), u16(1), u32(p), u32(d.bytes.length)]));
+      extensiones.push(
+        Buffer.concat([u16(d.id), u16(0), u16(1), u32(p), u32(d.bytes.length)]),
+      );
       p += d.bytes.length;
     }
     return caja(
@@ -263,7 +295,10 @@ export function generarHeic({ semilla, formato = "heic", livePhoto = false }) {
         Buffer.alloc(12),
         texto(nombreDelManejador),
       ),
-      caja("dinf", caja("dref", completa(0, 0), u32(1), caja("url ", completa(0, 1)))),
+      caja(
+        "dinf",
+        caja("dref", completa(0, 0), u32(1), caja("url ", completa(0, 1))),
+      ),
       caja("pitm", completa(0, 0), u16(1)),
       caja(
         "iinf",
@@ -282,7 +317,13 @@ export function generarHeic({ semilla, formato = "heic", livePhoto = false }) {
         caja("thmb", u16(4), u16(1), u16(1)),
       ),
       caja("iprp", ipco, ipma),
-      caja("iloc", completa(0, 0), u16(0x4400), u16(datos.length), ...extensiones),
+      caja(
+        "iloc",
+        completa(0, 0),
+        u16(0x4400),
+        u16(datos.length),
+        ...extensiones,
+      ),
     );
   };
 

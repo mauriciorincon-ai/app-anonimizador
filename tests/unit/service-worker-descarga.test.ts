@@ -257,6 +257,17 @@ describe("el service worker de la descarga", () => {
     expect(cortada.cliente.avisos).toEqual([{ tipo: "terminada", id: "f4" }]);
   });
 
+  it("el aviso sale una sola vez: si el navegador cancela la lectura después del fin, no se repite", async () => {
+    const d = await descargaLista("u1");
+    d.puerto.onmessage!({
+      data: { tipo: "trozo", bytes: new Uint8Array([1]) },
+    });
+    d.puerto.onmessage!({ data: { tipo: "fin" } });
+    await d.respuesta.body!.getReader().cancel();
+    d.sw.mensaje({ tipo: "cancelar", id: "u1" });
+    expect(d.cliente.avisos).toEqual([{ tipo: "terminada", id: "u1" }]);
+  });
+
   it("sin página a quien avisar (el mensaje no traía fuente) no falla", async () => {
     const sw = nuevoServiceWorker();
     const puerto = puertoFalso();

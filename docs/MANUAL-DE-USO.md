@@ -1038,8 +1038,10 @@ vez de una cifra falsa, y la columna sale intacta.
   la mitad, Velo lo nota, deja de escribir y dice «No se pudo escribir el archivo» (y nombra que
   pudiste haberla cancelado); no ofrece un archivo a medias y puedes volver a pulsar «Preparar el
   archivo», que esta vez sale entero. Se probó con un archivo de 100.000 filas, cancelando a la mitad:
-  en Chromium en cada cambio (prueba automática), y en Firefox y en el WebKit de Playwright con una
-  sonda a mano (en WebKit, la alerta apareció en 5 de 6 corridas; en una no apareció y no se supo por qué).
+  en Chromium en cada cambio (prueba automática; además, 10 corridas seguidas antes de cerrar el
+  sprint, las 10 bien), y en Firefox y en el WebKit de Playwright con una sonda a mano (en WebKit,
+  6 corridas seguidas con la sonda final, y en las 6 apareció la alerta; una corrida anterior, con
+  una versión previa de la sonda, no llegó a comprobarla y no se investigó).
   En Safari de verdad no se probó.
 - **Si tu navegador no permite ese service worker** (una ventana privada que lo bloquea, una
   política de empresa, un navegador muy antiguo), Velo cae al **respaldo por partes**: arma el CSV

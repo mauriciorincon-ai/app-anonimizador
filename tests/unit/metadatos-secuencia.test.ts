@@ -591,6 +591,9 @@ describe("la foto de una Live Photo, limpiada sola", () => {
   it("el kit empareja de verdad: foto y video llevan el mismo UUID antes de limpiar", () => {
     expect(foto.uuidDePareja).toBe(video.uuidDePareja);
     expect(buscar(original, foto.uuidDePareja!)).toBeGreaterThan(0);
+    // La nota del fabricante también está en la foto de entrada: si el kit dejara de escribirla,
+    // la prueba de abajo (que no la encuentra en la limpia) no probaría nada.
+    expect(buscar(original, "Apple iOS")).toBeGreaterThan(0);
     expect(
       buscar(Uint8Array.from(video.bytes), video.uuidDePareja),
     ).toBeGreaterThan(0);

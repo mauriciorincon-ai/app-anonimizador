@@ -152,12 +152,34 @@ describe("abrirDescargaEnFlujo", () => {
 
     contenedor.avisar({ tipo: "terminada", id });
     expect(limpiezas).toHaveBeenCalledTimes(1);
-    // El marco sigue hasta que se suelte el archivo; soltarlo no vuelve a tocar el latido de más.
+    // El marco sigue hasta que se suelte el archivo; soltarlo repite la limpieza sin daño.
     expect(document.querySelector("iframe")).not.toBeNull();
     abierta!.cerrar();
+    // Repite la limpieza sobre el mismo temporizador (jsdom suma otra llamada propia al quitar el
+    // marco, por eso no se cuentan las llamadas sino a quién se le hicieron).
+    const temporizadores = limpiezas.mock.calls.map(([t]) => t);
+    expect(temporizadores.length).toBeGreaterThanOrEqual(2);
+    expect(temporizadores[1]).toBe(temporizadores[0]);
     expect(document.querySelector("iframe")).toBeNull();
     abierta!.puerto.close();
     sw.mensajes[0].puertos[0].close();
+  });
+
+  it("si algo lanza después de poner el oyente y el latido, se deshacen: no queda ninguno", async () => {
+    const sw = new ServiceWorkerFalso("activated");
+    const contenedor = instalar({
+      installing: null,
+      waiting: null,
+      active: sw,
+    });
+    sw.postMessage = () => {
+      throw new Error("el service worker murió justo ahora");
+    };
+    const quitar = vi.spyOn(contenedor, "removeEventListener");
+    const limpiezas = vi.spyOn(globalThis, "clearInterval");
+    expect(await abrirDescargaEnFlujo(2_000)).toBeNull();
+    expect(limpiezas).toHaveBeenCalledTimes(1);
+    expect(quitar).toHaveBeenCalledWith("message", expect.any(Function));
   });
 
   it("cancelar() le pide al service worker cortar esa descarga, por su id", async () => {

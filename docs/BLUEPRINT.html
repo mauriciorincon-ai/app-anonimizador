@@ -978,8 +978,9 @@
                 <em>en su lugar</em>, con el mismo largo y cada byte de imagen
                 en su desplazamiento; los metadatos pasan a <code>free</code> o
                 a ceros y los índices de muestras no se tocan. De la pareja de
-                la Live Photo solo el video conserva su UUID; la foto limpia no
-                lleva nada que la empareje.
+                la Live Photo solo el video conserva su UUID; la foto limpia
+                (comprobado con una foto sintética que lleva la nota de Apple)
+                no lleva nada que la empareje.
                 <strong>Tope de supresión</strong> en la generalización óptima
                 (<code>generalizacion.supresionMaxima</code>, 0–100 %): las
                 filas que no llegan a <em>k</em> se quitan de la salida, nunca
@@ -999,10 +1000,12 @@
                 (<code>tmcd</code>: la hora del día en que una cámara empezó a
                 grabar y su rótulo de carrete). El service worker de la descarga
                 contesta con un 410 y su causa a un reintento del navegador
-                sobre una descarga ya servida, en vez de dejarlo caer a la red,
-                y le avisa a la página —solo el id— cuando una descarga termina
-                para que detenga el latido. Sigue sin guardar nada ni pedir nada
-                a la red.
+                sobre una descarga ya servida, en vez de dejarlo caer a la red
+                (mientras siga vivo: si el navegador ya lo apagó por
+                inactividad, el reintento no lo encuentra y recibe el 404 del
+                servidor, sin cuerpo ni datos), y le avisa a la página —solo el
+                id— cuando una descarga termina para que detenga el latido.
+                Sigue sin guardar nada ni pedir nada a la red.
               </td>
             </tr>
           </tbody>

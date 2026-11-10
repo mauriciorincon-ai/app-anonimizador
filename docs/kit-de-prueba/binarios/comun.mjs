@@ -490,7 +490,14 @@ function entradasDeGps(ficha) {
 export function construirExif(
   ficha,
   registro,
-  { completo = false, orientacion, ancho, alto, miniatura, extrasExif = [] } = {},
+  {
+    completo = false,
+    orientacion,
+    ancho,
+    alto,
+    miniatura,
+    extrasExif = [],
+  } = {},
 ) {
   const f = ficha.fechas;
   const ifd0 = [

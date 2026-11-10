@@ -1048,9 +1048,10 @@ N” instead of a false figure, and the column comes out untouched.
   writing and says “The file could not be written” (and names a cancelled download as a possible
   cause); it does not offer a half-written file, and you can press “Prepare the file” again, which
   this time comes out whole. This was tested with a 100,000-row file, cancelling halfway: in
-  Chromium on every change (automatic test), and in Firefox and Playwright's WebKit with a
-  hand-run probe (in WebKit the alert appeared in 5 of 6 runs; in one it did not and the reason is
-  unknown). Real Safari was not tested.
+  Chromium on every change (automatic test; also 10 runs in a row before closing the sprint, all
+  10 fine), and in Firefox and Playwright's WebKit with a hand-run probe (in WebKit, 6 runs in a
+  row with the final probe, and the alert appeared in all 6; one earlier run, with a previous
+  version of the probe, never got to check it and was not investigated). Real Safari was not tested.
 - **If your browser does not allow that service worker** (a private window that blocks it, a company
   policy, a very old browser), Velo falls back to **parts**: it builds the CSV in memory and, if it
   weighs more than 256 MB, hands it over **cut into parts** —**“Save part 1 of 5”**, and so on—,
