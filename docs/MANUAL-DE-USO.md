@@ -897,7 +897,7 @@ la limpieza no depende de ella. Por eso «Velo no encontró campos con nombre» 
 - **La Live Photo, dicha sin adornos.** Una Live Photo son **dos archivos**: la foto y un video corto
   (`.mov`). Cada uno se limpia por separado, y **el número que los empareja se conserva solo en el
   video**: es un identificador al azar, no un dato tuyo. En la foto ese número viaja dentro de la
-  nota privada del fabricante, que se quita con el resto del EXIF. **Consecuencia: la foto y el
+  nota privada del fabricante, que se quita con el resto del EXIF. Se comprobó con una foto sintética que trae esa nota: en la copia limpia no queda ni el número ni la nota. **Consecuencia: la foto y el
   video limpios ya no aparecen juntos como una sola Live Photo en Fotos.** Velo lo avisa en el
   diagnóstico y en el certificado. Si necesitas que sigan emparejados, no los limpies con Velo.
 - **En un PDF** el archivo se **reescribe entero**, y las páginas y su contenido se copian tal cual.

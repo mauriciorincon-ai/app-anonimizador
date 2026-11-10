@@ -904,7 +904,7 @@ and the diagnosis says so.
 - **The Live Photo, said plainly.** A Live Photo is **two files**: the photo and a short video
   (`.mov`). Each is cleaned separately, and **the number that pairs them is kept only in the
   video**: it is a random identifier, nothing about you. In the photo that number travels inside the
-  manufacturer's private note, which goes with the rest of the EXIF. **The consequence: the clean
+  manufacturer's private note, which goes with the rest of the EXIF. This was checked with a synthetic photo that carries that note: the clean copy keeps neither the number nor the note. **The consequence: the clean
   photo and video no longer show up together as a single Live Photo in Photos.** Velo warns about
   this in the diagnosis and in the certificate. If you need them to stay paired, do not clean them
   with Velo.
