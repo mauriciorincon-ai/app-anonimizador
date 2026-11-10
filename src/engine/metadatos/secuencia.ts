@@ -19,6 +19,10 @@
 //     cualquier pista que no sea imagen ni sonido) conserva su estructura y sus muestras quedan en
 //     ceros; las de la Live Photo que hacen falta para que funcione (el instante de la foto) se
 //     quedan;
+//   · la pista de código de tiempo (`tmcd`) también: su muestra es el número del primer cuadro, que
+//     en una cámara es la hora del día en que empezó a grabar, y su descripción puede traer un
+//     rótulo de carrete (`name`, texto libre). Ninguno hace falta para reproducir: el código de
+//     tiempo pasa a cero y el rótulo se va;
 //   · los bytes del `mdat` que no son de ninguna muestra ni de ningún elemento se ponen en ceros;
 //   · si además hay una foto fija (una caja `meta` arriba, como la que escribe ffmpeg en un AVIF
 //     animado), su `meta` se reescribe del MISMO tamaño, con relleno `free`, y los desplazamientos de
@@ -68,13 +72,7 @@ import type {
 const MAXIMO_DE_MUESTRAS = 1_000_000;
 
 /** Pistas que son la imagen o el sonido: se conservan con sus muestras. */
-const PISTAS_QUE_SE_CONSERVAN = new Set([
-  "vide",
-  "soun",
-  "pict",
-  "auxv",
-  "tmcd",
-]);
+const PISTAS_QUE_SE_CONSERVAN = new Set(["vide", "soun", "pict", "auxv"]);
 
 /** Pistas con fondo de video o de sonido: su descripción trae fabricante y, la de video, compresor. */
 const PISTAS_CON_FABRICANTE = new Set(["vide", "soun", "pict", "auxv"]);
@@ -547,6 +545,12 @@ class Recorrido {
                   ),
                 );
         }
+      } else if (pista.manejador === "tmcd") {
+        // 6 reservados + 2 de referencia + 18 de la descripción del código de tiempo, y luego cajas
+        // opcionales: `name` es el rótulo del carrete, texto libre.
+        const desde = e.datos + 26;
+        if (desde < e.hasta)
+          for (const c of hijos(this.bytes, desde, e.hasta)) this.comun(c);
       } else if (PISTAS_CON_FABRICANTE.has(pista.manejador)) {
         // Fabricante (4 bytes en +12); en video, además, el nombre del compresor (32 en +42).
         if (e.datos + 16 <= e.hasta)

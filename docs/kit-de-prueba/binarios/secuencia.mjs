@@ -154,6 +154,25 @@ function metaQuickTime(nombre, pares) {
   return caja("meta", hdlr("mdta", nombre), keys, caja("ilst", ...items));
 }
 
+/**
+ * Descripción `tmcd` (código de tiempo): 6 reservados, referencia, 18 bytes de la descripción
+ * (escala 30000, 1001 por cuadro, 30 cuadros) y el rótulo del carrete en una caja `name`.
+ */
+function descripcionTmcd(rotulo) {
+  const t = Buffer.from(rotulo, "utf8");
+  return caja(
+    "tmcd",
+    Buffer.alloc(6),
+    u16(1),
+    u32(0),
+    u32(0),
+    u32(30000),
+    u32(1001),
+    Buffer.from([30, 0]),
+    caja("name", u16(t.length), u16(0x15c7), t),
+  );
+}
+
 /** Un texto internacional de `udta` (`©xyz` y compañía): tamaño, idioma y el texto. */
 const textoDeUsuario = (codigo, valor) => {
   const t = Buffer.from(valor, "utf8");
@@ -163,10 +182,14 @@ const textoDeUsuario = (codigo, valor) => {
 /**
  * Genera una secuencia (`heic` o `avif`) o el `.mov` de una Live Photo (`mov`, con flujo HEVC).
  *
- * @param {{ semilla: number, formato: "heic" | "avif" | "mov", conFoto?: boolean }} opciones
+ * `conTimecode` (solo el `.mov`) suma una pista de código de tiempo como la de una cámara: la hora
+ * del día en que empezó a grabar y un rótulo de carrete. Sin él, los bytes son los de siempre.
+ *
+ * @param {{ semilla: number, formato: "heic" | "avif" | "mov", conFoto?: boolean, conTimecode?: boolean }} opciones
  */
-export function generarSecuencia({ semilla, formato, conFoto = false }) {
+export function generarSecuencia({ semilla, formato, conFoto = false, conTimecode = false }) {
   if (conFoto && formato === "mov") throw new Error("un .mov no lleva foto fija");
+  if (conTimecode && formato !== "mov") throw new Error("solo el .mov lleva código de tiempo");
   const codecDe = formato === "avif" ? "avif" : "heic";
   const codec = CODECS[codecDe];
   const { propiedades, hevc } = leerBase(codecDe);
@@ -189,6 +212,7 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
   const desconocida = registro.agregar(`CAJA-DESCONOCIDA-${ficha.serie}`);
   const sinUso = registro.agregar(`MDAT-SIN-USO-${ficha.serie}`);
   const resto = registro.agregar(ficha.resto);
+  const rotuloDeCarrete = conTimecode ? registro.agregar(`CARRETE-${ficha.serie}`) : "";
 
   // `mdat`: dos cuadros, la ubicación, el instante de la foto, los bytes sin dueño y, con la foto
   // fija, su Exif.
@@ -203,7 +227,9 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
       ])
     : Buffer.alloc(0);
   const huerfanos = Buffer.from(`${sinUso}\n`, "latin1");
-  const partes = [...cuadros, muestraUbicacion, muestraInstante, huerfanos, exif];
+  // El código de tiempo: el cuadro 1 080 000 a 30 por segundo es las 10:00:00:00, la hora del día.
+  const muestraTimecode = conTimecode ? u32(1_080_000) : Buffer.alloc(0);
+  const partes = [...cuadros, muestraUbicacion, muestraInstante, huerfanos, exif, muestraTimecode];
 
   const ftyp =
     formato === "mov"
@@ -254,6 +280,7 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
   const mdat = caja("mdat", ...partes);
   const enUbicacion = inicio + cuadros[0].length * 2;
   const enInstante = enUbicacion + muestraUbicacion.length;
+  const enTimecode = enInstante + muestraInstante.length + huerfanos.length + exif.length;
 
   const pistaDeVideo = caja(
     "trak",
@@ -294,12 +321,33 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
       ),
     );
 
+  const pistaDeTimecode = conTimecode
+    ? [
+        caja(
+          "trak",
+          tkhd(fecha, 4, 0, 0),
+          caja(
+            "mdia",
+            mdhd(fecha),
+            hdlr("tmcd", ""),
+            caja(
+              "minf",
+              caja("gmhd", caja("gmin", completa(0, 0), Buffer.alloc(12))),
+              dinf(),
+              caja("stbl", ...tablas(descripcionTmcd(rotuloDeCarrete), [muestraTimecode.length], enTimecode)),
+            ),
+          ),
+        ),
+      ]
+    : [];
+
   const moov = caja(
     "moov",
     mvhd(fecha),
     pistaDeVideo,
     pistaMebx(2, "com.apple.quicktime.location.ISO6709", muestraUbicacion, enUbicacion),
     pistaMebx(3, "com.apple.quicktime.still-image-time", muestraInstante, enInstante),
+    ...pistaDeTimecode,
     caja("Xtra", Buffer.from(desconocida, "latin1")),
     metaQuickTime(nombreDeMeta, [
       ["com.apple.quicktime.location.ISO6709", ubicacion],
@@ -334,6 +382,9 @@ export function generarSecuencia({ semilla, formato, conFoto = false }) {
     /** Dónde empieza cada cuadro de video en el archivo: la limpieza no puede moverlos. */
     cuadros: cuadros.map((c, i) => ({ desde: inicio + i * c.length, largo: c.length })),
     instante: { desde: enInstante, largo: muestraInstante.length },
+    /** La muestra del código de tiempo (solo con `conTimecode`): 4 bytes, la hora del día. */
+    timecode: { desde: enTimecode, largo: muestraTimecode.length },
+    rotuloDeCarrete,
     ubicacion: { desde: enUbicacion, largo: muestraUbicacion.length },
     detalle: {
       latitud: ficha.gps.latitud,

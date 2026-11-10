@@ -20,6 +20,7 @@ import { describe, expect, it } from "vitest";
 import { contieneCentinela } from "../../docs/kit-de-prueba/binarios/comun.mjs";
 import {
   generarAvif,
+  generarHeic,
   leerBase,
 } from "../../docs/kit-de-prueba/binarios/heic.mjs";
 import { generarSecuencia } from "../../docs/kit-de-prueba/binarios/secuencia.mjs";
@@ -503,5 +504,111 @@ describe("un .mov hostil", () => {
           expect(error).toBeInstanceOf(ErrorDeMetadatos);
         }
       }
+  });
+});
+
+// ── S11 (hallazgos): el código de tiempo y la foto de una Live Photo ────────────────────────────
+
+describe("el código de tiempo (`tmcd`) de un .mov de cámara", () => {
+  const kit = generarSecuencia({
+    semilla: 42,
+    formato: "mov",
+    conTimecode: true,
+  });
+  const original = Uint8Array.from(kit.bytes);
+  const limpio = limpiarImagen(original, "mov").bytes;
+
+  it("se nombra: la pista de código de tiempo y su rótulo de carrete son lo que se quita", () => {
+    const a = analizarImagen(original, "mov");
+    expect(
+      a.quitables.some(
+        (e) => e.clase === "pista-de-metadatos" && e.marcador === "tmcd",
+      ),
+    ).toBe(true);
+    expect(
+      a.quitables.some((e) => e.clase === "auxiliar" && e.marcador === "name"),
+    ).toBe(true);
+  });
+
+  it("la hora del día pasa a cero y el rótulo del carrete no sobrevive", () => {
+    const t = kit.timecode;
+    expect(t.largo).toBe(4);
+    expect(leer32(original, t.desde)).toBe(1_080_000);
+    expect(limpio.subarray(t.desde, t.desde + t.largo).every((x) => x === 0)).toBe(
+      true,
+    );
+    expect(kit.rotuloDeCarrete).not.toBe("");
+    expect(contieneCentinela(limpio, kit.rotuloDeCarrete)).toBe(false);
+    for (const c of kit.centinelas)
+      expect(contieneCentinela(limpio, c), c).toBe(false);
+  });
+
+  it("no se mueve un byte: los cuadros y el instante de la foto quedan idénticos y la pista sigue en su sitio", () => {
+    expect(limpio.length).toBe(finDeLasCajas(original));
+    for (const t of [...kit.cuadros, kit.instante])
+      expect(
+        igual(
+          limpio.subarray(t.desde, t.desde + t.largo),
+          original.subarray(t.desde, t.desde + t.largo),
+        ),
+      ).toBe(true);
+    const ceros = tramosEnCeros(original, "mov");
+    expect(soloCambiaLoDeclarado(original, limpio, ceros)).toBeGreaterThanOrEqual(
+      2,
+    );
+    const pistas = (b: Uint8Array) =>
+      cajasDe(b, camino(b, "moov")!.datos, camino(b, "moov")!.hasta).filter(
+        (c) => c.tipo === "trak",
+      ).length;
+    expect(pistas(limpio)).toBe(pistas(original));
+  });
+
+  it("la poscomprobación: releída, no queda nada que quitar", () => {
+    const despues = analizarImagen(limpio, "mov");
+    expect(despues.campos).toHaveLength(0);
+    expect(despues.quitables).toHaveLength(0);
+  });
+
+  it("sin pista de código de tiempo el kit es el de siempre (la opción no cambia nada por omisión)", () => {
+    const sin = generarSecuencia({ semilla: 42, formato: "mov" });
+    expect(sin.timecode.largo).toBe(0);
+    expect(sin.rotuloDeCarrete).toBe("");
+    expect(sin.bytes.length).toBeLessThan(kit.bytes.length);
+  });
+});
+
+describe("la foto de una Live Photo, limpiada sola", () => {
+  const foto = generarHeic({ semilla: 42, livePhoto: true });
+  const original = Uint8Array.from(foto.bytes);
+  const video = generarSecuencia({ semilla: 42, formato: "mov" });
+  const limpia = limpiarImagen(original, "heic").bytes;
+  const videoLimpio = limpiarImagen(
+    Uint8Array.from(video.bytes),
+    "mov",
+  ).bytes;
+
+  it("el kit empareja de verdad: foto y video llevan el mismo UUID antes de limpiar", () => {
+    expect(foto.uuidDePareja).toBe(video.uuidDePareja);
+    expect(buscar(original, foto.uuidDePareja!)).toBeGreaterThan(0);
+    expect(buscar(Uint8Array.from(video.bytes), video.uuidDePareja)).toBeGreaterThan(0);
+  });
+
+  it("a la foto limpia no le queda el UUID ni la nota del fabricante ni ningún centinela", () => {
+    for (const c of foto.centinelas)
+      expect(contieneCentinela(limpia, c), c).toBe(false);
+    expect(buscar(limpia, foto.uuidDePareja!)).toBe(-1);
+    expect(buscar(limpia, foto.uuidDePareja!.toLowerCase())).toBe(-1);
+    expect(buscar(limpia, "Apple iOS")).toBe(-1);
+  });
+
+  it("releída, la foto limpia no tiene campos ni nada que quitar", () => {
+    const despues = analizarImagen(limpia, "heic");
+    expect(despues.campos).toHaveLength(0);
+    expect(despues.quitables).toHaveLength(0);
+  });
+
+  it("el video limpio conserva el UUID y la foto limpia no: por eso ya no se emparejan", () => {
+    expect(buscar(videoLimpio, video.uuidDePareja)).toBeGreaterThan(0);
+    expect(buscar(limpia, video.uuidDePareja)).toBe(-1);
   });
 });

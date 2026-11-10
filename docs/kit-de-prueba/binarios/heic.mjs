@@ -30,6 +30,7 @@ import {
   construirXmp,
   crearFicha,
   crearRegistro,
+  entrada,
 } from "./comun.mjs";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -126,18 +127,54 @@ function infe(id, tipo, nombre, contenido) {
 }
 
 /**
+ * La nota del fabricante de Apple (`Apple iOS\0`, versión, orden `MM`, un IFD de 2 entradas) con lo
+ * que una foto de Live Photo guarda dentro: el UUID de contenido (etiqueta 0x0011), el que Fotos usa
+ * para emparejar la foto con su video, y otro identificador (0x0015). Texto falso, sin sentido real.
+ */
+function notaDeApple(uuid, otro) {
+  const cabecera = Buffer.concat([Buffer.from("Apple iOS\0", "latin1"), Buffer.from([0, 1]), Buffer.from("MM", "latin1")]);
+  const textos = [uuid, otro].map((t) => Buffer.from(`${t}\0`, "latin1"));
+  const tabla = 2 + 12 * textos.length + 4;
+  const ifd = Buffer.alloc(tabla);
+  ifd.writeUInt16BE(textos.length, 0);
+  let fuera = cabecera.length + tabla;
+  [0x0011, 0x0015].forEach((etiqueta, i) => {
+    const en = 2 + 12 * i;
+    ifd.writeUInt16BE(etiqueta, en);
+    ifd.writeUInt16BE(2, en + 2);
+    ifd.writeUInt32BE(textos[i].length, en + 4);
+    ifd.writeUInt32BE(fuera, en + 8);
+    fuera += textos[i].length;
+  });
+  return Buffer.concat([cabecera, ifd, ...textos]);
+}
+
+/**
  * Genera un HEIC (o, con `formato: "avif"`, un AVIF) con metadatos falsos.
  *
- * @param {{ semilla: number, formato?: "heic" | "avif" }} opciones
- * @returns {{ bytes: Buffer, centinelas: string[], detalle: import("./comun.mjs").DetalleDeImagen }}
+ * Con `livePhoto` el EXIF trae además la nota del fabricante de Apple con el UUID que empareja la
+ * foto con el video de su Live Photo (el mismo que escribe `secuencia.mjs` para esa semilla) y el
+ * resultado lo devuelve en `uuidDePareja`. Sin él, los bytes son los de siempre.
+ *
+ * @param {{ semilla: number, formato?: "heic" | "avif", livePhoto?: boolean }} opciones
+ * @returns {{ bytes: Buffer, centinelas: string[], detalle: import("./comun.mjs").DetalleDeImagen, uuidDePareja?: string }}
  */
-export function generarHeic({ semilla, formato = "heic" }) {
+export function generarHeic({ semilla, formato = "heic", livePhoto = false }) {
   const codec = CODECS[formato];
   const { propiedades, hevc } = leerBase(formato);
   const ficha = crearFicha(semilla);
   const registro = crearRegistro();
 
-  const tiff = construirExif(ficha, registro, { completo: false });
+  const uuidDePareja = ficha.ids.original.toUpperCase();
+  const extrasExif = livePhoto
+    ? [
+        entrada.indefinido(
+          0x927c,
+          notaDeApple(registro.agregar(uuidDePareja), registro.agregar(ficha.ids.instancia)),
+        ),
+      ]
+    : [];
+  const tiff = construirExif(ficha, registro, { completo: false, extrasExif });
   // ISO/IEC 23008-12, A.2.1: 4 bytes con el desplazamiento hasta la cabecera TIFF; Apple pone
   // `Exif\0\0` en medio y el desplazamiento vale 6.
   const exif = Buffer.concat([u32(6), Buffer.from("Exif\0\0", "latin1"), tiff]);
@@ -266,6 +303,7 @@ export function generarHeic({ semilla, formato = "heic" }) {
   return {
     bytes,
     centinelas: registro.lista,
+    ...(livePhoto ? { uuidDePareja } : {}),
     detalle: {
       autor: ficha.autor.completo,
       cedula: ficha.cedula,
