@@ -82,7 +82,7 @@ Facts measured before deciding:
 
 ## Measured
 
-Outside the CI (`tmp/medir-5m.mjs`, not versioned), on the builder's Mac, production build in
+Outside the CI (`tests/medicion/pico-alto-volumen.mjs`), on the builder's Mac, production build in
 headless Chromium: the generator's `clinico` CSV, 5,000,000 rows × 24 columns, 1.36 GB, Habeas Data
 with a key, saved the `Blob` way (`showSaveFilePicker` removed). The memory is the RSS of the tab's
 process (page and worker), sampled every 500 ms; it counts garbage not yet collected, so it is a
@@ -90,15 +90,33 @@ ceiling, not the live heap.
 
 | Pass                     | Time  | Peak RSS |
 | ------------------------ | ----- | -------- |
-| A, diagnosis             | 109 s | 3.6 GB   |
-| M, transform and measure | 283 s | 4.9 GB   |
-| C, write                 | 267 s | 4.9 GB   |
+| A, diagnosis             | 83 s  | 3.2 GB   |
+| M, transform and measure | 280 s | 4.2 GB   |
+| C, write                 | 261 s | 4.5 GB   |
+| Vault and downloads      | 3 s   | 2.0 GB   |
+| R1, read the returned    | 71 s  | 2.5 GB   |
+| R2, restore and write    | 132 s | 1.3 GB   |
+
+The return was measured at 5 M rows in Sprint 010, end to end with its vault: the restored column
+came back to the original and the other 23 columns matched the anonymized file. These are the
+figures of the final run; the first run of that sprint, with the same code, read 109 s, 283 s,
+267 s and 4.9 GB, which is the noise between runs, about ±0.6 GB on the peak.
 
 Halving the dictionary caps (2²¹ → 2²⁰ per column, 2²³ → 2²² in total) moved the diagnosis
 peak from 3.5 GB to 3.6 GB: the dictionaries are not what weighs. The caps stay at the halved
-values, the ones that went end to end. The return of that file was not measured at 5 M rows; the
-e2e takes a 21-million-cell file there and back. Lowering the peak is pending, with this table
-as its baseline.
+values, the ones that went end to end.
+
+**The peak was not lowered.** Sprint 010 aimed at 2.5 GB and did not reach it: four runs of the
+transform pass read 4.2 to 5.5 GB, with no reduction distinguishable from the noise in Chromium
+(in Node, the live heap did go from 546 to 403 MB at 500 k rows). About 1.1 GB live is the exact
+dictionaries of the almost-unique columns, V8 leaves the garbage at about twice that, about 1.3 GB
+sits outside the heap, and Chromium adds about 1.5 GB. Going down to 2.5 GB means swapping the
+exact count for an estimate, which rule 4 forbids presenting as exact; so it is a decision for
+the owner, not a thing the builder does on the side. Until then the peak is a declared limit.
+
+Sprint 012 added the table by file size and browser, and Velo local at 1 M rows (146.5 s, 3.06 GB
+resident) and at 5 M (1,207 s, 3.9 GB resident), to the user manual (section 9): Velo local does not use less memory than
+the tab, and the manual says so.
 
 ## Rejected
 

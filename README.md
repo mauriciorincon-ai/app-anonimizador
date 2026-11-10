@@ -68,7 +68,8 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
 - **Tres niveles de certeza** —confirmado por algoritmo · reconocido por su forma · sin confirmar—
   porque afirmar todo con la misma seguridad sería exagerar.
 - **Cuatro categorías de la Ley 1581 de 2012** en su sentido exacto: identificador directo,
-  cuasi-identificador, dato sensible del art. 5, no personal.
+  cuasi-identificador, dato sensible (art. 5 de la ley y, en la política RGPD, arts. 9 y 10 del
+  reglamento), no personal.
 - **Riesgo de reidentificación exacto** (modelo _prosecutor_): k mínimo, riesgo máximo, promedio y
   porcentaje de registros únicos, contados sobre el archivo completo.
 - **Consejero de cruces**: qué combinaciones de columnas delatan, con su k real — y qué quedó fuera
@@ -119,8 +120,9 @@ frase de paso, el seudónimo no vuelve; con ella, sí.
   exacto; el diagnóstico clasifica sobre las primeras 5.000 filas y lo dice; lo que no cabe en los
   topes se dice, nunca se estima, y lo que no se mide (la utilidad) queda escrito en el certificado.
   En Chrome y Edge eliges dónde guardar y el archivo se escribe directo a tu disco, sin armarlo en
-  memoria. Medido con 5 millones de filas × 24 columnas (1,36 GB): diagnóstico 109 s, transformación
-  283 s, escritura 267 s y un pico de 4,9 GB de memoria — una referencia, no una promesa. Excel
+  memoria. Medido con 5 millones de filas × 24 columnas (1,36 GB): diagnóstico 83 s, transformación
+  280 s, escritura 261 s y un pico de 4,5 GB de memoria; el regreso de ese archivo, 3,4 minutos y
+  2,5 GB — una referencia, no una promesa. Excel
   conserva su tope. Un JSON de más de 20 millones de celdas (Sprint 009) también va por pasadas, y
   sale —y vuelve— como el JSON o JSON Lines que entró, con los mismos bytes que en memoria.
 - **Velo local** (Sprint 009, [ADR-017](decisions/017-velo-local.md)): el **mismo motor** como un
