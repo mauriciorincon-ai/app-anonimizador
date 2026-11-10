@@ -51,6 +51,11 @@ const HUELLAS = {
   1_000_000: "ef2411b8aa2191ff79314637908585b6703651ed732de599677802c3d8e6ab0a",
   5_000_000: "47f6d50707b3fddc118ce073f3b966c88f879501a93ab251b1d831bdcf70953d",
 };
+// S12: por debajo de este tope de celdas (`TOPE_DE_CELDAS_EN_MEMORIA`, src/lib/archivo.ts) el CSV se
+// lee entero en memoria y no hay pantalla de «por pasadas»; el arnés mide ese camino también, para
+// que la tabla de memoria del manual (por tamaño de archivo y navegador) salga del mismo script.
+const TOPE_DE_CELDAS = 20_000_000;
+const EN_MEMORIA = FILAS * 24 <= TOPE_DE_CELDAS;
 const NAVEGADOR = process.env.NAVEGADOR ?? "chromium";
 const SERVICE_WORKER = process.env.SERVICE_WORKER !== "0";
 const SOLO_IDA = Boolean(process.env.SOLO_IDA);
@@ -216,8 +221,11 @@ try {
   await page.setInputFiles("#archivo", ARCHIVO);
   await page.waitForURL("**/diagnostico", { timeout: 30 * MINUTOS });
   await page
-    .getByRole("heading", { name: "Este archivo se leyó por pasadas" })
-    .waitFor({ timeout: MINUTOS });
+    .getByRole(
+      EN_MEMORIA ? "link" : "heading",
+      { name: EN_MEMORIA ? "Transformar este archivo" : "Este archivo se leyó por pasadas" },
+    )
+    .waitFor({ timeout: 10 * MINUTOS });
   marca("A · diagnóstico");
 
   await page.getByRole("link", { name: "Transformar este archivo" }).click();
@@ -251,7 +259,7 @@ try {
   marca("B+M · transformar y medir");
 
   const anonimizado = join(SALIDA, "anonimizado.csv");
-  if (SERVICE_WORKER) {
+  if (SERVICE_WORKER && !EN_MEMORIA) {
     // S11: «Preparar el archivo» dispara la descarga y el archivo se guarda mientras se escribe.
     const [descarga] = await Promise.all([
       page.waitForEvent("download", { timeout: 60 * MINUTOS }),
