@@ -1,6 +1,7 @@
 // Lo que comparten las órdenes de la consola (archivos y puente): la bitácora y la política pedida.
 
-import { readFile, rename, rm } from "node:fs/promises";
+import { readFile, rename, rm, stat } from "node:fs/promises";
+import { resolve } from "node:path";
 
 import { abrirBitacora, sellarBitacora } from "@/lib/bitacora-archivo";
 import type { Idioma } from "@/lib/idioma";
@@ -25,15 +26,37 @@ export async function pedidaDePolitica(
 }
 
 /** Sustituye `ruta` por `bytes` escribiendo a un archivo aparte y renombrando: un corte a medias no la rompe. */
-async function reemplazar(ruta: string, bytes: Uint8Array): Promise<void> {
+export async function reemplazar(ruta: string, bytes: Uint8Array): Promise<void> {
   const temporal = `${ruta}.${process.pid}.nueva`;
   try {
     await escribirNuevo(temporal, bytes);
     await rename(temporal, ruta);
   } catch (error) {
-    await rm(temporal, { force: true });
+    // Si el aborto de la escritura ya había fallado y el temporal se borra ahora, el problema
+    // que importa es la causa: el envoltorio solo avisaba de un archivo que ya no está.
+    const borrado = await rm(temporal, { force: true }).then(
+      () => true,
+      () => false,
+    );
+    if (error instanceof EscrituraAMedias && borrado) throw error.causa;
     throw error;
   }
+}
+
+/**
+ * `--salida`, o `porOmision`. Lo pedido debe existir, y si no se dice ANTES de pedir ninguna frase o
+ * conexión; la carpeta por omisión (la del archivo de entrada, o la de trabajo) no se comprueba:
+ * si faltara, lo que falta es el archivo y `abrirArchivo` lo dice con sus palabras.
+ */
+export async function carpetaDeSalida(
+  pedida: string | undefined,
+  porOmision: string,
+): Promise<string> {
+  const carpeta = resolve(pedida ?? porOmision);
+  if (pedida === undefined) return carpeta;
+  const info = await stat(carpeta).catch(() => null);
+  if (!info?.isDirectory()) throw new ErrorDeVelo("carpetaNoExiste");
+  return carpeta;
 }
 
 /**

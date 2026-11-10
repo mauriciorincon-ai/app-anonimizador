@@ -36,7 +36,7 @@
   con el mod 11 de la DIAN, porque una maqueta que miente sobre el producto es peor que no
   tenerla.
 
-  ENLACES: ninguna URL absoluta de producción o de preview (regla 14 del CLAUDE.md). El mapa de
+  ENLACES: ninguna URL absoluta de producción o de preview (regla 17 del CLAUDE.md). El mapa de
   la app usa rutas relativas a la raíz, que es como se sirven en /conoce.
 
   BILINGÜE ES/EN (S5): el español vive en el marcado y se lee igual sin JavaScript; el inglés vive
@@ -1470,7 +1470,7 @@
         "tarjeta3.f2.como": "A NIT is still a NIT: if you choose to keep the format, the pseudonym has the same shape and its check digit is <strong>actually recalculated</strong>, using the DIAN’s mod 11. The spreadsheet on the other side does not break, and neither does their system’s validation.",
         "tarjeta3.f2.tip": "<strong>Tip:</strong> keeping the format shrinks the available space, so two different values can collide. Velo counts those collisions and tells you about them: it does not hide them.",
         "tarjeta3.f3.titulo": "Next month, the same pseudonym",
-        "tarjeta3.f3.como": "The pseudonym is computed from a passphrase that only you hold, derived with 600,000 iterations of PBKDF2 — the minimum OWASP recommends, and that cost <em>is</em> the protection. The same passphrase and the same salt give the same pseudonyms, which is why you can match the March file against the April one without having the real data in front of you.",
+        "tarjeta3.f3.como": "The pseudonym is computed from a passphrase that only you hold, derived with 600,000 iterations of PBKDF2 — the minimum OWASP recommends, and that cost <em>is</em> the protection. With the same passphrase and the same salt — which in Velo local you fix with <code>--sal</code>; on the web every new key gets its own — the pseudonyms repeat, which is why you can match the March file against the April one without having the real data in front of you.",
         "tarjeta3.f3.tip": "<strong>Tip:</strong> keep the passphrase <em>and</em> the salt that Velo shows you. If you lose the passphrase there is no going back: that is the flip side of nobody else having it.",
         "tarjeta4.titulo": "Measure risk with exact figures",
         "tarjeta4.linea": "How many people remain exposed before and after, counted row by row and kept apart from what is estimated",
@@ -2442,10 +2442,12 @@
                         El seudónimo se calcula con una frase de paso que solo
                         tienes tú, derivada con 600.000 vueltas de PBKDF2 —el
                         mínimo que recomienda OWASP, y ese costo
-                        <em>es</em> la protección—. La misma frase y la misma
-                        sal dan los mismos seudónimos, y por eso puedes cruzar
-                        el archivo de marzo con el de abril sin tener los datos
-                        reales delante.
+                        <em>es</em> la protección—. Con la misma frase y la misma
+                        sal —que en Velo local fijas con
+                        <code>--sal</code>; en la web cada llave nueva estrena
+                        la suya— los seudónimos se repiten, y por eso puedes
+                        cruzar el archivo de marzo con el de abril sin tener
+                        los datos reales delante.
                       </p>
                       <p class="tip" data-t="tarjeta3.f3.tip">
                         <strong>Tip:</strong> guarda la frase <em>y</em> la sal

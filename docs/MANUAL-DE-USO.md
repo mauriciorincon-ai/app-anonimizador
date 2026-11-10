@@ -1,7 +1,7 @@
 # Manual de uso — Velo
 
 > _Velo para entregar. Desvelo para recuperar._
-> Actualizado en el Sprint 008 · 2 de noviembre de 2026
+> Actualizado en el Sprint 012 · 10 de noviembre de 2026
 >
 > English version: [MANUAL-DE-USO.en.md](MANUAL-DE-USO.en.md)
 
@@ -342,8 +342,10 @@ te deja compararlas antes de elegir: está explicado al final de esta sección, 
 Un seudónimo se calcula con una **frase de paso que solo tú tienes**. Tres cosas que conviene saber
 antes de escribirla:
 
-- **La misma frase da los mismos seudónimos.** Es lo que te permite cruzar el archivo de marzo con
-  el de abril sin tener los datos reales delante.
+- **La misma frase y la misma sal dan los mismos seudónimos.** Es lo que te permite cruzar el
+  archivo de marzo con el de abril sin tener los datos reales delante. En la web cada llave nueva
+  estrena su propia sal y la pantalla no deja escribir una: para repetirlos, usa Velo local con
+  `--sal`.
 - **Si la pierdes, no hay vuelta atrás.** Nadie puede regenerarla; es la contrapartida de que nadie
   más la tenga.
 - **Si se filtra, los seudónimos se vuelven enlazables.** Trátala como una contraseña.
@@ -1321,7 +1323,7 @@ salida ya existe, se niega.
 | `pnpm velo puente …`               | Lo mismo, sobre una tabla de PostgreSQL o SQL Server.                                         |
 | `pnpm velo api`                    | Levanta la API local.                                                                         |
 
-`--salida` elige la carpeta, `--sal` fija la sal de la llave (para que mañana los seudónimos
+`--salida` elige la carpeta (tiene que existir: si no, Velo local lo dice antes de pedirte ninguna frase), `--sal` fija la sal de la llave (para que mañana los seudónimos
 coincidan con los de hoy), `--bitacora` anota el tratamiento en tu bitácora e `--idioma es|en`
 cambia el idioma de los mensajes y de los documentos. Salen el anonimizado, **el certificado** y,
 si pediste columnas reversibles, **la bóveda**, con las mismas huellas que en la web. Un JSON entra

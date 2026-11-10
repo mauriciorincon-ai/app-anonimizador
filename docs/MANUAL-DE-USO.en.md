@@ -1,7 +1,7 @@
 # User manual — Velo
 
 > _Veil it to hand it over. Unveil it to get it back._
-> Updated in Sprint 008 · November 2, 2026
+> Updated in Sprint 012 · November 10, 2026
 >
 > Spanish version: [MANUAL-DE-USO.md](MANUAL-DE-USO.md)
 
@@ -349,8 +349,10 @@ workshop lets you compare them before you choose: it is explained at the end of 
 A pseudonym is calculated with a **passphrase that only you have**. Three things worth knowing
 before you type it:
 
-- **The same passphrase gives the same pseudonyms.** It is what lets you match March's file against
-  April's without having the real data in front of you.
+- **The same passphrase and the same salt give the same pseudonyms.** It is what lets you match
+  March's file against April's without having the real data in front of you. On the web every new
+  key gets its own salt and the screen does not let you type one: to repeat them, use Velo local
+  with `--sal`.
 - **If you lose it, there is no going back.** Nobody can regenerate it; that is the trade-off for
   nobody else having it.
 - **If it leaks, the pseudonyms become linkable.** Treat it like a password.
@@ -1334,7 +1336,7 @@ output file already exists, it refuses.
 | `pnpm velo puente …`            | The same, over a PostgreSQL or SQL Server table.                                               |
 | `pnpm velo api`                 | Starts the local API.                                                                          |
 
-`--salida` picks the folder, `--sal` fixes the key's salt (so tomorrow's pseudonyms match today's),
+`--salida` picks the folder (it has to exist: if not, Velo local says so before asking for any passphrase), `--sal` fixes the key's salt (so tomorrow's pseudonyms match today's),
 `--bitacora` records the treatment in your log and `--idioma es|en` sets the language of messages
 and documents. What comes out is the anonymized file, **the certificate** and, if you asked for
 reversible columns, **the vault**, with the same fingerprints as in the web app. A JSON goes in and

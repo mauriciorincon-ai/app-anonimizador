@@ -31,6 +31,7 @@ import {
 } from "./archivos";
 import {
   abrirBitacoraPara,
+  carpetaDeSalida,
   deshacerLaCorrida,
   pedidaDePolitica,
 } from "./comun";
@@ -128,17 +129,6 @@ async function ordenDiagnosticar(
     );
 }
 
-/** `--salida`, o la carpeta del archivo; si no existe se dice antes de pedir ninguna frase. */
-async function carpetaDeSalida(
-  pedida: string | undefined,
-  ruta: string,
-): Promise<string> {
-  const carpeta = resolve(pedida ?? dirname(ruta));
-  const info = await stat(carpeta).catch(() => null);
-  if (!info?.isDirectory()) throw new ErrorDeVelo("carpetaNoExiste");
-  return carpeta;
-}
-
 async function ordenAnonimizar(
   args: Argumentos,
   idioma: Idioma,
@@ -148,7 +138,7 @@ async function ordenAnonimizar(
   const ruta = args.positionals[1];
   if (!ruta) throw new ErrorDeVelo("sinArchivo");
   const pedida = await pedidaDePolitica(args.values.politica);
-  const carpeta = await carpetaDeSalida(args.values.salida, ruta);
+  const carpeta = await carpetaDeSalida(args.values.salida, dirname(ruta));
 
   consola.aviso(texto(V.aviso.fraseIrrecuperable, idioma));
   const frase = await secreto("VELO_FRASE", V.pedir.frase, idioma);
@@ -254,6 +244,7 @@ async function ordenRestaurar(
   const ruta = args.positionals[1];
   if (!ruta) throw new ErrorDeVelo("sinArchivo");
   if (!args.values.boveda) throw new ErrorDeVelo("sinBoveda");
+  const carpeta = await carpetaDeSalida(args.values.salida, dirname(ruta));
   const fraseDeBoveda = await secreto(
     "VELO_FRASE_BOVEDA",
     V.pedir.fraseDeBoveda,
@@ -274,7 +265,6 @@ async function ordenRestaurar(
   const { fuente, origen } = await abrirArchivo(ruta);
   // La pasada R1 va antes de abrir el destino: de ella sale si lo restaurado es CSV, JSON o JSON Lines.
   const devuelto = await abrirDevuelto(fuente, origen);
-  const carpeta = await carpetaDeSalida(args.values.salida, ruta);
   const rutaDeSalida = join(
     carpeta,
     `velo-restaurado-${origen.sha256.slice(0, 8)}.${devuelto.extension}`,

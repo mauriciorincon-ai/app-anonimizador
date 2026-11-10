@@ -100,7 +100,7 @@
           {
             "id": "C9",
             "nombre": "Los cruces entre archivos sobreviven",
-            "que_hace": "Con la misma frase de paso y la misma sal, que Velo te muestra para que la guardes, cada valor recibe el mismo seudónimo en todas tus entregas. Así cruzas el archivo de marzo con el de abril sin tener los datos reales delante.",
+            "que_hace": "Con la misma frase de paso y la misma sal, que Velo te muestra para que la guardes y que en Velo local fijas con --sal (en la web cada llave nueva estrena la suya), cada valor recibe el mismo seudónimo en todas tus entregas. Así cruzas el archivo de marzo con el de abril sin tener los datos reales delante.",
             "seccion_manual": "4. Transforma: el taller · La llave"
           }
         ]

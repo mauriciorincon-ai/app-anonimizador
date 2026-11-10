@@ -6,7 +6,7 @@
 // tablas que tienen llave primaria); sin consola, es un error que dice qué falta.
 
 import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 
 import {
   abrirBoveda,
@@ -20,6 +20,7 @@ import { formatoNumerico } from "@/lib/idioma";
 import { escribirNuevo } from "../archivos";
 import {
   abrirBitacoraPara,
+  carpetaDeSalida,
   deshacerLaCorrida,
   pedidaDePolitica,
 } from "../comun";
@@ -66,6 +67,7 @@ export async function ordenPuente(
   consola: Consola,
   ahora: () => Date,
 ): Promise<void> {
+  const carpeta = await carpetaDeSalida(args.values.salida, process.cwd());
   const url = await secreto(
     "VELO_DB_URL",
     V.pedir.conexion,
@@ -78,7 +80,6 @@ export async function ordenPuente(
       await elegirTabla(conexion, args.values.tabla, idioma, consola),
       conexion.motor,
     );
-    const carpeta = resolve(args.values.salida ?? process.cwd());
     const fecha = fechaDelDocumento(idioma, ahora());
     const numero = formatoNumerico(idioma);
 

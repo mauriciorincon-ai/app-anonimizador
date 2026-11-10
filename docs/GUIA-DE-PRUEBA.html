@@ -1430,8 +1430,10 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
             <input type="checkbox" id="l4" /><label for="l4"
               >Al terminar quedan <strong>la huella</strong> (12 caracteres) y
               <strong>la sal</strong>. La frase que escribiste
-              <strong>ya no está en pantalla</strong>. Copia la sal: la
-              necesitas para repetir los mismos seudónimos el mes que viene.
+              <strong>ya no está en pantalla</strong>. Copia la sal: solo
+              sirve para repetir los seudónimos con
+              <code>pnpm velo … --sal</code> (parada 21); en la web cada llave
+              nueva estrena la suya.
               <span class="origen origen-heredada">Heredada · S2</span></label
             >
           </li>
@@ -4404,10 +4406,10 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
         <div class="kit">
           <p>
             <strong
-              >Vas a ver exactamente una petición en rojo, y NO es un
-              fallo.</strong
+              >Si abres una preview, verás exactamente una petición en rojo, y
+              NO es un fallo; en producción, ninguna.</strong
             >
-            En la pestaña Red aparecerá
+            En la pestaña Red de la preview aparecerá
             <code>vercel.live/_next-live/feedback/feedback.js</code>, marcada
             como <strong>bloqueada</strong>. Es la barra de comentarios que
             Vercel inyecta <strong>solo en las previews</strong> —nunca en

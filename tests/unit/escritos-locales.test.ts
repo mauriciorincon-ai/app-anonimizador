@@ -136,6 +136,40 @@ describe("pnpm velo, con una carpeta de salida que no existe", () => {
     expect(dicho).not.toContain("VELO_FRASE");
     expect(existsSync(ausente)).toBe(false);
   });
+
+  it("restaurar y puente lo dicen igual, antes de pedir la frase o la conexión", async () => {
+    const ausente = join(carpeta, "no-existe");
+    for (const orden of [
+      [
+        "restaurar",
+        join(carpeta, "a.csv"),
+        "--boveda",
+        join(carpeta, "b.velo"),
+        "--salida",
+        ausente,
+      ],
+      ["puente", "--tabla", "t", "--salida", ausente],
+    ]) {
+      registro.length = 0;
+      expect(await principal(orden, consola, () => new Date())).toBe(1);
+      const dicho = registro.join("\n");
+      expect(dicho).toContain("--salida");
+      expect(dicho).not.toContain("VELO_FRASE");
+      expect(dicho).not.toContain("VELO_DB_URL");
+    }
+  });
+
+  it("sin --salida, un archivo de entrada que no está se dice como archivo, no como carpeta", async () => {
+    const orden = [
+      "anonimizar",
+      join(carpeta, "otra", "x.csv"),
+      "--politica",
+      join(carpeta, "p.json"),
+    ];
+    vi.stubEnv("VELO_FRASE", FRASE);
+    expect(await principal(orden, consola, () => new Date())).toBe(1);
+    expect(registro.join("\n")).not.toContain("--salida");
+  });
 });
 
 describe("la bitácora se deshace", () => {

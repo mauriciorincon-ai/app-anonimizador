@@ -22,11 +22,11 @@ export const LLAVES = {
       titulo: { es: "Llave lista", en: "Key ready" },
       nota: {
         es:
-          "Guarda la frase y esta sal en tu gestor de contraseñas. Sin las dos, los seudónimos " +
-          "del mes que viene **no van a cuadrar** con los de hoy.",
+          "Guarda la frase y esta sal en tu gestor de contraseñas. Sin las dos, ni Velo local " +
+          "puede **repetir estos seudónimos** el mes que viene (en la web, cada llave nueva estrena su sal).",
         en:
-          "Save the passphrase and this salt in your password manager. Without both, next " +
-          "month's pseudonyms **won't match** today's.",
+          "Save the passphrase and this salt in your password manager. Without both, not even " +
+          "Velo local can **repeat these pseudonyms** next month (on the web, every new key gets its own salt).",
       },
       huella: { es: "Huella de la llave", en: "Key fingerprint" },
       sal: { es: "Sal", en: "Salt" },

@@ -115,7 +115,13 @@ const OPCIONES: readonly { valor: string; texto: Texto; tecnica: Tecnica }[] = [
     // Los de partida son un ejemplo, no una recomendación: el rango tiene que ser el del dato.
     valor: "laplace",
     texto: E.opcion.laplace,
-    tecnica: { tipo: "laplace", epsilon: 1, minimo: 0, maximo: 100, decimales: 0 },
+    tecnica: {
+      tipo: "laplace",
+      epsilon: 1,
+      minimo: 0,
+      maximo: 100,
+      decimales: 0,
+    },
   },
   {
     valor: "respuesta-aleatorizada",
@@ -432,7 +438,7 @@ export function EditorDePolitica({
             <p className="text-tinta-tenue mt-2 text-[0.8125rem] leading-relaxed">
               <Rico texto={E.vuelta.sinVuelta.antes} />{" "}
               {sinVuelta.map((nombre, i) => (
-                <span key={nombre}>
+                <span key={`${nombre}-${i}`}>
                   {i > 0 ? " · " : ""}
                   <code className="font-mono">{nombre}</code>
                 </span>
@@ -573,8 +579,8 @@ function AvisoDeOrigen({ origen }: { origen: Politica["origen"] }) {
           <ul className="mt-1 list-disc space-y-1 pl-5">
             {deFabrica.cobertura
               .filter((c) => c.articulo && c.fuente && c.consultada)
-              .map((c) => (
-                <li key={`${c.articulo}-${m(c.identificador)}`}>
+              .map((c, i) => (
+                <li key={`${c.articulo}-${m(c.identificador)}-${i}`}>
                   <Rico
                     texto={E.origen.citas.linea}
                     datos={{
