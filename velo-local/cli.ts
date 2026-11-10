@@ -197,13 +197,15 @@ async function ordenAnonimizar(
         carpeta,
         `velo-boveda-${hash.slice(0, 8)}${EXTENSION_DE_BOVEDA}`,
       );
+      // La frase se pidió arriba, antes del primer byte, con `requiereBoveda`; la bóveda y esa
+      // pregunta salen de la misma regla (`esReversible`), y `reversible.test.ts` lo comprueba. Si
+      // algún día dejaran de coincidir, aquí se corta (y se deshace lo escrito): nada de pedir la
+      // frase tarde ni de seguir sin bóveda.
+      if (fraseDeBoveda === null)
+        throw new Error("la bóveda salió sin que se hubiera pedido su frase");
       await escribirNuevo(
         rutaDeBoveda,
-        await sellarBoveda(
-          resultado.boveda,
-          fraseDeBoveda ??
-            (await secreto("VELO_FRASE_BOVEDA", V.pedir.fraseDeBoveda, idioma)),
-        ),
+        await sellarBoveda(resultado.boveda, fraseDeBoveda),
       );
       escritos.push(rutaDeBoveda);
     }
