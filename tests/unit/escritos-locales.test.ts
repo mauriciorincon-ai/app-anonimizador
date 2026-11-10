@@ -118,6 +118,26 @@ describe("pnpm velo anonimizar, cuando falta una frase", () => {
   });
 });
 
+describe("pnpm velo, con una carpeta de salida que no existe", () => {
+  it("lo dice con palabras, antes de pedir la frase y sin escribir nada", async () => {
+    const ausente = join(carpeta, "no-existe");
+    const orden = [
+      "anonimizar",
+      join(carpeta, "a.csv"),
+      "--politica",
+      join(carpeta, "p.json"),
+      "--salida",
+      ausente,
+    ];
+    expect(await principal(orden, consola, () => new Date())).toBe(1);
+    const dicho = registro.join("\n");
+    expect(dicho).toContain("--salida");
+    expect(dicho).not.toContain("velo: Error");
+    expect(dicho).not.toContain("VELO_FRASE");
+    expect(existsSync(ausente)).toBe(false);
+  });
+});
+
 describe("la bitácora se deshace", () => {
   it("una bitácora nueva que se anota y se deshace desaparece", async () => {
     vi.stubEnv("VELO_FRASE_BITACORA", FRASE_DE_BITACORA);

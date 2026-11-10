@@ -4,7 +4,7 @@
 // sin eco (`./consola.ts`). Lo que sí es argumento —rutas, la política, la sal— no es secreto: la
 // sal se enseña a propósito, porque sin ella la misma frase daría otra llave.
 
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -128,6 +128,17 @@ async function ordenDiagnosticar(
     );
 }
 
+/** `--salida`, o la carpeta del archivo; si no existe se dice antes de pedir ninguna frase. */
+async function carpetaDeSalida(
+  pedida: string | undefined,
+  ruta: string,
+): Promise<string> {
+  const carpeta = resolve(pedida ?? dirname(ruta));
+  const info = await stat(carpeta).catch(() => null);
+  if (!info?.isDirectory()) throw new ErrorDeVelo("carpetaNoExiste");
+  return carpeta;
+}
+
 async function ordenAnonimizar(
   args: Argumentos,
   idioma: Idioma,
@@ -137,7 +148,7 @@ async function ordenAnonimizar(
   const ruta = args.positionals[1];
   if (!ruta) throw new ErrorDeVelo("sinArchivo");
   const pedida = await pedidaDePolitica(args.values.politica);
-  const carpeta = resolve(args.values.salida ?? dirname(ruta));
+  const carpeta = await carpetaDeSalida(args.values.salida, ruta);
 
   consola.aviso(texto(V.aviso.fraseIrrecuperable, idioma));
   const frase = await secreto("VELO_FRASE", V.pedir.frase, idioma);
@@ -263,7 +274,7 @@ async function ordenRestaurar(
   const { fuente, origen } = await abrirArchivo(ruta);
   // La pasada R1 va antes de abrir el destino: de ella sale si lo restaurado es CSV, JSON o JSON Lines.
   const devuelto = await abrirDevuelto(fuente, origen);
-  const carpeta = resolve(args.values.salida ?? dirname(ruta));
+  const carpeta = await carpetaDeSalida(args.values.salida, ruta);
   const rutaDeSalida = join(
     carpeta,
     `velo-restaurado-${origen.sha256.slice(0, 8)}.${devuelto.extension}`,

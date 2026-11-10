@@ -359,7 +359,7 @@ Deriving it costs 600,000 iterations of PBKDF2 (the minimum OWASP recommends), *
 the protection**: it makes every attempt to guess it equally expensive. How long it takes depends
 on the machine —on a modern laptop it is an instant, on a low-end phone you notice it—; what is
 guaranteed is the number of iterations, not the seconds. Save the passphrase **and the salt** that
-Velo shows you: without both, next month's pseudonyms will not match.
+Velo shows you: without both, not even Velo local can repeat the pseudonyms next month.
 
 #### Before and after
 
@@ -1481,7 +1481,10 @@ With the **same passphrase and the same salt**. You keep the passphrase; Velo sh
 when it derives the key. **It does not travel inside the exported policy**, but it does travel
 inside the vault, encrypted along with everything else: whoever keeps the vault and remembers the
 passphrase can derive the same key again. If you did not save a vault — because you marked no
-column as undoable — copy the salt to your password manager next to the passphrase.
+column as undoable — copy the salt to your password manager next to the passphrase. **Note:** on
+the web every new key gets its own fresh salt and the screen does not let you type one; to repeat
+pseudonyms from one file to another, the way in is Velo local with `--sal` (the same passphrase and
+the same salt give the same pseudonyms).
 
 **Can I use Velo in English?**
 Yes, all of it: the five screens, the key notices, the certificate, the return report and the

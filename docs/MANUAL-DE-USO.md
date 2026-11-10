@@ -352,7 +352,7 @@ Derivarla cuesta 600.000 vueltas de PBKDF2 (el mínimo que recomienda OWASP), **
 protección**: encarece por igual cada intento de adivinarla. Cuánto tarda depende del equipo — en un
 portátil moderno es un instante, en un teléfono de gama baja se nota—; lo que se garantiza es el
 número de vueltas, no los segundos. Guarda
-la frase **y la sal** que Velo te enseña: sin las dos, los seudónimos del mes que viene no cuadran.
+la frase **y la sal** que Velo te enseña: sin las dos, ni Velo local puede repetir los seudónimos el mes que viene.
 
 #### Antes y después
 
@@ -1472,7 +1472,9 @@ Con la **misma frase de paso y la misma sal**. La frase la guardas tú; la sal t
 derivar la llave. **No viaja dentro de la política exportada**, pero sí dentro de la bóveda,
 cifrada con todo lo demás: quien conserva la bóveda y recuerda la frase puede volver a derivar la
 misma llave. Si no guardaste bóveda —porque no marcaste ninguna columna como reversible—, cópiala a
-tu gestor de contraseñas junto a la frase.
+tu gestor de contraseñas junto a la frase. **Ojo:** en la web cada llave nueva estrena su propia
+sal y la pantalla no deja escribir una; para repetir los seudónimos de un archivo a otro, la
+puerta es Velo local con `--sal` (la misma frase y la misma sal dan los mismos seudónimos).
 
 **¿Puedo usar Velo en inglés?**
 Sí, entero: las cinco pantallas, los avisos de las llaves, el certificado, el informe del regreso y
