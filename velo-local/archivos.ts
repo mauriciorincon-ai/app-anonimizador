@@ -62,10 +62,31 @@ export class ArchivoNuevo implements Sumidero {
     await this.asa.close();
   }
 
-  /** Deshace: cierra y borra. Lo que no terminó no se queda en el disco. */
-  async abortar(): Promise<void> {
+  /**
+   * Deshace: cierra y borra. Lo que no terminó no se queda en el disco. Devuelve `false` si NO pudo
+   * borrarlo (permisos, un disco que se fue): el archivo queda a medias y quien llama lo AVISA, en
+   * vez de callarlo.
+   */
+  async abortar(): Promise<boolean> {
     await this.asa.close().catch(() => {});
-    await unlink(this.ruta).catch(() => {});
+    return unlink(this.ruta).then(
+      () => true,
+      (error: NodeJS.ErrnoException) => error.code === "ENOENT",
+    );
+  }
+}
+
+/**
+ * S12: una escritura falló Y el archivo a medias no se pudo borrar. Lleva la ruta que quedó y la
+ * causa original; quien la atrapa avisa de la ruta y relanza la causa (el error que importa).
+ */
+export class EscrituraAMedias extends Error {
+  constructor(
+    readonly ruta: string,
+    readonly causa: unknown,
+  ) {
+    super("escritura-a-medias");
+    this.name = "EscrituraAMedias";
   }
 }
 
@@ -83,7 +104,7 @@ export async function escribirNuevo(
     );
     await archivo.cerrar();
   } catch (error) {
-    await archivo.abortar();
+    if (!(await archivo.abortar())) throw new EscrituraAMedias(ruta, error);
     throw error;
   }
 }

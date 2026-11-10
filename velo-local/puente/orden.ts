@@ -18,7 +18,11 @@ import { decirMensaje } from "@/lib/idioma/mensajes";
 import { formatoNumerico } from "@/lib/idioma";
 
 import { escribirNuevo } from "../archivos";
-import { abrirBitacoraPara, borrarEscritos, pedidaDePolitica } from "../comun";
+import {
+  abrirBitacoraPara,
+  deshacerLaCorrida,
+  pedidaDePolitica,
+} from "../comun";
 import { preguntar, secreto } from "../consola";
 import { fechaDelDocumento, llaveDelProyecto } from "../nucleo";
 import { ErrorDeVelo, texto, VELO_LOCAL as V } from "../textos";
@@ -192,9 +196,7 @@ export async function ordenPuente(
       });
     } catch (error) {
       // El ROLLBACK ya quitó la tabla: el certificado y la bóveda de una tabla que no existe, tampoco.
-      await borrarEscritos(escritos);
-      await bitacora?.deshacer();
-      throw error;
+      throw await deshacerLaCorrida(escritos, bitacora, error, consola, idioma);
     }
     if (args.values.bitacora) escritos.push(args.values.bitacora);
     consola.salida(

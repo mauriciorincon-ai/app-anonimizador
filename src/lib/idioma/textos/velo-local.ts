@@ -77,6 +77,10 @@ export const VELO_LOCAL = {
       es: "Huella de la llave: {huella}",
       en: "Key fingerprint: {huella}",
     },
+    quedoSinBorrar: {
+      es: "No pude borrar {ruta}: la corrida falló y ese archivo quedó en el disco, posiblemente a medias. Bórralo tú.",
+      en: "I could not delete {ruta}: the run failed and that file is still on disk, possibly half-written. Delete it yourself.",
+    },
   },
   resultado: {
     diagnostico: {

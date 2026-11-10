@@ -6,10 +6,10 @@ import { abrirBitacora, sellarBitacora } from "@/lib/bitacora-archivo";
 import type { Idioma } from "@/lib/idioma";
 import { decirMensaje } from "@/lib/idioma/mensajes";
 
-import { escribirNuevo } from "./archivos";
+import { EscrituraAMedias, escribirNuevo } from "./archivos";
 import { secreto } from "./consola";
 import { anotar, esDeFabrica } from "./nucleo";
-import { ErrorDeVelo, VELO_LOCAL as V } from "./textos";
+import { ErrorDeVelo, texto, VELO_LOCAL as V } from "./textos";
 
 /** La política pedida: de fábrica por su nombre, o el texto de un archivo exportado. */
 export async function pedidaDePolitica(
@@ -84,7 +84,40 @@ export async function abrirBitacoraPara(ruta: string, idioma: Idioma) {
   };
 }
 
-/** S10: lo que esta corrida escribió se borra si la corrida no termina; nunca un archivo ajeno. */
-export async function borrarEscritos(rutas: readonly string[]): Promise<void> {
-  for (const ruta of rutas) await rm(ruta, { force: true });
+/**
+ * S10: lo que esta corrida escribió se borra si la corrida no termina; nunca un archivo ajeno.
+ * S12: intenta con TODOS (un fallo no deja sin borrar a los demás) y devuelve los que NO pudo borrar,
+ * para que quien llama los nombre.
+ */
+export async function borrarEscritos(
+  rutas: readonly string[],
+): Promise<string[]> {
+  const quedaron: string[] = [];
+  for (const ruta of rutas)
+    try {
+      await rm(ruta, { force: true });
+    } catch {
+      quedaron.push(ruta);
+    }
+  return quedaron;
+}
+
+/**
+ * Lo que se hace cuando una corrida falla después de escribir: se borra lo escrito, se deshace la
+ * bitácora y se AVISA de cada archivo que no se pudo borrar (queda en el disco, y la persona tiene
+ * que saberlo para quitarlo). Devuelve el error que se relanza: la causa, no el envoltorio.
+ */
+export async function deshacerLaCorrida(
+  escritos: readonly string[],
+  bitacora: { deshacer(): Promise<void> } | null | undefined,
+  error: unknown,
+  consola: { aviso(linea: string): void },
+  idioma: Idioma,
+): Promise<unknown> {
+  const quedaron = await borrarEscritos(escritos);
+  if (error instanceof EscrituraAMedias) quedaron.push(error.ruta);
+  await bitacora?.deshacer();
+  for (const ruta of quedaron)
+    consola.aviso(texto(V.aviso.quedoSinBorrar, idioma, { ruta }));
+  return error instanceof EscrituraAMedias ? error.causa : error;
 }

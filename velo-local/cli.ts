@@ -23,8 +23,17 @@ import { ErrorDeJson } from "@/engine/json/tipos";
 import { ArchivoCambio } from "@/workers/json";
 
 import { crearApi, escuchar, PUERTO_DE_LA_API } from "./api";
-import { abrirArchivo, ArchivoNuevo, escribirNuevo } from "./archivos";
-import { abrirBitacoraPara, borrarEscritos, pedidaDePolitica } from "./comun";
+import {
+  abrirArchivo,
+  ArchivoNuevo,
+  EscrituraAMedias,
+  escribirNuevo,
+} from "./archivos";
+import {
+  abrirBitacoraPara,
+  deshacerLaCorrida,
+  pedidaDePolitica,
+} from "./comun";
 import { secreto } from "./consola";
 import {
   abrirDevuelto,
@@ -173,7 +182,8 @@ async function ordenAnonimizar(
       });
       await archivo.cerrar();
     } catch (error) {
-      await archivo.abortar();
+      if (!(await archivo.abortar()))
+        throw new EscrituraAMedias(rutaDeSalida, error);
       throw error;
     }
     escritos.push(rutaDeSalida);
@@ -199,10 +209,9 @@ async function ordenAnonimizar(
     }
     await bitacora?.anotar(resultado.entrada);
   } catch (error) {
-    // Un anonimizado sin su bóveda o un certificado sin su archivo no quedan a medias en el disco.
-    await borrarEscritos(escritos);
-    await bitacora?.deshacer();
-    throw error;
+    // Un anonimizado sin su bóveda o un certificado sin su archivo no quedan a medias en el disco;
+    // si algo no se pudo borrar, se dice cuál.
+    throw await deshacerLaCorrida(escritos, bitacora, error, consola, idioma);
   }
   for (const ruta of escritos)
     consola.salida(texto(V.resultado.escrito, idioma, { ruta }));
@@ -270,7 +279,10 @@ async function ordenRestaurar(
     );
     await archivo.cerrar();
   } catch (error) {
-    await archivo.abortar();
+    if (!(await archivo.abortar()))
+      consola.aviso(
+        texto(V.aviso.quedoSinBorrar, idioma, { ruta: rutaDeSalida }),
+      );
     throw error;
   }
   consola.salida(texto(V.resultado.escrito, idioma, { ruta: rutaDeSalida }));
