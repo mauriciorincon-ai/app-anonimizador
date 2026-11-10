@@ -64,7 +64,11 @@ const escucha = () =>
   });
 let servidorPropio = null;
 if (!(await escucha())) {
-  servidorPropio = spawn("pnpm", ["start"], { cwd: RAIZ, stdio: "ignore", detached: true });
+  servidorPropio = spawn("pnpm", ["start"], {
+    cwd: RAIZ,
+    stdio: "ignore",
+    detached: true,
+  });
   for (let i = 0; i < 100 && !(await escucha()); i++)
     await new Promise((r) => setTimeout(r, 200));
 }
@@ -72,12 +76,19 @@ if (!(await escucha())) {
 const navegador = await { chromium, firefox, webkit }[NAVEGADOR].launch();
 let falloGrave = null;
 try {
-  const contexto = await navegador.newContext({ locale: "es-CO", acceptDownloads: true });
+  const contexto = await navegador.newContext({
+    locale: "es-CO",
+    acceptDownloads: true,
+  });
   const page = await contexto.newPage();
   const delServiceWorker = [];
   page.on("response", (r) => {
     if (new URL(r.url()).pathname.startsWith("/descarga/"))
-      delServiceWorker.push(r.fromServiceWorker());
+      delServiceWorker.push({
+        url: r.url(),
+        sw: r.fromServiceWorker(),
+        estado: r.status(),
+      });
   });
 
   await page.goto(BASE + "/");
@@ -91,7 +102,9 @@ try {
   await page.getByRole("checkbox").first().check();
   await page.getByLabel("Frase de paso del proyecto").fill(FRASE_DE_LLAVE);
   await page.getByRole("button", { name: "Derivar la llave" }).click();
-  await page.getByRole("heading", { name: "Llave lista" }).waitFor({ timeout: 120_000 });
+  await page
+    .getByRole("heading", { name: "Llave lista" })
+    .waitFor({ timeout: 120_000 });
   await page.getByRole("button", { name: "Transformar", exact: true }).click();
   await page
     .getByRole("heading", { name: "Qué cambió, y qué sigue igual" })
@@ -105,24 +118,35 @@ try {
     preparar.click(),
   ]);
   await cancelada.cancel();
-  anota((await cancelada.failure()) === "canceled", `${NAVEGADOR}: el navegador da la descarga por cancelada`);
-  const alerta = page.getByRole("alert").filter({ hasText: "No se pudo escribir el archivo" });
-  let dicho = true;
-  try {
-    await alerta.waitFor({ timeout: 60_000 });
-  } catch {
-    dicho = false;
-  }
-  anota(dicho, `${NAVEGADOR}: la pantalla dice «No se pudo escribir el archivo» tras cancelar`);
   anota(
-    (await page.getByText(/Enviado a la descarga de tu navegador/).count()) === 0,
+    (await cancelada.failure()) === "canceled",
+    `${NAVEGADOR}: el navegador da la descarga por cancelada`,
+  );
+  const alerta = page
+    .getByRole("alert")
+    .filter({ hasText: "No se pudo escribir el archivo" });
+  const enviado = page.getByText(/Enviado a la descarga de tu navegador/);
+  // Qué dice la pantalla tras cancelar: la alerta, o (si el navegador siguió leyendo y el archivo
+  // se escribió entero) «Enviado», o nada.
+  const pantalla = await Promise.race([
+    alerta.waitFor({ timeout: 90_000 }).then(() => "alerta"),
+    enviado.waitFor({ timeout: 90_000 }).then(() => "enviado"),
+  ]).catch(() => "nada");
+  const dicho = pantalla === "alerta";
+  console.log(`       pantalla tras cancelar: ${pantalla}`);
+  anota(
+    (await page.getByText(/Enviado a la descarga de tu navegador/).count()) ===
+      0,
     `${NAVEGADOR}: no se ofrece un archivo a medias`,
   );
-  anota(await preparar.isEnabled(), `${NAVEGADOR}: «Preparar el archivo» vuelve a estar disponible`);
+  anota(
+    await preparar.isEnabled(),
+    `${NAVEGADOR}: «Preparar el archivo» vuelve a estar disponible`,
+  );
 
   // 2ª vez: sale entero y es el que dice el certificado.
   const [entera] = await Promise.all([
-    page.waitForEvent("download", { timeout: 300_000 }),
+    page.waitForEvent("download", { timeout: 90_000 }),
     preparar.click(),
   ]);
   const ruta = join(SALIDA, `repetida-${NAVEGADOR}.csv`);
@@ -136,14 +160,23 @@ try {
     page.getByRole("button", { name: "Descargar el certificado" }).click(),
   ]);
   const html = readFileSync(await certificado.path(), "utf8");
-  anota(html.includes(sha(bytes)), `${NAVEGADOR}: la segunda descarga tiene los bytes del certificado (${bytes.length})`);
+  anota(
+    html.includes(sha(bytes)),
+    `${NAVEGADOR}: la segunda descarga tiene los bytes del certificado (${bytes.length})`,
+  );
   anota(
     bytes.toString("utf8").split("\n").length - 1 === 100_001,
     `${NAVEGADOR}: la segunda descarga trae las 100 001 líneas`,
   );
+  // Todas las respuestas las da el service worker (ninguna cae al servidor de Next) y hay UNA servida
+  // (200) por descarga y por dirección: el service worker sirve cada id una sola vez. WebKit de
+  // Playwright anuncia dos veces el evento de una respuesta del service worker (mismo URL), así que
+  // se cuentan las direcciones distintas, no los eventos.
+  const direcciones = new Set(delServiceWorker.map((r) => r.url));
   anota(
-    delServiceWorker.length === 2 && delServiceWorker.every(Boolean),
-    `${NAVEGADOR}: las dos respuestas las dio el service worker (${JSON.stringify(delServiceWorker)})`,
+    direcciones.size === 2 &&
+      delServiceWorker.every((r) => r.sw && r.estado === 200),
+    `${NAVEGADOR}: las dos descargas las dio el service worker, cada una por su dirección con un 200 (${delServiceWorker.length} eventos, ${direcciones.size} direcciones)`,
   );
   await contexto.close();
 } catch (error) {
@@ -160,7 +193,14 @@ try {
   }
 }
 
-writeFileSync(join(SALIDA, `resultado-${NAVEGADOR}.json`), JSON.stringify({ navegador: NAVEGADOR, resultados }));
+writeFileSync(
+  join(SALIDA, `resultado-${NAVEGADOR}.json`),
+  JSON.stringify({ navegador: NAVEGADOR, resultados }),
+);
 const bien = !falloGrave && resultados.length > 0 && resultados.every(Boolean);
-console.log(bien ? `\n${NAVEGADOR}: la cancelación se comporta como en Chromium.` : `\n${NAVEGADOR}: HAY FALLAS.`);
+console.log(
+  bien
+    ? `\n${NAVEGADOR}: la cancelación se comporta como en Chromium.`
+    : `\n${NAVEGADOR}: HAY FALLAS.`,
+);
 process.exit(bien ? 0 : 1);
