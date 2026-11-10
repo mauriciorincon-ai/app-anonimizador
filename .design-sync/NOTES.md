@@ -91,3 +91,11 @@ huecos, ya pagados:
   misma sección.
 - **`design-system.md` no viajaba**: `preparar.mjs` lo copia a `<pkg>/docs/` y el converter lo
   publica en `guidelines/` — los 5 estados del §4 y las reglas del §5 ahora son visibles al agente.
+
+## Última publicación (Velo no tiene `project.json`; el registro vive aquí)
+
+- **lastPublished: 2026-11-10** · proyecto `39b159c1-f84c-4a06-8f1a-41b400bd8f23` · Sprint 12 (F2).
+- Delta publicado: 28 escritos (README, `_ds_bundle.css/.js`, `_ds_sync.json`, `fonts/fonts.css`, 14 fuentes
+  `.woff2` con hash nuevo, las 7 `_preview` de primitivas, `Panel.html` e `InsigniaDeCategoria.html`) y
+  14 borrados (las fuentes con el hash anterior). `styles.css`, `guidelines/index.md` y `design-system.md`
+  no cambiaron. Conteo remoto verificado con `list_files` tras escribir.
