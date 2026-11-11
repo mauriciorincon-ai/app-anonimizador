@@ -91,6 +91,22 @@ export function generarSal(): string {
   return aHex(bytesAleatorios(BYTES_DE_SAL));
 }
 
+/**
+ * La forma de una sal: 32 caracteres hexadecimales en minúscula (16 bytes). **Un solo validador
+ * para la web y para Velo local (`--sal`)**: si los dos aceptaran cosas distintas, la misma sal
+ * pegada en un lado y en el otro no daría los mismos seudónimos.
+ */
+export const SAL_VALIDA = /^[0-9a-f]{32}$/;
+
+/**
+ * Lo que el usuario pegó, listo para validar: sin espacios alrededor (al copiar de un documento
+ * casi siempre viaja uno) y en minúscula. No inventa nada: si después de esto no cumple
+ * `SAL_VALIDA`, se rechaza.
+ */
+export function normalizarSal(texto: string): string {
+  return texto.trim().toLowerCase();
+}
+
 /** Texto de la huella: HMAC de una constante conocida. No revela la llave. */
 const TESTIGO_DE_HUELLA = "velo:huella-de-llave:v1";
 

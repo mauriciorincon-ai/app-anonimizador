@@ -1470,7 +1470,7 @@
         "tarjeta3.f2.como": "A NIT is still a NIT: if you choose to keep the format, the pseudonym has the same shape and its check digit is <strong>actually recalculated</strong>, using the DIAN’s mod 11. The spreadsheet on the other side does not break, and neither does their system’s validation.",
         "tarjeta3.f2.tip": "<strong>Tip:</strong> keeping the format shrinks the available space, so two different values can collide. Velo counts those collisions and tells you about them: it does not hide them.",
         "tarjeta3.f3.titulo": "With the same salt, the same pseudonym",
-        "tarjeta3.f3.como": "The pseudonym is computed from a passphrase that only you hold, derived with 600,000 iterations of PBKDF2 — the minimum OWASP recommends, and that cost <em>is</em> the protection. With the same passphrase and the same salt — which in Velo local you fix with <code>--sal</code>; on the web every new key gets its own — the pseudonyms repeat, which is why you can match the March file against the April one without having the real data in front of you.",
+        "tarjeta3.f3.como": "The pseudonym is computed from a passphrase that only you hold, derived with 600,000 iterations of PBKDF2 — the minimum OWASP recommends, and that cost <em>is</em> the protection. With the same passphrase and the same salt — which you paste into its field on the web and fix with <code>--sal</code> in Velo local — the pseudonyms repeat, which is why you can match the March file against the April one without having the real data in front of you.",
         "tarjeta3.f3.tip": "<strong>Tip:</strong> keep the passphrase <em>and</em> the salt that Velo shows you. If you lose the passphrase there is no going back: that is the flip side of nobody else having it.",
         "tarjeta4.titulo": "Measure risk with exact figures",
         "tarjeta4.linea": "How many people remain exposed before and after, counted row by row and kept apart from what is estimated",
@@ -1534,7 +1534,7 @@
         "velar.nota": "Still a NIT — with its check digit <strong>recalculated</strong> by the DIAN’s mod 11, not made up. The system on the other side validates it just the same; what it no longer has is anyone to point at.",
         "velar.marzo": "March delivery",
         "velar.abril": "April delivery",
-        "velar.pie": "The same pseudonym in both deliveries (same passphrase and same salt, which Velo local lets you fix): your analysis can still match records across them, and the real data never has to leave. Values invented for this example.",
+        "velar.pie": "The same pseudonym in both deliveries (same passphrase and same salt, which you paste on the web or fix in Velo local): your analysis can still match records across them, and the real data never has to leave. Values invented for this example.",
         "aduana.titulo": "And while all of this happens, nothing has left",
         "aduana.bajada": "This is not a brochure promise: there is simply nowhere for it to go.",
         "aduana.lamina.aria": "A browser with the table inside. Three arrows try to leave toward a server, an AI and a third party’s computer, and they stop at the edge of the tab.",
@@ -2443,11 +2443,10 @@
                         tienes tú, derivada con 600.000 vueltas de PBKDF2 —el
                         mínimo que recomienda OWASP, y ese costo
                         <em>es</em> la protección—. Con la misma frase y la
-                        misma sal —que en Velo local fijas con
-                        <code>--sal</code>; en la web cada llave nueva estrena
-                        la suya— los seudónimos se repiten, y por eso puedes
-                        cruzar el archivo de marzo con el de abril sin tener los
-                        datos reales delante.
+                        misma sal —que en la web pegas en su campo y en Velo
+                        local fijas con <code>--sal</code>— los seudónimos se
+                        repiten, y por eso puedes cruzar el archivo de marzo con
+                        el de abril sin tener los datos reales delante.
                       </p>
                       <p class="tip" data-t="tarjeta3.f3.tip">
                         <strong>Tip:</strong> guarda la frase <em>y</em> la sal
@@ -3014,9 +3013,9 @@
             </div>
             <p class="chica tenue" style="margin-top: 12px" data-t="velar.pie">
               El mismo seudónimo en las dos entregas (misma frase y misma sal,
-              que Velo local te deja fijar): los cruces del análisis sobreviven
-              sin que los datos reales salgan nunca. Valores inventados para
-              este ejemplo.
+              que pegas en la web o fijas en Velo local): los cruces del
+              análisis sobreviven sin que los datos reales salgan nunca. Valores
+              inventados para este ejemplo.
             </p>
           </div>
         </section>

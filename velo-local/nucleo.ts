@@ -55,7 +55,13 @@ import {
 import { formatoDeArchivo, TOPE_DE_CELDAS_EN_MEMORIA } from "@/lib/archivo";
 import { decirMensaje } from "@/lib/idioma/mensajes";
 import { LOCALE, type Idioma } from "@/lib/idioma";
-import { derivarLlave, generarSal, type LlaveDeProyecto } from "@/lib/llave";
+import {
+  derivarLlave,
+  generarSal,
+  normalizarSal,
+  SAL_VALIDA,
+  type LlaveDeProyecto,
+} from "@/lib/llave";
 import { Sha256 } from "@/lib/sha256";
 import {
   escribirCsv,
@@ -367,14 +373,15 @@ export function esDeFabrica(nombre: string): boolean {
 
 // ── La llave ──────────────────────────────────────────────────────────────────────────────────
 
-const SAL_VALIDA = /^[0-9a-f]{32}$/;
-
-/** La llave del proyecto: la misma `derivarLlave` de la web. Sin sal, una nueva, como en la web. */
+/**
+ * La llave del proyecto: la misma `derivarLlave` de la web, y la sal se valida con el mismo
+ * validador que el campo de la sal de la web. Sin sal, una nueva, como en la web.
+ */
 export async function llaveDelProyecto(
   frase: string,
   sal?: string,
 ): Promise<LlaveDeProyecto> {
-  const laSal = sal ?? generarSal();
+  const laSal = sal === undefined ? generarSal() : normalizarSal(sal);
   if (!SAL_VALIDA.test(laSal)) throw new ErrorDeVelo("salInvalida");
   return derivarLlave(frase, laSal);
 }

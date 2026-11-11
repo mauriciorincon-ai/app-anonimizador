@@ -327,6 +327,47 @@ describe("la llave", () => {
   });
 });
 
+describe("la llave con la sal pegada", () => {
+  const SAL = "00112233445566778899aabbccddeeff";
+
+  it("con una sal pegada la llave se deriva con ESA sal y la pantalla la enseña", () => {
+    const worker = conArchivo();
+    act(() => derivarLlaveDelProyecto("dos toros y una brújula", SAL));
+    const enviado = worker.enviados.at(-1) as { sal: string };
+    expect(enviado.sal).toBe(SAL);
+    worker.responde({ tipo: "llave-lista", huella: "a1b2c3d4e5f6" });
+    expect(taller.llave).toEqual({
+      fase: "lista",
+      huella: "a1b2c3d4e5f6",
+      sal: SAL,
+    });
+  });
+
+  it("la sal se normaliza antes de viajar: sin espacios y en minúscula", () => {
+    const worker = conArchivo();
+    act(() => derivarLlaveDelProyecto("frase", ` ${SAL.toUpperCase()}\n`));
+    expect((worker.enviados.at(-1) as { sal: string }).sal).toBe(SAL);
+  });
+
+  it("una sal mal formada no deriva nada: el segundo cerrojo", () => {
+    const worker = conArchivo();
+    const antes = worker.enviados.length;
+    act(() => derivarLlaveDelProyecto("frase", "no-soy-una-sal"));
+    expect(worker.enviados).toHaveLength(antes);
+    expect(taller.llave).toEqual({ fase: "sin-llave" });
+  });
+
+  it("sin sal pegada, cada llave nueva estrena la suya", () => {
+    const worker = conArchivo();
+    act(() => derivarLlaveDelProyecto("frase"));
+    const primera = (worker.enviados.at(-1) as { sal: string }).sal;
+    act(() => derivarLlaveDelProyecto("frase"));
+    const segunda = (worker.enviados.at(-1) as { sal: string }).sal;
+    expect(primera).toMatch(/^[0-9a-f]{32}$/);
+    expect(segunda).not.toBe(primera);
+  });
+});
+
 describe("la transformación", () => {
   it("el resultado del worker es lo que la pantalla lee", () => {
     const worker = conArchivo();

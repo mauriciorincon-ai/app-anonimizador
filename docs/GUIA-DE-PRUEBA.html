@@ -1430,10 +1430,11 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
             <input type="checkbox" id="l4" /><label for="l4"
               >Al terminar quedan <strong>la huella</strong> (12 caracteres) y
               <strong>la sal</strong>. La frase que escribiste
-              <strong>ya no está en pantalla</strong>. Copia la sal: solo sirve
-              para repetir los seudónimos con
-              <code>pnpm velo … --sal</code> (parada 21); en la web cada llave
-              nueva estrena la suya.
+              <strong>ya no está en pantalla</strong>. Copia la sal: es lo que
+              te deja repetir los seudónimos, pegándola en el campo «¿Vuelves a
+              un proyecto? Pega su sal» (parada 21) o con
+              <code>pnpm velo … --sal</code>; sin sal pegada, cada llave nueva
+              estrena la suya.
               <span class="origen origen-heredada">Heredada · S2</span></label
             >
           </li>
@@ -4247,9 +4248,19 @@ pnpm kit:generar -- --filas 5000000 --seed 42 --perfil clinico --salida tmp/clin
               y la misma orden sobre <code>tmp/abril</code> imprimen las mismas
               dos líneas. Repite abril con otra sal
               (<code>ffeeddccbbaa99887766554433221100</code>): los seudónimos
-              son otros. La sal la fijas tú con <code>--sal</code>; la web
-              genera una nueva en cada derivación, por eso este cruce se hace
-              aquí. <span class="origen origen-nuevo">Nuevo · S12</span></label
+              son otros. La sal la fijas tú con <code>--sal</code>. En la
+              <strong>web</strong> también: anonimiza
+              <code>tmp/marzo.csv</code> con la política Habeas Data y una frase
+              y apunta la sal que enseña la pantalla; recarga la página, carga
+              <code>tmp/abril.csv</code>, escribe la misma frase y
+              <strong>pega esa sal</strong> en «¿Vuelves a un proyecto? Pega su
+              sal»: la primera cédula sale con el mismo seudónimo. Si dejas el
+              campo vacío, otra llave y otros seudónimos. Una sal con 31
+              caracteres o con una letra que no sea hexadecimal muestra su
+              mensaje y no deja derivar.
+              <span class="origen origen-nuevo"
+                >Nuevo · S12 · ampliada S13</span
+              ></label
             >
           </li>
           <li data-origen="heredado">

@@ -213,6 +213,85 @@ describe("la llave del proyecto", () => {
     expect(campo).toHaveValue("");
   });
 
+  it("la sal pegada viaja con la frase, normalizada, y el campo se vacía", () => {
+    const onDerivar = vi.fn();
+    render(
+      <LlaveDelProyecto llave={{ fase: "sin-llave" }} onDerivar={onDerivar} />,
+    );
+    const sal = "00112233445566778899aabbccddeeff";
+    fireEvent.change(screen.getByLabelText("Frase de paso del proyecto"), {
+      target: { value: "dos toros y una brújula" },
+    });
+    const campoDeSal = screen.getByLabelText(
+      "¿Vuelves a un proyecto? Pega su sal",
+    );
+    // Al copiar de un documento viaja un espacio, y a veces en mayúscula: se normaliza.
+    fireEvent.change(campoDeSal, {
+      target: { value: `  ${sal.toUpperCase()} ` },
+    });
+    expect(campoDeSal).toHaveAttribute("aria-invalid", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Derivar la llave" }));
+    expect(onDerivar).toHaveBeenCalledWith("dos toros y una brújula", sal);
+    expect(campoDeSal).toHaveValue("");
+  });
+
+  it("la sal mal formada se rechaza con su mensaje y no deja derivar, en los dos idiomas", () => {
+    for (const [idioma, campo, boton, error] of [
+      [
+        "es",
+        "¿Vuelves a un proyecto? Pega su sal",
+        "Derivar la llave",
+        /La sal no es válida: tiene que ser hexadecimal, de 32 caracteres\./,
+      ],
+      [
+        "en",
+        "Coming back to a project? Paste its salt",
+        "Derive the key",
+        /That salt isn't valid: it must be hexadecimal, 32 characters\./,
+      ],
+    ] as const) {
+      fijarIdioma(idioma);
+      const onDerivar = vi.fn();
+      const { unmount } = render(
+        <LlaveDelProyecto
+          llave={{ fase: "sin-llave" }}
+          onDerivar={onDerivar}
+        />,
+      );
+      fireEvent.change(
+        screen.getByLabelText(
+          idioma === "es" ? "Frase de paso del proyecto" : "Project passphrase",
+        ),
+        { target: { value: "dos toros y una brújula" } },
+      );
+      for (const mala of [
+        "00112233445566778899aabbccddeef", // 31
+        "00112233445566778899aabbccddeeff0", // 33
+        "00112233445566778899aabbccddeefg", // no hexadecimal
+        "0011223344556677 8899aabbccddeeff", // espacio en medio
+      ]) {
+        const campoDeSal = screen.getByLabelText(campo);
+        fireEvent.change(campoDeSal, { target: { value: mala } });
+        expect(campoDeSal).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByRole("alert")).toHaveTextContent(error);
+        const derivar = screen.getByRole("button", { name: boton });
+        expect(derivar).toBeDisabled();
+        fireEvent.click(derivar);
+        expect(onDerivar).not.toHaveBeenCalled();
+      }
+      unmount();
+    }
+  });
+
+  it("el campo de la sal no se autocompleta ni se corrige", () => {
+    render(
+      <LlaveDelProyecto llave={{ fase: "sin-llave" }} onDerivar={() => {}} />,
+    );
+    const campo = screen.getByLabelText("¿Vuelves a un proyecto? Pega su sal");
+    expect(campo).toHaveAttribute("autocomplete", "off");
+    expect(campo).toHaveAttribute("spellcheck", "false");
+  });
+
   it("la llave lista enseña huella y sal con sus nombres en inglés", () => {
     fijarIdioma("en");
     render(

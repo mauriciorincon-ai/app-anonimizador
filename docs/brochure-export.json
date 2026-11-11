@@ -100,7 +100,7 @@
           {
             "id": "C9",
             "nombre": "Los cruces entre archivos sobreviven",
-            "que_hace": "Con la misma frase de paso y la misma sal, que Velo te muestra para que la guardes y que en Velo local fijas con --sal (en la web cada llave nueva estrena la suya), cada valor recibe el mismo seudónimo en todas tus entregas. Así cruzas el archivo de marzo con el de abril sin tener los datos reales delante.",
+            "que_hace": "Con la misma frase de paso y la misma sal, que Velo te muestra para que la guardes y que en la web pegas en su campo y en Velo local fijas con --sal, cada valor recibe el mismo seudónimo en todas tus entregas. Así cruzas el archivo de marzo con el de abril sin tener los datos reales delante.",
             "seccion_manual": "4. Transforma: el taller · La llave"
           }
         ]
@@ -259,10 +259,10 @@
     {
       "clave": "dependencias_runtime",
       "etiqueta": "Dependencias en tiempo de ejecución",
-      "valor": 11,
+      "valor": 10,
       "unidad": "paquetes",
       "fuente": "medido",
-      "detalle": "En `dependencies`: next, react, react-dom, papaparse, xlsx, zod, pino y @sentry/nextjs para la web; pdf-lib para los metadatos de PDF; y pg y mssql para Velo local. PGlite y su socket, que solo sirven a la base de prueba del kit, viven en `devDependencies`. Ninguna es un SDK de IA generativa, y un job del CI audita package.json y el lockfile contra tres familias vetadas: una dependencia transitiva cuenta igual que una directa."
+      "detalle": "En `dependencies`: next, react, react-dom, papaparse, xlsx, zod y @sentry/nextjs para la web; pdf-lib para los metadatos de PDF; y pg y mssql para Velo local. PGlite y su socket, que solo sirven a la base de prueba del kit, viven en `devDependencies`. Ninguna es un SDK de IA generativa, y un job del CI audita package.json y el lockfile contra tres familias vetadas: una dependencia transitiva cuenta igual que una directa."
     },
     {
       "clave": "llamadas_de_red_con_datos",

@@ -27,7 +27,7 @@ import { serializarCanonico } from "@/engine/serializacion";
 import type { RiesgoEstimado } from "@/engine/riesgo-estimado";
 import { excelGrande, formatoDeArchivo, motivoDelTope } from "@/lib/archivo";
 import { idiomaActual } from "@/lib/idioma/estado";
-import { generarSal } from "@/lib/llave";
+import { generarSal, normalizarSal, SAL_VALIDA } from "@/lib/llave";
 import type {
   ComparacionDeGeneralizacion,
   EtapaDelWorker,
@@ -386,10 +386,21 @@ export function invalidarTransformacion(): void {
   });
 }
 
-/** Deriva la llave del proyecto. La frase entra al worker y no vuelve a salir. */
-export function derivarLlaveDelProyecto(frase: string): void {
+/**
+ * Deriva la llave del proyecto. La frase entra al worker y no vuelve a salir.
+ *
+ * Con `salPegada` (el usuario vuelve a un proyecto) la llave sale con ESA sal: misma frase + misma
+ * sal ⇒ mismos seudónimos, igual que `--sal` en Velo local. Sin ella, nace una sal nueva. Una sal
+ * mal formada no deriva nada: la pantalla ya la rechazó, y esto es el segundo cerrojo.
+ */
+export function derivarLlaveDelProyecto(
+  frase: string,
+  salPegada?: string,
+): void {
   if (!worker) return;
-  const sal = generarSal();
+  const pegada = salPegada === undefined ? undefined : normalizarSal(salPegada);
+  if (pegada !== undefined && !SAL_VALIDA.test(pegada)) return;
+  const sal = pegada ?? generarSal();
   publicarTaller({ llave: { fase: "derivando" }, etapa: "derivando-llave" });
   worker.postMessage({ tipo: "derivar-llave", frase, sal });
   // La sal se guarda para poder enseñarla: sin ella, la misma frase daría otra llave el mes que
