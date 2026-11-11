@@ -1341,7 +1341,9 @@ output file already exists, it refuses.
 and documents. What comes out is the anonymized file, **the certificate** and, if you asked for
 reversible columns, **the vault**, with the same fingerprints as in the web app. A JSON goes in and
 a JSON comes out; one too big for memory is processed [in passes](#9-huge-files-high-volume-mode),
-just like in the web app.
+just like in the web app. If a run fails halfway, Velo local undoes what it wrote; if it cannot
+delete a file (a full disk or missing permissions) it tells you which one with «I could not
+delete…», and you delete it yourself: do not trust it as good.
 
 **Passphrases and the connection never go in a command.** The key's passphrase comes from
 `VELO_FRASE` or from the console, without echo; the vault's, from `VELO_FRASE_BOVEDA`; the log's,

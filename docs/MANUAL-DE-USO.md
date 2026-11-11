@@ -1328,7 +1328,9 @@ coincidan con los de hoy), `--bitacora` anota el tratamiento en tu bitácora e `
 cambia el idioma de los mensajes y de los documentos. Salen el anonimizado, **el certificado** y,
 si pediste columnas reversibles, **la bóveda**, con las mismas huellas que en la web. Un JSON entra
 y un JSON sale; uno demasiado grande para la memoria se trata
-[por pasadas](#9-archivos-enormes-el-modo-de-alto-volumen), igual que en la web.
+[por pasadas](#9-archivos-enormes-el-modo-de-alto-volumen), igual que en la web. Si una corrida
+falla a medias, Velo local deshace lo que escribió; si no logra borrar un archivo (un disco lleno o
+sin permisos), te dice cuál con «No pude borrar…», y lo borras tú: no lo dejes por bueno.
 
 **Las frases y la conexión nunca van en una orden.** La frase de la llave sale de `VELO_FRASE` o de
 la consola, sin eco; la de la bóveda, de `VELO_FRASE_BOVEDA`; la de la bitácora, de
