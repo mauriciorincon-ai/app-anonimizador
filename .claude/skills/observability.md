@@ -28,6 +28,8 @@ Non-negotiable #3 de los estándares del pipeline (CLAUDE.md § Estándares). Ap
 
 ## Patrón: logger estructurado
 
+> **No aplica a Velo:** sin backend ni logger propio (regla dura 2: nada se registra con datos del usuario); `pino` salió del stack en el S13. El bloque queda como plantilla del kit para apps con servidor.
+
 ```typescript
 // src/lib/logger.ts
 import pino from 'pino';

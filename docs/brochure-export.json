@@ -259,7 +259,7 @@
     {
       "clave": "dependencias_runtime",
       "etiqueta": "Dependencias en tiempo de ejecución",
-      "valor": 11,
+      "valor": 10,
       "unidad": "paquetes",
       "fuente": "medido",
       "detalle": "En `dependencies`: next, react, react-dom, papaparse, xlsx, zod y @sentry/nextjs para la web; pdf-lib para los metadatos de PDF; y pg y mssql para Velo local. PGlite y su socket, que solo sirven a la base de prueba del kit, viven en `devDependencies`. Ninguna es un SDK de IA generativa, y un job del CI audita package.json y el lockfile contra tres familias vetadas: una dependencia transitiva cuenta igual que una directa."

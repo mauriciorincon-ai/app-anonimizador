@@ -61,6 +61,8 @@ Three shapes were possible:
    shows it on screen) and without it the same passphrase would derive another key. Gates:
    `tests/unit/determinismo-local.test.ts` (against the in-memory engine) and
    `tests/e2e/local-igual-navegador.spec.ts` (against Chromium).
+   _Note (S13): the web app now also accepts a pasted salt, with the same validator
+   (`SAL_VALIDA`, `normalizarSal` in `src/lib/llave.ts`), so both runtimes take the salt either way._
 
 ## Consequences
 

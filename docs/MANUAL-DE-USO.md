@@ -1480,7 +1480,8 @@ tu gestor de contraseñas junto a la frase. Cuando vuelvas
 al proyecto, pega esa sal en el campo «¿Vuelves a un proyecto? Pega su sal» de la pantalla de la
 llave (la web) o pásala con `--sal` (Velo local): la misma frase y la misma sal dan los mismos
 seudónimos en los dos. Sin sal pegada, cada llave nueva estrena la suya. La sal no se guarda en el
-navegador: se escribe cada vez.
+navegador: se escribe cada vez. La sal se acepta en mayúscula o minúscula y con espacios alrededor
+(se limpian al pegarla), igual en la web y en Velo local.
 
 **¿Puedo usar Velo en inglés?**
 Sí, entero: las cinco pantallas, los avisos de las llaves, el certificado, el informe del regreso y

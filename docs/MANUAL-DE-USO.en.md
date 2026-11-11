@@ -1490,7 +1490,8 @@ column as undoable — copy the salt to your password manager next to the passph
 back to the project, paste that salt into the "Coming back to a project? Paste its salt" field on
 the key screen (the web) or pass it with `--sal` (Velo local): the same passphrase and the same
 salt give the same pseudonyms in both. Without a pasted salt, every new key gets its own. The salt
-is not stored in the browser: you type it each time.
+is not stored in the browser: you type it each time. The salt is accepted in upper or lower case and with spaces around it
+(they are trimmed when you paste it), the same on the web and in Velo local.
 
 **Can I use Velo in English?**
 Yes, all of it: the five screens, the key notices, the certificate, the return report and the

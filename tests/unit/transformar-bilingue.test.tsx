@@ -283,7 +283,7 @@ describe("la llave del proyecto", () => {
     }
   });
 
-  it("el campo de la sal no se guarda en el navegador y no se autocompleta", () => {
+  it("el campo de la sal no se autocompleta ni se corrige", () => {
     render(
       <LlaveDelProyecto llave={{ fase: "sin-llave" }} onDerivar={() => {}} />,
     );

@@ -206,10 +206,11 @@ describe("la guía es UN recorrido", () => {
     expect(plano(safari!.html)).toContain("NO se hace aquí");
   });
 
-  it("el cruce entre archivos (C9) se prueba con la sal fijada, que la web no deja fijar", () => {
+  it("el cruce entre archivos (C9) se prueba con la misma sal en Velo local y pegada en la web", () => {
     const local = paradas.find((p) => p.cubre.includes("C9"));
     expect(local?.ancla).toBe("p-local");
     expect(local!.html).toContain("--sal");
+    expect(plano(local!.html)).toContain("Pega su sal");
   });
 
   it("cada parada tiene título y pruebas, y cada casilla tiene su etiqueta y un id único", () => {
