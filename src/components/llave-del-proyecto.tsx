@@ -24,7 +24,7 @@ import { IconoAdelante } from "@/components/iconos";
 import { Panel } from "@/components/panel";
 import { Rico, useT } from "@/components/texto";
 import { LLAVES } from "@/lib/idioma/textos/llaves";
-import { ITERACIONES_PBKDF2 } from "@/lib/llave";
+import { ITERACIONES_PBKDF2, normalizarSal, SAL_VALIDA } from "@/lib/llave";
 import type { EstadoDeLlave } from "@/lib/sesion";
 
 const L = LLAVES.llave;
@@ -37,12 +37,17 @@ export function LlaveDelProyecto({
   onDerivar,
 }: {
   llave: EstadoDeLlave;
-  onDerivar: (frase: string) => void;
+  onDerivar: (frase: string, sal?: string) => void;
 }) {
   const idDeFrase = useId();
   const idDeAyuda = useId();
+  const idDeSal = useId();
+  const idDeAyudaDeSal = useId();
+  const idDeErrorDeSal = useId();
   const { t } = useT();
   const [frase, setFrase] = useState("");
+  // La sal pegada vive solo aquí, en el estado del componente: ni almacenamiento ni evento.
+  const [sal, setSal] = useState("");
 
   if (llave.fase === "lista") {
     return (
@@ -74,6 +79,8 @@ export function LlaveDelProyecto({
 
   const derivando = llave.fase === "derivando";
   const corta = frase.length > 0 && frase.length < MINIMO;
+  const salPegada = normalizarSal(sal);
+  const salMala = salPegada.length > 0 && !SAL_VALIDA.test(salPegada);
 
   return (
     <Panel
@@ -115,14 +122,53 @@ export function LlaveDelProyecto({
         </p>
       </div>
 
+      <div className="mt-5">
+        <label htmlFor={idDeSal} className="text-tinta block text-[0.9375rem]">
+          {t(L.pedir.sal.campo)}
+        </label>
+        <input
+          id={idDeSal}
+          type="text"
+          value={sal}
+          disabled={derivando}
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          aria-describedby={
+            salMala ? `${idDeAyudaDeSal} ${idDeErrorDeSal}` : idDeAyudaDeSal
+          }
+          aria-invalid={salMala}
+          className="rounded-1 border-borde-control bg-superficie text-tinta mt-2 w-full max-w-md border px-3 py-2 font-mono text-[0.875rem]"
+          onChange={(evento) => setSal(evento.target.value)}
+        />
+        <p
+          id={idDeAyudaDeSal}
+          className="text-tinta-tenue mt-2 text-[0.8125rem]"
+        >
+          {t(L.pedir.sal.ayuda)}
+        </p>
+        {salMala ? (
+          <p
+            id={idDeErrorDeSal}
+            role="alert"
+            className="text-tinta mt-2 text-[0.8125rem] font-medium"
+          >
+            <span aria-hidden="true">⚠ </span>
+            {t(L.pedir.sal.error)}
+          </p>
+        ) : null}
+      </div>
+
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Boton
           type="button"
-          disabled={frase.length < MINIMO || derivando}
+          disabled={frase.length < MINIMO || salMala || derivando}
           onClick={() => {
-            onDerivar(frase);
+            if (salPegada.length > 0) onDerivar(frase, salPegada);
+            else onDerivar(frase);
             // La frase deja de existir en esta pantalla en cuanto sale hacia el worker.
             setFrase("");
+            setSal("");
           }}
         >
           <IconoAdelante />

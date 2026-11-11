@@ -171,6 +171,87 @@ for (const [que, ARCHIVO, extension] of CASOS)
       expect(serializarBoveda(local.boveda)).toBe(serializarBoveda(web.boveda));
   });
 
+// S13: el camino contrario. La sal no la enseña la web: la TRAE el usuario (de otro mes, de su
+// gestor de contraseñas) y la pega en el campo; la misma sal va a `--sal` en Velo local. Con la
+// misma frase, el anonimizado tiene que salir byte a byte igual por los dos caminos.
+test("la web con la sal pegada y Velo local con --sal dan los mismos bytes", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop-chromium",
+    "el gate entre runtimes corre en un solo proyecto",
+  );
+  test.setTimeout(180_000);
+  const SAL_TRAIDA = "5a1e0f3c9b7d42e68c10a4f2d3b9e7c1";
+
+  await page.clock.setFixedTime(AHORA);
+  await page.addInitScript(() => {
+    delete (window as Window & { showSaveFilePicker?: unknown })
+      .showSaveFilePicker;
+  });
+  await page.goto("/");
+  await page.setInputFiles("#archivo", EUROPEO);
+  await page.waitForURL("**/diagnostico", { timeout: 60_000 });
+  await page.getByRole("link", { name: "Transformar este archivo" }).click();
+  await page.waitForURL("**/transformar");
+  await page.getByRole("button", { name: /RGPD/ }).click();
+  await page.getByLabel("Frase de paso del proyecto").fill(FRASE);
+  await page.getByLabel("¿Vuelves a un proyecto? Pega su sal").fill(SAL_TRAIDA);
+  await page.getByRole("button", { name: "Derivar la llave" }).click();
+  await page
+    .getByRole("heading", { name: "Llave lista" })
+    .waitFor({ timeout: 60_000 });
+  // La sal que la pantalla enseña es la pegada, no una nueva.
+  await expect(
+    page
+      .locator("dt", { hasText: /^Sal/ })
+      .locator("xpath=following-sibling::dd"),
+  ).toHaveText(SAL_TRAIDA);
+
+  await page.getByRole("button", { name: "Transformar", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Qué cambió, y qué sigue igual" })
+    .waitFor({ timeout: 60_000 });
+  await page.getByRole("button", { name: "Preparar el archivo" }).click();
+  const guardar = page.getByRole("link", {
+    name: /^Guardar velo-anonimizado-/,
+  });
+  await guardar.waitFor({ timeout: 60_000 });
+  const [descarga] = await Promise.all([
+    page.waitForEvent("download"),
+    guardar.click(),
+  ]);
+  const bytesWeb = readFileSync((await descarga.path())!);
+
+  const salida = mkdtempSync(join(DIRECTORIO_DE_FIXTURES, "velo-local-sal-"));
+  process.env.VELO_FRASE = FRASE;
+  process.env.VELO_FRASE_BOVEDA = FRASE_DE_BOVEDA;
+  const avisos: string[] = [];
+  const codigo = await principal(
+    [
+      "anonimizar",
+      EUROPEO,
+      "--politica",
+      "rgpd",
+      "--sal",
+      SAL_TRAIDA,
+      "--salida",
+      salida,
+      "--idioma",
+      "es",
+    ],
+    { salida: (l) => void avisos.push(l), aviso: (l) => void avisos.push(l) },
+    () => AHORA,
+  );
+  delete process.env.VELO_FRASE;
+  delete process.env.VELO_FRASE_BOVEDA;
+  expect(codigo, avisos.join("\n")).toBe(0);
+  const nombre = readdirSync(salida).find((a) =>
+    /^velo-anonimizado-.+\.csv$/.test(a),
+  )!;
+  expect(huella(readFileSync(join(salida, nombre)))).toBe(huella(bytesWeb));
+});
+
 // S11: la generalización óptima con TOPE DE SUPRESIÓN y la escalera CIIU Rev. 5, por los dos caminos.
 // La política llega a la web importada desde un archivo y a Velo local con `--politica` sobre el
 // mismo archivo: las filas que salen, el nivel de cada columna y el certificado tienen que coincidir.

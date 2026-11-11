@@ -22,11 +22,11 @@ export const LLAVES = {
       titulo: { es: "Llave lista", en: "Key ready" },
       nota: {
         es:
-          "Guarda la frase y esta sal en tu gestor de contraseñas. Sin las dos, ni Velo local " +
-          "puede **repetir estos seudónimos** el mes que viene (en la web, cada llave nueva estrena su sal).",
+          "Guarda la frase y esta sal en tu gestor de contraseñas. Sin las dos, ni la web ni " +
+          "Velo local pueden **repetir estos seudónimos** el mes que viene.",
         en:
-          "Save the passphrase and this salt in your password manager. Without both, not even " +
-          "Velo local can **repeat these pseudonyms** next month (on the web, every new key gets its own salt).",
+          "Save the passphrase and this salt in your password manager. Without both, neither " +
+          "the web nor Velo local can **repeat these pseudonyms** next month.",
       },
       huella: { es: "Huella de la llave", en: "Key fingerprint" },
       sal: { es: "Sal", en: "Salt" },
@@ -68,8 +68,8 @@ export const LLAVES = {
             "local con --sal.",
           en:
             "That's what lets you match March's file against April's without having the real " +
-            "data in front of you. On the web every new key gets its own salt: to repeat them, " +
-            "use Velo local with --sal.",
+            "data in front of you. To repeat them, paste the project's salt below: without it, " +
+            "every new key gets its own.",
         },
       },
       perderla: {
@@ -109,6 +109,25 @@ export const LLAVES = {
         en:
           "At least {minimo} characters. A phrase of several words holds up much better than a " +
           "short password full of symbols.",
+      },
+      // La sal del proyecto (S13): opcional; pegada, la llave sale igual que con `--sal` en Velo local.
+      sal: {
+        campo: {
+          es: "¿Vuelves a un proyecto? Pega su sal",
+          en: "Coming back to a project? Paste its salt",
+        },
+        ayuda: {
+          es:
+            "Son 32 caracteres (0-9 y a-f): la sal que Velo te enseñó al derivar la llave la vez " +
+            "anterior. Déjala vacía si es un proyecto nuevo: Velo creará una sal nueva.",
+          en:
+            "32 characters (0-9 and a-f): the salt Velo showed you when you derived the key last " +
+            "time. Leave it empty for a new project: Velo will create a new salt.",
+        },
+        error: {
+          es: "La sal no es válida: tiene que ser hexadecimal, de 32 caracteres.",
+          en: "That salt isn't valid: it must be hexadecimal, 32 characters.",
+        },
       },
       derivar: { es: "Derivar la llave", en: "Derive the key" },
       derivando: { es: "Derivando la llave…", en: "Deriving the key…" },
