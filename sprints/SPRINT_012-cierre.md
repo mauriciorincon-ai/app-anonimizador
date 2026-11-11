@@ -5,7 +5,7 @@ hito: H-2
 opened: 2026-11-09
 closed: 2026-11-10
 branch: sprint-012/listo-para-el-ensayo
-pr: pendiente
+pr: 23
 ---
 
 **Listo para tu ensayo** · objetivo: pagar la deuda del S10, cerrar la construcción del H-2 (docs, inglés, brochure, BLUEPRINT, `design-sync`) y dejar la guía como UN recorrido para el ensayo general del S13, en ES y EN.
