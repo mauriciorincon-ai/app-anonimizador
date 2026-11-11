@@ -171,7 +171,7 @@ describe("la llave del proyecto", () => {
       <LlaveDelProyecto llave={{ fase: "sin-llave" }} onDerivar={() => {}} />,
     );
     const textos = [
-      "La misma frase da los mismos seudónimos.",
+      "La misma frase y la misma sal dan los mismos seudónimos.",
       "Si la pierdes, no hay vuelta atrás.",
       "Si se filtra, los seudónimos se vuelven enlazables.",
     ].map((t) => screen.getByText(t));

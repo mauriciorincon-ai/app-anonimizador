@@ -77,6 +77,10 @@ export const VELO_LOCAL = {
       es: "Huella de la llave: {huella}",
       en: "Key fingerprint: {huella}",
     },
+    quedoSinBorrar: {
+      es: "No pude borrar {ruta}: la corrida falló y ese archivo quedó en el disco, posiblemente a medias. Bórralo tú.",
+      en: "I could not delete {ruta}: the run failed and that file is still on disk, possibly half-written. Delete it yourself.",
+    },
   },
   resultado: {
     diagnostico: {
@@ -136,6 +140,14 @@ export const VELO_LOCAL = {
     uso: {
       es: "No entendí la orden. `pnpm velo --ayuda` enseña las que hay.",
       en: "I didn't understand the command. `pnpm velo --ayuda` lists them.",
+    },
+    archivoNoExiste: {
+      es: "No encuentro el archivo {ruta}: revisa la ruta.",
+      en: "I cannot find the file {ruta}: check the path.",
+    },
+    carpetaNoExiste: {
+      es: "La carpeta de salida (`--salida`) no existe: créala primero.",
+      en: "The output folder (`--salida`) does not exist: create it first.",
     },
     sinArchivo: {
       es: "Falta el archivo de entrada.",

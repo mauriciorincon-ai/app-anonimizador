@@ -6,7 +6,7 @@
 // tablas que tienen llave primaria); sin consola, es un error que dice qué falta.
 
 import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 
 import {
   abrirBoveda,
@@ -18,7 +18,12 @@ import { decirMensaje } from "@/lib/idioma/mensajes";
 import { formatoNumerico } from "@/lib/idioma";
 
 import { escribirNuevo } from "../archivos";
-import { abrirBitacoraPara, borrarEscritos, pedidaDePolitica } from "../comun";
+import {
+  abrirBitacoraPara,
+  carpetaDeSalida,
+  deshacerLaCorrida,
+  pedidaDePolitica,
+} from "../comun";
 import { preguntar, secreto } from "../consola";
 import { fechaDelDocumento, llaveDelProyecto } from "../nucleo";
 import { ErrorDeVelo, texto, VELO_LOCAL as V } from "../textos";
@@ -62,6 +67,7 @@ export async function ordenPuente(
   consola: Consola,
   ahora: () => Date,
 ): Promise<void> {
+  const carpeta = await carpetaDeSalida(args.values.salida, process.cwd());
   const url = await secreto(
     "VELO_DB_URL",
     V.pedir.conexion,
@@ -74,7 +80,6 @@ export async function ordenPuente(
       await elegirTabla(conexion, args.values.tabla, idioma, consola),
       conexion.motor,
     );
-    const carpeta = resolve(args.values.salida ?? process.cwd());
     const fecha = fechaDelDocumento(idioma, ahora());
     const numero = formatoNumerico(idioma);
 
@@ -192,9 +197,7 @@ export async function ordenPuente(
       });
     } catch (error) {
       // El ROLLBACK ya quitó la tabla: el certificado y la bóveda de una tabla que no existe, tampoco.
-      await borrarEscritos(escritos);
-      await bitacora?.deshacer();
-      throw error;
+      throw await deshacerLaCorrida(escritos, bitacora, error, consola, idioma);
     }
     if (args.values.bitacora) escritos.push(args.values.bitacora);
     consola.salida(

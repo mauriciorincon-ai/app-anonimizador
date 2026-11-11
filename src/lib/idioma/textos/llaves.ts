@@ -22,11 +22,11 @@ export const LLAVES = {
       titulo: { es: "Llave lista", en: "Key ready" },
       nota: {
         es:
-          "Guarda la frase y esta sal en tu gestor de contraseñas. Sin las dos, los seudónimos " +
-          "del mes que viene **no van a cuadrar** con los de hoy.",
+          "Guarda la frase y esta sal en tu gestor de contraseñas. Sin las dos, ni Velo local " +
+          "puede **repetir estos seudónimos** el mes que viene (en la web, cada llave nueva estrena su sal).",
         en:
-          "Save the passphrase and this salt in your password manager. Without both, next " +
-          "month's pseudonyms **won't match** today's.",
+          "Save the passphrase and this salt in your password manager. Without both, not even " +
+          "Velo local can **repeat these pseudonyms** next month (on the web, every new key gets its own salt).",
       },
       huella: { es: "Huella de la llave", en: "Key fingerprint" },
       sal: { es: "Sal", en: "Salt" },
@@ -58,16 +58,18 @@ export const LLAVES = {
       // Las tres cosas que nadie quiere leer: título en tinta plena y explicación debajo.
       misma: {
         titulo: {
-          es: "La misma frase da los mismos seudónimos.",
-          en: "The same passphrase gives the same pseudonyms.",
+          es: "La misma frase y la misma sal dan los mismos seudónimos.",
+          en: "The same passphrase and the same salt give the same pseudonyms.",
         },
         cuerpo: {
           es:
             "Es lo que permite cruzar el archivo de marzo con el de abril sin tener los datos " +
-            "reales delante.",
+            "reales delante. En la web cada llave nueva estrena su sal: para repetirlos, usa Velo " +
+            "local con --sal.",
           en:
             "That's what lets you match March's file against April's without having the real " +
-            "data in front of you.",
+            "data in front of you. On the web every new key gets its own salt: to repeat them, " +
+            "use Velo local with --sal.",
         },
       },
       perderla: {

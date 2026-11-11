@@ -1,7 +1,7 @@
 # User manual — Velo
 
 > _Veil it to hand it over. Unveil it to get it back._
-> Updated in Sprint 008 · November 2, 2026
+> Updated in Sprint 012 · November 10, 2026
 >
 > Spanish version: [MANUAL-DE-USO.md](MANUAL-DE-USO.md)
 
@@ -228,12 +228,12 @@ suspecting:
 
 And each column falls into one of the **four categories of Colombia's Law 1581 of 2012**:
 
-| Category                    | What it is                                                                                              | Examples                                                |
-| --------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| **Direct identifier**       | Points to the person without help from anything else.                                                   | cédula, NIT, name, email, mobile number, address        |
-| **Sensitive data (art. 5)** | Health, racial or ethnic origin, beliefs, sex life, biometrics. The law protects them in a special way. | diagnosis, ethnic group, health insurer (EPS)           |
-| **Quasi-identifier**        | On its own it does not identify; **combined with others, it does**.                                     | date of birth, sex, municipality, socioeconomic stratum |
-| **Not personal**            | Does not point to a person.                                                                             | amount, branch, product code                            |
+| Category                                                  | What it is                                                                                                                                                  | Examples                                                |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Direct identifier**                                     | Points to the person without help from anything else.                                                                                                       | cédula, NIT, name, email, mobile number, address        |
+| **Sensitive data (Law 1581 art. 5 · GDPR art. 9 and 10)** | Health, racial or ethnic origin, beliefs, sex life, biometrics and, in the GDPR, criminal convictions and offences. The law protects them in a special way. | diagnosis, ethnic group, health insurer (EPS)           |
+| **Quasi-identifier**                                      | On its own it does not identify; **combined with others, it does**.                                                                                         | date of birth, sex, municipality, socioeconomic stratum |
+| **Not personal**                                          | Does not point to a person.                                                                                                                                 | amount, branch, product code                            |
 
 A clarification that is often needed: **a cédula is not “sensitive data”** in the sense of the law.
 It is personal data and a direct identifier, which is different. Velo does not mix the two up, even
@@ -312,7 +312,7 @@ policy**:
 - **HIPAA · Safe Harbor** — the 18 identifiers of 45 CFR §164.514(b)(2). Note: Safe Harbor requires
   **removing**, not pseudonymizing, because §164.514(c) rules out a code derived from the
   information.
-- **RGPD · GDPR (UE)** — Regulation (EU) 2016/679. **It pseudonymizes, it does not anonymize**:
+- **RGPD · GDPR (UE · EU)** — Regulation (EU) 2016/679. **It pseudonymizes, it does not anonymize**:
   [section 10](#10-the-gdpr-policy) tells the story. It declares a minimum-group target (k = 5)
   that is Velo's choice, not the regulation's.
 
@@ -349,8 +349,10 @@ workshop lets you compare them before you choose: it is explained at the end of 
 A pseudonym is calculated with a **passphrase that only you have**. Three things worth knowing
 before you type it:
 
-- **The same passphrase gives the same pseudonyms.** It is what lets you match March's file against
-  April's without having the real data in front of you.
+- **The same passphrase and the same salt give the same pseudonyms.** It is what lets you match
+  March's file against April's without having the real data in front of you. On the web every new
+  key gets its own salt and the screen does not let you type one: to repeat them, use Velo local
+  with `--sal`.
 - **If you lose it, there is no going back.** Nobody can regenerate it; that is the trade-off for
   nobody else having it.
 - **If it leaks, the pseudonyms become linkable.** Treat it like a password.
@@ -359,7 +361,7 @@ Deriving it costs 600,000 iterations of PBKDF2 (the minimum OWASP recommends), *
 the protection**: it makes every attempt to guess it equally expensive. How long it takes depends
 on the machine —on a modern laptop it is an instant, on a low-end phone you notice it—; what is
 guaranteed is the number of iterations, not the seconds. Save the passphrase **and the salt** that
-Velo shows you: without both, next month's pseudonyms will not match.
+Velo shows you: without both, not even Velo local can repeat the pseudonyms next month.
 
 #### Before and after
 
@@ -1080,20 +1082,61 @@ defect was in what Velo wrote.
 
 **What was measured: a reference, not a promise.** A CSV of **5,000,000 rows × 24 columns
 (1.36 GB)**, with the Habeas Data policy and a key, in Chromium with the production build, on the
-author's Mac. Saved the in-memory way, without the destination picker:
+author's Mac. Saved the in-memory way, without the destination picker, and back again with its
+vault:
 
-| Pass                  | Time  | Peak memory of the tab |
-| --------------------- | ----- | ---------------------- |
-| Diagnosis             | 109 s | 3.6 GB                 |
-| Transform and measure | 283 s | 4.9 GB                 |
-| Write                 | 267 s | 4.9 GB                 |
+| Step                          | Time  | Peak memory of the tab |
+| ----------------------------- | ----- | ---------------------- |
+| Diagnosis                     | 83 s  | 3.2 GB                 |
+| Transform and measure         | 280 s | 4.2 GB                 |
+| Write                         | 261 s | 4.5 GB                 |
+| Vault and downloads           | 3 s   | 2.0 GB                 |
+| Return: open the vault        | 1 s   | 0.1 GB                 |
+| Return: read the returned one | 71 s  | 2.5 GB                 |
+| Return: restore and write     | 132 s | 1.3 GB                 |
 
-That is about 11 minutes in all, and **you need several GB of free memory**: close other tabs and
-heavy programs first. The peak is that of the whole tab process, sampled every half second; it
-counts memory the browser had not yet freed, so it is a ceiling and not what is really in use. The
-work happens on a separate thread, as always. The return of that file was not measured at
-5,000,000 rows; it was tested, there and back, with a 21,000,000-cell one, comparing the restored
-file with the original by its SHA-256 fingerprint. Lowering the memory peak is pending.
+That is about 10 minutes there and about 3.4 back, and **you need several GB of free memory**: close
+other tabs and heavy programs first. The peak is that of the whole tab process, sampled every half
+second; it counts memory the browser had not yet freed, so it is a ceiling and not what is really in
+use. The work happens on a separate thread, as always. The return was checked with that same file:
+the restored column came back to its original value and the other 23 columns matched the
+anonymized file. Between identical runs the peak moves by about ±0.6 GB (the first run of that file
+read 109 s, 283 s, 267 s and 4.9 GB).
+
+**The peak was not lowered, and it is a known limit of this version, not an oversight.** Almost
+1.1 GB are the exact dictionaries of the almost-unique columns; the JavaScript engine leaves the
+garbage uncollected up to about twice that, and the browser adds its own. Lowering the peak to
+2.5 GB would mean swapping the exact risk for an estimated one, and Velo does not swap an exact
+figure for an estimate on its own (see “What Velo does NOT claim”). If that is ever decided, it will
+be said here.
+
+**How much memory it asks for, by file size.** The same policy, the same Mac, one run per cell;
+the peak is that of the heaviest browser process, in the step that asked for the most (there and
+back). Up to 20,000,000 cells the file is built in memory; beyond that it goes in passes.
+
+| Rows (× 24 columns)   | Chromium | Firefox      | WebKit (Safari's engine) |
+| --------------------- | -------- | ------------ | ------------------------ |
+| 100,000               | 1.0 GB   | 0.8 GB       | 1.3 GB                   |
+| 500,000               | 3.1 GB   | 1.6 GB       | 3.4 GB                   |
+| 1,000,000 (in passes) | 3.2 GB   | 2.4–2.6 GB   | 3.9–4.8 GB               |
+| 5,000,000 (in passes) | 4.5 GB   | not measured | not measured             |
+
+Read the table as an order of magnitude: with one run per cell, half a GB of difference between two
+cells is not a conclusion. Firefox asks for noticeably less than the other two at these sizes; at
+5,000,000 rows only Chromium was measured.
+
+**Velo local at those sizes.** The same file and the same policy, through the console
+([section 11](#11-velo-on-your-machine-the-console-databases-and-the-api)), on the same Mac,
+measuring the resident memory of the process: with 1,000,000 rows, 146.5 s and 3.1 GB; with
+5,000,000 rows, 1,207 s (about 20 minutes) and 3.9 GB. **Velo local is not faster than
+the tab** (at 5,000,000 rows it takes twice as long: the trip there alone, 10 minutes in Chromium)
+**and uses about the same memory** (somewhat less at 5,000,000: 3.9 against 4.5 GB). What changes is
+something else: it does not depend on an open tab that the browser may close if it runs out of memory, it can
+be left running in a terminal without watching it, it is repeated with one command, and on WebKit at
+1,000,000 rows it beats the browser (3.1 GB against 3.9–4.8 GB). A practical rule: up to about
+500,000 rows the tab is enough (with other tabs closed, since it already asks for 3 GB in Chromium
+and WebKit there); if your file goes beyond that, or your machine has little free memory, or you are
+going to repeat it, use Velo local.
 
 **In Firefox and Safari (no destination picker).** A CSV of **1,000,000 rows × 24 columns**
 (24,000,000 cells, already in high volume), the same policy, in Playwright's Firefox and WebKit
@@ -1143,7 +1186,7 @@ JSON limits still stop it, and say so; and lists are still not treated.
 ### 10. The GDPR policy
 
 It is the **third built-in policy**, next to Habeas Data and HIPAA. In the workshop you pick it with
-the **“RGPD · GDPR (UE)”** button. It rests on Regulation (EU) 2016/679: article 4 (what personal
+the **“RGPD · GDPR (UE · EU)”** button. It rests on Regulation (EU) 2016/679: article 4 (what personal
 data is and what pseudonymisation is), article 9 (special categories), article 10 (criminal
 convictions and offences) and recital 26.
 
@@ -1181,16 +1224,16 @@ shape: you mark that one yourself.
 checked with its official check digit or letter; spaces, dots, hyphens and letter case are
 ignored:
 
-| Document                   | What Velo checks                                                                                                 |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **IBAN**                   | ISO 13616, with the mod 97-10 check                                                                              |
-| **DNI** (Spain)            | The check letter: the number modulo 23 indexes a table of letters                                                |
-| **NIE** (Spain)            | The same, with X, Y and Z standing for 0, 1 and 2; no other prefix is accepted                                   |
-| **NIR** (France)           | The key: 97 minus the first 13 digits modulo 97 (with Corsica's 2A and 2B); sex 1 or 2 and a month from 01 to 12 |
-| **Codice fiscale** (Italy) | The check character (odd- and even-position tables, modulo 26); a possible month letter and day                  |
-| **Steuer-IdNr** (Germany)  | The check digit over the first 10 digits; no leading 0 and the repeated-digit structure the rule sets            |
-| **BSN** (Netherlands)      | The 11-test; an 8-digit BSN is read with a leading zero; all zeros are refused                                   |
-| **PESEL** (Poland)         | The check digit (weights 1-3-7-9) and that the birth date it carries exists                                      |
+| Document                   | What Velo checks                                                                                                                                                                                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **IBAN**                   | ISO 13616, with the mod 97-10 check                                                                                                                                                                                                                            |
+| **DNI** (Spain)            | The check letter: the number modulo 23 indexes a table of letters                                                                                                                                                                                              |
+| **NIE** (Spain)            | The same, with X, Y and Z standing for 0, 1 and 2; no other prefix is accepted. Only the 9-character NIE (X, 7 digits and a letter): **the one issued before July 2008 (X and 8 digits) is not recognized**, because no open official source gives its formula |
+| **NIR** (France)           | The key: 97 minus the first 13 digits modulo 97 (with Corsica's 2A and 2B); sex 1 or 2 and a month from 01 to 12                                                                                                                                               |
+| **Codice fiscale** (Italy) | The check character (odd- and even-position tables, modulo 26); a possible month letter and day                                                                                                                                                                |
+| **Steuer-IdNr** (Germany)  | The check digit over the first 10 digits; no leading 0 and the repeated-digit structure the rule sets                                                                                                                                                          |
+| **BSN** (Netherlands)      | The 11-test; an 8-digit BSN is read with a leading zero; all zeros are refused                                                                                                                                                                                 |
+| **PESEL** (Poland)         | The check digit (weights 1-3-7-9) and that the birth date it carries exists                                                                                                                                                                                    |
 
 **“Confirmed by the algorithm”** means two things: the check adds up and the structure is possible
 (a month that exists, a prefix the document allows). It does **not** mean the number exists or
@@ -1260,7 +1303,8 @@ it does not certify compliance.
 - **Names in other languages** cover the common fields, from the header alone.
 - **The k = 5 and the generalization ladders are Velo's,** not the regulation's.
 - **Not every source was verified equally deeply.** The DNI and the NIE are validated with the
-  modulo-23 algorithm, the one in universal use. But the page of Spain's Ministry of the Interior
+  modulo-23 algorithm, the one in universal use. The NIE is recognized only in its 9-character form (the
+  one issued before July 2008 is not, because no open official source gives its formula). But the page of Spain's Ministry of the Interior
   that describes the calculation could not be opened when it was checked: the algorithm was taken
   from the excerpts a search engine quotes from it and verified by hand. The other documents were
   reproduced with official examples, except the codice fiscale, whose decree carries none. The
@@ -1292,12 +1336,14 @@ output file already exists, it refuses.
 | `pnpm velo puente …`            | The same, over a PostgreSQL or SQL Server table.                                               |
 | `pnpm velo api`                 | Starts the local API.                                                                          |
 
-`--salida` picks the folder, `--sal` fixes the key's salt (so tomorrow's pseudonyms match today's),
+`--salida` picks the folder (it has to exist: if not, Velo local says so before asking for any passphrase), `--sal` fixes the key's salt (so tomorrow's pseudonyms match today's),
 `--bitacora` records the treatment in your log and `--idioma es|en` sets the language of messages
 and documents. What comes out is the anonymized file, **the certificate** and, if you asked for
 reversible columns, **the vault**, with the same fingerprints as in the web app. A JSON goes in and
 a JSON comes out; one too big for memory is processed [in passes](#9-huge-files-high-volume-mode),
-just like in the web app.
+just like in the web app. If a run fails halfway, Velo local undoes what it wrote; if it cannot
+delete a file (a full disk or missing permissions) it tells you which one with «I could not
+delete…», and you delete it yourself: do not trust it as good.
 
 **Passphrases and the connection never go in a command.** The key's passphrase comes from
 `VELO_FRASE` or from the console, without echo; the vault's, from `VELO_FRASE_BOVEDA`; the log's,
@@ -1439,7 +1485,10 @@ With the **same passphrase and the same salt**. You keep the passphrase; Velo sh
 when it derives the key. **It does not travel inside the exported policy**, but it does travel
 inside the vault, encrypted along with everything else: whoever keeps the vault and remembers the
 passphrase can derive the same key again. If you did not save a vault — because you marked no
-column as undoable — copy the salt to your password manager next to the passphrase.
+column as undoable — copy the salt to your password manager next to the passphrase. **Note:** on
+the web every new key gets its own fresh salt and the screen does not let you type one; to repeat
+pseudonyms from one file to another, the way in is Velo local with `--sal` (the same passphrase and
+the same salt give the same pseudonyms).
 
 **Can I use Velo in English?**
 Yes, all of it: the five screens, the key notices, the certificate, the return report and the
@@ -1509,8 +1558,8 @@ without the tab freezing, because the heavy work happens on a separate thread.
 Because it goes past 20,000,000 cells and Velo reads it in passes instead of loading it whole: one
 for the diagnosis, one to measure and one to write
 ([section 9](#9-huge-files-high-volume-mode)). On the file that was measured —5,000,000 rows × 24
-columns, 1.36 GB, on the author's Mac— it took 109 s, 283 s and 267 s (about 11 minutes), and the tab
-asked for up to 4.9 GB of memory. It is a reference, not a promise: it depends on your machine, and
+columns, 1.36 GB, on the author's Mac— it took 83 s, 280 s and 261 s (about 10 minutes), and the tab
+asked for up to 4.5 GB of memory. It is a reference, not a promise: it depends on your machine, and
 it helps to close other tabs. In exchange, the risk is still exact and the file that comes out is
 the same, byte for byte, as the one that would come out if it fit in memory.
 
@@ -1518,10 +1567,11 @@ the same, byte for byte, as the one that would come out if it fit in memory.
 
 ## What comes next
 
-**Nothing this manual described as future is still pending, except lowering the memory peak.** The
+**Nothing this manual described as future is still pending, except one decision.** The
 certificate, the log and the estimated risk —the three things promised here— are above, each with
-its own section; the memory peak of high volume (4.9 GB at 5,000,000 rows) remains pending the
-owner's decision, not discarded.
+its own section. The only thing still open is the memory peak of high volume (4.5 GB at 5,000,000
+rows): halving it would mean swapping the exact risk for an estimated one, and that product
+decision has not been made.
 
 What Velo does **not** do today lives in “What Velo does NOT claim” and in the declared limits: it does
 not read databases from the web (only [Velo local](#11-velo-on-your-machine-the-console-databases-and-the-api),

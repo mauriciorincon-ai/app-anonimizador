@@ -5,7 +5,7 @@
 // sal se enseña a propósito, porque sin ella la misma frase daría otra llave.
 
 import { readFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 
 import { nombreDelArchivoAnonimizado } from "@/engine/csv";
@@ -23,8 +23,18 @@ import { ErrorDeJson } from "@/engine/json/tipos";
 import { ArchivoCambio } from "@/workers/json";
 
 import { crearApi, escuchar, PUERTO_DE_LA_API } from "./api";
-import { abrirArchivo, ArchivoNuevo, escribirNuevo } from "./archivos";
-import { abrirBitacoraPara, borrarEscritos, pedidaDePolitica } from "./comun";
+import {
+  abrirArchivo,
+  ArchivoNuevo,
+  EscrituraAMedias,
+  escribirNuevo,
+} from "./archivos";
+import {
+  abrirBitacoraPara,
+  carpetaDeSalida,
+  deshacerLaCorrida,
+  pedidaDePolitica,
+} from "./comun";
 import { secreto } from "./consola";
 import {
   abrirDevuelto,
@@ -128,7 +138,7 @@ async function ordenAnonimizar(
   const ruta = args.positionals[1];
   if (!ruta) throw new ErrorDeVelo("sinArchivo");
   const pedida = await pedidaDePolitica(args.values.politica);
-  const carpeta = resolve(args.values.salida ?? dirname(ruta));
+  const carpeta = await carpetaDeSalida(args.values.salida, dirname(ruta));
 
   consola.aviso(texto(V.aviso.fraseIrrecuperable, idioma));
   const frase = await secreto("VELO_FRASE", V.pedir.frase, idioma);
@@ -173,7 +183,8 @@ async function ordenAnonimizar(
       });
       await archivo.cerrar();
     } catch (error) {
-      await archivo.abortar();
+      if (!(await archivo.abortar()))
+        throw new EscrituraAMedias(rutaDeSalida, error);
       throw error;
     }
     escritos.push(rutaDeSalida);
@@ -187,22 +198,23 @@ async function ordenAnonimizar(
         carpeta,
         `velo-boveda-${hash.slice(0, 8)}${EXTENSION_DE_BOVEDA}`,
       );
+      // La frase se pidió arriba, antes del primer byte, con `requiereBoveda`; la bóveda y esa
+      // pregunta salen de la misma regla (`esReversible`), y `reversible.test.ts` lo comprueba. Si
+      // algún día dejaran de coincidir, aquí se corta (y se deshace lo escrito): nada de pedir la
+      // frase tarde ni de seguir sin bóveda.
+      if (fraseDeBoveda === null)
+        throw new Error("la bóveda salió sin que se hubiera pedido su frase");
       await escribirNuevo(
         rutaDeBoveda,
-        await sellarBoveda(
-          resultado.boveda,
-          fraseDeBoveda ??
-            (await secreto("VELO_FRASE_BOVEDA", V.pedir.fraseDeBoveda, idioma)),
-        ),
+        await sellarBoveda(resultado.boveda, fraseDeBoveda),
       );
       escritos.push(rutaDeBoveda);
     }
     await bitacora?.anotar(resultado.entrada);
   } catch (error) {
-    // Un anonimizado sin su bóveda o un certificado sin su archivo no quedan a medias en el disco.
-    await borrarEscritos(escritos);
-    await bitacora?.deshacer();
-    throw error;
+    // Un anonimizado sin su bóveda o un certificado sin su archivo no quedan a medias en el disco;
+    // si algo no se pudo borrar, se dice cuál.
+    throw await deshacerLaCorrida(escritos, bitacora, error, consola, idioma);
   }
   for (const ruta of escritos)
     consola.salida(texto(V.resultado.escrito, idioma, { ruta }));
@@ -232,6 +244,7 @@ async function ordenRestaurar(
   const ruta = args.positionals[1];
   if (!ruta) throw new ErrorDeVelo("sinArchivo");
   if (!args.values.boveda) throw new ErrorDeVelo("sinBoveda");
+  const carpeta = await carpetaDeSalida(args.values.salida, dirname(ruta));
   const fraseDeBoveda = await secreto(
     "VELO_FRASE_BOVEDA",
     V.pedir.fraseDeBoveda,
@@ -252,7 +265,6 @@ async function ordenRestaurar(
   const { fuente, origen } = await abrirArchivo(ruta);
   // La pasada R1 va antes de abrir el destino: de ella sale si lo restaurado es CSV, JSON o JSON Lines.
   const devuelto = await abrirDevuelto(fuente, origen);
-  const carpeta = resolve(args.values.salida ?? dirname(ruta));
   const rutaDeSalida = join(
     carpeta,
     `velo-restaurado-${origen.sha256.slice(0, 8)}.${devuelto.extension}`,
@@ -270,7 +282,10 @@ async function ordenRestaurar(
     );
     await archivo.cerrar();
   } catch (error) {
-    await archivo.abortar();
+    if (!(await archivo.abortar()))
+      consola.aviso(
+        texto(V.aviso.quedoSinBorrar, idioma, { ruta: rutaDeSalida }),
+      );
     throw error;
   }
   consola.salida(texto(V.resultado.escrito, idioma, { ruta: rutaDeSalida }));

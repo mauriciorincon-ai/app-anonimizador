@@ -19,7 +19,7 @@
 // que lo verifica leyendo el código fuente): si lo hiciera, el documento dejaría de ser reproducible
 // y con él se iría la promesa de determinismo.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { IconoCertificado, IconoEquis, IconoOjo } from "@/components/iconos";
 import { Boton } from "@/components/boton";
@@ -41,6 +41,7 @@ const C = TRANSFORMAR.certificado;
  * (`tests/unit/paquete-de-la-pagina.test.ts`).
  */
 const cargarReporte = () => import("@/engine/reporte");
+type ModuloDelReporte = Awaited<ReturnType<typeof cargarReporte>>;
 
 /** Lo del tratamiento, menos las dos cosas que solo existen cuando el archivo ya se generó. */
 type TratamientoSinSalida = Omit<
@@ -78,33 +79,58 @@ export function DescargaDelCertificado({
 
   const esCertificado = puedeCertificar;
 
+  // El módulo, ya cargado: «Descargar» lo usa SIN esperar nada (ver `descargar`). Se carga al intuir
+  // la intención (el puntero o el foco sobre el botón) o al abrir la vista previa, no al montar.
+  const modulo = useRef<ModuloDelReporte | null>(null);
+  const precargar = useCallback(() => {
+    if (modulo.current) return;
+    cargarReporte().then(
+      (cargado) => {
+        modulo.current = cargado;
+      },
+      () => {},
+    );
+  }, []);
+
+  // La fecha y el idioma son los de la pantalla cuando se pidió, y el motor no mira el reloj.
+  const construir = useCallback(
+    ({ construirReporte }: ModuloDelReporte, fecha: string): string =>
+      construirReporte({
+        archivo: informe.archivo,
+        diagnostico: informe.diagnostico,
+        riesgo: informe.riesgo,
+        advisor: informe.advisor,
+        // El idioma se lee AL GENERAR: el documento queda escrito en el que tenía la pantalla
+        // cuando se pulsó, y la fecha con la convención de ese idioma. Los dos se inyectan.
+        fecha,
+        idioma,
+        tratamiento:
+          puedeCertificar && tratamiento
+            ? {
+                ...tratamiento,
+                sha256DeSalida: huellaDeSalida,
+                nombreDeSalida: archivo.nombre,
+              }
+            : undefined,
+      }),
+    [informe, tratamiento, archivo, huellaDeSalida, idioma, puedeCertificar],
+  );
+  const fechaDeHoy = useCallback(
+    () =>
+      new Intl.DateTimeFormat(LOCALE[idioma], {
+        dateStyle: "long",
+        timeStyle: "short",
+      }).format(new Date()),
+    [idioma],
+  );
+
   const generar = useCallback(async (): Promise<string> => {
-    // La fecha y el idioma se leen ANTES de esperar al módulo: son los de la pantalla cuando se pidió.
-    const fecha = new Intl.DateTimeFormat(LOCALE[idioma], {
-      dateStyle: "long",
-      timeStyle: "short",
-    }).format(new Date());
-    const { construirReporte } = await cargarReporte();
-    return construirReporte({
-      archivo: informe.archivo,
-      diagnostico: informe.diagnostico,
-      riesgo: informe.riesgo,
-      advisor: informe.advisor,
-      // El idioma se lee AL GENERAR: el documento queda escrito en el que tenía la pantalla cuando
-      // se pulsó, y la fecha con la convención de ese idioma. Los dos se inyectan; el motor no
-      // mira ni el reloj ni la configuración regional.
-      fecha,
-      idioma,
-      tratamiento:
-        puedeCertificar && tratamiento
-          ? {
-              ...tratamiento,
-              sha256DeSalida: huellaDeSalida,
-              nombreDeSalida: archivo.nombre,
-            }
-          : undefined,
-    });
-  }, [informe, tratamiento, archivo, huellaDeSalida, idioma, puedeCertificar]);
+    // La fecha se lee ANTES de esperar al módulo: es la de la pantalla cuando se pidió.
+    const fecha = fechaDeHoy();
+    const cargado = modulo.current ?? (await cargarReporte());
+    modulo.current = cargado;
+    return construir(cargado, fecha);
+  }, [construir, fechaDeHoy]);
 
   // La vista previa enseña lo que se va a mandar, así que se regenera cuando cambia lo que la
   // determina —el idioma incluido—: la fecha se vuelve a calcular con la convención del idioma nuevo.
@@ -129,19 +155,7 @@ export function DescargaDelCertificado({
     };
   }, [abierta, generar]);
 
-  async function descargar() {
-    // Un Blob y un enlace: el archivo se arma en memoria y se guarda con el diálogo del sistema.
-    // No hay servidor que lo genere, así que no hay servidor que lo vea.
-    setFallo(false);
-    let html: string;
-    let nombres: Awaited<ReturnType<typeof cargarReporte>>;
-    try {
-      html = await generar();
-      nombres = await cargarReporte();
-    } catch {
-      setFallo(true);
-      return;
-    }
+  function entregar(html: string, nombres: ModuloDelReporte) {
     const { nombreDelCertificado, nombreDelReporte } = nombres;
     const enlace = document.createElement("a");
     const url = URL.createObjectURL(
@@ -153,6 +167,32 @@ export function DescargaDelCertificado({
       : nombreDelReporte(informe.archivo.nombre, idioma);
     enlace.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function descargar() {
+    // Un Blob y un enlace: el archivo se arma en memoria y se guarda con el diálogo del sistema.
+    // No hay servidor que lo genere, así que no hay servidor que lo vea.
+    setFallo(false);
+    // Con el módulo ya cargado, el `click()` ocurre en el MISMO turno del gesto del usuario: tras
+    // un `await`, Safari puede dejar de contarlo como gesto y bloquear la descarga (S10, S12).
+    if (modulo.current) {
+      try {
+        entregar(construir(modulo.current, fechaDeHoy()), modulo.current);
+      } catch {
+        setFallo(true);
+      }
+      return;
+    }
+    let html: string;
+    let cargado: ModuloDelReporte;
+    try {
+      html = await generar();
+      cargado = modulo.current ?? (await cargarReporte());
+    } catch {
+      setFallo(true);
+      return;
+    }
+    entregar(html, cargado);
   }
 
   // El estado que el S4 estrena: hay tratamiento, pero todavía no hay archivo. **No se enseña un
@@ -216,7 +256,12 @@ export function DescargaDelCertificado({
       </ul>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <Boton type="button" onClick={() => void descargar()}>
+        <Boton
+          type="button"
+          onClick={() => void descargar()}
+          onPointerEnter={precargar}
+          onFocus={precargar}
+        >
           <IconoCertificado />
           {esCertificado ? t(C.descargar.certificado) : t(C.descargar.reporte)}
         </Boton>

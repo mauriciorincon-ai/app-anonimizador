@@ -22,6 +22,26 @@ node .ds-sync/package-validate.mjs ./ds-bundle
 - **`cssEntry` está acotado al paquete por ruta REAL** — un symlink desde el paquete a `.design-sync/` NO cuela («resolves outside the package»). Por eso la salida de Tailwind va a `<pkg>/ds-styles/`. `extraFonts`, en cambio, sí acepta rutas del repo.
 - **Las variables `--fuente-*` van al CSS principal, NO al de fuentes.** El converter extrae de `extraFonts` únicamente las reglas `@font-face` y descarta el resto del archivo. Puestas ahí, `--fuente-display` quedaba declarada en `@theme` pero sin valor y **todo lo que usa `font-display` caía a la fuente de sistema sin que nada lo señalara**. Se cazó mirando la preview de `ZonaDeCarga`, que es la única primitiva con titular grande.
 
+## Desde el S5 las primitivas piden su texto a `texto.tsx` (2026-11-10)
+
+El bundle de agosto no se podía regenerar: `sello`, `insignias` y `zona-de-carga` importan `Rico` y
+`useT` de `texto.tsx` (un ayudante sin vista, no una primitiva), que la poda borraba y esbuild no
+resolvía. `preparar.mjs` ahora lo conserva, lo MUDA en la copia a `src/lib/texto-ds.tsx` y reescribe
+los dos imports (`./texto` y `@/components/texto`). Mudarlo es deliberado: dejado en `components/`, el
+converter contaría `Rico` y `RicoMensaje` como componentes nuevos, sin tarjeta.
+
+Con eso los 26 renderizan, pero hay dos cosas que mirar:
+
+- **El idioma de las tarjetas lo manda el navegador** (`useIdioma` lee `navigator.language`): en el
+  render headless, `ZonaDeCarga` sale en inglés mientras los titulares escritos a mano en su preview
+  siguen en español. Es esperado, no un defecto; el panel de Claude Design lo verá en el idioma de
+  quien lo abra.
+- `[FONT_MISSING]` por «IBM Plex Sans Fallback», «IBM Plex Mono Fallback» y «Fraunces Fallback»: son
+  las caras de respaldo que `next/font` genera con `size-adjust`; las fuentes reales sí viajan.
+  Aceptado.
+- `InsigniaDeCategoria` pasó a `cardMode: "column"` (`[GRID_OVERFLOW]`: con el texto bilingüe sus
+  historias se salían de la celda).
+
 ## La trampa de Tailwind con las previews
 
 Tailwind genera **solo** las utilidades que encuentra escaneando código. Las previews de
@@ -41,7 +61,7 @@ en línea**. Es lo que hacen hoy las 26.
 
 ## Known render warns
 
-Ninguno pendiente. `MarcaDeSello` daba `[RENDER_THIN]` mientras su preview usaba clases inexistentes;
+Ninguno pendiente (salvo `[FONT_MISSING]`, aceptado arriba). `MarcaDeSello` daba `[RENDER_THIN]` mientras su preview usaba clases inexistentes;
 con tamaños reales dejó de darlo. Si vuelve a aparecer, sospecha primero de la hoja compilada.
 
 ## Alcance, y por qué
@@ -71,3 +91,11 @@ huecos, ya pagados:
   misma sección.
 - **`design-system.md` no viajaba**: `preparar.mjs` lo copia a `<pkg>/docs/` y el converter lo
   publica en `guidelines/` — los 5 estados del §4 y las reglas del §5 ahora son visibles al agente.
+
+## Última publicación (Velo no tiene `project.json`; el registro vive aquí)
+
+- **lastPublished: 2026-11-10** · proyecto `39b159c1-f84c-4a06-8f1a-41b400bd8f23` · Sprint 12 (F2).
+- Delta publicado: 28 escritos (README, `_ds_bundle.css/.js`, `_ds_sync.json`, `fonts/fonts.css`, 14 fuentes
+  `.woff2` con hash nuevo, las 7 `_preview` de primitivas, `Panel.html` e `InsigniaDeCategoria.html`) y
+  14 borrados (las fuentes con el hash anterior). `styles.css`, `guidelines/index.md` y `design-system.md`
+  no cambiaron. Conteo remoto verificado con `list_files` tras escribir.

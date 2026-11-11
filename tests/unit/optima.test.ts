@@ -4,7 +4,7 @@
 // bruta escrita aparte, sin nada de OLA, sobre tablas pequeñas sembradas. Si la poda de OLA perdiera
 // un nodo, o el desempate dependiera del orden de la búsqueda, la fuerza bruta lo vería.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import { nivelesDe, SUPRIMIDO, type Jerarquia } from "@/engine/jerarquias";
@@ -12,13 +12,22 @@ import {
   compararNodos,
   generalizacionAplicada,
   generalizarOptimo,
-  recorridos,
   resolverDiversidad,
   TOPE_DE_NODOS,
   type DiversidadPedida,
 } from "@/engine/optima";
 import type { Politica } from "@/engine/politica";
+import { clasesDeEquivalencia } from "@/engine/riesgo";
 import { aplicarPolitica } from "@/engine/tecnicas";
+
+// S12: «la retícula se recorre UNA vez» se ve por el trabajo que hace, no por un contador exportado
+// solo para esto: cada nodo que se mide cuenta sus clases de equivalencia, y una respuesta guardada
+// no cuenta ninguna. El espía envuelve la función real (la salida no cambia).
+vi.mock("@/engine/riesgo", async (original) => {
+  const real = await original<typeof import("@/engine/riesgo")>();
+  return { ...real, clasesDeEquivalencia: vi.fn(real.clasesDeEquivalencia) };
+});
+const trabajo = () => vi.mocked(clasesDeEquivalencia).mock.calls.length;
 
 function tablaDe(
   encabezado: readonly string[],
@@ -537,7 +546,7 @@ describe("la ℓ y las columnas sensibles que la política suprime", () => {
   it("la comparación y la transformación recorren la retícula UNA vez (S10)", async () => {
     // Una tabla propia: la respuesta guardada es por columnas y otra prueba ya buscó sobre `original`.
     const propia = tablaDe(["edad", "dx"], filas);
-    const antes = recorridos.reticulas;
+    const antes = trabajo();
     const comparada = generalizarOptimo(
       propia,
       ["edad"],
@@ -546,10 +555,11 @@ describe("la ℓ y las columnas sensibles que la política suprime", () => {
       politica.generalizacion!.diversidad!,
       new Set(["dx"]),
     );
-    expect(recorridos.reticulas).toBe(antes + 1);
+    const delRecorrido = trabajo() - antes;
+    expect(delRecorrido).toBeGreaterThan(0);
     const transformada = await aplicarPolitica(propia, politica, null, "es");
-    // La segunda lee la respuesta de la primera: el mismo nodo, ningún recorrido más.
-    expect(recorridos.reticulas).toBe(antes + 1);
+    // La segunda lee la respuesta de la primera: el mismo nodo, ningún nodo más medido.
+    expect(trabajo() - antes).toBe(delRecorrido);
     expect(transformada.optima!.niveles).toEqual(comparada.niveles);
     expect(transformada.optima!.nodosRevisados).toBe(comparada.nodosRevisados);
     expect(transformada.optima!.tabla.columnas[0].valores).toEqual(
@@ -559,32 +569,52 @@ describe("la ℓ y las columnas sensibles que la política suprime", () => {
 
   it("otra ℓ, otro k u otra escalera no leen la respuesta ajena", () => {
     const tabla = tablaDe(["edad", "dx"], filas);
-    const base = recorridos.reticulas;
-    generalizarOptimo(tabla, ["edad"], escaleras, 3, null);
-    generalizarOptimo(tabla, ["edad"], escaleras, 3, null);
-    expect(recorridos.reticulas).toBe(base + 1);
-    generalizarOptimo(tabla, ["edad"], escaleras, 4, null);
-    generalizarOptimo(
-      tabla,
-      ["edad"],
-      { edad: { tipo: "supresion" } },
-      3,
-      null,
-    );
-    generalizarOptimo(tabla, ["edad"], escaleras, 3, {
-      l: 2,
-      columnas: ["dx"],
-    });
-    expect(recorridos.reticulas).toBe(base + 4);
+    // Cada llamada devuelve cuánto trabajo hizo: 0 = leyó una respuesta guardada.
+    const trabajoDe = (llamada: () => unknown) => {
+      const antes = trabajo();
+      llamada();
+      return trabajo() - antes;
+    };
+    expect(
+      trabajoDe(() => generalizarOptimo(tabla, ["edad"], escaleras, 3, null)),
+    ).toBeGreaterThan(0);
+    expect(
+      trabajoDe(() => generalizarOptimo(tabla, ["edad"], escaleras, 3, null)),
+    ).toBe(0);
+    expect(
+      trabajoDe(() => generalizarOptimo(tabla, ["edad"], escaleras, 4, null)),
+    ).toBeGreaterThan(0);
+    expect(
+      trabajoDe(() =>
+        generalizarOptimo(
+          tabla,
+          ["edad"],
+          { edad: { tipo: "supresion" } },
+          3,
+          null,
+        ),
+      ),
+    ).toBeGreaterThan(0);
+    expect(
+      trabajoDe(() =>
+        generalizarOptimo(tabla, ["edad"], escaleras, 3, {
+          l: 2,
+          columnas: ["dx"],
+        }),
+      ),
+    ).toBeGreaterThan(0);
     // Una tabla nueva con los mismos valores son columnas distintas: se busca de nuevo.
-    generalizarOptimo(
-      tablaDe(["edad", "dx"], filas),
-      ["edad"],
-      escaleras,
-      3,
-      null,
-    );
-    expect(recorridos.reticulas).toBe(base + 5);
+    expect(
+      trabajoDe(() =>
+        generalizarOptimo(
+          tablaDe(["edad", "dx"], filas),
+          ["edad"],
+          escaleras,
+          3,
+          null,
+        ),
+      ),
+    ).toBeGreaterThan(0);
   });
 
   it("si la sensible NO se suprime, la ℓ se sigue exigiendo", () => {

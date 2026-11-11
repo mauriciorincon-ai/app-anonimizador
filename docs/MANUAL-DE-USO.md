@@ -1,7 +1,7 @@
 # Manual de uso — Velo
 
 > _Velo para entregar. Desvelo para recuperar._
-> Actualizado en el Sprint 008 · 2 de noviembre de 2026
+> Actualizado en el Sprint 012 · 10 de noviembre de 2026
 >
 > English version: [MANUAL-DE-USO.en.md](MANUAL-DE-USO.en.md)
 
@@ -224,12 +224,12 @@ tres niveles de certeza, y la diferencia entre ellos es la diferencia entre sabe
 
 Y cada columna cae en una de las **cuatro categorías de la Ley 1581 de 2012**:
 
-| Categoría                  | Qué es                                                                                                     | Ejemplos                                        |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| **Identificador directo**  | Señala a la persona sin ayuda de nada más.                                                                 | cédula, NIT, nombre, correo, celular, dirección |
-| **Dato sensible (art. 5)** | Salud, origen racial o étnico, convicciones, vida sexual, biometría. La ley los protege de forma especial. | diagnóstico, grupo étnico, EPS                  |
-| **Cuasi-identificador**    | Por sí solo no identifica; **combinado con otros, sí**.                                                    | fecha de nacimiento, sexo, municipio, estrato   |
-| **No personal**            | No apunta a una persona.                                                                                   | monto, sucursal, código de producto             |
+| Categoría                                              | Qué es                                                                                                                                                    | Ejemplos                                        |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **Identificador directo**                              | Señala a la persona sin ayuda de nada más.                                                                                                                | cédula, NIT, nombre, correo, celular, dirección |
+| **Dato sensible (Ley 1581 art. 5 · RGPD art. 9 y 10)** | Salud, origen racial o étnico, convicciones, vida sexual, biometría y, en el RGPD, condenas e infracciones penales. La ley los protege de forma especial. | diagnóstico, grupo étnico, EPS                  |
+| **Cuasi-identificador**                                | Por sí solo no identifica; **combinado con otros, sí**.                                                                                                   | fecha de nacimiento, sexo, municipio, estrato   |
+| **No personal**                                        | No apunta a una persona.                                                                                                                                  | monto, sucursal, código de producto             |
 
 Una aclaración que suele hacer falta: **una cédula no es un «dato sensible»** en el sentido de la
 ley. Es un dato personal y un identificador directo, que es distinto. Velo no mezcla las dos cosas
@@ -308,7 +308,7 @@ Una fila por columna, con un desplegable. Puedes elegir columna por columna o pa
   de anonimización AGN + SIC. Declara un objetivo de grupo mínimo (k = 5).
 - **HIPAA · Safe Harbor** — los 18 identificadores de 45 CFR §164.514(b)(2). Ojo: Safe Harbor manda
   **borrar**, no seudonimizar, porque §164.514(c) prohíbe un código derivado de la información.
-- **RGPD · GDPR (UE)** — el Reglamento (UE) 2016/679. **Seudonimiza, no anonimiza**: lo cuenta la
+- **RGPD · GDPR (UE · EU)** — el Reglamento (UE) 2016/679. **Seudonimiza, no anonimiza**: lo cuenta la
   [sección 10](#10-la-política-rgpd). Declara un objetivo de grupo mínimo (k = 5) que es elección
   de Velo, no del reglamento.
 
@@ -342,8 +342,10 @@ te deja compararlas antes de elegir: está explicado al final de esta sección, 
 Un seudónimo se calcula con una **frase de paso que solo tú tienes**. Tres cosas que conviene saber
 antes de escribirla:
 
-- **La misma frase da los mismos seudónimos.** Es lo que te permite cruzar el archivo de marzo con
-  el de abril sin tener los datos reales delante.
+- **La misma frase y la misma sal dan los mismos seudónimos.** Es lo que te permite cruzar el
+  archivo de marzo con el de abril sin tener los datos reales delante. En la web cada llave nueva
+  estrena su propia sal y la pantalla no deja escribir una: para repetirlos, usa Velo local con
+  `--sal`.
 - **Si la pierdes, no hay vuelta atrás.** Nadie puede regenerarla; es la contrapartida de que nadie
   más la tenga.
 - **Si se filtra, los seudónimos se vuelven enlazables.** Trátala como una contraseña.
@@ -352,7 +354,7 @@ Derivarla cuesta 600.000 vueltas de PBKDF2 (el mínimo que recomienda OWASP), **
 protección**: encarece por igual cada intento de adivinarla. Cuánto tarda depende del equipo — en un
 portátil moderno es un instante, en un teléfono de gama baja se nota—; lo que se garantiza es el
 número de vueltas, no los segundos. Guarda
-la frase **y la sal** que Velo te enseña: sin las dos, los seudónimos del mes que viene no cuadran.
+la frase **y la sal** que Velo te enseña: sin las dos, ni Velo local puede repetir los seudónimos el mes que viene.
 
 #### Antes y después
 
@@ -1071,21 +1073,60 @@ estaba en lo que Velo escribía.
 
 **Lo medido: una referencia, no una promesa.** Un CSV de **5.000.000 de filas × 24 columnas
 (1,36 GB)**, con la política Habeas Data y una llave, en Chromium con la versión de producción y en
-un Mac del autor. Guardado por el camino de la memoria, sin el selector de destino:
+un Mac del autor. Guardado por el camino de la memoria, sin el selector de destino, y de regreso con
+su bóveda:
 
-| Pasada              | Tiempo | Pico de memoria de la pestaña |
-| ------------------- | ------ | ----------------------------- |
-| Diagnóstico         | 109 s  | 3,6 GB                        |
-| Transformar y medir | 283 s  | 4,9 GB                        |
-| Escribir            | 267 s  | 4,9 GB                        |
+| Paso                          | Tiempo | Pico de memoria de la pestaña |
+| ----------------------------- | ------ | ----------------------------- |
+| Diagnóstico                   | 83 s   | 3,2 GB                        |
+| Transformar y medir           | 280 s  | 4,2 GB                        |
+| Escribir                      | 261 s  | 4,5 GB                        |
+| Bóveda y descargas            | 3 s    | 2,0 GB                        |
+| Regreso: abrir la bóveda      | 1 s    | 0,1 GB                        |
+| Regreso: leer el devuelto     | 71 s   | 2,5 GB                        |
+| Regreso: restaurar y escribir | 132 s  | 1,3 GB                        |
 
-Son unos 11 minutos en total, y **hacen falta varios GB de memoria libre**: cierra otras pestañas y
-programas pesados antes. El pico es el de todo el proceso de la pestaña, medido cada medio segundo;
-cuenta memoria que el navegador aún no había liberado, así que es un techo y no lo que se usa de
-verdad. El trabajo ocurre en un hilo aparte, como siempre. El regreso de ese
-archivo no se midió a 5.000.000 de filas; sí se probó, ida y vuelta, con uno de 21.000.000 de celdas,
-comparando el restaurado con el original por su huella SHA-256. Bajar el pico de memoria está
-pendiente.
+Son unos 10 minutos de ida y unos 3,4 de regreso, y **hacen falta varios GB de memoria libre**:
+cierra otras pestañas y programas pesados antes. El pico es el de todo el proceso de la pestaña,
+medido cada medio segundo; cuenta memoria que el navegador aún no había liberado, así que es un
+techo y no lo que se usa de verdad. El trabajo ocurre en un hilo aparte, como siempre. El regreso se
+comprobó con ese mismo archivo: la columna restaurada volvió al valor original y las otras 23
+columnas quedaron iguales a las del archivo anonimizado. Entre corridas iguales el pico cambia
+alrededor de ±0,6 GB (la primera corrida de ese archivo dio 109 s, 283 s, 267 s y 4,9 GB).
+
+**El pico no se bajó, y es un límite conocido de esta versión, no un descuido.** Casi 1,1 GB son los
+diccionarios exactos de las columnas casi únicas; el motor de JavaScript deja la basura sin recoger
+hasta unas dos veces eso, y el navegador suma lo suyo. Bajar el pico a 2,5 GB obligaría a cambiar el
+riesgo exacto por uno estimado, y Velo no cambia una cifra exacta por una estimada por su cuenta
+(ver «Lo que Velo NO afirma»). Si eso se decide algún día, se dirá aquí.
+
+**Cuánta memoria pide según el tamaño del archivo.** La misma política, el mismo Mac, una corrida
+por celda; el pico es el del proceso más pesado del navegador, en el paso que más pidió (ida y
+regreso). Hasta 20.000.000 de celdas el archivo se arma en memoria; de ahí en adelante va por
+pasadas.
+
+| Filas (× 24 columnas)   | Chromium | Firefox    | WebKit (motor de Safari) |
+| ----------------------- | -------- | ---------- | ------------------------ |
+| 100.000                 | 1,0 GB   | 0,8 GB     | 1,3 GB                   |
+| 500.000                 | 3,1 GB   | 1,6 GB     | 3,4 GB                   |
+| 1.000.000 (por pasadas) | 3,2 GB   | 2,4–2,6 GB | 3,9–4,8 GB               |
+| 5.000.000 (por pasadas) | 4,5 GB   | no medido  | no medido                |
+
+Lee la tabla como un orden de magnitud: con una corrida por celda, una diferencia de medio GB entre
+dos celdas no es una conclusión. Firefox pide bastante menos que los otros dos a estos tamaños; a
+5.000.000 de filas solo se midió Chromium.
+
+**Velo local en esos tamaños.** El mismo archivo y la misma política, por la consola
+([sección 11](#11-velo-en-tu-equipo-la-consola-las-bases-de-datos-y-la-api)), en el mismo Mac y
+midiendo la memoria residente del proceso: con 1.000.000 de filas, 146,5 s y 3,1 GB; con
+5.000.000 de filas, 1.207 s (unos 20 minutos) y 3,9 GB. **Velo local no es más
+rápido que la pestaña** (a 5.000.000 de filas tarda el doble: la ida sola, 10 minutos en Chromium) **y
+usa casi lo mismo de memoria** (algo menos a 5.000.000: 3,9 contra 4,5 GB). Lo que cambia es otra
+cosa: no depende de una pestaña abierta que el navegador pueda cerrar si se queda sin memoria, se
+deja corriendo en una terminal sin mirarla, se repite con un comando, y en WebKit a 1.000.000 de
+filas le gana al navegador (3,1 GB contra 3,9–4,8 GB). Una regla práctica: hasta unas 500.000 filas
+la pestaña basta (con otras pestañas cerradas, porque ahí ya pide 3 GB en Chromium y WebKit); si tu
+archivo pasa de eso, o tu equipo tiene poca memoria libre, o vas a repetirlo, usa Velo local.
 
 **En Firefox y Safari (sin selector de destino).** Un CSV de **1.000.000 de filas × 24 columnas**
 (24.000.000 de celdas, ya en alto volumen), la misma política, en el Firefox y el WebKit de
@@ -1135,7 +1176,7 @@ aquí. Los demás topes de un JSON siguen deteniéndolo, y lo dice; y las listas
 ### 10. La política RGPD
 
 Es la **tercera política de fábrica**, junto a Habeas Data y HIPAA. En el taller se elige con el
-botón **«RGPD · GDPR (UE)»**. Se apoya en el Reglamento (UE) 2016/679: el artículo 4 (qué es un
+botón **«RGPD · GDPR (UE · EU)»**. Se apoya en el Reglamento (UE) 2016/679: el artículo 4 (qué es un
 dato personal y qué es seudonimizar), el 9 (categorías especiales), el 10 (condenas e infracciones
 penales) y el considerando 26.
 
@@ -1173,16 +1214,16 @@ clínica, afiliado, contrato) no tiene forma reconocible: ese lo marcas tú.
 uno se comprueba con su dígito o letra de control oficial, y se ignoran los espacios, puntos y
 guiones, y las mayúsculas:
 
-| Documento                   | Qué comprueba Velo                                                                                                          |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **IBAN**                    | ISO 13616, con el control mod 97-10                                                                                         |
-| **DNI** (España)            | La letra de control: el número módulo 23 indexa una tabla de letras                                                         |
-| **NIE** (España)            | Lo mismo, con X, Y y Z valiendo 0, 1 y 2; no admite otro prefijo                                                            |
-| **NIR** (Francia)           | La clave: 97 menos los 13 primeros dígitos módulo 97 (con 2A y 2B de Córcega); sexo 1 o 2 y mes entre 01 y 12               |
-| **Codice fiscale** (Italia) | El carácter de control (tablas de posiciones impares y pares, módulo 26); una letra de mes y un día posibles                |
-| **Steuer-IdNr** (Alemania)  | La cifra de control sobre las 10 primeras cifras; sin 0 al inicio y con la estructura de cifras repetidas que fija la norma |
-| **BSN** (Países Bajos)      | La prueba del 11; un BSN de 8 cifras se lee con un cero a la izquierda; no admite todo ceros                                |
-| **PESEL** (Polonia)         | El dígito de control (pesos 1-3-7-9) y que la fecha de nacimiento que lleva exista                                          |
+| Documento                   | Qué comprueba Velo                                                                                                                                                                                                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **IBAN**                    | ISO 13616, con el control mod 97-10                                                                                                                                                                                                             |
+| **DNI** (España)            | La letra de control: el número módulo 23 indexa una tabla de letras                                                                                                                                                                             |
+| **NIE** (España)            | Lo mismo, con X, Y y Z valiendo 0, 1 y 2; no admite otro prefijo. Solo el NIE de 9 caracteres (X, 7 dígitos y una letra): **el anterior a julio de 2008 (X y 8 dígitos) no se reconoce**, porque ninguna fuente oficial abierta trae su fórmula |
+| **NIR** (Francia)           | La clave: 97 menos los 13 primeros dígitos módulo 97 (con 2A y 2B de Córcega); sexo 1 o 2 y mes entre 01 y 12                                                                                                                                   |
+| **Codice fiscale** (Italia) | El carácter de control (tablas de posiciones impares y pares, módulo 26); una letra de mes y un día posibles                                                                                                                                    |
+| **Steuer-IdNr** (Alemania)  | La cifra de control sobre las 10 primeras cifras; sin 0 al inicio y con la estructura de cifras repetidas que fija la norma                                                                                                                     |
+| **BSN** (Países Bajos)      | La prueba del 11; un BSN de 8 cifras se lee con un cero a la izquierda; no admite todo ceros                                                                                                                                                    |
+| **PESEL** (Polonia)         | El dígito de control (pesos 1-3-7-9) y que la fecha de nacimiento que lleva exista                                                                                                                                                              |
 
 **«Confirmado por el algoritmo»** quiere decir dos cosas: el control cuadra y la estructura es
 posible (un mes que existe, un prefijo que el documento admite). **No** quiere decir que el número
@@ -1249,7 +1290,8 @@ anónimo, que no hace el análisis del considerando 26 y que no certifica cumpli
 - **Los nombres en otras lenguas** cubren los campos comunes, solo desde el encabezado.
 - **El k = 5 y las escaleras de generalización son de Velo,** no del reglamento.
 - **Las fuentes no se verificaron todas igual de a fondo.** El DNI y el NIE se validan con el
-  algoritmo del módulo 23, el de uso universal. Pero la página del Ministerio del Interior de
+  algoritmo del módulo 23, el de uso universal. El NIE se reconoce solo en su forma de 9 caracteres (el
+  anterior a julio de 2008 no, porque ninguna fuente oficial abierta trae su fórmula). Pero la página del Ministerio del Interior de
   España que describe el cálculo no pudo abrirse al verificarlo: el algoritmo se tomó de los
   extractos que de ella cita un buscador y se comprobó a mano. Los otros documentos se
   reprodujeron con ejemplos oficiales, salvo el codice fiscale, cuyo decreto no trae ninguno. El
@@ -1281,12 +1323,14 @@ salida ya existe, se niega.
 | `pnpm velo puente …`               | Lo mismo, sobre una tabla de PostgreSQL o SQL Server.                                         |
 | `pnpm velo api`                    | Levanta la API local.                                                                         |
 
-`--salida` elige la carpeta, `--sal` fija la sal de la llave (para que mañana los seudónimos
+`--salida` elige la carpeta (tiene que existir: si no, Velo local lo dice antes de pedirte ninguna frase), `--sal` fija la sal de la llave (para que mañana los seudónimos
 coincidan con los de hoy), `--bitacora` anota el tratamiento en tu bitácora e `--idioma es|en`
 cambia el idioma de los mensajes y de los documentos. Salen el anonimizado, **el certificado** y,
 si pediste columnas reversibles, **la bóveda**, con las mismas huellas que en la web. Un JSON entra
 y un JSON sale; uno demasiado grande para la memoria se trata
-[por pasadas](#9-archivos-enormes-el-modo-de-alto-volumen), igual que en la web.
+[por pasadas](#9-archivos-enormes-el-modo-de-alto-volumen), igual que en la web. Si una corrida
+falla a medias, Velo local deshace lo que escribió; si no logra borrar un archivo (un disco lleno o
+sin permisos), te dice cuál con «No pude borrar…», y lo borras tú: no lo dejes por bueno.
 
 **Las frases y la conexión nunca van en una orden.** La frase de la llave sale de `VELO_FRASE` o de
 la consola, sin eco; la de la bóveda, de `VELO_FRASE_BOVEDA`; la de la bitácora, de
@@ -1432,7 +1476,9 @@ Con la **misma frase de paso y la misma sal**. La frase la guardas tú; la sal t
 derivar la llave. **No viaja dentro de la política exportada**, pero sí dentro de la bóveda,
 cifrada con todo lo demás: quien conserva la bóveda y recuerda la frase puede volver a derivar la
 misma llave. Si no guardaste bóveda —porque no marcaste ninguna columna como reversible—, cópiala a
-tu gestor de contraseñas junto a la frase.
+tu gestor de contraseñas junto a la frase. **Ojo:** en la web cada llave nueva estrena su propia
+sal y la pantalla no deja escribir una; para repetir los seudónimos de un archivo a otro, la
+puerta es Velo local con `--sal` (la misma frase y la misma sal dan los mismos seudónimos).
 
 **¿Puedo usar Velo en inglés?**
 Sí, entero: las cinco pantallas, los avisos de las llaves, el certificado, el informe del regreso y
@@ -1499,8 +1545,8 @@ segundos sin que la pestaña se congele, porque el trabajo pesado ocurre en un h
 Porque pasa de 20.000.000 de celdas y Velo lo lee por pasadas en vez de cargarlo entero: una para
 el diagnóstico, otra para medir y otra para escribir
 ([sección 9](#9-archivos-enormes-el-modo-de-alto-volumen)). En el archivo que se midió —5.000.000 de
-filas × 24 columnas, 1,36 GB, en un Mac del autor— fueron 109 s, 283 s y 267 s (unos 11 minutos), y la
-pestaña llegó a pedir hasta 4,9 GB de memoria. Es una referencia, no una promesa: depende de tu
+filas × 24 columnas, 1,36 GB, en un Mac del autor— fueron 83 s, 280 s y 261 s (unos 10 minutos), y la
+pestaña llegó a pedir hasta 4,5 GB de memoria. Es una referencia, no una promesa: depende de tu
 equipo, y conviene cerrar otras pestañas. A cambio, el riesgo sigue siendo exacto y el archivo que
 sale es el mismo, byte por byte, que saldría si cupiera en memoria.
 
@@ -1508,10 +1554,11 @@ sale es el mismo, byte por byte, que saldría si cupiera en memoria.
 
 ## Lo que viene
 
-**Nada de lo que este manual describía como futuro sigue pendiente, salvo bajar el pico de memoria.** El
+**Nada de lo que este manual describía como futuro sigue pendiente, salvo una decisión.** El
 certificado, la bitácora y el riesgo estimado —las tres cosas que aquí se prometieron— están arriba,
-cada una con su sección; el pico de memoria del alto volumen (4,9 GB a 5.000.000 de filas) sigue
-pendiente de decisión del dueño, no descartado.
+cada una con su sección. Lo único abierto es el pico de memoria del alto volumen (4,5 GB a
+5.000.000 de filas): bajarlo a la mitad exigiría cambiar el riesgo exacto por uno estimado, y esa
+decisión de producto no está tomada.
 
 Lo que Velo **no** hace hoy vive en «Lo que Velo NO afirma» y en los topes declarados: no lee bases
 de datos desde la web (solo [Velo local](#11-velo-en-tu-equipo-la-consola-las-bases-de-datos-y-la-api),

@@ -580,9 +580,6 @@ const BUSQUEDAS = new WeakMap<
   { clave: string; columnas: readonly object[]; busqueda: Busqueda }[]
 >();
 
-/** Cuántas veces se recorrió la retícula de verdad (la prueba de que corre una sola vez). */
-export const recorridos = { reticulas: 0 };
-
 function buscarElNodo(
   dimensiones: readonly Dimension[],
   sensibles: readonly ColumnaColumnar[],
@@ -607,7 +604,6 @@ function buscarElNodo(
   );
   if (hallada) return hallada.busqueda;
 
-  recorridos.reticulas++;
   const evaluador = new Evaluador(
     dimensiones,
     sensibles,

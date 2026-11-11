@@ -15,7 +15,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EntradaDeBitacora } from "@/engine/bitacora";
 import { exportarPolitica, type Politica } from "@/engine/politica";
@@ -59,7 +59,6 @@ const consola: Consola = {
   salida: (l) => void registro.push(l),
   aviso: (l) => void registro.push(l),
 };
-const VARIABLES = ["VELO_FRASE", "VELO_FRASE_BOVEDA", "VELO_FRASE_BITACORA"];
 
 beforeEach(() => {
   carpeta = mkdtempSync(join(tmpdir(), "velo-escritos-"));
@@ -70,7 +69,8 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(carpeta, { recursive: true, force: true });
-  for (const v of VARIABLES) delete process.env[v];
+  // `stubEnv` devuelve cada variable a lo que valía antes (también si el terminal ya la traía).
+  vi.unstubAllEnvs();
 });
 
 const anonimizar = (...extra: string[]) =>
@@ -89,16 +89,16 @@ const anonimizar = (...extra: string[]) =>
 
 describe("pnpm velo anonimizar, cuando falta una frase", () => {
   it("sin la frase de la bóveda (y sin consola) no escribe nada", async () => {
-    process.env.VELO_FRASE = FRASE;
+    vi.stubEnv("VELO_FRASE", FRASE);
     expect(await anonimizar()).toBe(1);
     expect(registro.join("\n")).toContain("VELO_FRASE_BOVEDA");
     expect(readdirSync(carpeta).sort()).toEqual(["a.csv", "p.json"]);
   });
 
   it("con la frase equivocada de una bitácora que ya existe, tampoco, y la bitácora queda igual", async () => {
-    process.env.VELO_FRASE = FRASE;
-    process.env.VELO_FRASE_BOVEDA = "la frase de la boveda de esta prueba";
-    process.env.VELO_FRASE_BITACORA = FRASE_DE_BITACORA;
+    vi.stubEnv("VELO_FRASE", FRASE);
+    vi.stubEnv("VELO_FRASE_BOVEDA", "la frase de la boveda de esta prueba");
+    vi.stubEnv("VELO_FRASE_BITACORA", FRASE_DE_BITACORA);
     const ruta = join(carpeta, "b.velolog");
     expect(await anonimizar("--bitacora", ruta)).toBe(0);
     const antes = readFileSync(ruta);
@@ -107,7 +107,7 @@ describe("pnpm velo anonimizar, cuando falta una frase", () => {
       if (!["a.csv", "p.json", "b.velolog"].includes(a))
         rmSync(join(carpeta, a));
 
-    process.env.VELO_FRASE_BITACORA = "otra frase que no abre la bitacora";
+    vi.stubEnv("VELO_FRASE_BITACORA", "otra frase que no abre la bitacora");
     expect(await anonimizar("--bitacora", ruta)).toBe(1);
     expect(readdirSync(carpeta).sort()).toEqual([
       "a.csv",
@@ -118,9 +118,67 @@ describe("pnpm velo anonimizar, cuando falta una frase", () => {
   });
 });
 
+describe("pnpm velo, con una carpeta de salida que no existe", () => {
+  it("lo dice con palabras, antes de pedir la frase y sin escribir nada", async () => {
+    const ausente = join(carpeta, "no-existe");
+    const orden = [
+      "anonimizar",
+      join(carpeta, "a.csv"),
+      "--politica",
+      join(carpeta, "p.json"),
+      "--salida",
+      ausente,
+    ];
+    expect(await principal(orden, consola, () => new Date())).toBe(1);
+    const dicho = registro.join("\n");
+    expect(dicho).toContain("--salida");
+    expect(dicho).not.toContain("velo: Error");
+    expect(dicho).not.toContain("VELO_FRASE");
+    expect(existsSync(ausente)).toBe(false);
+  });
+
+  it("restaurar y puente lo dicen igual, antes de pedir la frase o la conexión", async () => {
+    const ausente = join(carpeta, "no-existe");
+    for (const orden of [
+      [
+        "restaurar",
+        join(carpeta, "a.csv"),
+        "--boveda",
+        join(carpeta, "b.velo"),
+        "--salida",
+        ausente,
+      ],
+      ["puente", "--tabla", "t", "--salida", ausente],
+    ]) {
+      registro.length = 0;
+      expect(await principal(orden, consola, () => new Date())).toBe(1);
+      const dicho = registro.join("\n");
+      expect(dicho).toContain("--salida");
+      expect(dicho).not.toContain("VELO_FRASE");
+      expect(dicho).not.toContain("VELO_DB_URL");
+    }
+  });
+
+  it("sin --salida, un archivo de entrada que no está se dice como archivo, no como carpeta", async () => {
+    const orden = [
+      "anonimizar",
+      join(carpeta, "otra", "x.csv"),
+      "--politica",
+      join(carpeta, "p.json"),
+    ];
+    vi.stubEnv("VELO_FRASE", FRASE);
+    expect(await principal(orden, consola, () => new Date())).toBe(1);
+    const dicho = registro.join("\n");
+    expect(dicho).not.toContain("--salida");
+    expect(dicho).not.toContain("velo: ");
+    expect(dicho).toContain("No encuentro el archivo");
+    expect(dicho).toContain("x.csv");
+  });
+});
+
 describe("la bitácora se deshace", () => {
   it("una bitácora nueva que se anota y se deshace desaparece", async () => {
-    process.env.VELO_FRASE_BITACORA = FRASE_DE_BITACORA;
+    vi.stubEnv("VELO_FRASE_BITACORA", FRASE_DE_BITACORA);
     const ruta = join(carpeta, "nueva.velolog");
     const bitacora = await abrirBitacoraPara(ruta, "es");
     await bitacora.anotar(ENTRADA);
@@ -130,7 +188,7 @@ describe("la bitácora se deshace", () => {
   });
 
   it("una que ya existía vuelve a sus bytes de antes, y sigue abriendo", async () => {
-    process.env.VELO_FRASE_BITACORA = FRASE_DE_BITACORA;
+    vi.stubEnv("VELO_FRASE_BITACORA", FRASE_DE_BITACORA);
     const ruta = join(carpeta, "vieja.velolog");
     const primera = await abrirBitacoraPara(ruta, "es");
     await primera.anotar(ENTRADA);
@@ -153,7 +211,7 @@ describe("la bitácora se deshace", () => {
   });
 
   it("deshacer sin haber anotado no toca nada", async () => {
-    process.env.VELO_FRASE_BITACORA = FRASE_DE_BITACORA;
+    vi.stubEnv("VELO_FRASE_BITACORA", FRASE_DE_BITACORA);
     const ruta = join(carpeta, "intacta.velolog");
     const primera = await abrirBitacoraPara(ruta, "es");
     await primera.anotar(ENTRADA);

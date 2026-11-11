@@ -11,7 +11,7 @@
     />
     <!--
   BROCHURE VIVO DE VELO — el anti-manual. Se recorre como una página y quien lo termina conoce
-  las 14 funcionalidades de la app. Producido sobre el molde v2 del kit a partir del storyboard
+  las 22 funcionalidades de la app. Producido sobre el molde v2 del kit a partir del storyboard
   aprobado: sprints/ENTREGA-brochure-storyboard.md (9 escenas, E01–E09).
 
   Doble vida: este archivo abre con doble clic SIN internet, y la app lo sirve en la ruta
@@ -36,7 +36,7 @@
   con el mod 11 de la DIAN, porque una maqueta que miente sobre el producto es peor que no
   tenerla.
 
-  ENLACES: ninguna URL absoluta de producción o de preview (regla 14 del CLAUDE.md). El mapa de
+  ENLACES: ninguna URL absoluta de producción o de preview (regla 17 del CLAUDE.md). El mapa de
   la app usa rutas relativas a la raíz, que es como se sirven en /conoce.
 
   BILINGÜE ES/EN (S5): el español vive en el marcado y se lee igual sin JavaScript; el inglés vive
@@ -1430,7 +1430,7 @@
         "portada.lema": "Veil it to hand it over. Unveil it to get it back.",
         "portada.baja": "Scroll at your own pace: each card opens when you reach it, and you stay in control of every one <span class=\"flecha\" aria-hidden=\"true\">↓</span>",
         "quehace.titulo": "What it does, in the order you will use it",
-        "quehace.bajada": "Five steps, fourteen features. They open as you scroll and fold away once they are behind you; if you tap one, your tap wins.",
+        "quehace.bajada": "Six steps, twenty-two features. They open as you scroll and fold away once they are behind you; if you tap one, your tap wins.",
         "tarjeta1.titulo": "Find out who is exposed",
         "tarjeta1.linea": "Drop in your table and Velo tells you which columns identify a person, and how certain it is",
         "tarjeta1.detalle.aria": "Find out who is exposed — details",
@@ -1469,8 +1469,8 @@
         "tarjeta3.f2.titulo": "The format is kept and the check digit is recalculated",
         "tarjeta3.f2.como": "A NIT is still a NIT: if you choose to keep the format, the pseudonym has the same shape and its check digit is <strong>actually recalculated</strong>, using the DIAN’s mod 11. The spreadsheet on the other side does not break, and neither does their system’s validation.",
         "tarjeta3.f2.tip": "<strong>Tip:</strong> keeping the format shrinks the available space, so two different values can collide. Velo counts those collisions and tells you about them: it does not hide them.",
-        "tarjeta3.f3.titulo": "Next month, the same pseudonym",
-        "tarjeta3.f3.como": "The pseudonym is computed from a passphrase that only you hold, derived with 600,000 iterations of PBKDF2 — the minimum OWASP recommends, and that cost <em>is</em> the protection. The same passphrase and the same salt give the same pseudonyms, which is why you can match the March file against the April one without having the real data in front of you.",
+        "tarjeta3.f3.titulo": "With the same salt, the same pseudonym",
+        "tarjeta3.f3.como": "The pseudonym is computed from a passphrase that only you hold, derived with 600,000 iterations of PBKDF2 — the minimum OWASP recommends, and that cost <em>is</em> the protection. With the same passphrase and the same salt — which in Velo local you fix with <code>--sal</code>; on the web every new key gets its own — the pseudonyms repeat, which is why you can match the March file against the April one without having the real data in front of you.",
         "tarjeta3.f3.tip": "<strong>Tip:</strong> keep the passphrase <em>and</em> the salt that Velo shows you. If you lose the passphrase there is no going back: that is the flip side of nobody else having it.",
         "tarjeta4.titulo": "Measure risk with exact figures",
         "tarjeta4.linea": "How many people remain exposed before and after, counted row by row and kept apart from what is estimated",
@@ -1501,13 +1501,40 @@
         "tarjeta5.f3.titulo": "The log, so you remember six months from now",
         "tarjeta5.f3.como": "The certificate proves a treatment to whoever receives it; the log answers a different question and is yours alone: what you have done with your files. It records the name, the date, the techniques (without saying which columns), the policy’s hash, the two fingerprints and the proportion of unique records before and after. It is encrypted, in a separate file from the vault and with its own passphrase.",
         "tarjeta5.f3.tip": "<strong>Tip:</strong> keep both proportions, not the difference. “It dropped from 30% to 2%” is true and can still mislead, and a log is read months later with no screen beside it to add nuance.",
+        "tarjeta6.titulo": "Beyond the table",
+        "tarjeta6.linea": "More formats, more techniques and your own machine: what was added for the complete product",
+        "tarjeta6.detalle.aria": "Beyond the table — details",
+        "tarjeta6.f1.titulo": "JSON and JSON Lines tables",
+        "tarjeta6.f1.como": "An array of objects or a JSON Lines file opens as a table: each distinct path is a column. <strong>The same format comes back out</strong>, with the keys in their order and exact numbers, and numbers with stray decimals do not turn into text.",
+        "tarjeta6.f1.tip": "<strong>Tip:</strong> what a JSON has and a table does not (lists, nested objects) is flagged, never made up.",
+        "tarjeta6.f2.titulo": "Clean the metadata of PDFs and images",
+        "tarjeta6.f2.como": "Author, camera, location, dates and earlier versions: what a file says about itself and nobody sees. Velo removes it from PDF, JPEG, PNG, WebP, HEIC, AVIF and a Live Photo's video, and hands you a certificate of what it took out.",
+        "tarjeta6.f2.tip": "<strong>Tip:</strong> it cleans what the file says about itself; it does not touch the text of the pages or what you see in the image.",
+        "tarjeta6.f3.titulo": "Generalize just enough: optimal search with built-in ladders",
+        "tarjeta6.f3.como": "Instead of grouping blindly, Velo searches for the generalization that loses the least information and still reaches k (the OLA algorithm), with built-in ladders for municipality, occupation and dates that cite their source. With an optional suppression cap.",
+        "tarjeta6.f3.tip": "<strong>Tip:</strong> rows suppressed to reach k leave the delivered copy, never your original.",
+        "tarjeta6.f4.titulo": "Noise with a guarantee: local differential privacy",
+        "tarjeta6.f4.como": "Three techniques add measured noise to each cell, and the policy states the ε and the scope it applies to. The randomness comes from your key: the same file with the same key gives the same noise, byte for byte.",
+        "tarjeta6.f4.tip": "<strong>Tip:</strong> “guarantee” is the panel's name and means a measured ε with its scope; it does not promise the file is anonymous.",
+        "tarjeta6.f5.titulo": "The European policy: GDPR",
+        "tarjeta6.f5.como": "A built-in policy for European data: it recognizes Spain's DNI and NIE, France's NIR, the codice fiscale, the Steuer-IdNr, the BSN, the PESEL and the IBAN, and removes the special categories (art. 9) and convictions (art. 10).",
+        "tarjeta6.f5.tip": "<strong>Tip:</strong> it reduces the risk and measures it; it does not run the impact assessment or certify that you comply with the regulation.",
+        "tarjeta6.f6.titulo": "Files bigger than the tab",
+        "tarjeta6.f6.como": "A CSV of more than 20 million cells is diagnosed, anonymized and returned in passes, with the same bytes as in memory. The risk stays exact, and what does not fit within the caps is said, never estimated.",
+        "tarjeta6.f6.tip": "<strong>Tip:</strong> you need several GB of free memory; the manual has the table by size and browser, and the size from which Velo local is the better road.",
+        "tarjeta6.f7.titulo": "Velo on your machine: console and API",
+        "tarjeta6.f7.como": "The same engine as a process on your machine: a console to diagnose, anonymize and restore, and an API that listens only on 127.0.0.1 with a token per start. The same bytes as on the web.",
+        "tarjeta6.f7.tip": "<strong>Tip:</strong> the data go through no server: neither the console nor the API has telemetry, and they write only where you say.",
+        "tarjeta6.f8.titulo": "The bridge to your database",
+        "tarjeta6.f8.como": "Velo local reads a PostgreSQL or SQL Server table, anonymizes it and writes the result to another table that you name. The connection comes from your environment or the console, never from an argument or a log, and the source table is never touched.",
+        "tarjeta6.f8.tip": "<strong>Tip:</strong> the restored table goes in plain text and Velo warns you before writing it: it is as sensitive as the source.",
         "velar.titulo": "Veiling, in two seconds",
-        "velar.bajada": "It keeps the shape. It loses the identity. And next month, the same pseudonym.",
+        "velar.bajada": "It keeps the shape. It loses the identity. And with the same salt, the same pseudonym.",
         "velar.etiqueta": "A supplier’s NIT",
         "velar.nota": "Still a NIT — with its check digit <strong>recalculated</strong> by the DIAN’s mod 11, not made up. The system on the other side validates it just the same; what it no longer has is anyone to point at.",
         "velar.marzo": "March delivery",
         "velar.abril": "April delivery",
-        "velar.pie": "The same pseudonym in both deliveries: your analysis can still match records across them, and the real data never has to leave. Values invented for this example.",
+        "velar.pie": "The same pseudonym in both deliveries (same passphrase and same salt, which Velo local lets you fix): your analysis can still match records across them, and the real data never has to leave. Values invented for this example.",
         "aduana.titulo": "And while all of this happens, nothing has left",
         "aduana.bajada": "This is not a brochure promise: there is simply nowhere for it to go.",
         "aduana.lamina.aria": "A browser with the table inside. Three arrows try to leave toward a server, an AI and a third party’s computer, and they stop at the edge of the tab.",
@@ -1533,7 +1560,7 @@
         "climax.est1": "<strong>At your desk, veiled.</strong> <span class=\"mono\">900.123.456-8</span> goes out as <span class=\"mono dato\">900.884.201-1</span>. That is what you hand over.",
         "climax.est2": "<strong>The third party works.</strong> They add a column <span class=\"mono\">0.82</span>, reorder the rows and correct values. None of it gets in the way.",
         "climax.est3": "<strong>Back again, unveiled.</strong> With your vault, <span class=\"mono dato\">900.884.201-1</span> becomes <span class=\"mono\">900.123.456-8</span> again — and the third party’s column stays.",
-        "climax.pie": "The same file, the same policy and the same passphrase always produce the same result, byte for byte. There is no artificial intelligence anywhere in the product: that is why it repeats identically, and why it can be audited. Values invented for this example.",
+        "climax.pie": "The same file, the same policy and the same key (passphrase and salt) always produce the same result, byte for byte. There is no artificial intelligence anywhere in the product: that is why it repeats identically, and why it can be audited. Values invented for this example.",
         "fino.titulo": "The fine details",
         "fino.bajada": "What almost nobody tells you, told here.",
         "fino1.titulo": "What Velo does NOT claim",
@@ -1545,7 +1572,7 @@
         "fino2.titulo": "Requirements, limits and what hurts",
         "fino2.li1": "An up-to-date desktop browser. The first time you need to load the page; after that, the analysis happens entirely on your computer, and downloaded documents always open offline.",
         "fino2.li2": "<strong>CSV with no limit</strong> (it is read in pieces) and <strong>Excel up to 150 MB</strong> (it has to be opened in full to be read). Measured: 500,000 rows by 24 columns — about 130 MB — in a few seconds, without the tab freezing.",
-        "fino2.li3": "It does not read databases, JSON or PDF, and it does not produce Excel output files: the same input written twice to <span class=\"mono\">.xlsx</span> would not come out byte-for-byte identical, and that sameness is exactly what Velo promises.",
+        "fino2.li3": "It does not produce Excel output files: the same input written twice to <span class=\"mono\">.xlsx</span> would not come out byte-for-byte identical, and that sameness is exactly what Velo promises. Databases are read only by Velo local, on your machine, never by the web page.",
         "fino2.li4": "<strong>Three passphrases, three different scopes</strong> — the project’s, the vault’s and the log’s — and they should not be the same. Losing one means losing what it opened: there is no recovery, neither by Velo nor by anyone. Saying so up front is part of the deal, and it is exactly the same reason nobody else can open them.",
         "fino3.titulo": "The map: where each screen leads",
         "fino3.li1": "<a href=\"/\"><code>/</code></a> — the customs checkpoint: where you bring your table.",
@@ -1555,13 +1582,14 @@
         "fino3.li5": "<a href=\"/bitacora\"><code>/bitacora</code></a> — the encrypted log: what you treated, when and by what criteria.",
         "fino3.li6": "<a href=\"/conoce\"><code>/conoce</code></a> — this tour.",
         "pie.sello": "Nothing leaves this browser",
-        "pie.cuenta": "14 features",
+        "pie.cuenta": "22 features",
         "pie.cubre.antes": "This tour covers the",
         "pie.cubre.palabra": "features",
         "pie.cubre.despues": "of Velo — all of them, grouped so you can discover them at your own pace. The count matches the repository’s user manual; the mapping table, feature by feature, lives in this delivery’s summary.",
         "pie.espera": "Velo is deployed and running, but its address is not published yet: access is through a <strong>waiting list</strong> while the testing round is completed.",
         "pie.historial.titulo": "Brochure history",
-        "pie.historial.li1": "<strong>Delivery of August 21, 2026 — initial brochure.</strong> Created once the H1 cycle was delivered: the five cards of the journey and their 14 features, the round-trip climax and the statement of what Velo does not claim. It gets <strong>sealed</strong> when the testing round closes."
+        "pie.historial.li1": "<strong>Delivery of August 21, 2026 — initial brochure.</strong> Created once the H1 cycle was delivered: the five cards of the journey and their 14 features, the round-trip climax and the statement of what Velo does not claim. It gets <strong>sealed</strong> when the testing round closes.",
+        "pie.historial.li2": "<strong>Adjustment of November 10, 2026 — complete product.</strong> Closes the construction of the H2 cycle: a sixth card with the eight features added to the MVP (JSON, PDF and image metadata, optimal generalization, noise with a guarantee, GDPR, high volume, Velo local and the database bridge), 22 in all, and the statement of what Velo does not read corrected."
       }
     </script>
     <script>
@@ -1984,7 +2012,7 @@
             Qué hace, en el orden en que lo vas a usar
           </h2>
           <p class="suave revela" data-t="quehace.bajada">
-            Cinco pasos, catorce cosas. Se van abriendo a medida que bajas y se
+            Seis pasos, veintidós cosas. Se van abriendo a medida que bajas y se
             recogen en cuanto quedan atrás; si tocas una, manda tu toque.
           </p>
           <div class="hairline" aria-hidden="true"></div>
@@ -2408,16 +2436,18 @@
                     </div>
                     <div class="feature">
                       <h4 data-t="tarjeta3.f3.titulo">
-                        El mes que viene, el mismo seudónimo
+                        Con la misma sal, el mismo seudónimo
                       </h4>
                       <p class="como" data-t="tarjeta3.f3.como">
                         El seudónimo se calcula con una frase de paso que solo
                         tienes tú, derivada con 600.000 vueltas de PBKDF2 —el
                         mínimo que recomienda OWASP, y ese costo
-                        <em>es</em> la protección—. La misma frase y la misma
-                        sal dan los mismos seudónimos, y por eso puedes cruzar
-                        el archivo de marzo con el de abril sin tener los datos
-                        reales delante.
+                        <em>es</em> la protección—. Con la misma frase y la
+                        misma sal —que en Velo local fijas con
+                        <code>--sal</code>; en la web cada llave nueva estrena
+                        la suya— los seudónimos se repiten, y por eso puedes
+                        cruzar el archivo de marzo con el de abril sin tener los
+                        datos reales delante.
                       </p>
                       <p class="tip" data-t="tarjeta3.f3.tip">
                         <strong>Tip:</strong> guarda la frase <em>y</em> la sal
@@ -2747,6 +2777,202 @@
                 </div>
               </div>
             </article>
+
+            <article class="tarjeta revela">
+              <h3 class="tarjeta-cabeza">
+                <button
+                  class="tarjeta-boton"
+                  aria-expanded="false"
+                  aria-controls="d6"
+                >
+                  <span class="icono-caja" aria-hidden="true">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      width="24"
+                      height="24"
+                    >
+                      <rect x="3" y="4" width="18" height="12" rx="2" />
+                      <path d="M8 20h8M12 16v4" />
+                    </svg>
+                  </span>
+                  <span class="tarjeta-titulos">
+                    <span class="titulo" data-t="tarjeta6.titulo">
+                      Más allá de la tabla
+                    </span>
+                    <span class="linea" data-t="tarjeta6.linea"
+                      >Más formatos, más técnicas y tu propia máquina: lo que se
+                      sumó para el producto completo</span
+                    >
+                  </span>
+                  <svg
+                    class="chevron"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M5 8l5 5 5-5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
+              </h3>
+              <div
+                class="detalle"
+                id="d6"
+                role="region"
+                aria-label="Más allá de la tabla — detalle"
+                data-t-aria="tarjeta6.detalle.aria"
+              >
+                <div class="detalle-interior">
+                  <div class="detalle-cuerpo">
+                    <div class="feature">
+                      <h4 data-t="tarjeta6.f1.titulo">
+                        Tablas JSON y JSON Lines
+                      </h4>
+                      <p class="como" data-t="tarjeta6.f1.como">
+                        Un arreglo de objetos o un archivo JSON Lines se abre
+                        como una tabla: cada ruta distinta es una columna. Sale
+                        <strong>el mismo formato que entró</strong>, con las
+                        claves en su orden y los números exactos, y los que
+                        traen decimales con ruido de más no se vuelven texto.
+                      </p>
+                      <p class="tip" data-t="tarjeta6.f1.tip">
+                        <strong>Tip:</strong> lo que el JSON tiene y una tabla
+                        no (listas, objetos anidados) se avisa, no se inventa.
+                      </p>
+                    </div>
+                    <div class="feature">
+                      <h4 data-t="tarjeta6.f2.titulo">
+                        Limpia los metadatos de PDF e imágenes
+                      </h4>
+                      <p class="como" data-t="tarjeta6.f2.como">
+                        Autor, cámara, ubicación, fechas y versiones anteriores:
+                        lo que un archivo dice de sí mismo y nadie ve. Velo lo
+                        quita de PDF, JPEG, PNG, WebP, HEIC, AVIF y del video de
+                        una Live Photo, y entrega un certificado de lo que
+                        quitó.
+                      </p>
+                      <p class="tip" data-t="tarjeta6.f2.tip">
+                        <strong>Tip:</strong> limpia lo que el archivo dice de
+                        sí mismo; no toca el texto de las páginas ni lo que se
+                        ve en la imagen.
+                      </p>
+                    </div>
+                    <div class="feature">
+                      <h4 data-t="tarjeta6.f3.titulo">
+                        Generaliza lo justo: búsqueda óptima con escaleras de
+                        fábrica
+                      </h4>
+                      <p class="como" data-t="tarjeta6.f3.como">
+                        En vez de agrupar a ciegas, Velo busca la generalización
+                        que pierde menos información y aun así llega al k (el
+                        algoritmo OLA), con escaleras de fábrica para municipio,
+                        ocupación y fechas que citan su fuente. Con un tope de
+                        supresión opcional.
+                      </p>
+                      <p class="tip" data-t="tarjeta6.f3.tip">
+                        <strong>Tip:</strong> las filas que se suprimen para
+                        llegar al k salen de la copia entregada, nunca de tu
+                        original.
+                      </p>
+                    </div>
+                    <div class="feature">
+                      <h4 data-t="tarjeta6.f4.titulo">
+                        Ruido con garantía: privacidad diferencial local
+                      </h4>
+                      <p class="como" data-t="tarjeta6.f4.como">
+                        Tres técnicas agregan un ruido medido a cada celda, y la
+                        política dice el ε y a qué alcance se aplica. El azar
+                        sale de tu llave: el mismo archivo con la misma llave da
+                        el mismo ruido, byte por byte.
+                      </p>
+                      <p class="tip" data-t="tarjeta6.f4.tip">
+                        <strong>Tip:</strong> «garantía» es el nombre del panel
+                        y quiere decir un ε medido con su alcance; no promete
+                        que el archivo sea anónimo.
+                      </p>
+                    </div>
+                    <div class="feature">
+                      <h4 data-t="tarjeta6.f5.titulo">
+                        La política europea: RGPD
+                      </h4>
+                      <p class="como" data-t="tarjeta6.f5.como">
+                        Una política de fábrica para datos europeos: reconoce el
+                        DNI y el NIE de España, el NIR de Francia, el codice
+                        fiscale, el Steuer-IdNr, el BSN, el PESEL y el IBAN, y
+                        suprime las categorías especiales (art. 9) y las
+                        condenas (art. 10).
+                      </p>
+                      <p class="tip" data-t="tarjeta6.f5.tip">
+                        <strong>Tip:</strong> reduce el riesgo y lo mide; no
+                        hace la evaluación de impacto ni certifica que cumplas
+                        el reglamento.
+                      </p>
+                    </div>
+                    <div class="feature">
+                      <h4 data-t="tarjeta6.f6.titulo">
+                        Archivos más grandes que la pestaña
+                      </h4>
+                      <p class="como" data-t="tarjeta6.f6.como">
+                        Un CSV de más de 20 millones de celdas se diagnostica,
+                        se anonimiza y vuelve por pasadas, con los mismos bytes
+                        que en memoria. El riesgo sigue siendo exacto y lo que
+                        no cabe en los topes se dice, nunca se estima.
+                      </p>
+                      <p class="tip" data-t="tarjeta6.f6.tip">
+                        <strong>Tip:</strong> hacen falta varios GB de memoria
+                        libre; el manual trae la tabla por tamaño y navegador, y
+                        desde cuándo conviene Velo local.
+                      </p>
+                    </div>
+                    <div class="feature">
+                      <h4 data-t="tarjeta6.f7.titulo">
+                        Velo en tu equipo: consola y API
+                      </h4>
+                      <p class="como" data-t="tarjeta6.f7.como">
+                        El mismo motor como un proceso en tu máquina: una
+                        consola para diagnosticar, anonimizar y restaurar, y una
+                        API que escucha solo en 127.0.0.1 con un token por
+                        arranque. Los mismos bytes que en la web.
+                      </p>
+                      <p class="tip" data-t="tarjeta6.f7.tip">
+                        <strong>Tip:</strong> los datos no pasan por ningún
+                        servidor: ni la consola ni la API tienen telemetría, y
+                        escriben solo donde tú indicas.
+                      </p>
+                    </div>
+                    <div class="feature">
+                      <h4 data-t="tarjeta6.f8.titulo">
+                        El puente a tu base de datos
+                      </h4>
+                      <p class="como" data-t="tarjeta6.f8.como">
+                        Velo local lee una tabla de PostgreSQL o de SQL Server,
+                        la anonimiza y escribe el resultado en otra tabla que tú
+                        nombras. La conexión sale de tu entorno o de la consola,
+                        nunca de un argumento ni de un registro, y la tabla de
+                        origen no se toca.
+                      </p>
+                      <p class="tip" data-t="tarjeta6.f8.tip">
+                        <strong>Tip:</strong> la tabla restaurada va en claro y
+                        Velo lo avisa antes de escribirla: es tan sensible como
+                        la fuente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
           </div>
         </section>
 
@@ -2756,7 +2982,7 @@
             Velar, en dos segundos
           </h2>
           <p class="suave revela" data-t="velar.bajada">
-            Conserva la forma. Pierde la identidad. Y el mes que viene, el mismo
+            Conserva la forma. Pierde la identidad. Y con la misma sal, el mismo
             seudónimo.
           </p>
           <div class="respiro revela">
@@ -2787,9 +3013,10 @@
               </p>
             </div>
             <p class="chica tenue" style="margin-top: 12px" data-t="velar.pie">
-              El mismo seudónimo en las dos entregas: los cruces del análisis
-              sobreviven sin que los datos reales salgan nunca. Valores
-              inventados para este ejemplo.
+              El mismo seudónimo en las dos entregas (misma frase y misma sal,
+              que Velo local te deja fijar): los cruces del análisis sobreviven
+              sin que los datos reales salgan nunca. Valores inventados para
+              este ejemplo.
             </p>
           </div>
         </section>
@@ -3091,11 +3318,11 @@
           </div>
 
           <p class="chica tenue" style="margin-top: 16px" data-t="climax.pie">
-            El mismo archivo, la misma política y la misma frase producen
-            siempre el mismo resultado, byte por byte. No hay inteligencia
-            artificial en ninguna parte del producto: por eso se repite
-            idéntico, y por eso es auditable. Valores inventados para este
-            ejemplo.
+            El mismo archivo, la misma política y la misma llave (frase y sal)
+            producen siempre el mismo resultado, byte por byte. No hay
+            inteligencia artificial en ninguna parte del producto: por eso se
+            repite idéntico, y por eso es auditable. Valores inventados para
+            este ejemplo.
           </p>
         </section>
 
@@ -3164,10 +3391,11 @@
                   la pestaña se congele.
                 </li>
                 <li data-t="fino2.li3">
-                  No lee bases de datos, ni JSON, ni PDF, y no genera archivos
-                  de Excel de salida: dos
+                  No genera archivos de Excel de salida: dos
                   <span class="mono">.xlsx</span> iguales no saldrían idénticos
                   byte por byte, y esa igualdad es justo lo que Velo promete.
+                  Las bases de datos solo las lee Velo local, en tu equipo,
+                  nunca la página web.
                 </li>
                 <li data-t="fino2.li4">
                   <strong>Tres frases de paso, tres alcances distintos</strong>
@@ -3280,9 +3508,9 @@
                sola. Partirlo —el número por un lado y la palabra por otro— hacía que el
                documento se leyera «1414 funcionalidades». -->
           <strong data-t-sr="pie.cuenta"
-            ><span class="sr-only">14 funcionalidades</span
+            ><span class="sr-only">22 funcionalidades</span
             ><span aria-hidden="true"
-              ><span class="conteo" id="conteo">14</span>
+              ><span class="conteo" id="conteo">22</span>
               <span data-t="pie.cubre.palabra">funcionalidades</span></span
             ></strong
           >
@@ -3311,6 +3539,16 @@
               14 funcionalidades, el clímax del round-trip y la declaración de
               lo que Velo no afirma. Se <strong>sella</strong> cuando cierre la
               ronda de pruebas.
+            </li>
+            <li data-t="pie.historial.li2">
+              <strong
+                >Ajuste del 10 de noviembre de 2026 — producto completo.</strong
+              >
+              Cierra la construcción del ciclo H2: una sexta tarjeta con las
+              ocho funcionalidades que se sumaron al MVP (JSON, metadatos de PDF
+              e imágenes, generalización óptima, ruido con garantía, RGPD, alto
+              volumen, Velo local y el puente a bases de datos), 22 en total, y
+              la limitación de lo que Velo no lee corregida.
             </li>
           </ul>
         </details>

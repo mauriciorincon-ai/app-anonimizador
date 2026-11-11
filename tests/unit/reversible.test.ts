@@ -17,6 +17,7 @@ import {
   indiceDeColumna,
   paresDeBoveda,
 } from "@/engine/boveda";
+import { clasificar } from "@/engine/clasificador";
 import { ConstructorColumnar, type TablaColumnar } from "@/engine/columnar";
 import {
   esReversible,
@@ -28,6 +29,10 @@ import {
   type Politica,
   type Tecnica,
 } from "@/engine/politica";
+import {
+  construirPolitica,
+  POLITICAS_DE_FABRICA,
+} from "@/engine/politicas-de-fabrica";
 import { aplicarPolitica } from "@/engine/tecnicas";
 
 const IDENTIDAD = {
@@ -324,4 +329,63 @@ describe("la colisión de formato, provocada por el fixture", () => {
     expect(conDos[0].length).toBeGreaterThanOrEqual(2);
     expect(new Set(conDos[0]).size).toBe(conDos[0].length);
   }, 120_000);
+});
+
+// S12 (deuda del S10): `velo-local/cli.ts` pide la frase de la bóveda ANTES de escribir, según
+// `requiereBoveda(politica)`, y ya no tiene el camino «por si acaso» que la pedía de nuevo al sellar.
+// Eso solo es honesto si una bóveda NUNCA sale sin que `requiereBoveda` lo haya dicho: se prueba
+// aquí con las tres políticas de fábrica sobre cada perfil del kit, y con una a mano sin reversibles.
+describe("la bóveda sale solo si `requiereBoveda` lo dijo antes", () => {
+  const PERFILES = ["clinico", "trampas", "europeo"];
+
+  for (const perfil of PERFILES)
+    it(`perfil ${perfil}: ninguna política de fábrica produce correspondencias sin pedirlas`, async () => {
+      const [encabezado, ...datos] = [
+        ...generarFilas({
+          filas: 300,
+          seed: 42,
+          perfil,
+          tasaInvalida: 0.08,
+          tasaVacia: 0.03,
+        }),
+      ];
+      const tabla = tablaDe(encabezado, datos);
+      const diagnostico = clasificar(tabla);
+      const llave = await llaveDe("la llave de esta prueba");
+      for (const fabrica of POLITICAS_DE_FABRICA) {
+        const politica = construirPolitica(
+          fabrica,
+          diagnostico.columnas.map((c) => ({
+            nombre: c.nombre,
+            tipo: c.tipo,
+            categoria: c.categoria,
+          })),
+        );
+        const { correspondencias } = await aplicarPolitica(
+          tabla,
+          politica,
+          llave,
+          "es",
+        );
+        if (correspondencias.length > 0)
+          expect(requiereBoveda(politica), `${perfil} · ${fabrica.id}`).toBe(
+            true,
+          );
+      }
+    });
+
+  it("sin técnicas reversibles no hay correspondencias, aunque haya seudónimos", async () => {
+    const politica = politicaDe([
+      { columna: "cedula", tecnica: { tipo: "seudonimizar", longitud: 16 } },
+      { columna: "nit", tecnica: { tipo: "enmascarar" } },
+    ]);
+    const resultado = await aplicarPolitica(
+      TABLA,
+      politica,
+      await llaveDe("la llave de esta prueba"),
+      "es",
+    );
+    expect(requiereBoveda(politica)).toBe(false);
+    expect(resultado.correspondencias).toEqual([]);
+  });
 });
