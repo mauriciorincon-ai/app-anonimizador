@@ -4,8 +4,8 @@
 // sin eco (`./consola.ts`). Lo que sí es argumento —rutas, la política, la sal— no es secreto: la
 // sal se enseña a propósito, porque sin ella la misma frase daría otra llave.
 
-import { readFile, stat } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 
 import { nombreDelArchivoAnonimizado } from "@/engine/csv";

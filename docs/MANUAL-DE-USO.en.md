@@ -312,7 +312,7 @@ policy**:
 - **HIPAA · Safe Harbor** — the 18 identifiers of 45 CFR §164.514(b)(2). Note: Safe Harbor requires
   **removing**, not pseudonymizing, because §164.514(c) rules out a code derived from the
   information.
-- **RGPD · GDPR (UE)** — Regulation (EU) 2016/679. **It pseudonymizes, it does not anonymize**:
+- **RGPD · GDPR (UE · EU)** — Regulation (EU) 2016/679. **It pseudonymizes, it does not anonymize**:
   [section 10](#10-the-gdpr-policy) tells the story. It declares a minimum-group target (k = 5)
   that is Velo's choice, not the regulation's.
 
@@ -1186,7 +1186,7 @@ JSON limits still stop it, and say so; and lists are still not treated.
 ### 10. The GDPR policy
 
 It is the **third built-in policy**, next to Habeas Data and HIPAA. In the workshop you pick it with
-the **“RGPD · GDPR (UE)”** button. It rests on Regulation (EU) 2016/679: article 4 (what personal
+the **“RGPD · GDPR (UE · EU)”** button. It rests on Regulation (EU) 2016/679: article 4 (what personal
 data is and what pseudonymisation is), article 9 (special categories), article 10 (criminal
 convictions and offences) and recital 26.
 

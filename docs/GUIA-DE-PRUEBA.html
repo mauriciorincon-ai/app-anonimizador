@@ -1430,8 +1430,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil colision
             <input type="checkbox" id="l4" /><label for="l4"
               >Al terminar quedan <strong>la huella</strong> (12 caracteres) y
               <strong>la sal</strong>. La frase que escribiste
-              <strong>ya no está en pantalla</strong>. Copia la sal: solo
-              sirve para repetir los seudónimos con
+              <strong>ya no está en pantalla</strong>. Copia la sal: solo sirve
+              para repetir los seudónimos con
               <code>pnpm velo … --sal</code> (parada 21); en la web cada llave
               nueva estrena la suya.
               <span class="origen origen-heredada">Heredada · S2</span></label
@@ -3376,7 +3376,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil jerarqui
           <li data-origen="heredado">
             <input type="checkbox" id="ai3" /><label for="ai3"
               >Pulsa «Transformar este archivo» y, en el taller,
-              <strong>«RGPD · GDPR (UE)»</strong>. Aparece el aviso de la
+              <strong>«RGPD · GDPR (UE · EU)»</strong>. Aparece el aviso de la
               política: su fuente (<em
                 >«Reglamento (UE) 2016/679 (RGPD): art. 4.1 datos personales,
                 art. 4.5 seudonimización, art. 9 categorías especiales, art. 10
@@ -3459,9 +3459,9 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil jerarqui
                 >«Con k = 5, Velo generaliza esas columnas hasta que nadie quede
                 en un grupo de menos de 5 registros…»</em
               >. Cámbialo a 10: la frase pasa a «Con k = 10…» y el aviso de
-              origen dice que ya no es RGPD · GDPR (UE). Vuelve a 5. Ese 5 no lo
-              pide el reglamento —lo dijo la advertencia—, y aquí compruebas que
-              es una perilla.
+              origen dice que ya no es RGPD · GDPR (UE · EU). Vuelve a 5. Ese 5
+              no lo pide el reglamento —lo dijo la advertencia—, y aquí
+              compruebas que es una perilla.
               <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>
@@ -3597,8 +3597,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil jerarqui
               la sesión vive en memoria), suelta
               <code>tmp/europeo.csv</code> otra vez, entra al taller y pulsa
               <strong>«Importar»</strong> con ese archivo: el aviso vuelve a
-              decir «RGPD · GDPR (UE)» —no «Ya no es…»— y la tabla es la misma.
-              Deriva la llave, transforma y mira los ocho caracteres:
+              decir «RGPD · GDPR (UE · EU)» —no «Ya no es…»— y la tabla es la
+              misma. Deriva la llave, transforma y mira los ocho caracteres:
               <strong>son los mismos</strong>. Mismo tratamiento, mismo hash,
               aunque haya pasado por un archivo.
               <span class="origen origen-heredada">Heredada · S8</span></label
@@ -3609,8 +3609,8 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil jerarqui
               >Cambia la técnica de <code>monto</code> a «Enmascarar
               (103***89)»: el aviso de origen deja de decir el nombre de la
               política y dice
-              <strong>«Ya no es RGPD · GDPR (UE).»</strong> —partiste de esa
-              plantilla y la cambiaste, así que el reporte va a decir que la
+              <strong>«Ya no es RGPD · GDPR (UE · EU).»</strong> —partiste de
+              esa plantilla y la cambiaste, así que el reporte va a decir que la
               política es tuya—. Transforma y descarga el certificado: sigue
               diciendo «Seudonimizado (art. 4.5 RGPD)» para las columnas que
               siguen en seudónimo y agrega
@@ -3621,7 +3621,7 @@ node docs/kit-de-prueba/generador.mjs --filas 2000   --seed 42 --perfil jerarqui
               tratamiento, otra huella, también si luego devuelves
               <code>monto</code> a «Dejar como está», porque el origen ya no es
               el de fábrica. Para volver a la plantilla, pulsa otra vez «RGPD ·
-              GDPR (UE)».
+              GDPR (UE · EU)».
               <span class="origen origen-heredada">Heredada · S8</span></label
             >
           </li>

@@ -168,7 +168,11 @@ describe("pnpm velo, con una carpeta de salida que no existe", () => {
     ];
     vi.stubEnv("VELO_FRASE", FRASE);
     expect(await principal(orden, consola, () => new Date())).toBe(1);
-    expect(registro.join("\n")).not.toContain("--salida");
+    const dicho = registro.join("\n");
+    expect(dicho).not.toContain("--salida");
+    expect(dicho).not.toContain("velo: ");
+    expect(dicho).toContain("No encuentro el archivo");
+    expect(dicho).toContain("x.csv");
   });
 });
 

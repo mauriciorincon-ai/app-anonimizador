@@ -308,7 +308,7 @@ Una fila por columna, con un desplegable. Puedes elegir columna por columna o pa
   de anonimización AGN + SIC. Declara un objetivo de grupo mínimo (k = 5).
 - **HIPAA · Safe Harbor** — los 18 identificadores de 45 CFR §164.514(b)(2). Ojo: Safe Harbor manda
   **borrar**, no seudonimizar, porque §164.514(c) prohíbe un código derivado de la información.
-- **RGPD · GDPR (UE)** — el Reglamento (UE) 2016/679. **Seudonimiza, no anonimiza**: lo cuenta la
+- **RGPD · GDPR (UE · EU)** — el Reglamento (UE) 2016/679. **Seudonimiza, no anonimiza**: lo cuenta la
   [sección 10](#10-la-política-rgpd). Declara un objetivo de grupo mínimo (k = 5) que es elección
   de Velo, no del reglamento.
 
@@ -1176,7 +1176,7 @@ aquí. Los demás topes de un JSON siguen deteniéndolo, y lo dice; y las listas
 ### 10. La política RGPD
 
 Es la **tercera política de fábrica**, junto a Habeas Data y HIPAA. En el taller se elige con el
-botón **«RGPD · GDPR (UE)»**. Se apoya en el Reglamento (UE) 2016/679: el artículo 4 (qué es un
+botón **«RGPD · GDPR (UE · EU)»**. Se apoya en el Reglamento (UE) 2016/679: el artículo 4 (qué es un
 dato personal y qué es seudonimizar), el 9 (categorías especiales), el 10 (condenas e infracciones
 penales) y el considerando 26.
 

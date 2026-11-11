@@ -141,6 +141,10 @@ export const VELO_LOCAL = {
       es: "No entendí la orden. `pnpm velo --ayuda` enseña las que hay.",
       en: "I didn't understand the command. `pnpm velo --ayuda` lists them.",
     },
+    archivoNoExiste: {
+      es: "No encuentro el archivo {ruta}: revisa la ruta.",
+      en: "I cannot find the file {ruta}: check the path.",
+    },
     carpetaNoExiste: {
       es: "La carpeta de salida (`--salida`) no existe: créala primero.",
       en: "The output folder (`--salida`) does not exist: create it first.",

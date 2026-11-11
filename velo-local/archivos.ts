@@ -6,7 +6,7 @@
 // un archivo a medio hacer en el equipo.
 
 import { createReadStream, openAsBlob } from "node:fs";
-import { open, unlink, type FileHandle } from "node:fs/promises";
+import { open, stat, unlink, type FileHandle } from "node:fs/promises";
 import { basename } from "node:path";
 
 import { Sha256 } from "@/lib/sha256";
@@ -26,6 +26,8 @@ export async function huellaDeArchivo(ruta: string): Promise<string> {
 export async function abrirArchivo(
   ruta: string,
 ): Promise<{ readonly fuente: Blob; readonly origen: Origen }> {
+  const info = await stat(ruta).catch(() => null);
+  if (!info?.isFile()) throw new ErrorDeVelo("archivoNoExiste", { ruta });
   const fuente = await openAsBlob(ruta);
   return {
     fuente,

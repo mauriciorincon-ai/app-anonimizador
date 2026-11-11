@@ -333,7 +333,7 @@ const conFormato = (formato: FormatoDeSeudonimo): Tecnica => ({
  */
 export const RGPD: PoliticaDeFabrica = {
   id: "rgpd",
-  nombre: "RGPD · GDPR (UE)",
+  nombre: "RGPD · GDPR (UE · EU)",
   fuente: mensaje("fabrica.rgpd.fuente"),
   advertencia: mensaje("fabrica.rgpd.advertencia"),
   porTipo: {

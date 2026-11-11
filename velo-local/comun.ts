@@ -26,7 +26,10 @@ export async function pedidaDePolitica(
 }
 
 /** Sustituye `ruta` por `bytes` escribiendo a un archivo aparte y renombrando: un corte a medias no la rompe. */
-export async function reemplazar(ruta: string, bytes: Uint8Array): Promise<void> {
+export async function reemplazar(
+  ruta: string,
+  bytes: Uint8Array,
+): Promise<void> {
   const temporal = `${ruta}.${process.pid}.nueva`;
   try {
     await escribirNuevo(temporal, bytes);
