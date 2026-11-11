@@ -19,7 +19,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { DIRECTORIO_DE_FIXTURES, nombreDeFixture } from "./global-setup";
 import {
@@ -27,6 +27,7 @@ import {
   crearTraductor,
   type Detector,
 } from "./ingles-completo-lexico";
+import { crearRevisor } from "./ingles-completo-pantalla";
 
 test.use({ locale: "en-US" });
 
@@ -35,23 +36,6 @@ const COLUMNA = "cedula_titular";
 const FRASE_DE_LLAVE = "a long passphrase for the test";
 const FRASE_DE_BOVEDA = "another long passphrase, the vault one";
 const FRASE_DE_BITACORA = "one more long passphrase for the log";
-
-/** El texto que una persona ve y oye en la pantalla: contenido, título y atributos de lectura. */
-function textoDeLaPantalla(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const partes = [document.title, document.body.innerText];
-    const atributos = ["aria-label", "title", "placeholder", "alt"];
-    for (const elemento of document.querySelectorAll(
-      atributos.map((a) => `[${a}]`).join(","),
-    )) {
-      for (const a of atributos) {
-        const valor = elemento.getAttribute(a);
-        if (valor) partes.push(valor);
-      }
-    }
-    return partes.join("\n");
-  });
-}
 
 test("cada pantalla, en inglés, sin una palabra en español", async ({
   page,
@@ -68,17 +52,7 @@ test("cada pantalla, en inglés, sin una palabra en español", async ({
   const en = await crearTraductor();
 
   const fallos: string[] = [];
-  const revisar = async (pagina: Page, donde: string) => {
-    const texto = await textoDeLaPantalla(pagina);
-    for (const palabra of detector.enEspanol(texto)) {
-      // El contexto de la primera aparición: sin él, «su» en una pantalla es imposible de rastrear.
-      const lugar = new RegExp(
-        `.{0,40}(?<!\\p{L})${palabra}(?!\\p{L}).{0,40}`,
-        "iu",
-      ).exec(texto.replace(/\s+/g, " "));
-      fallos.push(`${donde}: «${palabra}» en «${lugar?.[0] ?? "?"}»`);
-    }
-  };
+  const revisar = crearRevisor(detector, fallos);
   const temporal = (nombre: string) =>
     join(DIRECTORIO_DE_FIXTURES, `w${info.workerIndex}-en-${nombre}`);
 

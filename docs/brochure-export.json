@@ -243,10 +243,10 @@
     {
       "clave": "pruebas_e2e",
       "etiqueta": "Pruebas de extremo a extremo",
-      "valor": 290,
+      "valor": 302,
       "unidad": "pruebas",
       "fuente": "medido",
-      "detalle": "Salida de `playwright test --list` el 2026-11-10: 290 pruebas declaradas en 21 archivos, en escritorio y móvil. Incluyen axe en los dos temas y en los dos idiomas, la garantía de red, el recorrido completo en inglés que falla ante una sola palabra en español, las del despliegue por recorrido del brochure y las del cambio de idioma: el conmutador, `?lang=`, sin una sola petición y sin nada guardado en el navegador. Algunas solo corren en escritorio por el tamaño de sus archivos."
+      "detalle": "Salida de `playwright test --list` el 2026-11-10: 302 pruebas declaradas en 22 archivos, en escritorio y móvil. Incluyen axe en los dos temas y en los dos idiomas, la garantía de red, el recorrido completo en inglés que falla ante una sola palabra en español, las del despliegue por recorrido del brochure y las del cambio de idioma: el conmutador, `?lang=`, sin una sola petición y sin nada guardado en el navegador. Algunas solo corren en escritorio por el tamaño de sus archivos."
     },
     {
       "clave": "cobertura_lineas",
