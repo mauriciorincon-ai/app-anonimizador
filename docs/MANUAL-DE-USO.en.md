@@ -350,9 +350,10 @@ A pseudonym is calculated with a **passphrase that only you have**. Three things
 before you type it:
 
 - **The same passphrase and the same salt give the same pseudonyms.** It is what lets you match
-  March's file against April's without having the real data in front of you. On the web every new
-  key gets its own salt and the screen does not let you type one: to repeat them, use Velo local
-  with `--sal`.
+  March's file against April's without having the real data in front of you. To repeat them,
+  paste the project's salt into the "Coming back to a project? Paste its salt" field (32
+  characters, 0-9 and a-f) or, in Velo local, pass it with `--sal`; without a salt, every new key
+  gets its own.
 - **If you lose it, there is no going back.** Nobody can regenerate it; that is the trade-off for
   nobody else having it.
 - **If it leaks, the pseudonyms become linkable.** Treat it like a password.
@@ -1485,10 +1486,11 @@ With the **same passphrase and the same salt**. You keep the passphrase; Velo sh
 when it derives the key. **It does not travel inside the exported policy**, but it does travel
 inside the vault, encrypted along with everything else: whoever keeps the vault and remembers the
 passphrase can derive the same key again. If you did not save a vault — because you marked no
-column as undoable — copy the salt to your password manager next to the passphrase. **Note:** on
-the web every new key gets its own fresh salt and the screen does not let you type one; to repeat
-pseudonyms from one file to another, the way in is Velo local with `--sal` (the same passphrase and
-the same salt give the same pseudonyms).
+column as undoable — copy the salt to your password manager next to the passphrase. When you come
+back to the project, paste that salt into the "Coming back to a project? Paste its salt" field on
+the key screen (the web) or pass it with `--sal` (Velo local): the same passphrase and the same
+salt give the same pseudonyms in both. Without a pasted salt, every new key gets its own. The salt
+is not stored in the browser: you type it each time.
 
 **Can I use Velo in English?**
 Yes, all of it: the five screens, the key notices, the certificate, the return report and the

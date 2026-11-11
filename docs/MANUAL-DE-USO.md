@@ -343,9 +343,9 @@ Un seudónimo se calcula con una **frase de paso que solo tú tienes**. Tres cos
 antes de escribirla:
 
 - **La misma frase y la misma sal dan los mismos seudónimos.** Es lo que te permite cruzar el
-  archivo de marzo con el de abril sin tener los datos reales delante. En la web cada llave nueva
-  estrena su propia sal y la pantalla no deja escribir una: para repetirlos, usa Velo local con
-  `--sal`.
+  archivo de marzo con el de abril sin tener los datos reales delante. Para repetirlos,
+  pega la sal del proyecto en el campo «¿Vuelves a un proyecto? Pega su sal» (32 caracteres, 0-9 y
+  a-f) o, en Velo local, pásala con `--sal`; sin sal, cada llave nueva estrena la suya.
 - **Si la pierdes, no hay vuelta atrás.** Nadie puede regenerarla; es la contrapartida de que nadie
   más la tenga.
 - **Si se filtra, los seudónimos se vuelven enlazables.** Trátala como una contraseña.
@@ -1476,9 +1476,11 @@ Con la **misma frase de paso y la misma sal**. La frase la guardas tú; la sal t
 derivar la llave. **No viaja dentro de la política exportada**, pero sí dentro de la bóveda,
 cifrada con todo lo demás: quien conserva la bóveda y recuerda la frase puede volver a derivar la
 misma llave. Si no guardaste bóveda —porque no marcaste ninguna columna como reversible—, cópiala a
-tu gestor de contraseñas junto a la frase. **Ojo:** en la web cada llave nueva estrena su propia
-sal y la pantalla no deja escribir una; para repetir los seudónimos de un archivo a otro, la
-puerta es Velo local con `--sal` (la misma frase y la misma sal dan los mismos seudónimos).
+tu gestor de contraseñas junto a la frase. Cuando vuelvas
+al proyecto, pega esa sal en el campo «¿Vuelves a un proyecto? Pega su sal» de la pantalla de la
+llave (la web) o pásala con `--sal` (Velo local): la misma frase y la misma sal dan los mismos
+seudónimos en los dos. Sin sal pegada, cada llave nueva estrena la suya. La sal no se guarda en el
+navegador: se escribe cada vez.
 
 **¿Puedo usar Velo en inglés?**
 Sí, entero: las cinco pantallas, los avisos de las llaves, el certificado, el informe del regreso y

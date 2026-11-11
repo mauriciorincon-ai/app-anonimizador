@@ -64,8 +64,8 @@ export const LLAVES = {
         cuerpo: {
           es:
             "Es lo que permite cruzar el archivo de marzo con el de abril sin tener los datos " +
-            "reales delante. En la web cada llave nueva estrena su sal: para repetirlos, usa Velo " +
-            "local con --sal.",
+            "reales delante. Para repetirlos, pega abajo la sal del proyecto: sin ella, cada " +
+            "llave nueva estrena la suya.",
           en:
             "That's what lets you match March's file against April's without having the real " +
             "data in front of you. To repeat them, paste the project's salt below: without it, " +
