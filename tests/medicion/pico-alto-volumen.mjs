@@ -67,7 +67,9 @@ const MINUTOS = 60_000;
 
 console.log("Árbol que toca este arnés:");
 console.log(`  lee      ${ARCHIVO} (generador sembrado, seed 42)`);
-console.log(`  escribe  ${SALIDA}/ (perfil del navegador y descargas; se borra al terminar)`);
+console.log(
+  `  escribe  ${SALIDA}/ (perfil del navegador y descargas; se borra al terminar)`,
+);
 
 async function huella(ruta) {
   const hash = createHash("sha256");
@@ -132,12 +134,18 @@ const escucha = () =>
 let servidorPropio = null;
 if (!(await escucha())) {
   // Su propio grupo de procesos: al cerrar se mata entero (pnpm y el `next start` que lanza).
-  servidorPropio = spawn("pnpm", ["start"], { cwd: RAIZ, stdio: "ignore", detached: true });
+  servidorPropio = spawn("pnpm", ["start"], {
+    cwd: RAIZ,
+    stdio: "ignore",
+    detached: true,
+  });
   for (let i = 0; i < 100 && !(await escucha()); i++)
     await new Promise((r) => setTimeout(r, 200));
 }
 
-const nav = await { chromium, firefox, webkit }[NAVEGADOR].launchPersistentContext(PERFIL, {
+const nav = await { chromium, firefox, webkit }[
+  NAVEGADOR
+].launchPersistentContext(PERFIL, {
   locale: "es-CO",
   acceptDownloads: true,
   serviceWorkers: SERVICE_WORKER ? "allow" : "block",
@@ -159,7 +167,9 @@ let picoTotal = 0;
 /** Los procesos de Firefox o de WebKit de Playwright: por su ejecutable, no por quién los lanzó. */
 const delNavegadorPorRuta = () => {
   try {
-    return execFileSync("ps", ["-axo", "pid=,rss=,command="], { encoding: "utf8" })
+    return execFileSync("ps", ["-axo", "pid=,rss=,command="], {
+      encoding: "utf8",
+    })
       .split("\n")
       .filter((linea) => linea.includes(`ms-playwright/${NAVEGADOR}`))
       .map((linea) => Number(linea.trim().split(/\s+/)[1]));
@@ -186,7 +196,9 @@ const muestreo = setInterval(() => {
   for (const h of delNavegador) {
     try {
       const rss = Number(
-        execFileSync("ps", ["-o", "rss=", "-p", h], { encoding: "utf8" }).trim(),
+        execFileSync("ps", ["-o", "rss=", "-p", h], {
+          encoding: "utf8",
+        }).trim(),
       );
       picoDelPaso = Math.max(picoDelPaso, rss);
       picoTotal = Math.max(picoTotal, rss);
@@ -200,7 +212,9 @@ const marca = (paso) => {
   const s = (Date.now() - desde) / 1000;
   const mb = Math.round(picoDelPaso / 1024);
   filas.push({ paso, s, mb });
-  console.log(`${paso.padEnd(28)} ${s.toFixed(0).padStart(5)} s · pico ${mb} MB`);
+  console.log(
+    `${paso.padEnd(28)} ${s.toFixed(0).padStart(5)} s · pico ${mb} MB`,
+  );
   desde = Date.now();
   picoDelPaso = 0;
 };
@@ -221,16 +235,20 @@ try {
   await page.setInputFiles("#archivo", ARCHIVO);
   await page.waitForURL("**/diagnostico", { timeout: 30 * MINUTOS });
   await page
-    .getByRole(
-      EN_MEMORIA ? "link" : "heading",
-      { name: EN_MEMORIA ? "Transformar este archivo" : "Este archivo se leyó por pasadas" },
-    )
+    .getByRole(EN_MEMORIA ? "link" : "heading", {
+      name: EN_MEMORIA
+        ? "Transformar este archivo"
+        : "Este archivo se leyó por pasadas",
+    })
     .waitFor({ timeout: 10 * MINUTOS });
   marca("A · diagnóstico");
 
   await page.getByRole("link", { name: "Transformar este archivo" }).click();
   await page.waitForURL("**/transformar");
-  await page.getByRole("button", { name: /Habeas Data/ }).first().click();
+  await page
+    .getByRole("button", { name: /Habeas Data/ })
+    .first()
+    .click();
   // Habeas Data no deja ninguna columna con bóveda, y sin bóveda no hay regreso. `nombre_completo`
   // tiene pocos distintos (325 en 500 000 filas): su bóveda cabe en alto volumen.
   const tecnica = page.getByLabel("Técnica para la columna nombre_completo");
@@ -241,7 +259,9 @@ try {
     .check();
   await page.getByLabel("Frase de paso del proyecto").fill(FRASE_DE_LLAVE);
   await page.getByRole("button", { name: "Derivar la llave" }).click();
-  await page.getByRole("heading", { name: "Llave lista" }).waitFor({ timeout: MINUTOS });
+  await page
+    .getByRole("heading", { name: "Llave lista" })
+    .waitFor({ timeout: MINUTOS });
   desde = Date.now();
   picoDelPaso = 0;
   await page.getByRole("button", { name: "Transformar", exact: true }).click();
@@ -275,10 +295,15 @@ try {
         .getByText("No se pudo escribir el archivo")
         .waitFor({ timeout: 30 * MINUTOS })
         .then(() => {
-          throw new Error("la escritura falló: la pantalla dice «No se pudo escribir el archivo»");
+          throw new Error(
+            "la escritura falló: la pantalla dice «No se pudo escribir el archivo»",
+          );
         }),
     ]).catch(async (error) => {
-      const pantalla = await page.locator("main").innerText().catch(() => "(sin pantalla)");
+      const pantalla = await page
+        .locator("main")
+        .innerText()
+        .catch(() => "(sin pantalla)");
       console.error("PANTALLA AL FALLAR:", pantalla.slice(0, 800));
       throw error;
     });
@@ -287,7 +312,9 @@ try {
   } else {
     await page.getByRole("button", { name: "Preparar el archivo" }).click();
     // Sin service worker: un solo archivo si cabe en una parte, o el respaldo por partes.
-    const guardar = page.getByRole("link", { name: /^Guardar velo-anonimizado-/ });
+    const guardar = page.getByRole("link", {
+      name: /^Guardar velo-anonimizado-/,
+    });
     const partes = page.getByText(/salió en \d+ partes/);
     await Promise.race([
       guardar.waitFor({ timeout: 60 * MINUTOS }),
@@ -295,17 +322,24 @@ try {
     ]);
     marca("C · escribir (en memoria)");
     if ((await guardar.count()) > 0) {
-      const [descarga] = await Promise.all([page.waitForEvent("download"), guardar.click()]);
+      const [descarga] = await Promise.all([
+        page.waitForEvent("download"),
+        guardar.click(),
+      ]);
       await descarga.saveAs(anonimizado);
     }
   }
   if (SOLO_IDA) throw new Termino();
 
   await page.getByLabel("Frase de paso de la bóveda").fill(FRASE_DE_BOVEDA);
-  await page.getByRole("button", { name: "Cifrar y preparar la bóveda" }).click();
+  await page
+    .getByRole("button", { name: "Cifrar y preparar la bóveda" })
+    .click();
   const [descargaVelo] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("link", { name: "Guardar la bóveda" }).click({ timeout: 10 * MINUTOS }),
+    page
+      .getByRole("link", { name: "Guardar la bóveda" })
+      .click({ timeout: 10 * MINUTOS }),
   ]);
   const boveda = join(SALIDA, "boveda.velo");
   await descargaVelo.saveAs(boveda);
@@ -319,22 +353,33 @@ try {
   await paginaB.getByLabel("Elegir el archivo de bóveda").setInputFiles(boveda);
   await paginaB.getByLabel("Frase de paso de la bóveda").fill(FRASE_DE_BOVEDA);
   await paginaB.getByRole("button", { name: "Abrir la bóveda" }).click();
-  await paginaB.getByRole("heading", { name: "Bóveda abierta" }).waitFor({ timeout: 10 * MINUTOS });
+  await paginaB
+    .getByRole("heading", { name: "Bóveda abierta" })
+    .waitFor({ timeout: 10 * MINUTOS });
   marca("R0 · abrir la bóveda");
   await paginaB
     .getByLabel("Elegir el archivo que devolvió el tercero")
     .setInputFiles(anonimizado);
-  const restaurar = paginaB.getByRole("button", { name: "Restaurar los valores originales" });
+  const restaurar = paginaB.getByRole("button", {
+    name: "Restaurar los valores originales",
+  });
   await restaurar.waitFor({ timeout: 60 * MINUTOS });
   marca("R1 · leer el devuelto");
   await restaurar.click();
-  const preparar = paginaB.getByRole("button", { name: "Preparar el archivo restaurado" });
+  const preparar = paginaB.getByRole("button", {
+    name: "Preparar el archivo restaurado",
+  });
   await preparar.waitFor({ timeout: 60 * MINUTOS });
   await preparar.click();
-  const guardarB = paginaB.getByRole("link", { name: "Guardar el archivo restaurado" });
+  const guardarB = paginaB.getByRole("link", {
+    name: "Guardar el archivo restaurado",
+  });
   await guardarB.waitFor({ timeout: 60 * MINUTOS });
   marca("R2 · restaurar y escribir");
-  const [descargaB] = await Promise.all([paginaB.waitForEvent("download"), guardarB.click()]);
+  const [descargaB] = await Promise.all([
+    paginaB.waitForEvent("download"),
+    guardarB.click(),
+  ]);
   const restaurado = join(SALIDA, "restaurado.csv");
   await descargaB.saveAs(restaurado);
   await paginaB.close();
@@ -349,9 +394,12 @@ try {
   const nombre = vuelta.nombres.indexOf("nombre_completo");
   const enOrden = vuelta.nombres.join() === ida.nombres.join();
   const volvio =
-    vuelta.huellas[nombre] === original.huellas[original.nombres.indexOf("nombre_completo")] &&
+    vuelta.huellas[nombre] ===
+      original.huellas[original.nombres.indexOf("nombre_completo")] &&
     vuelta.huellas[nombre] !== ida.huellas[nombre];
-  const intactas = vuelta.huellas.every((h, c) => c === nombre || h === ida.huellas[c]);
+  const intactas = vuelta.huellas.every(
+    (h, c) => c === nombre || h === ida.huellas[c],
+  );
   console.log(`nombre_completo vuelve al original: ${volvio ? "sí" : "NO"}`);
   console.log(
     `las otras ${vuelta.nombres.length - 1} columnas, iguales al anonimizado: ${enOrden && intactas ? "sí" : "NO"}`,
@@ -364,7 +412,9 @@ try {
   }
 } finally {
   clearInterval(muestreo);
-  console.log(`PICO RSS del proceso más pesado: ${Math.round(picoTotal / 1024)} MB`);
+  console.log(
+    `PICO RSS del proceso más pesado: ${Math.round(picoTotal / 1024)} MB`,
+  );
   console.log(
     JSON.stringify({
       navegador: NAVEGADOR,
