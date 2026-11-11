@@ -707,8 +707,14 @@ describe("lo que no cabe se dice, no se estima ni se escribe a medias", () => {
         "Invalid string length",
         "Array buffer allocation failed",
         "allocation size overflow",
+        "Length exceeded the maximum array length",
+        "Out of memory",
       ])
         expect(esFaltaDeCupo(new RangeError(texto))).toBe(true);
+      // Firefox lanza «allocation size overflow» como un InternalError, no como un RangeError.
+      const interno = new Error("allocation size overflow");
+      interno.name = "InternalError";
+      expect(esFaltaDeCupo(interno)).toBe(true);
       for (const texto of [
         "Invalid time value",
         "toFixed() digits argument must be between 0 and 100",

@@ -235,10 +235,10 @@
     {
       "clave": "pruebas_unitarias",
       "etiqueta": "Pruebas unitarias y de integración",
-      "valor": 2625,
+      "valor": 2646,
       "unidad": "pruebas",
       "fuente": "medido",
-      "detalle": "Salida de `pnpm test` el 2026-11-10: 2.625 pruebas pasan en 115 archivos, y un archivo con una prueba queda omitido por diseño."
+      "detalle": "Salida de `pnpm test` el 2026-11-10: 2.646 pruebas pasan en 117 archivos, y un archivo con una prueba queda omitido por diseño."
     },
     {
       "clave": "pruebas_e2e",
@@ -254,15 +254,15 @@
       "valor": 97.33,
       "unidad": "%",
       "fuente": "medido",
-      "detalle": "v8 sobre src/engine y src/lib, con umbral de 80 % por glob en vitest.config.ts. 4.731 de 4.861 líneas con sentencias, medidas el 2026-11-10."
+      "detalle": "v8 sobre src/engine y src/lib, con umbral de 80 % por glob en vitest.config.ts. 4.731 de 4.861 líneas con sentencias (las `stmt` de clover.xml), medidas el 2026-11-10."
     },
     {
       "clave": "dependencias_runtime",
       "etiqueta": "Dependencias en tiempo de ejecución",
-      "valor": 13,
+      "valor": 11,
       "unidad": "paquetes",
       "fuente": "medido",
-      "detalle": "En `dependencies`: next, react, react-dom, papaparse, xlsx, zod, pino y @sentry/nextjs para la web; pdf-lib para los metadatos de PDF; pg y mssql para Velo local; y @electric-sql/pglite y su socket, que solo sirven a la base de prueba del kit. Ninguna es un SDK de IA generativa, y un job del CI audita package.json y el lockfile contra tres familias vetadas: una dependencia transitiva cuenta igual que una directa."
+      "detalle": "En `dependencies`: next, react, react-dom, papaparse, xlsx, zod, pino y @sentry/nextjs para la web; pdf-lib para los metadatos de PDF; y pg y mssql para Velo local. PGlite y su socket, que solo sirven a la base de prueba del kit, viven en `devDependencies`. Ninguna es un SDK de IA generativa, y un job del CI audita package.json y el lockfile contra tres familias vetadas: una dependencia transitiva cuenta igual que una directa."
     },
     {
       "clave": "llamadas_de_red_con_datos",

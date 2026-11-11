@@ -168,12 +168,20 @@ export class NoCabeEnAltoVolumen extends Error {
  * crece más)? El texto difiere entre motores (V8, SpiderMonkey, JavaScriptCore), así que se
  * reconocen los de cada uno; un `RangeError` de otra causa (una fecha inválida, un `toFixed` fuera de
  * rango) es un fallo y no se disfraza de un archivo demasiado grande.
+ *
+ * Medido en Playwright (S12): V8 dice «Map maximum size exceeded», «Invalid array length» e «Invalid
+ * string length»; SpiderMonkey, «invalid array length» y, para una cadena, un `InternalError` (no un
+ * `RangeError`) «allocation size overflow»; JavaScriptCore, «Length exceeded the maximum array
+ * length» y «Out of memory». SpiderMonkey y JavaScriptCore no tienen el tope de 2²⁴ del `Map`.
  */
 export function esFaltaDeCupo(error: unknown): boolean {
+  const esDeTamano =
+    error instanceof RangeError ||
+    (error instanceof Error && error.name === "InternalError");
   return (
-    error instanceof RangeError &&
-    /map (maximum|too|is too)|invalid (array|string) length|array buffer allocation|allocation size overflow|out of memory/i.test(
-      error.message,
+    esDeTamano &&
+    /map (maximum|too|is too)|invalid (array|string) length|exceeded the maximum (array|string) length|array buffer allocation|allocation size overflow|out of memory/i.test(
+      (error as Error).message,
     )
   );
 }

@@ -141,3 +141,7 @@ the tab, and the manual says so.
 - Excel keeps its 150 MB cap (ADR-003): SheetJS has no streaming reader in the browser.
 - The restored file in high volume goes the `Blob` way; the chosen-file way is for the anonymized
   file only.
+- The Velo local figures in the manual (1 M rows in 146.5 s and 3.1 GB, 5 M in 1,207 s and 3.9 GB)
+  are repeatable with `node tests/medicion/pico-velo-local.mjs <rows>` (S12): it generates the
+  seeded `clinico` file in `tmp/`, runs `pnpm velo anonimizar` under `/usr/bin/time` and prints the
+  seconds and the peak resident memory.
